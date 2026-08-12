@@ -1,0 +1,130 @@
+"""Runtime settings.
+
+Note what is absent: there is no API key, no API secret, no signing seed and no
+live-trading flag. V1 reads public market data only, so none of those fields
+have anywhere to be used. tests/live/test_no_live_trading.py asserts that they
+stay absent.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field, replace
+
+#: The corrected research universe. XRPUSD is present deliberately: the
+#: original universe audit excluded it using a recent-30-day liquidity proxy
+#: (6.82% synthetic) instead of the study-window measure (1.43%).
+DEFAULT_SYMBOLS = ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD")
+
+WS_URL = "wss://socket.india.delta.exchange"
+
+#: Health thresholds, in seconds. From the operating brief.
+MAX_WS_SILENCE = 30.0
+MAX_CLOSED_1M_AGE = 90.0
+GAP_LOOKBACK = 300.0
+
+#: A forming 1m candle is declared closed this long after its minute ends if
+#: the feed has not already rolled it. Covers the case where a symbol prints no
+#: trades in a minute, so no candlestick_1m update arrives to roll the bar.
+CANDLE_ROLL_GRACE = 5.0
+
+
+@dataclass(frozen=True)
+class RiskConfig:
+    """Every limit is configurable; none may be overridden by the strategy."""
+
+    starting_equity: float = 10_000.0
+    risk_per_trade: float = 0.005          # 0.5%
+    minimum_rr: float = 2.0
+    max_open_positions: int = 1
+    max_daily_loss_pct: float = 0.02       # 2% of starting-of-day equity
+    max_drawdown_pct: float = 0.10         # 10% from peak equity
+    max_trades_per_day: int = 6
+    max_consecutive_losses: int = 3
+    max_position_notional: float = 50_000.0
+    max_total_notional: float = 50_000.0
+    max_leverage: float = 3.0
+    cooldown_after_trade_seconds: int = 900     # 15m
+    cooldown_after_loss_seconds: int = 3600     # 60m
+    #: Slippage assumption in basis points of notional, applied to taker fills.
+    slippage_bps: float = 2.0
+    #: When a limit is breached, new entries are blocked. Existing positions
+    #: are left alone unless this is switched on.
+    close_positions_on_breach: bool = False
+    #: Sessions in which entries are permitted, as UTC "HH:MM-HH:MM" ranges.
+    #: Empty means 24/7, which is the default for crypto perps.
+    sessions_utc: tuple[str, ...] = ()
+
+    def validate(self) -> None:
+        if not 0 < self.risk_per_trade <= 0.1:
+            raise ValueError(f"risk_per_trade must be in (0, 0.1], got {self.risk_per_trade}")
+        if self.minimum_rr <= 0:
+            raise ValueError("minimum_rr must be > 0")
+        if self.max_open_positions < 1:
+            raise ValueError("max_open_positions must be >= 1")
+        if self.starting_equity <= 0:
+            raise ValueError("starting_equity must be > 0")
+        for name in ("max_daily_loss_pct", "max_drawdown_pct"):
+            v = getattr(self, name)
+            if not 0 < v <= 1:
+                raise ValueError(f"{name} must be in (0, 1], got {v}")
+
+
+@dataclass(frozen=True)
+class Settings:
+    symbols: tuple[str, ...] = DEFAULT_SYMBOLS
+    ws_url: str = WS_URL
+    database_url: str = "postgresql://paper:paper@localhost:5432/paper"
+    #: Backfill this many days of 1m history on startup. Warm-up needs ~12h of
+    #: 5m bars; 7 days gives a wide margin and covers a weekend outage.
+    backfill_days: int = 7
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    log_level: str = "INFO"
+    #: Presentation timezone. Storage is always UTC.
+    display_tz: str = "Asia/Kolkata"
+    risk: RiskConfig = field(default_factory=RiskConfig)
+
+    def validate(self) -> None:
+        if not self.symbols:
+            raise ValueError("at least one symbol is required")
+        self.risk.validate()
+
+    @classmethod
+    def from_env(cls) -> "Settings":
+        s = cls()
+        env = os.environ
+        overrides: dict = {}
+        if env.get("DELTABOT_SYMBOLS"):
+            overrides["symbols"] = tuple(
+                x.strip().upper() for x in env["DELTABOT_SYMBOLS"].split(",") if x.strip()
+            )
+        for key, field_name, cast in (
+            ("DATABASE_URL", "database_url", str),
+            ("DELTABOT_WS_URL", "ws_url", str),
+            ("DELTABOT_BACKFILL_DAYS", "backfill_days", int),
+            ("DELTABOT_API_PORT", "api_port", int),
+            ("DELTABOT_LOG_LEVEL", "log_level", str),
+            ("DELTABOT_DISPLAY_TZ", "display_tz", str),
+        ):
+            if env.get(key):
+                overrides[field_name] = cast(env[key])
+
+        risk_overrides: dict = {}
+        for key, field_name, cast in (
+            ("DELTABOT_EQUITY", "starting_equity", float),
+            ("DELTABOT_RISK_PER_TRADE", "risk_per_trade", float),
+            ("DELTABOT_MIN_RR", "minimum_rr", float),
+            ("DELTABOT_MAX_OPEN", "max_open_positions", int),
+            ("DELTABOT_MAX_DAILY_LOSS", "max_daily_loss_pct", float),
+            ("DELTABOT_MAX_TRADES_PER_DAY", "max_trades_per_day", int),
+            ("DELTABOT_MAX_CONSEC_LOSSES", "max_consecutive_losses", int),
+        ):
+            if env.get(key):
+                risk_overrides[field_name] = cast(env[key])
+        if risk_overrides:
+            overrides["risk"] = replace(s.risk, **risk_overrides)
+
+        out = replace(s, **overrides) if overrides else s
+        out.validate()
+        return out

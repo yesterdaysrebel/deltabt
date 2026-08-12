@@ -1,0 +1,273 @@
+"""Maintenance/halt handling, and WebSocket reconnect + stale-feed detection."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+
+import pandas as pd
+import pytest
+
+from app.market_data.candle_builder import SymbolCandleBuilder
+from app.market_data.delta_ws import DeltaMarketFeed, StaleFeedError
+from app.market_data.market_state import HaltDetector, MarketState
+from app.market_data.normalize import Candle
+
+
+def bar(start, o=100.0, h=101.0, l=99.0, c=100.5, v=10.0):
+    return Candle("BTCUSD", start, o, h, l, c, v)
+
+
+def flat_bar(start, px=100.0):
+    """A forward-filled maintenance bar: o=h=l=c, zero volume."""
+    return Candle("BTCUSD", start, px, px, px, px, 0.0)
+
+
+# =====================================================================
+# HALT DETECTION -- section 12
+# =====================================================================
+
+
+class TestHaltDetection:
+    def test_normal_market_stays_live(self):
+        d = HaltDetector("BTCUSD")
+        for i in range(50):
+            assert d.observe(bar(i * 60, c=100 + i * 0.01)) is MarketState.LIVE
+        assert d.can_trade
+
+    def test_short_illiquid_run_is_not_a_halt(self):
+        """19 flat bars is thin liquidity; 20 is maintenance."""
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.observe(bar(0))
+        for i in range(1, 20):
+            d.observe(flat_bar(i * 60))
+        assert d.state is MarketState.LIVE
+        assert d.can_trade
+
+    def test_long_flat_run_is_a_halt(self):
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.observe(bar(0))
+        for i in range(1, 25):
+            d.observe(flat_bar(i * 60))
+        assert d.state is MarketState.HALTED
+        assert not d.can_trade
+
+    def test_reopen_bar_is_not_tradable(self):
+        """The +0.32% one-minute auction gap must never be read as a breakout."""
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.observe(bar(0, c=100.0))
+        for i in range(1, 25):
+            d.observe(flat_bar(i * 60))
+        state = d.observe(bar(25 * 60, o=100.32, h=100.4, l=100.0, c=100.32))
+        assert state is MarketState.REOPENING
+        assert not d.can_trade
+
+    def test_trading_resumes_only_after_a_post_reopen_bar(self):
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.observe(bar(0))
+        for i in range(1, 25):
+            d.observe(flat_bar(i * 60))
+        d.observe(bar(25 * 60, o=100.32, h=100.4, l=100.0, c=100.32))
+        assert not d.can_trade
+        assert d.observe(bar(26 * 60, c=100.35)) is MarketState.LIVE
+        assert d.can_trade
+
+    def test_halt_event_records_the_gap(self):
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.observe(bar(0, c=100.0))
+        for i in range(1, 25):
+            d.observe(flat_bar(i * 60))
+        d.observe(bar(25 * 60, o=100.32, h=100.4, l=100.0, c=100.32))
+        d.observe(bar(26 * 60))
+        assert len(d.history) == 1
+        ev = d.history[0]
+        assert ev.flat_bars == 24
+        assert ev.reopen_bar == 25 * 60
+        assert ev.reopen_gap_pct == pytest.approx(0.32, abs=0.01)
+
+    def test_restarting_inside_a_halt_comes_up_halted(self):
+        """Otherwise a restart during maintenance trades the reopen bar."""
+        rows = [{"time": i * 60, "open": 100.0, "high": 100.0, "low": 100.0,
+                 "close": 100.0, "volume": 0.0} for i in range(30)]
+        rows[0].update(high=101.0, low=99.0, close=100.5, volume=5.0)
+        d = HaltDetector("BTCUSD", min_run=20)
+        d.prime_from_history(pd.DataFrame(rows))
+        assert d.state is MarketState.HALTED
+        assert not d.can_trade
+
+    def test_restarting_in_a_normal_market_comes_up_live(self):
+        rows = [{"time": i * 60, "open": 100.0 + i, "high": 101.0 + i,
+                 "low": 99.0 + i, "close": 100.5 + i, "volume": 5.0}
+                for i in range(30)]
+        d = HaltDetector("BTCUSD")
+        d.prime_from_history(pd.DataFrame(rows))
+        assert d.state is MarketState.LIVE
+
+    def test_halt_state_agrees_with_the_research_halt_rule(self):
+        """Live detection and deltabt.data.quality must not disagree."""
+        from deltabt.data.quality import halt_mask
+        rows = [{"time": i * 60, "open": 100.0, "high": 101.0, "low": 99.0,
+                 "close": 100.5, "volume": 5.0} for i in range(10)]
+        rows += [{"time": (10 + i) * 60, "open": 100.0, "high": 100.0,
+                  "low": 100.0, "close": 100.0, "volume": 0.0} for i in range(25)]
+        rows += [{"time": 35 * 60, "open": 100.3, "high": 100.4, "low": 100.0,
+                  "close": 100.32, "volume": 8.0}]
+        df = pd.DataFrame(rows)
+        mask = halt_mask(df)
+        assert mask[10:35].all(), "research rule should flag the flat run"
+        assert mask[35], "research rule should flag the reopen bar"
+
+        d = HaltDetector("BTCUSD", min_run=20)
+        states = []
+        for r in rows:
+            states.append(d.observe(Candle("BTCUSD", r["time"], r["open"],
+                                           r["high"], r["low"], r["close"],
+                                           r["volume"])))
+        assert states[34] is MarketState.HALTED
+        assert states[35] is MarketState.REOPENING
+
+
+# =====================================================================
+# WEBSOCKET -- reconnect, stale feed
+# =====================================================================
+
+
+class FakeWS:
+    """Scripted socket. Strings are frames; exceptions are raised in order."""
+
+    def __init__(self, script, sent):
+        self.script = list(script)
+        self.sent = sent
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    async def send(self, payload):
+        self.sent.append(json.loads(payload))
+
+    async def recv(self):
+        if not self.script:
+            await asyncio.sleep(3600)          # silent socket: still "open"
+        item = self.script.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+
+class TestFeed:
+    def test_subscribe_payload_matches_the_live_protocol(self):
+        f = DeltaMarketFeed(["BTCUSD", "ETHUSD"], lambda m: None)
+        p = f.subscribe_payload()
+        assert p["type"] == "subscribe"
+        names = {c["name"] for c in p["payload"]["channels"]}
+        assert names == {"v2/ticker", "candlestick_1m", "all_trades"}
+        for ch in p["payload"]["channels"]:
+            assert ch["symbols"] == ["BTCUSD", "ETHUSD"]
+
+    @pytest.mark.asyncio
+    async def test_messages_reach_the_handler(self):
+        got, sent = [], []
+        script = ['{"type":"v2/ticker","symbol":"BTCUSD"}',
+                  '{"type":"all_trades","symbol":"BTCUSD"}']
+        f = DeltaMarketFeed(["BTCUSD"], got.append,
+                            connect=lambda: FakeWS(script, sent))
+        task = asyncio.create_task(f.run())
+        await asyncio.sleep(0.05)
+        f.stop(); task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert [m["type"] for m in got] == ["v2/ticker", "all_trades"]
+        assert sent and sent[0]["type"] == "subscribe"
+
+    @pytest.mark.asyncio
+    async def test_silent_socket_raises_stale_not_hang(self):
+        """The failure mode that every process-level probe misses."""
+        f = DeltaMarketFeed(["BTCUSD"], lambda m: None, recv_timeout=0.05,
+                            connect=lambda: FakeWS([], []))
+        with pytest.raises(StaleFeedError):
+            async with f._connect() as ws:
+                await f._pump(ws)
+
+    @pytest.mark.asyncio
+    async def test_stale_feed_triggers_a_reconnect(self):
+        sent = []
+        f = DeltaMarketFeed(["BTCUSD"], lambda m: None, recv_timeout=0.02,
+                            max_backoff=0.01,
+                            connect=lambda: FakeWS([], sent))
+        task = asyncio.create_task(f.run())
+        await asyncio.sleep(0.3)
+        f.stop()
+        await asyncio.wait_for(task, timeout=2)
+        assert f.stats.stale_events >= 1
+        assert f.stats.reconnects >= 1
+        assert len(sent) >= 2, "each reconnect must resubscribe"
+
+    @pytest.mark.asyncio
+    async def test_connection_error_counts_and_resubscribes(self):
+        sent = []
+        scripts = [[ConnectionError("dropped")], ['{"type":"v2/ticker"}']]
+
+        def connect():
+            return FakeWS(scripts.pop(0) if scripts else [], sent)
+
+        f = DeltaMarketFeed(["BTCUSD"], lambda m: None, recv_timeout=0.05,
+                            max_backoff=0.01, connect=connect)
+        task = asyncio.create_task(f.run())
+        await asyncio.sleep(0.2)
+        f.stop(); task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert f.stats.errors >= 1
+        assert f.stats.reconnects >= 1
+
+    @pytest.mark.asyncio
+    async def test_undecodable_frame_is_dropped_not_fatal(self):
+        got, sent = [], []
+        f = DeltaMarketFeed(["BTCUSD"], got.append, recv_timeout=0.05,
+                            connect=lambda: FakeWS(
+                                ["not json", '{"type":"v2/ticker"}'], sent))
+        task = asyncio.create_task(f.run())
+        await asyncio.sleep(0.05)
+        f.stop(); task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert len(got) == 1 and f.stats.errors == 1
+
+    def test_staleness_is_measured_from_the_last_message(self):
+        f = DeltaMarketFeed(["BTCUSD"], lambda m: None)
+        assert f.stats.seconds_since_last_message == float("inf")
+        import time
+        f.stats.last_message_at = time.time() - 45
+        assert 44 < f.stats.seconds_since_last_message < 47
+
+
+# =====================================================================
+# HALT + BUILDER together
+# =====================================================================
+
+
+def test_builder_and_halt_detector_agree_on_a_maintenance_window():
+    from app.market_data.normalize import CandleUpdate
+    b = SymbolCandleBuilder("BTCUSD")
+    d = HaltDetector("BTCUSD", min_run=20)
+
+    def push(start, o, h, l, c, v):
+        return b.ingest(CandleUpdate("BTCUSD", start, o, h, l, c, v,
+                                     (start + 30) * 1_000_000))
+
+    for i in range(5):
+        for x in push(i * 60, 100, 101, 99, 100.5, 5.0):
+            d.observe(x)
+    for i in range(5, 30):
+        for x in push(i * 60, 100.5, 100.5, 100.5, 100.5, 0.0):
+            d.observe(x)
+    for x in push(30 * 60, 100.8, 100.9, 100.5, 100.82, 9.0):
+        d.observe(x)
+    for x in push(31 * 60, 100.8, 100.9, 100.7, 100.85, 7.0):
+        d.observe(x)
+
+    assert b.stats.gaps == 0, "a halt is flat bars, not missing bars"
+    assert d.state in (MarketState.REOPENING, MarketState.LIVE)

@@ -17,14 +17,28 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "matplotlib>=3.7"]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.23", "matplotlib>=3.7"]
+#: The V1 live paper-trading bot. Note what is NOT here: no exchange SDK, no
+#: signing library, no credential store. V1 reads public market data only.
+live = [
+    "websockets>=12.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "asyncpg>=0.29",
+    "structlog>=24.1",
+    "prometheus-client>=0.20",
+]
 
 [project.scripts]
 deltabt = "deltabt.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["deltabt*"]
+include = ["deltabt*", "app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+asyncio_mode = "strict"
+markers = [
+    "postgres: needs a live PostgreSQL (set DELTABOT_TEST_DSN)",
+]
