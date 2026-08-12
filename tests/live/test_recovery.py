@@ -105,7 +105,9 @@ async def open_a_position(bot, *, entry=63_000.0, stop=62_500.0,
     d = bot.risk.evaluate(exp, bot.state, open_positions=bot.broker.get_positions(),
                           now=ts, market_can_trade=True)
     assert d.approved, d.reason
-    await bot._place(exp, d)
+    # market time, not wall time -- the order's expiry is compared against tick
+    # timestamps, which are exchange time (audit F8)
+    await bot._place(exp, d, ts)
     # Through the bot's own tick path, not the broker directly: the broker
     # returns events, but it is _on_tick that queues them for persistence.
     bot._on_tick(Tick("BTCUSD", ts * US, entry, entry))
@@ -209,7 +211,7 @@ class TestRestartRecovery:
         exp.detail["idempotency_key"] = key
         await a._record_signal(exp, key)
         d = a.risk.evaluate(exp, a.state, open_positions=[], now=1786560300)
-        await a._place(exp, d)          # order created, never filled -- crash
+        await a._place(exp, d, 1786560300)          # order created, never filled -- crash
 
         b = make_bot(store)
         await b.start()

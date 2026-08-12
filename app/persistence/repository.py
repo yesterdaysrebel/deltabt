@@ -15,6 +15,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 
+from app.clock import wall_now
 from app.persistence.models import (
     DuplicateRecord,
     FillRecord,
@@ -28,6 +29,11 @@ from app.persistence.models import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def _ts(value):
+    """Optional unix seconds -> aware datetime, or None."""
+    return utc(value) if value else None
 
 
 class Repository(ABC):
@@ -360,16 +366,19 @@ class PostgresRepository(Repository):
             out = await con.fetchval(
                 """INSERT INTO strategy_signals
                    (idempotency_key, instance_uid, symbol, bar_open,
+                    exchange_ts, received_ts, event_type,
                     primary_timeframe, confirmation_timeframe, direction, outcome,
                     strategy_version, strategy_config_hash, conditions_passed,
                     conditions_failed, indicators, entry_price, stop_price,
                     target_price, stop_distance_pct, reward_risk,
                     rejection_reason, detail)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,
-                           $13::jsonb,$14,$15,$16,$17,$18,$19,$20::jsonb)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+                           $14::jsonb,$15::jsonb,$16::jsonb,$17,$18,$19,$20,$21,
+                           $22,$23::jsonb)
                    ON CONFLICT (idempotency_key) DO NOTHING
                    RETURNING id""",
                 r.idempotency_key, r.instance_uid, r.symbol, utc(r.bar_open),
+                _ts(r.exchange_ts), _ts(r.received_ts), r.event_type,
                 r.primary_timeframe, r.confirmation_timeframe, r.direction,
                 r.outcome, r.strategy_version, r.strategy_config_hash,
                 json.dumps(r.conditions_passed), json.dumps(r.conditions_failed),
@@ -392,13 +401,17 @@ class PostgresRepository(Repository):
                 """INSERT INTO paper_orders (order_uid, idempotency_key,
                        signal_key, instance_uid, symbol, side, order_type,
                        purpose, quantity, limit_price, status, equity_before,
-                       risk_amount)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                       risk_amount, created_exchange_ts, expires_exchange_ts,
+                       received_ts, event_type)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                           $16,$17)
                    ON CONFLICT (idempotency_key) DO NOTHING
                    RETURNING id""",
                 r.order_uid, r.idempotency_key, r.signal_key, r.instance_uid,
                 r.symbol, r.side, r.order_type, r.purpose, r.quantity,
-                r.limit_price, r.status, r.equity_before, r.risk_amount)
+                r.limit_price, r.status, r.equity_before, r.risk_amount,
+                _ts(r.created_exchange_ts), _ts(r.expires_exchange_ts),
+                _ts(r.received_ts), r.event_type)
         return out is not None
 
     async def update_order_status(self, order_uid: str, status: str) -> None:
@@ -412,13 +425,16 @@ class PostgresRepository(Repository):
             out = await con.fetchval(
                 """INSERT INTO paper_fills (fill_uid, order_uid, instance_uid,
                        symbol, side, quantity, price, notional, fee, slippage,
-                       liquidity, filled_at, tick_ts_us)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                       liquidity, filled_at, tick_ts_us, exchange_ts,
+                       received_ts, event_type)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                           $16)
                    ON CONFLICT (order_uid) DO NOTHING
                    RETURNING id""",
                 r.fill_uid, r.order_uid, r.instance_uid, r.symbol, r.side,
                 r.quantity, r.price, r.notional, r.fee, r.slippage,
-                r.liquidity, utc(r.filled_at), r.tick_ts_us)
+                r.liquidity, utc(r.filled_at), r.tick_ts_us,
+                _ts(r.exchange_ts), _ts(r.received_ts), r.event_type)
         return out is not None
 
     async def fill_exists_for_order(self, order_uid: str) -> bool:
@@ -460,11 +476,11 @@ class PostgresRepository(Repository):
             await con.execute(
                 """UPDATE positions SET status=$2, exit_price=$3,
                        realized_pnl=$4, r_multiple=$5, exit_reason=$6,
-                       closed_at=$7, exit_fee=$8, funding=$9
+                       closed_at=$7, exit_fee=$8, funding=$9, hold_seconds=$10
                    WHERE position_uid=$1""",
                 r.position_uid, r.status, r.exit_price, r.realized_pnl,
-                r.r_multiple, r.exit_reason,
-                utc(r.closed_at) if r.closed_at else None, r.exit_fee, r.funding)
+                r.r_multiple, r.exit_reason, _ts(r.closed_at), r.exit_fee,
+                r.funding, r.hold_seconds)
 
     @staticmethod
     def _to_position(row) -> PositionRecord:
@@ -487,6 +503,7 @@ class PostgresRepository(Repository):
             exit_reason=row["exit_reason"],
             opened_at=int(row["opened_at"].timestamp()),
             closed_at=int(row["closed_at"].timestamp()) if row["closed_at"] else None,
+            hold_seconds=row["hold_seconds"],
             strategy_version=row["strategy_version"])
 
     async def load_open_positions(self) -> list[PositionRecord]:
@@ -509,22 +526,24 @@ class PostgresRepository(Repository):
             await con.execute(
                 """INSERT INTO risk_events (event_id, instance_uid, symbol,
                        event_type, limit_name, limit_value, observed_value,
-                       reason, payload)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)
+                       reason, payload, exchange_ts, received_ts)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11)
                    ON CONFLICT (event_id) DO NOTHING""",
                 r.event_id, r.instance_uid, r.symbol, r.event_type,
                 r.limit_name, r.limit_value, r.observed_value, r.reason,
-                json.dumps(r.payload))
+                json.dumps(r.payload), _ts(r.exchange_ts), _ts(r.received_ts))
 
     async def record_system_event(self, r: SystemEventRecord) -> None:
         async with self._pool.acquire() as con:
             await con.execute(
                 """INSERT INTO system_events (event_id, instance_uid, symbol,
-                       component, event_type, severity, payload, strategy_version)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8)
+                       component, event_type, severity, payload,
+                       strategy_version, exchange_ts, received_ts)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
                    ON CONFLICT (event_id) DO NOTHING""",
                 r.event_id, r.instance_uid, r.symbol, r.component, r.event_type,
-                r.severity, json.dumps(r.payload), r.strategy_version)
+                r.severity, json.dumps(r.payload), r.strategy_version,
+                _ts(r.exchange_ts), _ts(r.received_ts))
 
     async def recent_signals(self, limit: int = 50) -> list[dict]:
         async with self._pool.acquire() as con:

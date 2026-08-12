@@ -56,6 +56,11 @@ class SignalRecord:
     reward_risk: float | None = None
     rejection_reason: str | None = None
     detail: dict = field(default_factory=dict)
+    #: EXCHANGE time the decision refers to (the closed bar's end), and the
+    #: WALL time this process recorded it. Both, always -- see app/clock.py.
+    exchange_ts: int | None = None
+    received_ts: float | None = None
+    event_type: str = "SIGNAL_EVALUATED"
 
 
 @dataclass
@@ -73,6 +78,12 @@ class OrderRecord:
     status: str
     equity_before: float
     risk_amount: float
+    #: EXCHANGE time. Expiry compares this against tick timestamps, which are
+    #: also exchange time. Comparing it against a wall clock is audit F8.
+    created_exchange_ts: int | None = None
+    expires_exchange_ts: int | None = None
+    received_ts: float | None = None
+    event_type: str = "ORDER_CREATED"
 
 
 @dataclass
@@ -90,6 +101,9 @@ class FillRecord:
     liquidity: str                   # maker | taker
     filled_at: int
     tick_ts_us: int | None = None
+    exchange_ts: int | None = None
+    received_ts: float | None = None
+    event_type: str = "ORDER_FILLED"
 
 
 @dataclass
@@ -118,6 +132,7 @@ class PositionRecord:
     r_multiple: float | None = None
     exit_reason: str | None = None
     closed_at: int | None = None
+    hold_seconds: int | None = None
 
     OPEN_STATES = ("OPENING", "OPEN", "SUSPENDED", "CLOSING")
 
@@ -137,6 +152,8 @@ class RiskEventRecord:
     limit_value: float | None = None
     observed_value: float | None = None
     payload: dict = field(default_factory=dict)
+    exchange_ts: int | None = None
+    received_ts: float | None = None
 
 
 @dataclass
@@ -149,6 +166,8 @@ class SystemEventRecord:
     symbol: str | None = None
     payload: dict = field(default_factory=dict)
     strategy_version: str | None = None
+    exchange_ts: int | None = None
+    received_ts: float | None = None
 
 
 class DuplicateRecord(Exception):

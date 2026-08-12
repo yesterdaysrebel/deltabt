@@ -33,9 +33,9 @@ import hashlib
 import logging
 import os
 import socket
-import time
 from dataclasses import asdict
 
+from app.clock import EventTime, MarketClock, wall_now
 from app.config.settings import (
     CANDLE_ROLL_GRACE,
     GAP_LOOKBACK,
@@ -115,6 +115,12 @@ class TradingBot:
         self.metrics = Metrics()
 
         self.instance_uid = new_uid("bot")
+        #: EXCHANGE time. Every market decision -- cooldowns, order expiry,
+        #: daily rollover, signal timing -- reads this, never the wall clock.
+        #: Audit finding F8: mixing the two made a rejection depend on when the
+        #: PROCESS saw a signal rather than when the MARKET produced it, which
+        #: meant the run could not be verified by replaying its own record.
+        self.clock = MarketClock()
         self.symbols = tuple(settings.symbols)
         self.builder = CandleBuilder(self.symbols)
         self.halts = {s: HaltDetector(s) for s in self.symbols}
@@ -135,7 +141,7 @@ class TradingBot:
         self._repaired_gaps: set[tuple[str, int, int]] = set()
         self.ready = False
         self.recovery_error: str | None = None
-        self.started_at = time.time()
+        self.started_at = wall_now()
         self._tasks: list[asyncio.Task] = []
         self._stopping = asyncio.Event()
 
@@ -255,6 +261,7 @@ class TradingBot:
         self.metrics.ticks += 1
         if tick.symbol not in self.builder:
             return
+        self.clock.observe(tick.ts)
         # Execution advances on every tick, so stops and targets do not wait
         # for a bar close.
         for ev in self.broker.process_market_event(tick):
@@ -273,6 +280,9 @@ class TradingBot:
     async def on_closed_1m(self, bar) -> None:
         """Handle one closed 1m bar: halt state, persistence, 5m trigger."""
         self.metrics.candles_1m += 1
+        # A bar stamped at its OPEN is knowable only once the minute has
+        # elapsed, so the exchange instant this bar represents is its close.
+        self.clock.observe(bar.start + 60)
         state = self.halts[bar.symbol].observe(bar)
         await self.repo.save_candles(bar.symbol, "1m", [bar], source="ws")
 
@@ -363,11 +373,15 @@ class TradingBot:
         exp.detail["idempotency_key"] = key
 
         decision = None
+        # The exchange instant this decision belongs to: the close of the bar it
+        # was made from. Not the wall clock -- see app/clock.py.
+        market_now = exp.bar_open + 300 if exp.bar_open else self.clock.now()
+        self.clock.observe(market_now)
         if exp.outcome is Outcome.DETECTED:
             self.metrics.signals_detected += 1
             decision = self.risk.evaluate(
                 exp, self.state, open_positions=self.broker.get_positions(),
-                now=int(time.time()), market_can_trade=can_trade)
+                now=market_now, market_can_trade=can_trade)
             if not decision.approved:
                 self.metrics.signals_rejected += 1
                 await self.repo.record_risk_event(RiskEventRecord(
@@ -375,9 +389,10 @@ class TradingBot:
                     symbol=symbol, event_type="REJECTION",
                     reason=decision.reason or "", limit_name=decision.limit_name,
                     limit_value=decision.limit_value,
-                    observed_value=decision.observed_value))
+                    observed_value=decision.observed_value,
+                    exchange_ts=market_now, received_ts=wall_now()))
 
-        inserted = await self._record_signal(exp, key)
+        inserted = await self._record_signal(exp, key, market_now)
         if not inserted:
             self.metrics.duplicate_signals += 1
             log.info("evaluation already recorded; not acting again",
@@ -388,11 +403,11 @@ class TradingBot:
             await self.notifier.send(f"{symbol} {exp.outcome.value}", exp.summary())
 
         if decision is not None and decision.approved:
-            await self._place(exp, decision)
+            await self._place(exp, decision, market_now)
 
-    async def _place(self, exp, decision) -> None:
+    async def _place(self, exp, decision, market_now: int) -> None:
         intent = decision.intent
-        order = self.broker.submit_order(intent, now=int(time.time()))
+        order = self.broker.submit_order(intent, now=market_now)
         if order is None:
             log.warning("broker declined the intent", extra={"symbol": exp.symbol})
             return
@@ -402,7 +417,11 @@ class TradingBot:
             symbol=order.symbol, side=order.side, order_type=order.order_type,
             purpose="entry", quantity=order.quantity,
             limit_price=order.limit_price, status=order.status.value,
-            equity_before=intent.equity_before, risk_amount=intent.risk_amount))
+            equity_before=intent.equity_before, risk_amount=intent.risk_amount,
+            created_exchange_ts=order.created_at,
+            expires_exchange_ts=order.created_at + self.broker.entry_ttl_seconds
+            if self.broker.entry_ttl_seconds else None,
+            received_ts=wall_now()))
         if not ok:
             self.broker.cancel_order(order.order_uid, "duplicate in database")
             log.warning("order already durable; cancelling the in-memory twin")
@@ -413,7 +432,10 @@ class TradingBot:
                                    "quantity": order.quantity,
                                    "side": order.side})
 
-    async def _record_signal(self, exp, key: str) -> bool:
+    async def _record_signal(self, exp, key: str,
+                             market_now: int | None = None) -> bool:
+        et = EventTime.at(market_now if market_now is not None
+                          else (exp.bar_open + 300 if exp.bar_open else 0))
         return await self.repo.record_signal(SignalRecord(
             idempotency_key=key, instance_uid=self.instance_uid,
             symbol=exp.symbol, bar_open=exp.bar_open,
@@ -432,7 +454,8 @@ class TradingBot:
                     "notional": exp.notional, "equity": exp.equity,
                     "estimated_fee": exp.estimated_fee,
                     "estimated_slippage": exp.estimated_slippage,
-                    **exp.detail}))
+                    **exp.detail},
+            exchange_ts=et.exchange_ts, received_ts=et.received_ts))
 
     # =================================================================
     # BROKER EVENTS -> PERSISTENCE
@@ -461,13 +484,15 @@ class TradingBot:
         pos = next((x for x in self.broker.positions.values()
                     if x.symbol == ev.symbol), None)
         qty = pos.quantity if pos else 0
+        exch = int(p.get("tick_ts_us") or 0) // 1_000_000 or self.clock.now()
         ok = await self.repo.record_fill(FillRecord(
             fill_uid=p["fill_uid"], order_uid=p["order_uid"],
             instance_uid=self.instance_uid, symbol=ev.symbol,
             side=pos.side if pos else 0, quantity=qty, price=p["price"],
             notional=costs.notional(qty, p["price"]), fee=p["fee"],
-            slippage=0.0, liquidity="taker", filled_at=int(time.time()),
-            tick_ts_us=p.get("tick_ts_us")))
+            slippage=0.0, liquidity="taker", filled_at=exch,
+            tick_ts_us=p.get("tick_ts_us"),
+            exchange_ts=exch, received_ts=wall_now()))
         if ok:
             self.metrics.fills += 1
         else:
@@ -502,7 +527,8 @@ class TradingBot:
             return
         rec = _to_record(pos, self.instance_uid)
         await self.repo.update_position(rec)
-        self.state.apply_close(pos.realized_pnl or 0.0, int(time.time()))
+        self.state.apply_close(pos.realized_pnl or 0.0,
+                               pos.closed_at or self.clock.now())
         self.broker.equity = self.state.equity
         await self._save_state()
         self.metrics.closed_positions += 1
@@ -520,14 +546,19 @@ class TradingBot:
             event_id=new_uid("evt"), instance_uid=self.instance_uid,
             component=component, event_type=event_type, severity=severity,
             symbol=symbol, payload=payload or {},
-            strategy_version=self.strategy.version))
+            strategy_version=self.strategy.version,
+            exchange_ts=self.clock.now() or None, received_ts=wall_now()))
 
     # =================================================================
     # HEALTH INPUTS
     # =================================================================
 
     def health_snapshot(self) -> dict:
-        now = int(time.time())
+        # Wall clock, deliberately. "Have WE stopped hearing from the exchange"
+        # is a question about our own liveness; answering it from exchange
+        # timestamps would be circular, because a dead feed stops advancing
+        # exchange time and would look fresh forever.
+        now = int(wall_now())
         return {
             "ws_connected": self.feed.stats.connected,
             "seconds_since_ws_message": self.feed.stats.seconds_since_last_message,
@@ -539,7 +570,8 @@ class TradingBot:
             "recovery_error": self.recovery_error,
             "open_positions": len(self.broker.get_positions()),
             "equity": self.state.equity,
-            "uptime_seconds": time.time() - self.started_at,
+            "uptime_seconds": wall_now() - self.started_at,
+            "market_time": self.clock.now(),
         }
 
     # =================================================================
@@ -563,7 +595,10 @@ class TradingBot:
         """
         while not self._stopping.is_set():
             try:
-                now = int(time.time())
+                # roll_on_clock is an OPERATIONAL fallback for a symbol that
+                # printed nothing for a minute, so it reads the wall clock by
+                # design. Order expiry below reads MARKET time.
+                now = int(wall_now())
                 for bar in self.builder.roll_on_clock(now, grace=CANDLE_ROLL_GRACE):
                     self._pending_bars.append(bar)
                 bars, self._pending_bars = self._pending_bars, []
@@ -571,7 +606,8 @@ class TradingBot:
                     await self.on_closed_1m(bar)
                 # Sweep stale entry orders even when no tick has arrived --
                 # a silent feed is exactly when they would otherwise pile up.
-                self._pending_events.extend(self.broker.expire_stale_entries(now))
+                self._pending_events.extend(
+                    self.broker.expire_stale_entries(self.clock.now()))
                 await self.drain_broker_events()
             except Exception:                              # noqa: BLE001
                 log.exception("bar loop error")

@@ -9,6 +9,10 @@
 --     set is empty exactly when duplicates matter most: after a restart.
 --   * strategy_config_hash is stored on every signal so a rule change is
 --     visible in the data rather than relying on someone bumping a version.
+--   * TWO timestamps on every event: exchange_ts (when the market produced the
+--     thing) and received_ts (when this process learned of it). One timestamp
+--     cannot express both the replayable ordering and the processing lag, and
+--     conflating them is audit finding F8.
 
 CREATE TABLE IF NOT EXISTS bot_instance (
     id                  BIGSERIAL PRIMARY KEY,
@@ -58,6 +62,9 @@ CREATE TABLE IF NOT EXISTS strategy_signals (
     instance_uid            TEXT        NOT NULL,
     symbol                  TEXT        NOT NULL,
     bar_open                TIMESTAMPTZ NOT NULL,
+    exchange_ts             TIMESTAMPTZ,
+    received_ts             TIMESTAMPTZ,
+    event_type              TEXT        NOT NULL DEFAULT 'SIGNAL_EVALUATED',
     primary_timeframe       TEXT        NOT NULL,
     confirmation_timeframe  TEXT        NOT NULL,
     direction               SMALLINT,
@@ -94,6 +101,12 @@ CREATE TABLE IF NOT EXISTS paper_orders (
     status              TEXT        NOT NULL,       -- NEW | WORKING | FILLED | CANCELLED | EXPIRED
     equity_before       NUMERIC(20,8) NOT NULL,
     risk_amount         NUMERIC(20,8) NOT NULL,
+    -- EXCHANGE time. Expiry compares this against tick timestamps, which are
+    -- also exchange time; comparing it against a wall clock is F8.
+    created_exchange_ts TIMESTAMPTZ,
+    expires_exchange_ts TIMESTAMPTZ,
+    received_ts         TIMESTAMPTZ,
+    event_type          TEXT        NOT NULL DEFAULT 'ORDER_CREATED',
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -112,6 +125,9 @@ CREATE TABLE IF NOT EXISTS paper_fills (
     slippage            NUMERIC(20,8) NOT NULL,
     liquidity           TEXT        NOT NULL,       -- maker | taker
     filled_at           TIMESTAMPTZ NOT NULL,
+    exchange_ts         TIMESTAMPTZ,
+    received_ts         TIMESTAMPTZ,
+    event_type          TEXT        NOT NULL DEFAULT 'ORDER_FILLED',
     -- Microsecond exchange timestamp of the tick that caused the fill. This is
     -- what makes live stop-vs-target ordering provable rather than assumed.
     tick_ts_us          BIGINT,
@@ -146,6 +162,7 @@ CREATE TABLE IF NOT EXISTS positions (
     exit_reason         TEXT,
     opened_at           TIMESTAMPTZ NOT NULL,
     closed_at           TIMESTAMPTZ,
+    hold_seconds        BIGINT,
     strategy_version    TEXT        NOT NULL
 );
 -- At most ONE open position per symbol, enforced by the database. This is the
@@ -164,6 +181,8 @@ CREATE TABLE IF NOT EXISTS risk_events (
     observed_value  NUMERIC(20,8),
     reason          TEXT        NOT NULL,
     payload         JSONB,
+    exchange_ts     TIMESTAMPTZ,
+    received_ts     TIMESTAMPTZ,
     occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -177,6 +196,8 @@ CREATE TABLE IF NOT EXISTS system_events (
     severity        TEXT        NOT NULL DEFAULT 'INFO',
     payload         JSONB,
     strategy_version TEXT,
+    exchange_ts     TIMESTAMPTZ,
+    received_ts     TIMESTAMPTZ,
     occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_system_events_time ON system_events (occurred_at DESC);
