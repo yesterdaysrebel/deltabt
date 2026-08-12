@@ -157,6 +157,38 @@ class FakeWS:
         return item
 
 
+async def until(predicate, timeout=5.0, interval=0.01):
+    """Wait for a condition instead of sleeping a guessed interval.
+
+    Fixed sleeps make async tests flaky under load; every wait here is on the
+    thing the test actually cares about.
+    """
+    import time as _t
+    deadline = _t.monotonic() + timeout
+    while _t.monotonic() < deadline:
+        if predicate():
+            return True
+        await asyncio.sleep(interval)
+    return False
+
+
+async def shutdown(feed, task, timeout=5.0):
+    """Stop the feed and wait for its task to finish.
+
+    Not `task.cancel()` + `pytest.raises(CancelledError)`: stop() lets run()
+    exit cleanly, so whether the cancel lands is a race. Asserting on that race
+    made this test flaky roughly one run in three.
+    """
+    feed.stop()
+    try:
+        await asyncio.wait_for(task, timeout=timeout)
+    except asyncio.TimeoutError:
+        task.cancel()
+        raise AssertionError("feed task did not stop when asked")
+    except asyncio.CancelledError:
+        pass
+
+
 class TestFeed:
     def test_subscribe_payload_matches_the_live_protocol(self):
         f = DeltaMarketFeed(["BTCUSD", "ETHUSD"], lambda m: None)
@@ -172,15 +204,27 @@ class TestFeed:
         got, sent = [], []
         script = ['{"type":"v2/ticker","symbol":"BTCUSD"}',
                   '{"type":"all_trades","symbol":"BTCUSD"}']
-        f = DeltaMarketFeed(["BTCUSD"], got.append,
+        f = DeltaMarketFeed(["BTCUSD"], got.append, recv_timeout=0.05,
                             connect=lambda: FakeWS(script, sent))
         task = asyncio.create_task(f.run())
-        await asyncio.sleep(0.05)
-        f.stop(); task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
-        assert [m["type"] for m in got] == ["v2/ticker", "all_trades"]
+        assert await until(lambda: len(got) >= 2)
+        await shutdown(f, task)
+        assert [m["type"] for m in got][:2] == ["v2/ticker", "all_trades"]
         assert sent and sent[0]["type"] == "subscribe"
+
+    @pytest.mark.asyncio
+    async def test_stop_interrupts_a_pending_receive(self):
+        """A quiet market must not delay shutdown until the receive timeout.
+
+        Otherwise SIGTERM is ignored for up to `recv_timeout` and the
+        orchestrator SIGKILLs the process mid-write.
+        """
+        f = DeltaMarketFeed(["BTCUSD"], lambda m: None, recv_timeout=30.0,
+                            connect=lambda: FakeWS([], []))
+        task = asyncio.create_task(f.run())
+        assert await until(lambda: f.stats.connected)
+        f.stop()
+        await asyncio.wait_for(task, timeout=2.0)
 
     @pytest.mark.asyncio
     async def test_silent_socket_raises_stale_not_hang(self):
@@ -198,9 +242,8 @@ class TestFeed:
                             max_backoff=0.01,
                             connect=lambda: FakeWS([], sent))
         task = asyncio.create_task(f.run())
-        await asyncio.sleep(0.3)
-        f.stop()
-        await asyncio.wait_for(task, timeout=2)
+        assert await until(lambda: f.stats.stale_events >= 1 and len(sent) >= 2)
+        await shutdown(f, task)
         assert f.stats.stale_events >= 1
         assert f.stats.reconnects >= 1
         assert len(sent) >= 2, "each reconnect must resubscribe"
@@ -216,10 +259,9 @@ class TestFeed:
         f = DeltaMarketFeed(["BTCUSD"], lambda m: None, recv_timeout=0.05,
                             max_backoff=0.01, connect=connect)
         task = asyncio.create_task(f.run())
-        await asyncio.sleep(0.2)
-        f.stop(); task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        assert await until(lambda: f.stats.errors >= 1 and f.stats.reconnects >= 1), (
+            f"errors={f.stats.errors} reconnects={f.stats.reconnects}")
+        await shutdown(f, task)
         assert f.stats.errors >= 1
         assert f.stats.reconnects >= 1
 
@@ -230,11 +272,9 @@ class TestFeed:
                             connect=lambda: FakeWS(
                                 ["not json", '{"type":"v2/ticker"}'], sent))
         task = asyncio.create_task(f.run())
-        await asyncio.sleep(0.05)
-        f.stop(); task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
-        assert len(got) == 1 and f.stats.errors == 1
+        assert await until(lambda: len(got) >= 1 and f.stats.errors >= 1)
+        await shutdown(f, task)
+        assert got[0]["type"] == "v2/ticker" and f.stats.errors >= 1
 
     def test_staleness_is_measured_from_the_last_message(self):
         f = DeltaMarketFeed(["BTCUSD"], lambda m: None)

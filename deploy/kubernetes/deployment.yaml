@@ -1,0 +1,140 @@
+# Delta India paper-trading bot.
+#
+# THREE SETTINGS HERE ARE NOT STYLISTIC:
+#
+#   replicas: 1        two bots on one paper account duplicate every position
+#   type: Recreate     RollingUpdate briefly runs TWO pods; Recreate does not
+#   livenessProbe      /healthz is DATA FRESHNESS, not process liveness -- a bot
+#                      whose websocket died silently looks perfectly healthy to
+#                      every process-level check and is worse than a crashed one
+#
+# None of them is the real single-instance guarantee. That is a PostgreSQL
+# advisory lock taken at startup (app/persistence/lock.py): a second process
+# refuses to run even if a manual `kubectl scale` produces one.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deltabot
+  labels: {app: deltabot}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: deltabot}
+  template:
+    metadata:
+      labels: {app: deltabot}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      # Long enough for the bot to finish its current write and release the
+      # advisory lock cleanly. The feed interrupts a pending receive on
+      # SIGTERM, so this is not spent waiting on a quiet socket.
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: bot
+          image: ghcr.io/yesterdaysrebel/deltabot:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          env:
+            # The ONLY secret this bot has is the database password. There are
+            # no exchange credentials because V1 reads public data only.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: deltabot-db, key: url}
+            - {name: DELTABOT_SYMBOLS, value: "BTCUSD,ETHUSD,SOLUSD,XRPUSD"}
+            - {name: DELTABOT_EQUITY, value: "10000"}
+            - {name: DELTABOT_LOG_LEVEL, value: "INFO"}
+          # Readiness gates on warm-up: ~12h of 5m bars must be backfilled and
+          # the indicators warmed before any signal is trustworthy.
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            failureThreshold: 3
+          startupProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+            failureThreshold: 60
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deltabot
+  labels: {app: deltabot}
+spec:
+  selector: {app: deltabot}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+---
+# The dashboard is reached through a cloudflared tunnel rather than an Ingress,
+# so no inbound port is opened. Access control belongs to Cloudflare Access.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deltabot-tunnel
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: deltabot-tunnel}
+  template:
+    metadata:
+      labels: {app: deltabot-tunnel}
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args: ["tunnel", "--no-autoupdate", "run", "--url", "http://deltabot:8000"]
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef: {name: deltabot-tunnel, key: token}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+---
+# PostgreSQL must not be reachable from anywhere but the bot.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deltabot-egress
+spec:
+  podSelector:
+    matchLabels: {app: deltabot}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: deltabot-tunnel}
+      ports:
+        - {protocol: TCP, port: 8000}

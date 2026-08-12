@@ -159,23 +159,47 @@ class DeltaMarketFeed:
                 pass
 
     async def _pump(self, ws) -> None:
-        while not self._stop.is_set():
-            try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=self.recv_timeout)
-            except asyncio.TimeoutError as exc:
-                raise StaleFeedError(
-                    f"no message for {self.recv_timeout}s"
-                ) from exc
+        stop_task = asyncio.ensure_future(self._stop.wait())
+        try:
+            while not self._stop.is_set():
+                raw = await self._recv(ws, stop_task)
+                if raw is None:
+                    return                     # asked to stop
+                await self._handle(raw)
+        finally:
+            stop_task.cancel()
 
-            self.stats.messages += 1
-            self.stats.last_message_at = time.time()
-            try:
-                msg = json.loads(raw)
-            except (TypeError, ValueError):
-                self.stats.errors += 1
-                log.warning("undecodable frame dropped")
-                continue
+    async def _recv(self, ws, stop_task):
+        """Receive one frame, or return None if shutdown was requested.
 
-            result = self.on_message(msg)
-            if asyncio.iscoroutine(result):
-                await result
+        Racing the receive against the stop event rather than simply awaiting
+        it: a quiet market can leave `recv()` pending for the full receive
+        timeout, and a bot that ignores SIGTERM for that long gets SIGKILLed by
+        the orchestrator mid-write instead of shutting down cleanly.
+        """
+        recv_task = asyncio.ensure_future(ws.recv())
+        done, _ = await asyncio.wait(
+            {recv_task, stop_task}, timeout=self.recv_timeout,
+            return_when=asyncio.FIRST_COMPLETED)
+
+        if not done:
+            recv_task.cancel()
+            raise StaleFeedError(f"no message for {self.recv_timeout}s")
+        if stop_task in done:
+            recv_task.cancel()
+            return None
+        return recv_task.result()
+
+    async def _handle(self, raw) -> None:
+        self.stats.messages += 1
+        self.stats.last_message_at = time.time()
+        try:
+            msg = json.loads(raw)
+        except (TypeError, ValueError):
+            self.stats.errors += 1
+            log.warning("undecodable frame dropped")
+            return
+
+        result = self.on_message(msg)
+        if asyncio.iscoroutine(result):
+            await result

@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: deltabot
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/yesterdaysrebel/deltabt.git
+    targetRevision: master
+    path: deploy/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: deltabot
+  syncPolicy:
+    automated:
+      prune: true
+      # selfHeal is ON deliberately: if someone scales this to 2 replicas by
+      # hand, Argo puts it back. The advisory lock would stop the second pod
+      # trading regardless, but it should not be running at all.
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # A Recreate rollout terminates the old pod before the new one starts,
+      # so a brief gap in market data is expected and is not a failed sync.
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff: {duration: 30s, factor: 2, maxDuration: 5m}

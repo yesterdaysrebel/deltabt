@@ -35,7 +35,17 @@ deltabt/
   metrics.py       bootstrap CIs, trade-count gating
   sweep.py         grid search + anchored walk-forward
   research/        the eight pre-registered experiments, nulls, registry, stats
-tests/             172 tests, heavily weighted toward look-ahead and fill integrity
+app/               V1 live paper-trading bot (see below) -- reads deltabt, never writes it
+  market_data/     Delta websocket, candle builder, halt detection, REST backfill
+  strategy/        H-WPR-1 Variant A on closed bars, with a full explanation per bar
+  risk/            twelve authoritative limits; the strategy cannot override any
+  execution/       deterministic paper broker -- no exchange order path exists
+  persistence/     PostgreSQL schema, repository, single-instance advisory lock
+  monitoring/      data-freshness health, Prometheus metrics, JSON logging
+  api/             /healthz /readyz /metrics + a self-contained dashboard
+tests/             research suite + tests/live/ for the bot
+deploy/            Dockerfile, compose, Kubernetes, ArgoCD
+docs/              architecture, strategy, risk, operations, failure modes
 out/               experiment registry and result tables (per-trade dumps gitignored)
 ```
 
@@ -250,21 +260,45 @@ Three results are worth singling out:
   confirmation to a 5m regime improved cost/R twelvefold (5.04 → 0.40) with no
   statistically established gain in gross expectancy.
 
-## Roadmap — V1 live paper trading
+## V1 — live paper-trading bot (`app/`)
 
-The next phase is **not** another strategy. It is a deterministic paper-trading
-and execution-discipline system, on the premise that the operator's losses came
-from inconsistent sizing, moved stops and revenge trading rather than from
-setup selection.
+The research is finished and negative. `app/` is a different thing: a **24/7
+live-market paper-trading bot** whose purpose is to validate an execution
+engine, not to discover an edge.
 
-Planned under `live/`: WebSocket market data, a closed-candle builder, a setup
-engine emitting explicit booleans, an **independent** risk engine that vetoes
-the strategy, a conservative paper matching engine, a full journal of accepted
-*and rejected* setups, and a discretionary-vs-system comparison.
+```bash
+pip install -e '.[live]'
+docker compose -f deploy/docker/docker-compose.yml up -d db
+DATABASE_URL=postgresql://paper:paper@localhost:5432/paper python -m app
+# dashboard, /healthz, /readyz, /metrics on :8000
+```
 
-**Safety invariant:** the exchange adapter will expose no order-placement method
-at all. A feature flag can be flipped; a method that does not exist cannot be
-called. A test asserts no adapter exposes any order-creation attribute.
+**It cannot place a real order.** No order-placement method exists in the
+process, the exchange adapter is GET-only, there are no credentials, and there
+is no live-trading flag. `tests/live/test_no_live_trading.py` enforces all of
+that against the shipped AST — 483 assertions, negative-controlled against a
+deliberate violation to prove it can fail.
+
+| Piece | Notes |
+|---|---|
+| Market data | Delta WebSocket (`v2/ticker`, `candlestick_1m`, `all_trades`) + REST backfill. Socket timestamps are **microseconds**; REST is seconds |
+| Candles | Bars close on observing a later `candle_start_time`, never the local clock except as a grace fallback. Closed bars are immutable. 5m is **derived** via the backtester's own `resample_ohlcv` |
+| Strategy | H-WPR-1 Variant A, 5m primary / 1m confirmation, calling `deltabt.indicators` unchanged via bounded-window recomputation |
+| Risk | 12 configurable limits, each with a test that trips it and a rejection naming the limit, its value and the observation |
+| Execution | Deterministic paper broker. Stops trigger on **mark**, targets fill on **LTP**. Live fills carry the tick's microsecond timestamp, so stop-vs-target ordering is *observed* rather than assumed |
+| Persistence | PostgreSQL. Idempotency is a UNIQUE CONSTRAINT, not an in-memory set — that set is empty exactly when duplicates matter most |
+| Single instance | `pg_try_advisory_lock`, not `replicas: 1`. Verified to survive `kill -9` |
+| Health | `/healthz` is **data freshness**, not process liveness. A bot with a dead socket looks healthy to every process-level probe and is worse than a crashed one |
+
+Documentation: [architecture](docs/architecture.md) ·
+[strategy](docs/strategy.md) · [risk](docs/risk.md) ·
+[operations](docs/operations.md) · [failure modes](docs/failure_modes.md)
+
+**The strategy V1 forward-tests was classified NO ECONOMIC EDGE.** It is used
+because it is frozen and measured, so any live/backtest divergence is an engine
+bug rather than an open question. A month of paper trading at this trade rate
+can establish that the engine is trustworthy; it cannot establish profitability,
+and the forward-test record should not be read as if it could.
 
 ## Caveats
 

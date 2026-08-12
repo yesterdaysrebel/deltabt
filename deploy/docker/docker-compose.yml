@@ -1,0 +1,41 @@
+# Local forward-testing stack. One bot, one database, no exposed ports beyond
+# the dashboard on localhost.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: paper
+      POSTGRES_PASSWORD: paper
+      POSTGRES_DB: paper
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paper"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  bot:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://paper:paper@db:5432/paper
+      DELTABOT_SYMBOLS: BTCUSD,ETHUSD,SOLUSD,XRPUSD
+      DELTABOT_EQUITY: "10000"
+      DELTABOT_LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8000:8000"
+    # NEVER "unless-stopped" with a second replica. One bot, always.
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+volumes:
+  pgdata:

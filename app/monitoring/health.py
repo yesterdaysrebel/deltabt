@@ -1,0 +1,131 @@
+"""Health and readiness, computed from DATA FRESHNESS rather than liveness.
+
+The failure this exists to catch: a process that is alive, its socket open, its
+event loop turning, and no market data arriving. Every process-level probe
+reports that as healthy. It is worse than a crash, because a crash restarts.
+
+So /healthz is a statement about the data, not the process.
+"""
+
+from __future__ import annotations
+
+import math
+import time
+from dataclasses import dataclass, field
+
+from app.config.settings import MAX_CLOSED_1M_AGE, MAX_WS_SILENCE
+
+#: Length of the base bar, so age can be measured from close rather than open.
+BAR_SECONDS = 60
+
+
+def json_safe(value):
+    """Replace inf/NaN with None so a snapshot can always be serialised.
+
+    "No websocket message yet" is naturally infinity, and `json.dumps` refuses
+    it -- which would make /healthz return 500 precisely when the feed is dead
+    and the endpoint matters most. Recursive because snapshots nest.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {k: json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(v) for v in value]
+    return value
+
+
+@dataclass
+class HealthCheck:
+    name: str
+    ok: bool
+    detail: str = ""
+
+
+@dataclass
+class HealthReport:
+    healthy: bool
+    checks: list[HealthCheck] = field(default_factory=list)
+    snapshot: dict = field(default_factory=dict)
+
+    @property
+    def status_code(self) -> int:
+        return 200 if self.healthy else 503
+
+    def to_dict(self) -> dict:
+        return json_safe({
+            "status": "healthy" if self.healthy else "unhealthy",
+            "checks": [{"name": c.name, "ok": c.ok, "detail": c.detail}
+                       for c in self.checks],
+            **self.snapshot,
+        })
+
+    @property
+    def failures(self) -> list[str]:
+        return [c.name for c in self.checks if not c.ok]
+
+
+def evaluate_health(snapshot: dict, *, db_writable: bool,
+                    now: float | None = None,
+                    max_ws_silence: float = MAX_WS_SILENCE,
+                    max_1m_age: float = MAX_CLOSED_1M_AGE) -> HealthReport:
+    """The five conditions from section 14. All must hold."""
+    now = now if now is not None else time.time()
+    checks: list[HealthCheck] = []
+
+    silence = snapshot.get("seconds_since_ws_message", float("inf"))
+    checks.append(HealthCheck(
+        "websocket_fresh", silence < max_ws_silence,
+        f"{silence:.1f}s since the last message (limit {max_ws_silence:.0f}s)"))
+
+    last_1m = snapshot.get("last_closed_1m")
+    # Age is measured from the bar's CLOSE, not its open. A bar is stamped at
+    # its open, so measuring from there makes the youngest possible bar 60s old
+    # and leaves only 30s of headroom against a 90s limit -- and a symbol that
+    # prints nothing for a minute (rolled by the clock fallback) then reads as
+    # ~125s and fails a check it should pass. Observed on the live feed.
+    age = (now - (last_1m + BAR_SECONDS)) if last_1m else float("inf")
+    checks.append(HealthCheck(
+        "candles_fresh", age < max_1m_age,
+        f"last closed 1m bar closed {age:.0f}s ago (limit {max_1m_age:.0f}s)"
+        if last_1m else "no closed 1m bar yet"))
+
+    gaps = snapshot.get("recent_gaps", 0)
+    checks.append(HealthCheck("no_recent_gaps", gaps == 0,
+                              f"{gaps} gap(s) in the recent window"))
+
+    checks.append(HealthCheck("database_writable", bool(db_writable),
+                              "" if db_writable else "write probe failed"))
+
+    running = bool(snapshot.get("strategy_running"))
+    checks.append(HealthCheck("strategy_running", running,
+                              "" if running else "strategy engine is not running"))
+
+    return HealthReport(healthy=all(c.ok for c in checks), checks=checks,
+                        snapshot=snapshot)
+
+
+def evaluate_readiness(snapshot: dict, *, db_connected: bool,
+                       lock_held: bool, backfill_complete: bool,
+                       indicators_warm: bool, execution_ready: bool) -> HealthReport:
+    """Section 14's readiness gate.
+
+    Readiness is about having finished starting up; health is about the data
+    staying fresh afterwards. A bot mid-backfill is not broken, it is simply
+    not ready, and conflating the two makes a normal restart look like an
+    outage.
+    """
+    checks = [
+        HealthCheck("database_connected", bool(db_connected)),
+        HealthCheck("advisory_lock_held", bool(lock_held)),
+        HealthCheck("backfill_complete", bool(backfill_complete)),
+        HealthCheck("indicators_warm", bool(indicators_warm)),
+        HealthCheck("candles_synchronized", snapshot.get("last_closed_1m") is not None,
+                    "" if snapshot.get("last_closed_1m") else "no closed bar yet"),
+        HealthCheck("execution_initialized", bool(execution_ready)),
+        HealthCheck("no_unresolved_recovery",
+                    snapshot.get("recovery_error") is None,
+                    snapshot.get("recovery_error") or ""),
+    ]
+    return HealthReport(healthy=all(c.ok for c in checks), checks=checks,
+                        snapshot=snapshot)
