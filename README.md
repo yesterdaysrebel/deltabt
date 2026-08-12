@@ -297,3 +297,14 @@ called. A test asserts no adapter exposes any order-creation attribute.
   (~16,500 cells) will find a spurious winner almost by construction.
 - A passing walk-forward is necessary but not sufficient evidence to trade real
   capital. Nothing here is financial advice.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
+
+## Disclaimer
+
+Research software. Nothing here is investment advice. The eight experiments
+recorded in `out/experiments.jsonl` found **no validated edge**; do not read
+this repository as a trading recommendation. No live orders have ever been
+placed by this codebase and it contains no order-placement capability.
