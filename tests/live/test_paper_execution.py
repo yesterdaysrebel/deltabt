@@ -17,16 +17,26 @@ COSTS = {"BTCUSD": BTC}
 US = 1_000_000
 
 
+#: The instant the signal bar closed, which is when the order is created.
+#: Entry ticks arrive within seconds of it -- an order still resting minutes
+#: later is stale by construction and the broker expires it.
+BAR_CLOSE = 1786560300
+
+
 def intent(side=1, entry=63000.0, stop=62500.0, target=64000.0, qty=100,
-           order_type="market", limit=None, iid="i1"):
+           order_type="market", limit=None, iid="i1", bar_open=BAR_CLOSE):
     return ApprovedOrderIntent(
         intent_id=iid, signal_key="sig1", risk_evaluation_id="risk1",
         symbol="BTCUSD", side=side, order_type=order_type, quantity=qty,
         limit_price=limit, entry_reference=entry, stop_price=stop,
         target_price=target, risk_per_unit=abs(entry - stop),
-        risk_amount=50.0, notional=BTC.notional(qty, entry),
+        # Derived, not hardcoded: the broker resizes the fill to keep realised
+        # risk inside this budget, so an inconsistent pair would silently make
+        # every fixture a resize case.
+        risk_amount=qty * BTC.contract_value * abs(entry - stop),
+        notional=BTC.notional(qty, entry),
         equity_before=10_000.0, estimated_fee=1.0, estimated_slippage=0.5,
-        strategy_version="H-WPR-1-VariantA@abc", bar_open=1786560000,
+        strategy_version="H-WPR-1-VariantA@abc", bar_open=bar_open,
         checks_passed=("minimum_rr", "max_open_positions"))
 
 
@@ -230,9 +240,10 @@ class TestTriggers:
     def test_fees_include_gst(self):
         b = broker()
         b.submit_order(intent(qty=100, entry=63_000.0))
-        b.process_market_event(tick(63_000.0))
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 2))
         pos = list(b.positions.values())[0]
-        notional = BTC.notional(100, pos.entry_price)
+        # Charged on the quantity actually filled, not the one approved.
+        notional = BTC.notional(pos.quantity, pos.entry_price)
         expected = notional * (0.0005 * 1.18 + 0.0002)
         assert pos.entry_fee == pytest.approx(expected)
 
@@ -307,12 +318,15 @@ class TestLifecycle:
         assert b.orders[o.order_uid].status is OrderStatus.CANCELLED
         assert b.cancel_order(o.order_uid) is False
 
-    def test_quantity_is_whole_contracts(self):
+    def test_quantity_is_whole_contracts_and_never_above_approval(self):
         b = broker()
         b.submit_order(intent(qty=137))
-        b.process_market_event(tick(63_000.0))
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 2))
         pos = list(b.positions.values())[0]
-        assert pos.quantity == 137 and isinstance(pos.quantity, int)
+        assert isinstance(pos.quantity, int)
+        # Even the modelled 2bps entry slippage widens the stop distance, so
+        # the size comes down to hold the risk budget. It never goes up.
+        assert 0 < pos.quantity <= 137
 
 
 # =====================================================================
@@ -367,3 +381,191 @@ class TestHaltBehaviour:
         b.force_close(pos, 62_900.0, ExitReason.SYSTEM_SAFETY, 1786560400)
         assert pos.exit_reason == ExitReason.SYSTEM_SAFETY.value
         assert pos.status == "CLOSED"
+
+
+# =====================================================================
+# ENTRY DISCIPLINE -- found by replaying real data end to end
+# =====================================================================
+
+
+class TestEntryDiscipline:
+    """A 4000-bar replay accumulated 37 unfilled entry orders.
+
+    Live, a market entry fills on the next tick, so this never showed up in the
+    tick tests. But a feed that stops delivering is exactly the case where
+    orders pile up silently -- and then all fill at once, at prices minutes
+    away from the ones the risk engine sized against, when it resumes.
+    """
+
+    def test_an_unfilled_entry_expires(self):
+        b = broker()
+        o = b.submit_order(intent())
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 200))
+        assert b.orders[o.order_uid].status is OrderStatus.EXPIRED
+        assert b.get_positions() == []
+
+    def test_expiry_is_swept_even_with_no_ticks_at_all(self):
+        b = broker()
+        o = b.submit_order(intent())
+        assert b.expire_stale_entries(BAR_CLOSE + 30) == []
+        events = b.expire_stale_entries(BAR_CLOSE + 200)
+        assert len(events) == 1 and events[0].kind == "ORDER_EXPIRED"
+        assert b.orders[o.order_uid].status is OrderStatus.EXPIRED
+
+    def test_a_prompt_tick_still_fills(self):
+        b = broker()
+        b.submit_order(intent())
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 2))
+        assert len(b.get_positions()) == 1
+
+    def test_the_bot_does_not_chase_a_price_that_ran_away(self):
+        """The stop was sized against the reference price.
+
+        Filling 1% above it keeps the position size but widens the real stop
+        distance, so realised risk silently exceeds the budget -- and chasing a
+        move that already happened is the behaviour this bot exists to prevent.
+        """
+        b = broker()
+        o = b.submit_order(intent(entry=63_000.0))
+        b.process_market_event(tick(63_700.0, ts=BAR_CLOSE + 2))
+        assert b.orders[o.order_uid].status is OrderStatus.CANCELLED
+        assert b.get_positions() == []
+
+    def test_a_small_move_is_tolerated(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0))
+        b.process_market_event(tick(63_005.0, ts=BAR_CLOSE + 2))
+        assert len(b.get_positions()) == 1
+
+    def test_the_refusal_reason_is_recorded(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0))
+        evs = b.process_market_event(tick(63_700.0, ts=BAR_CLOSE + 2))
+        cancels = [e for e in evs if e.kind == "ORDER_CANCELLED"]
+        assert cancels and "refusing to chase" in cancels[0].payload["reason"]
+
+    def test_expiry_frees_the_symbol_for_a_later_setup(self):
+        b = broker()
+        b.submit_order(intent(iid="a"))
+        b.expire_stale_entries(BAR_CLOSE + 200)
+        assert b.submit_order(intent(iid="b", bar_open=BAR_CLOSE + 300)) is not None
+
+    def test_ttl_can_be_disabled_for_replay(self):
+        b = PaperBroker(COSTS, starting_equity=10_000.0, entry_ttl_seconds=0,
+                        max_entry_deviation=0.0)
+        b.submit_order(intent())
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 100_000))
+        assert len(b.get_positions()) == 1
+
+
+class TestRiskPreservingFills:
+    """The risk engine sizes against a reference price; the fill lands elsewhere.
+
+    Measured on a real BTCUSD short: the entry slipped 12.4 points -- 0.019% of
+    price, well inside any sane price band -- but the stop was 143 points away,
+    so realised risk went from a $50 budget to $54.35. A price-based guard
+    cannot catch that. The size has to come down instead.
+    """
+
+    def test_adverse_slip_reduces_the_size_not_the_budget(self):
+        b = broker()
+        # $50 budget over a $500 stop buys 100 contracts at the reference.
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0,
+                              qty=100))
+        b.process_market_event(tick(63_010.0, ts=BAR_CLOSE + 2))
+        pos = list(b.positions.values())[0]
+        assert pos.quantity < 100, "an adverse fill must shrink the position"
+        assert pos.initial_risk <= 50.0 * 1.000001, (
+            f"realised risk {pos.initial_risk} breached the $50 budget")
+
+    def test_a_favourable_fill_does_not_licence_a_bigger_position(self):
+        b = broker()
+        b.submit_order(intent(side=-1, entry=63_000.0, stop=63_500.0,
+                              target=62_000.0, qty=100))
+        # A short filling higher than reference is favourable.
+        b.process_market_event(tick(63_100.0, ts=BAR_CLOSE + 2))
+        pos = list(b.positions.values())[0]
+        assert pos.quantity == 100, "never size above what risk approved"
+
+    def test_the_resize_is_recorded(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0,
+                              qty=100))
+        evs = b.process_market_event(tick(63_010.0, ts=BAR_CLOSE + 2))
+        resized = [e for e in evs if e.kind == "ORDER_RESIZED"]
+        assert resized, "a size change must never be silent"
+        assert resized[0].payload["approved"] == 100
+        assert resized[0].payload["filled"] < 100
+
+    def test_a_fill_past_the_stop_is_refused_outright(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        b.process_market_event(tick(62_400.0, ts=BAR_CLOSE + 2))
+        assert b.get_positions() == [], "entering already beyond the stop is absurd"
+
+    def test_chasing_is_measured_in_R_not_percent(self):
+        """0.019% of price was 8.7% of R on the case that exposed this."""
+        b = broker()
+        # Stop is $500 away; a $150 slip is 0.30R, past the 0.25R limit.
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        b.process_market_event(tick(63_150.0, ts=BAR_CLOSE + 2))
+        assert b.get_positions() == []
+        # The same $150 slip against a $5000 stop is 0.03R -- ordinary.
+        b2 = broker()
+        b2.submit_order(intent(entry=63_000.0, stop=58_000.0, target=73_000.0,
+                               qty=10))
+        b2.process_market_event(tick(63_150.0, ts=BAR_CLOSE + 2))
+        assert len(b2.get_positions()) == 1
+
+
+class TestFillTimeRewardRisk:
+    """`minimum_rr` gates the PLAN; this gates the FILL.
+
+    The strategy sets target = entry + 2R, so the planned reward/risk is
+    exactly 2.0 on every signal and the risk engine's check passes at the
+    boundary by construction. Once the entry slips the stop widens and the
+    target narrows at the same time, so realised RR is always lower --
+    measured at 1.75 on real data. Without a fill-time floor, "maintain
+    minimum risk/reward" would be enforced against a number that can never
+    fail.
+    """
+
+    def test_realised_rr_is_recorded_on_the_position(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        b.process_market_event(tick(63_000.0, ts=BAR_CLOSE + 2))
+        pos = list(b.positions.values())[0]
+        assert pos.fill_rr is not None
+        assert pos.fill_rr < 2.0, "an adverse fill always degrades the plan"
+        assert pos.fill_rr >= b.min_fill_rr
+
+    def test_a_fill_below_the_floor_is_refused(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        # Fill at 63,100: RR = 900/600 = 1.50, under the 1.7 floor.
+        b.process_market_event(tick(63_087.0, ts=BAR_CLOSE + 2))
+        assert b.get_positions() == []
+
+    def test_the_refusal_names_both_figures(self):
+        b = broker()
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        evs = b.process_market_event(tick(63_087.0, ts=BAR_CLOSE + 2))
+        killed = [e for e in evs if e.kind in ("ORDER_CANCELLED", "ORDER_EXPIRED")]
+        assert killed
+        reason = killed[0].payload["reason"]
+        assert "reward/risk at the actual fill" in reason and "planned" in reason
+
+    def test_a_favourable_fill_improves_rr(self):
+        b = broker()
+        b.submit_order(intent(side=-1, entry=63_000.0, stop=63_500.0,
+                              target=62_000.0))
+        b.process_market_event(tick(63_050.0, ts=BAR_CLOSE + 2))
+        pos = list(b.positions.values())[0]
+        assert pos.fill_rr > 2.0
+
+    def test_the_floor_can_be_disabled_for_replay(self):
+        b = PaperBroker(COSTS, starting_equity=10_000.0, min_fill_rr=0.0,
+                        max_entry_deviation=0.0)
+        b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
+        b.process_market_event(tick(63_200.0, ts=BAR_CLOSE + 2))
+        assert len(b.get_positions()) == 1

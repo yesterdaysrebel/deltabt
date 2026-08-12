@@ -392,7 +392,7 @@ class TradingBot:
 
     async def _place(self, exp, decision) -> None:
         intent = decision.intent
-        order = self.broker.submit_order(intent)
+        order = self.broker.submit_order(intent, now=int(time.time()))
         if order is None:
             log.warning("broker declined the intent", extra={"symbol": exp.symbol})
             return
@@ -447,6 +447,13 @@ class TradingBot:
                 await self._persist_open(ev)
             elif ev.kind == "POSITION_CLOSED":
                 await self._persist_close(ev)
+            elif ev.kind in ("ORDER_EXPIRED", "ORDER_CANCELLED"):
+                await self.repo.update_order_status(
+                    ev.payload["order_uid"],
+                    "EXPIRED" if ev.kind == "ORDER_EXPIRED" else "CANCELLED")
+                self.metrics.orders_expired += 1
+                await self._event("execution", ev.kind, symbol=ev.symbol,
+                                  severity="WARNING", payload=ev.payload)
 
     async def _persist_fill(self, ev) -> None:
         p = ev.payload
@@ -562,6 +569,9 @@ class TradingBot:
                 bars, self._pending_bars = self._pending_bars, []
                 for bar in sorted(bars, key=lambda b: (b.start, b.symbol)):
                     await self.on_closed_1m(bar)
+                # Sweep stale entry orders even when no tick has arrived --
+                # a silent feed is exactly when they would otherwise pile up.
+                self._pending_events.extend(self.broker.expire_stale_entries(now))
                 await self.drain_broker_events()
             except Exception:                              # noqa: BLE001
                 log.exception("bar loop error")

@@ -117,6 +117,50 @@ Enforced structurally, not by convention:
 
 ---
 
+## Two gates that only exist because of what a real replay showed
+
+Both were invisible in unit tests and appeared the moment 2000 real BTCUSD bars
+went through the whole pipeline.
+
+### Realised risk, not planned risk
+
+The engine sizes against a *reference* price. The fill lands somewhere else. On
+a real short the entry slipped 12.4 points — **0.019% of price**, comfortably
+inside any sane price band — but the stop was only 143 points away, so that slip
+widened realised risk from a **$50 budget to $54.35**.
+
+Two consequences:
+
+1. A "don't chase" guard calibrated on **price** cannot catch this. It is now
+   expressed as a fraction of the **stop distance** (default 0.25R).
+2. Bounding the slip is not enough on its own. At fill time the quantity is
+   **reduced** so realised risk stays inside the approved budget — never
+   increased on a favourable fill, because a good fill does not licence a bigger
+   position than risk approved. Every resize is recorded as an `ORDER_RESIZED`
+   event; a silent size change would be exactly the kind of thing this system
+   exists to prevent.
+
+### Reward/risk at the fill, not at the signal
+
+`minimum_rr = 2.0` compares the planned geometry against itself. The strategy
+sets `target = entry + 2R`, so **planned RR is exactly 2.0 on every signal** and
+that gate passes at the boundary by construction — it only ever binds if the
+strategy's `target_r` and the risk config's `minimum_rr` disagree, which is
+worth keeping as a cross-check but is not discipline.
+
+Discipline is at the fill. Once the entry slips, the stop widens and the target
+narrows *at the same time*, so realised RR is always below plan — measured at
+**1.75** on real data. And because any adverse slip mathematically breaks a 2.0
+floor on a 2R plan, enforcing the planned number at fill time would reject
+essentially every trade.
+
+So the degradation is bounded and made explicit instead: `min_fill_rr` (default
+**1.7**, at most 15% degradation) refuses the fill, and the realised figure is
+stored on the position as `fill_rr` so the forward test *measures* the
+degradation rather than assuming it away.
+
+---
+
 ## State that survives restarts
 
 ```python

@@ -54,6 +54,20 @@ log = logging.getLogger(__name__)
 LONG, SHORT = 1, -1
 
 
+def realised_rr(entry: float, stop: float, target: float, side: int) -> float:
+    """Reward/risk implied by an ACTUAL fill price.
+
+    Distinct from the planned figure the risk engine approved: the stop and
+    target are fixed when the signal fires, so moving the entry changes both
+    legs at once -- adversely, it widens the risk and narrows the reward.
+    """
+    risk = (entry - stop) if side == LONG else (stop - entry)
+    reward = (target - entry) if side == LONG else (entry - target)
+    if risk <= 0:
+        return 0.0
+    return reward / risk
+
+
 class OrderStatus(str, Enum):
     NEW = "NEW"
     WORKING = "WORKING"
@@ -137,6 +151,10 @@ class PaperPosition:
     #: Exchange microsecond timestamp of the entry fill. Stop and target are
     #: only live for ticks strictly after it.
     armed_after_us: int | None = None
+    #: Reward/risk implied by the price actually filled, which is always at or
+    #: below the planned figure. Recorded so the forward test measures the
+    #: degradation instead of assuming it away.
+    fill_rr: float | None = None
 
     @property
     def is_open(self) -> bool:
@@ -162,10 +180,48 @@ class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
 
     def __init__(self, costs: dict[str, SymbolCosts], *, starting_equity: float,
-                 slippage_bps: float = 2.0) -> None:
+                 slippage_bps: float = 2.0, entry_ttl_seconds: int = 90,
+                 max_entry_deviation: float = 0.25,
+                 min_fill_rr: float = 1.7) -> None:
         self.costs = costs
         self.equity = starting_equity
         self.slippage_bps = slippage_bps
+        #: An unfilled entry order dies after this long. A setup is a statement
+        #: about the bar that produced it; an order still resting minutes later
+        #: would fill at a price the risk engine never sized against. Without
+        #: this, a feed that stops delivering ticks silently accumulates
+        #: working orders that all fill at once when it resumes.
+        self.entry_ttl_seconds = entry_ttl_seconds
+        #: Refuse a market entry that has run away from the reference the stop
+        #: and size were computed against, expressed as a fraction of the STOP
+        #: DISTANCE rather than of price.
+        #:
+        #: Calibrating on price was wrong and measured so: on a real BTCUSD
+        #: short the entry slipped 12.4 points -- 0.019% of price, comfortably
+        #: inside a 0.15% price band -- but the stop was only 143 points away,
+        #: so that slip widened realised risk by 8.7% and put a $50 budget at
+        #: $54.35. What matters is the move relative to R, not to price.
+        self.max_entry_deviation = max_entry_deviation
+        #: Reward/risk floor applied to the ACTUAL fill.
+        #:
+        #: `minimum_rr` in the risk engine is a signal-time gate on planned
+        #: geometry. Once the entry slips, the stop widens and the target
+        #: narrows, so realised RR is always below the planned figure -- on a
+        #: 2R plan, ANY adverse slip breaks a 2.0 floor exactly, so enforcing
+        #: the planned number at fill time would reject essentially every
+        #: trade. Measured on real data the degradation was 2.0 -> 1.75.
+        #:
+        #: So the degradation is bounded and made explicit rather than
+        #: pretended away: a fill whose real reward/risk is below this is not
+        #: taken, and the realised figure is recorded on the position.
+        #:
+        #: 1.7 against a 2.0 plan allows at most 15% degradation, which is
+        #: about 0.06R of adverse entry slippage. Note this is the gate that
+        #: actually enforces reward/risk discipline: the risk engine's
+        #: `minimum_rr` compares the PLANNED geometry against itself, since the
+        #: strategy sets target = entry + 2R, so it passes at exactly the
+        #: boundary every time and only binds if the two configs disagree.
+        self.min_fill_rr = min_fill_rr
         self.orders: dict[str, PaperOrder] = {}
         self.positions: dict[str, PaperPosition] = {}
         #: intent_id -> order_uid, so a replayed intent cannot double-fill.
@@ -219,7 +275,8 @@ class PaperBroker:
 
     # -- submission --------------------------------------------------------
 
-    def submit_order(self, intent: ApprovedOrderIntent) -> PaperOrder | None:
+    def submit_order(self, intent: ApprovedOrderIntent,
+                     *, now: int | None = None) -> PaperOrder | None:
         """Accepts a risk-approved intent and nothing else.
 
         Returns None if this intent was already submitted, which is what makes
@@ -250,7 +307,7 @@ class PaperBroker:
             quantity=intent.quantity,
             limit_price=intent.limit_price,
             status=OrderStatus.WORKING,
-            created_at=intent.bar_open,
+            created_at=now if now is not None else intent.bar_open,
             passive=intent.order_type == "limit",
         )
         self.orders[order.order_uid] = order
@@ -263,14 +320,83 @@ class PaperBroker:
 
     # -- fills -------------------------------------------------------------
 
+    def _entry_blocked(self, order: PaperOrder, intent: ApprovedOrderIntent,
+                       price: float, now: int) -> str | None:
+        """Reason this entry must not fill, or None."""
+        if self.entry_ttl_seconds and (now - order.created_at) > self.entry_ttl_seconds:
+            return (f"entry order expired after {now - order.created_at}s "
+                    f"(ttl {self.entry_ttl_seconds}s)")
+        if order.order_type == "market" and self.max_entry_deviation:
+            r = intent.risk_per_unit
+            dev = abs(price - intent.entry_reference) / r if r > 0 else float("inf")
+            if dev > self.max_entry_deviation:
+                return (f"price moved {dev:.2f}R from the "
+                        f"{intent.entry_reference} reference "
+                        f"(limit {self.max_entry_deviation:.2f}R) -- "
+                        f"refusing to chase")
+        if self.min_fill_rr:
+            rr = realised_rr(price, intent.stop_price, intent.target_price,
+                             order.side)
+            if rr < self.min_fill_rr:
+                return (f"reward/risk at the actual fill is {rr:.2f}, below the "
+                        f"{self.min_fill_rr:.2f} floor (planned "
+                        f"{abs(intent.target_price - intent.entry_reference) / intent.risk_per_unit:.2f})")
+        return None
+
+    def _kill_entry(self, order: PaperOrder, reason: str, expired: bool) -> None:
+        order.status = OrderStatus.EXPIRED if expired else OrderStatus.CANCELLED
+        self._pending.pop(order.order_uid, None)
+        self.events.append(BrokerEvent(
+            "ORDER_EXPIRED" if expired else "ORDER_CANCELLED", order.symbol,
+            {"order_uid": order.order_uid, "reason": reason}))
+        log.warning("entry not taken", extra={"symbol": order.symbol,
+                                              "reason": reason})
+
     def _slip(self, price: float, side: int) -> float:
         """Adverse slippage in basis points, applied against the taker."""
         return price * (1.0 + side * self.slippage_bps / 10_000.0)
 
+    def _resize_for_actual_fill(self, order: PaperOrder,
+                                intent: ApprovedOrderIntent,
+                                price: float) -> int:
+        """Quantity that keeps realised risk inside the approved budget.
+
+        The risk engine sized against a reference price. The fill lands
+        somewhere else, which moves the stop distance and therefore the risk --
+        upward whenever the slip is adverse. Keeping the approved quantity
+        would quietly breach the very limit the engine enforced, so the
+        quantity comes down instead. Never up: a favourable fill does not
+        licence a bigger position than was approved.
+        """
+        costs = self.costs[order.symbol]
+        rpu = ((price - intent.stop_price) if order.side == LONG
+               else (intent.stop_price - price))
+        if rpu <= 0:
+            return 0
+        affordable = int(intent.risk_amount / (rpu * costs.contract_value))
+        return max(0, min(order.quantity, affordable))
+
     def _open_from_fill(self, order: PaperOrder, intent: ApprovedOrderIntent,
                         price: float, when: int, tick_us: int | None,
-                        bar_open: int | None) -> PaperPosition:
+                        bar_open: int | None) -> PaperPosition | None:
         costs = self.costs[order.symbol]
+
+        qty = self._resize_for_actual_fill(order, intent, price)
+        if qty <= 0:
+            self._kill_entry(
+                order, f"fill at {price} leaves no room inside the "
+                       f"${intent.risk_amount:.2f} risk budget", False)
+            return None
+        if qty != order.quantity:
+            log.info("reducing size to stay inside the risk budget",
+                     extra={"symbol": order.symbol, "approved": order.quantity,
+                            "filled": qty, "price": price})
+            self.events.append(BrokerEvent("ORDER_RESIZED", order.symbol, {
+                "order_uid": order.order_uid, "approved": order.quantity,
+                "filled": qty, "price": price,
+                "reference": intent.entry_reference}))
+            order.quantity = qty
+
         notional = costs.notional(order.quantity, price)
         fee = costs.entry_cost(order.quantity, price)
         slip = abs(price - intent.entry_reference) * order.quantity * costs.contract_value
@@ -303,6 +429,8 @@ class PaperBroker:
             entry_bar=bar_open,
             entry_was_passive=order.passive,
             armed_after_us=tick_us,
+            fill_rr=realised_rr(price, intent.stop_price, intent.target_price,
+                                order.side),
         )
         self.positions[pos.position_uid] = pos
         self.events.append(BrokerEvent("FILL", order.symbol, {
@@ -363,8 +491,17 @@ class PaperBroker:
                 continue
             if order.order_type == "market":
                 px = self._slip(tick.ltp, order.side)
+                blocked = self._entry_blocked(order, intent, px, tick.ts)
+                if blocked:
+                    self._kill_entry(order, blocked, "expired" in blocked)
+                    continue
                 self._open_from_fill(order, intent, px, tick.ts, tick.ts_us, None)
             elif order.limit_price is not None:
+                blocked = self._entry_blocked(order, intent, order.limit_price,
+                                              tick.ts)
+                if blocked:
+                    self._kill_entry(order, blocked, True)
+                    continue
                 touched = (tick.ltp <= order.limit_price if order.side == LONG
                            else tick.ltp >= order.limit_price)
                 if touched:
@@ -424,8 +561,17 @@ class PaperBroker:
                 continue
             if order.order_type == "market":
                 px = self._slip(bar.open, order.side)
+                blocked = self._entry_blocked(order, intent, px, bar.start)
+                if blocked:
+                    self._kill_entry(order, blocked, "expired" in blocked)
+                    continue
                 self._open_from_fill(order, intent, px, bar.start, None, bar.start)
             elif order.limit_price is not None:
+                blocked = self._entry_blocked(order, intent, order.limit_price,
+                                              bar.start)
+                if blocked:
+                    self._kill_entry(order, blocked, True)
+                    continue
                 touched = (bar.low <= order.limit_price if order.side == LONG
                            else bar.high >= order.limit_price)
                 if touched:
@@ -456,6 +602,26 @@ class PaperBroker:
                 self._close(pos, pos.target_price, ExitReason.TAKE_PROFIT,
                             bar.start, None, maker=True)
 
+        return self.events[before:]
+
+    def expire_stale_entries(self, now: int) -> list[BrokerEvent]:
+        """Kill unfilled entry orders that have outlived their setup.
+
+        Called from the bar loop as well as the tick path, because the case
+        that matters most is a feed delivering nothing: without a sweep, orders
+        accumulate silently and all fill at once when ticks resume.
+        """
+        before = len(self.events)
+        if not self.entry_ttl_seconds:
+            return []
+        for order in list(self.get_open_orders()):
+            if order.purpose != "entry":
+                continue
+            age = now - order.created_at
+            if age > self.entry_ttl_seconds:
+                self._kill_entry(
+                    order, f"entry order expired after {age}s "
+                           f"(ttl {self.entry_ttl_seconds}s)", True)
         return self.events[before:]
 
     # -- administrative closes ---------------------------------------------

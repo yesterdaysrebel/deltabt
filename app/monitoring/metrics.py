@@ -21,6 +21,7 @@ class Metrics:
     signals_rejected: int = 0
     duplicate_signals: int = 0
     orders: int = 0
+    orders_expired: int = 0
     fills: int = 0
     closed_positions: int = 0
 
@@ -40,6 +41,7 @@ _COUNTERS = {
     "signals_rejected": "setups rejected by the risk engine",
     "duplicate_signals": "evaluations already recorded (idempotency hits)",
     "orders": "paper orders created",
+    "orders_expired": "entry orders expired or cancelled unfilled",
     "fills": "paper fills booked",
     "closed_positions": "paper positions closed",
 }

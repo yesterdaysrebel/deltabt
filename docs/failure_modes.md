@@ -116,6 +116,10 @@ trade.
 | Strategy "asks" for a bigger size | Ignored. The risk engine reads the market observation, never a requested size | `test_explanation_fields_cannot_raise_the_risk_fraction` |
 | Strategy claims a fat reward/risk | Recomputed from entry/stop/target, not trusted | `test_explanation_reward_risk_is_recomputed_not_trusted` |
 | **Same-bar target look-ahead** | A passive entry filled on the bar's low cannot claim that bar's high as a target. The original bug produced 356 same-bar targets against 1 same-bar stop | `test_passive_entry_cannot_claim_the_same_bar_target` |
+| Entry order never fills | Expires after 90s and is swept even with no ticks at all. A silent feed would otherwise accumulate working orders that all fill at once when it resumes | `test_expiry_is_swept_even_with_no_ticks_at_all` |
+| Price runs away before the fill | Refused. Measured **in R, not percent** — see below | `test_chasing_is_measured_in_R_not_percent` |
+| Adverse fill inflates realised risk | Quantity is reduced so the approved budget still holds. Never increased on a favourable fill | `test_adverse_slip_reduces_the_size_not_the_budget` |
+| Adverse fill degrades reward/risk | Floored at fill time and the realised figure recorded | `test_a_fill_below_the_floor_is_refused` |
 
 The look-ahead guard is **asymmetric on purpose**: the *stop* is claimable on the
 entry bar, because an adverse move after a passive fill is entirely ordinary —
@@ -138,7 +142,11 @@ Stating these plainly, because an unlisted gap reads as a claim of coverage.
   else reconstructs the forward-test record.
 - **Slippage realism.** Modelled at a flat 2 bps. Real slippage depends on book
   depth at the moment of the fill, which V1 does not consume. Paper fills are
-  therefore optimistic in fast markets.
+  therefore optimistic in fast markets. Stop fills in particular: live, a stop
+  triggers on the first tick past it and fills close to it; in a bar-granularity
+  replay the fill is bounded only by the bar's own extreme, which overstates the
+  loss (measured R = −1.84 on a stop that should be about −1.0 before the replay
+  harness was corrected to walk open/low/high/close).
 - **Partial fills.** V1 fills whole orders or nothing. Real fills on a thin book
   can be partial.
 - **Funding on open paper positions.** The schema carries a `funding` column and
