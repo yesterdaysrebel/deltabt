@@ -23,6 +23,7 @@ class Metrics:
     orders: int = 0
     orders_expired: int = 0
     fills: int = 0
+    fills_quarantined: int = 0
     closed_positions: int = 0
 
     def as_dict(self) -> dict:
@@ -43,6 +44,7 @@ _COUNTERS = {
     "orders": "paper orders created",
     "orders_expired": "entry orders expired or cancelled unfilled",
     "fills": "paper fills booked",
+    "fills_quarantined": "fills that could not be matched to a position",
     "closed_positions": "paper positions closed",
 }
 

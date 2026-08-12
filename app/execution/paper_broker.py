@@ -45,6 +45,7 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
+from app.execution.allocation import aggregate, fill_uid
 from app.execution.intents import ApprovedOrderIntent
 from app.persistence.models import new_uid
 from deltabt.costs import SymbolCosts
@@ -98,6 +99,8 @@ class PaperOrder:
     limit_price: float | None
     status: OrderStatus = OrderStatus.NEW
     created_at: int = 0
+    #: Set once the order fills and its position exists.
+    position_uid: str | None = None
     #: True when the fill came from price reaching a resting order rather than
     #: from crossing the spread. Only passive fills carry the same-bar guard.
     passive: bool = False
@@ -107,6 +110,11 @@ class PaperOrder:
 class PaperFill:
     fill_uid: str
     order_uid: str
+    #: Which position this fill belongs to. Carried explicitly so the
+    #: persistence layer never has to guess (audit F1).
+    position_uid: str
+    seq: int
+    purpose: str                     # entry | exit
     symbol: str
     side: int
     quantity: int
@@ -169,6 +177,18 @@ class PaperPosition:
         return self.unrealized(price, contract_value) / self.initial_risk
 
 
+def _fill_payload(f: "PaperFill") -> dict:
+    """Everything the persistence layer needs, so it reconstructs nothing."""
+    return {
+        "fill_uid": f.fill_uid, "order_uid": f.order_uid,
+        "position_uid": f.position_uid, "seq": f.seq, "purpose": f.purpose,
+        "symbol": f.symbol, "side": f.side, "quantity": f.quantity,
+        "price": f.price, "notional": f.notional, "fee": f.fee,
+        "slippage": f.slippage, "liquidity": f.liquidity,
+        "filled_at": f.filled_at, "tick_ts_us": f.tick_ts_us,
+    }
+
+
 @dataclass
 class BrokerEvent:
     kind: str                        # ORDER_CREATED | FILL | POSITION_OPENED | POSITION_CLOSED
@@ -228,6 +248,13 @@ class PaperBroker:
         self._by_intent: dict[str, str] = {}
         self._pending: dict[str, ApprovedOrderIntent] = {}
         self._fills: list[PaperFill] = []
+        #: Exit fills have no parent order until audit F3 creates one, so they
+        #: are held separately rather than written against a fabricated
+        #: order_uid that violates the foreign key.
+        self._exit_fills: list[PaperFill] = []
+        #: order_uid -> fills booked so far, so the next sequence number is
+        #: deterministic and a replay reuses it rather than inventing a new id.
+        self._fill_seq: dict[str, int] = {}
         self.events: list[BrokerEvent] = []
 
     # -- introspection (brief section 9) -----------------------------------
@@ -352,6 +379,35 @@ class PaperBroker:
         log.warning("entry not taken", extra={"symbol": order.symbol,
                                               "reason": reason})
 
+    def next_fill_seq(self, order_uid: str) -> int:
+        return self._fill_seq.get(order_uid, 0) + 1
+
+    def _book_fill(self, order: PaperOrder, position_uid: str, purpose: str,
+                   *, price: float, quantity: int, notional: float, fee: float,
+                   slippage: float, liquidity: str, when: int,
+                   tick_us: int | None) -> PaperFill:
+        """Record one fill with a deterministic identity."""
+        seq = self.next_fill_seq(order.order_uid)
+        self._fill_seq[order.order_uid] = seq
+        f = PaperFill(
+            fill_uid=fill_uid(order.order_uid, seq), order_uid=order.order_uid,
+            position_uid=position_uid, seq=seq, purpose=purpose,
+            symbol=order.symbol, side=order.side, quantity=quantity,
+            price=price, notional=notional, fee=fee, slippage=slippage,
+            liquidity=liquidity, filled_at=when, tick_ts_us=tick_us)
+        self._fills.append(f)
+        return f
+
+    def fills_for_position(self, position_uid: str,
+                           purpose: str | None = None) -> list[PaperFill]:
+        return [f for f in (self._fills + self._exit_fills)
+                if f.position_uid == position_uid
+                and (purpose is None or f.purpose == purpose)]
+
+    def allocation_for_position(self, position_uid: str, purpose: str = "entry"):
+        """Aggregate of a position's fills -- weighted average, dedup by uid."""
+        return aggregate(self.fills_for_position(position_uid, purpose))
+
     def _slip(self, price: float, side: int) -> float:
         """Adverse slippage in basis points, applied against the taker."""
         return price * (1.0 + side * self.slippage_bps / 10_000.0)
@@ -401,10 +457,6 @@ class PaperBroker:
         fee = costs.entry_cost(order.quantity, price)
         slip = abs(price - intent.entry_reference) * order.quantity * costs.contract_value
 
-        fill = PaperFill(new_uid("fill"), order.order_uid, order.symbol,
-                         order.side, order.quantity, price, notional, fee,
-                         slip, "maker" if order.passive else "taker", when,
-                         tick_us)
         order.status = OrderStatus.FILLED
         self.equity -= fee
 
@@ -433,14 +485,22 @@ class PaperBroker:
                                 order.side),
         )
         self.positions[pos.position_uid] = pos
-        self.events.append(BrokerEvent("FILL", order.symbol, {
-            "fill_uid": fill.fill_uid, "order_uid": order.order_uid,
-            "price": price, "fee": fee, "tick_ts_us": tick_us}))
+        order.position_uid = pos.position_uid
+
+        # Booked only now that the position exists, so the fill can NAME it.
+        # The event carries the complete record: the persistence layer must
+        # never have to reconstruct side or quantity, which is how a short
+        # came to be recorded as a long.
+        fill = self._book_fill(
+            order, pos.position_uid, "entry", price=price,
+            quantity=order.quantity, notional=notional, fee=fee,
+            slippage=slip, liquidity="maker" if order.passive else "taker",
+            when=when, tick_us=tick_us)
+        self.events.append(BrokerEvent("FILL", order.symbol, _fill_payload(fill)))
         self.events.append(BrokerEvent("POSITION_OPENED", order.symbol, {
             "position_uid": pos.position_uid, "entry": price,
             "stop": pos.stop_price, "target": pos.target_price,
             "quantity": pos.quantity}))
-        self._fills.append(fill)
         return pos
 
     def _close(self, pos: PaperPosition, price: float, reason: ExitReason,
@@ -460,10 +520,19 @@ class PaperBroker:
         pos.last_price = price
         self.equity += gross - fee
 
-        self._fills.append(PaperFill(
-            new_uid("fill"), new_uid("exit"), pos.symbol, -pos.side,
-            pos.quantity, price, costs.notional(pos.quantity, price), fee,
-            0.0, "maker" if maker else "taker", when, tick_us))
+        # The exit fill names its position too. It has no parent order yet --
+        # giving exits real orders is audit F3 and is deliberately NOT done
+        # here, so this fill is held in memory and not persisted. What matters
+        # for F1 is that the association is explicit and deterministic when
+        # F3 wires it through.
+        self._exit_fills.append(PaperFill(
+            fill_uid=f"{pos.position_uid}:x1", order_uid="",
+            position_uid=pos.position_uid, seq=1, purpose="exit",
+            symbol=pos.symbol, side=-pos.side, quantity=pos.quantity,
+            price=price, notional=costs.notional(pos.quantity, price),
+            fee=fee, slippage=0.0,
+            liquidity="maker" if maker else "taker", filled_at=when,
+            tick_ts_us=tick_us))
         self.events.append(BrokerEvent("POSITION_CLOSED", pos.symbol, {
             "position_uid": pos.position_uid, "exit": price,
             "reason": reason.value, "pnl": pnl, "r": pos.r_multiple,

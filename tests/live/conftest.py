@@ -24,9 +24,9 @@ async def pg_repo():
     await repo.connect()
     async with repo._pool.acquire() as con:
         await con.execute(
-            "TRUNCATE paper_fills, paper_orders, positions, strategy_signals, "
-            "risk_events, system_events, market_candles, heartbeat, "
-            "bot_instance, strategy_state RESTART IDENTITY CASCADE")
+            "TRUNCATE paper_fills, quarantined_fills, paper_orders, positions, "
+            "strategy_signals, risk_events, system_events, market_candles, "
+            "heartbeat, bot_instance, strategy_state RESTART IDENTITY CASCADE")
     try:
         yield repo
     finally:

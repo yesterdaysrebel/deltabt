@@ -90,6 +90,10 @@ class OrderRecord:
 class FillRecord:
     fill_uid: str
     order_uid: str
+    #: Stated by the broker, never inferred from the symbol (audit F1).
+    position_uid: str
+    seq: int
+    purpose: str                     # entry | exit
     instance_uid: str
     symbol: str
     side: int
@@ -166,6 +170,25 @@ class SystemEventRecord:
     symbol: str | None = None
     payload: dict = field(default_factory=dict)
     strategy_version: str | None = None
+    exchange_ts: int | None = None
+    received_ts: float | None = None
+
+
+@dataclass
+class QuarantinedFillRecord:
+    """A fill that could not be tied to a known order and position.
+
+    Quarantined rather than attached to a best guess. The audit finding was a
+    guess that looked like an answer.
+    """
+
+    quarantine_uid: str
+    instance_uid: str
+    reason: str
+    payload: dict
+    symbol: str | None = None
+    order_uid: str | None = None
+    position_uid: str | None = None
     exchange_ts: int | None = None
     received_ts: float | None = None
 

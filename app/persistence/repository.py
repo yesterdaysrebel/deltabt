@@ -78,6 +78,13 @@ class Repository(ABC):
     async def record_fill(self, rec: FillRecord) -> bool: ...
     @abstractmethod
     async def fill_exists_for_order(self, order_uid: str) -> bool: ...
+    @abstractmethod
+    async def load_fills_for_position(self, position_uid: str) -> list: ...
+    @abstractmethod
+    async def quarantine_fill(self, rec) -> bool:
+        """Record a fill that could not be matched. Never silently dropped."""
+    @abstractmethod
+    async def quarantined_fills(self, limit: int = 100) -> list[dict]: ...
 
     # -- positions ---------------------------------------------------------
     @abstractmethod
@@ -130,6 +137,8 @@ class InMemoryRepository(Repository):
         s.setdefault("order_keys", set())
         s.setdefault("fills", {})
         s.setdefault("fills_by_order", {})
+        s.setdefault("fill_seq_keys", set())
+        s.setdefault("quarantine", {})
         s.setdefault("positions", {})
         s.setdefault("positions_by_signal", {})
         s.setdefault("risk_events", [])
@@ -199,14 +208,34 @@ class InMemoryRepository(Repository):
             o.status = status
 
     async def record_fill(self, rec: FillRecord) -> bool:
-        if rec.order_uid in self._s["fills_by_order"]:
-            return False                      # ux_fills_order
+        # UNIQUE(fill_uid): the deterministic id is what makes a replay a
+        # no-op. UNIQUE(order_uid, seq) additionally stops a duplicate whose
+        # uid was rewritten from double-booking the same sequence.
+        if rec.fill_uid in self._s["fills"]:
+            return False
+        key = (rec.order_uid, rec.seq)
+        if key in self._s["fill_seq_keys"]:
+            return False
         self._s["fills"][rec.fill_uid] = rec
-        self._s["fills_by_order"][rec.order_uid] = rec
+        self._s["fill_seq_keys"].add(key)
+        self._s["fills_by_order"].setdefault(rec.order_uid, []).append(rec)
         return True
 
     async def fill_exists_for_order(self, order_uid: str) -> bool:
-        return order_uid in self._s["fills_by_order"]
+        return bool(self._s["fills_by_order"].get(order_uid))
+
+    async def load_fills_for_position(self, position_uid: str) -> list:
+        return [f for f in self._s["fills"].values()
+                if f.position_uid == position_uid]
+
+    async def quarantine_fill(self, rec) -> bool:
+        if rec.quarantine_uid in self._s["quarantine"]:
+            return False
+        self._s["quarantine"][rec.quarantine_uid] = rec
+        return True
+
+    async def quarantined_fills(self, limit: int = 100) -> list[dict]:
+        return [asdict(r) for r in list(self._s["quarantine"].values())[-limit:]]
 
     async def open_position(self, rec: PositionRecord) -> bool:
         if rec.signal_key in self._s["positions_by_signal"]:
@@ -421,17 +450,41 @@ class PostgresRepository(Repository):
                 "WHERE order_uid=$1", order_uid, status)
 
     async def record_fill(self, r: FillRecord) -> bool:
+        """Insert one fill. False means it was already durable.
+
+        Two independent guards, and both must report the SAME way as the
+        in-memory twin or the shared scenarios are testing a fiction:
+
+          ON CONFLICT (fill_uid)      -- the deterministic id; a plain replay
+          ux_fills_order_seq          -- a duplicate whose uid was rewritten
+
+        The second raises rather than conflicting, so it is caught here and
+        turned into the same False.
+        """
+        try:
+            return await self._insert_fill(r)
+        except Exception as exc:                           # noqa: BLE001
+            if "ux_fills_order_seq" in str(exc):
+                log.info("fill sequence already booked; not double-booking",
+                         extra={"order_uid": r.order_uid, "seq": r.seq})
+                return False
+            raise
+
+    async def _insert_fill(self, r: FillRecord) -> bool:
         async with self._pool.acquire() as con:
             out = await con.fetchval(
                 """INSERT INTO paper_fills (fill_uid, order_uid, instance_uid,
+                       position_uid, seq, purpose,
                        symbol, side, quantity, price, notional, fee, slippage,
                        liquidity, filled_at, tick_ts_us, exchange_ts,
                        received_ts, event_type)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                           $16)
-                   ON CONFLICT (order_uid) DO NOTHING
+                           $16,$17,$18,$19)
+                   ON CONFLICT (fill_uid) DO NOTHING
                    RETURNING id""",
-                r.fill_uid, r.order_uid, r.instance_uid, r.symbol, r.side,
+                r.fill_uid, r.order_uid, r.instance_uid,
+                r.position_uid, r.seq, r.purpose,
+                r.symbol, r.side,
                 r.quantity, r.price, r.notional, r.fee, r.slippage,
                 r.liquidity, utc(r.filled_at), r.tick_ts_us,
                 _ts(r.exchange_ts), _ts(r.received_ts), r.event_type)
@@ -441,6 +494,34 @@ class PostgresRepository(Repository):
         async with self._pool.acquire() as con:
             return await con.fetchval(
                 "SELECT 1 FROM paper_fills WHERE order_uid=$1", order_uid) is not None
+
+    async def load_fills_for_position(self, position_uid: str) -> list:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                "SELECT * FROM paper_fills WHERE position_uid=$1 ORDER BY seq",
+                position_uid)
+        return [dict(r) for r in rows]
+
+    async def quarantine_fill(self, r) -> bool:
+        async with self._pool.acquire() as con:
+            out = await con.fetchval(
+                """INSERT INTO quarantined_fills (quarantine_uid, instance_uid,
+                       symbol, order_uid, position_uid, reason, payload,
+                       exchange_ts, received_ts)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)
+                   ON CONFLICT (quarantine_uid) DO NOTHING
+                   RETURNING id""",
+                r.quarantine_uid, r.instance_uid, r.symbol, r.order_uid,
+                r.position_uid, r.reason, json.dumps(r.payload),
+                _ts(r.exchange_ts), _ts(r.received_ts))
+        return out is not None
+
+    async def quarantined_fills(self, limit: int = 100) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                "SELECT * FROM quarantined_fills ORDER BY created_at DESC "
+                "LIMIT $1", limit)
+        return [dict(r) for r in rows]
 
     # -- positions ---------------------------------------------------------
 

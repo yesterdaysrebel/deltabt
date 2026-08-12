@@ -44,6 +44,7 @@ from app.config.settings import (
     Settings,
 )
 from app.config.strategy import FROZEN, StrategyConfig
+from app.execution.allocation import UnmatchedFill, resolve_position
 from app.execution.paper_broker import ExitReason, PaperBroker, PaperPosition
 from app.market_data.backfill import Backfiller
 from app.market_data.candle_builder import CandleBuilder
@@ -58,6 +59,7 @@ from app.monitoring.metrics import Metrics
 from app.notifications.base import Notifier, NullNotifier
 from app.persistence.models import (
     FillRecord,
+    QuarantinedFillRecord,
     InstanceRecord,
     OrderRecord,
     PositionRecord,
@@ -479,24 +481,61 @@ class TradingBot:
                                   severity="WARNING", payload=ev.payload)
 
     async def _persist_fill(self, ev) -> None:
+        """Persist a fill exactly as the broker reported it.
+
+        AUDIT F1. This used to reconstruct side and quantity by scanning for
+        the first position matching the symbol. Closed positions are never
+        removed from the broker's map, so from the second trade in a symbol
+        onward it copied a CLOSED position's side -- a short was recorded as a
+        long, and the dataset is the deliverable.
+
+        Nothing is reconstructed now. The broker states the association; an
+        association that cannot be verified is QUARANTINED rather than guessed.
+        """
         p = ev.payload
-        costs = self.costs[ev.symbol]
-        pos = next((x for x in self.broker.positions.values()
-                    if x.symbol == ev.symbol), None)
-        qty = pos.quantity if pos else 0
         exch = int(p.get("tick_ts_us") or 0) // 1_000_000 or self.clock.now()
+        try:
+            position_uid = resolve_position(p, self.broker.positions)
+        except UnmatchedFill as exc:
+            await self._quarantine_fill(exc, exch)
+            return
+
         ok = await self.repo.record_fill(FillRecord(
             fill_uid=p["fill_uid"], order_uid=p["order_uid"],
-            instance_uid=self.instance_uid, symbol=ev.symbol,
-            side=pos.side if pos else 0, quantity=qty, price=p["price"],
-            notional=costs.notional(qty, p["price"]), fee=p["fee"],
-            slippage=0.0, liquidity="taker", filled_at=exch,
+            position_uid=position_uid, seq=int(p.get("seq", 1)),
+            purpose=p.get("purpose", "entry"),
+            instance_uid=self.instance_uid, symbol=p["symbol"],
+            side=int(p["side"]), quantity=int(p["quantity"]),
+            price=float(p["price"]),
+            notional=float(p["notional"]), fee=float(p["fee"]),
+            slippage=float(p.get("slippage", 0.0)),
+            liquidity=p.get("liquidity", "taker"),
+            filled_at=int(p.get("filled_at") or exch),
             tick_ts_us=p.get("tick_ts_us"),
             exchange_ts=exch, received_ts=wall_now()))
         if ok:
             self.metrics.fills += 1
         else:
-            log.info("fill already durable; not double-booking")
+            # Not an error: the deterministic fill id did its job on a replay.
+            log.info("fill already durable; not double-booking",
+                     extra={"fill_uid": p["fill_uid"]})
+
+    async def _quarantine_fill(self, exc: UnmatchedFill, exchange_ts: int) -> None:
+        """A fill we cannot place. Recorded loudly, never attached to a guess."""
+        self.metrics.fills_quarantined += 1
+        payload = exc.payload
+        await self.repo.quarantine_fill(QuarantinedFillRecord(
+            quarantine_uid=new_uid("qfill"), instance_uid=self.instance_uid,
+            reason=exc.reason, payload=dict(payload),
+            symbol=payload.get("symbol"), order_uid=payload.get("order_uid"),
+            position_uid=payload.get("position_uid"),
+            exchange_ts=exchange_ts, received_ts=wall_now()))
+        await self._event("execution", "FILL_QUARANTINED",
+                          symbol=payload.get("symbol"), severity="CRITICAL",
+                          payload={"reason": exc.reason, **payload})
+        await self.notifier.send("FILL QUARANTINED", exc.reason,
+                                 severity="CRITICAL")
+        log.error("quarantined an unmatched fill", extra={"reason": exc.reason})
 
     async def _persist_open(self, ev) -> None:
         pos = next((x for x in self.broker.positions.values()

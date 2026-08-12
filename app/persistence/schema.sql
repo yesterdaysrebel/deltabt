@@ -113,8 +113,20 @@ CREATE TABLE IF NOT EXISTS paper_orders (
 
 CREATE TABLE IF NOT EXISTS paper_fills (
     id                  BIGSERIAL PRIMARY KEY,
+    -- DETERMINISTIC: "{order_uid}:f{seq}". Was a random uuid, which meant the
+    -- only thing stopping a replayed fill from being inserted twice was the
+    -- UNIQUE(order_uid) index below -- and that index also forbade a second
+    -- fill for the same order. Deterministic identity separates the two
+    -- concerns: replay protection here, multi-fill capability there.
     fill_uid            TEXT        NOT NULL UNIQUE,
     order_uid           TEXT        NOT NULL REFERENCES paper_orders (order_uid),
+    -- audit F1: the position is stated, never inferred. Inferring it from
+    -- "first position matching symbol" attached a short's fill to a
+    -- previously CLOSED long, so every fill after the first in a symbol
+    -- recorded the wrong side.
+    position_uid        TEXT        NOT NULL,
+    seq                 INTEGER     NOT NULL DEFAULT 1,
+    purpose             TEXT        NOT NULL DEFAULT 'entry',   -- entry | exit
     instance_uid        TEXT        NOT NULL,
     symbol              TEXT        NOT NULL,
     side                SMALLINT    NOT NULL,
@@ -133,9 +145,29 @@ CREATE TABLE IF NOT EXISTS paper_fills (
     tick_ts_us          BIGINT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- One fill per order in V1 (no partial fills). The constraint, not the code,
--- is what makes replay after a crash safe.
-CREATE UNIQUE INDEX IF NOT EXISTS ux_fills_order ON paper_fills (order_uid);
+-- Replay safety is UNIQUE(fill_uid) above, which is deterministic. This pair
+-- additionally guarantees a fill sequence cannot be reused for an order, so a
+-- duplicate arriving with a rewritten uid still cannot double-book.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_fills_order_seq ON paper_fills (order_uid, seq);
+CREATE INDEX IF NOT EXISTS ix_fills_position ON paper_fills (position_uid);
+
+-- A fill that cannot be matched to a known order and position is QUARANTINED,
+-- never written to paper_fills and never silently dropped. Silent corruption of
+-- the audit trail is the failure this whole phase exists to prevent.
+CREATE TABLE IF NOT EXISTS quarantined_fills (
+    id              BIGSERIAL PRIMARY KEY,
+    quarantine_uid  TEXT        NOT NULL UNIQUE,
+    instance_uid    TEXT        NOT NULL,
+    symbol          TEXT,
+    order_uid       TEXT,
+    position_uid    TEXT,
+    reason          TEXT        NOT NULL,
+    payload         JSONB       NOT NULL,
+    exchange_ts     TIMESTAMPTZ,
+    received_ts     TIMESTAMPTZ,
+    resolved        BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS positions (
     id                  BIGSERIAL PRIMARY KEY,

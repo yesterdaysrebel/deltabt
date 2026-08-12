@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.execution.allocation import fill_uid
 from app.persistence.lock import SingleInstanceLock, lock_key
 from app.persistence.models import (
     FillRecord,
@@ -48,10 +49,13 @@ def order(uid="ord1", key="ordkey1", signal_key="sig1", symbol="BTCUSD"):
         equity_before=10_000.0, risk_amount=50.0)
 
 
-def fill(uid="fill1", order_uid="ord1", symbol="BTCUSD"):
+def fill(uid=None, order_uid="ord1", symbol="BTCUSD", seq=1, side=1,
+         position_uid="pos1", purpose="entry"):
     return FillRecord(
-        fill_uid=uid, order_uid=order_uid, instance_uid="inst1", symbol=symbol,
-        side=1, quantity=10, price=63000.0, notional=630.0, fee=0.37,
+        fill_uid=uid or fill_uid(order_uid, seq), order_uid=order_uid,
+        position_uid=position_uid, seq=seq, purpose=purpose,
+        instance_uid="inst1", symbol=symbol,
+        side=side, quantity=10, price=63000.0, notional=630.0, fee=0.37,
         slippage=0.13, liquidity="taker", filled_at=1786560300,
         tick_ts_us=1786560300123456)
 
@@ -94,13 +98,58 @@ async def _duplicate_order(repo):
 
 
 async def _duplicate_fill(repo):
+    """Replay protection now rests on the DETERMINISTIC fill_uid.
+
+    It used to rest on UNIQUE(order_uid), which also made a second fill for an
+    order impossible. Separating the two lets a fill sequence exist while
+    keeping a replay a no-op.
+    """
     await _seed_instance(repo)
     await repo.record_signal(signal())
     await repo.create_order(order())
-    assert await repo.record_fill(fill()) is True
-    assert await repo.record_fill(fill(uid="fill2")) is False, (
-        "replaying a fill after a crash must not double-fill the order")
+    assert await repo.record_fill(fill(seq=1)) is True
+    assert await repo.record_fill(fill(seq=1)) is False, (
+        "the same fill replayed must not book twice")
+    # A forged uid must still not double-book the same sequence.
+    assert await repo.record_fill(fill(uid="forged", seq=1)) is False
     assert await repo.fill_exists_for_order("ord1")
+
+
+async def _multiple_fills_per_order(repo):
+    """One order may have many fills; each is identified by its sequence."""
+    await _seed_instance(repo)
+    await repo.record_signal(signal())
+    await repo.create_order(order())
+    assert await repo.record_fill(fill(seq=1)) is True
+    assert await repo.record_fill(fill(seq=2)) is True
+    rows = await repo.load_fills_for_position("pos1")
+    assert len(rows) == 2
+
+
+async def _fills_name_their_position(repo):
+    """A fill's position is stated, and queryable by it."""
+    await _seed_instance(repo)
+    await repo.record_signal(signal())
+    await repo.create_order(order())
+    await repo.record_fill(fill(seq=1, position_uid="pos_alpha"))
+    assert len(await repo.load_fills_for_position("pos_alpha")) == 1
+    assert await repo.load_fills_for_position("pos_beta") == []
+
+
+async def _unmatched_fill_is_quarantined(repo):
+    """An unplaceable fill is recorded loudly, never guessed at."""
+    from app.persistence.models import QuarantinedFillRecord
+    await _seed_instance(repo)
+    rec = QuarantinedFillRecord(
+        quarantine_uid="q1", instance_uid="inst1",
+        reason="position ghost is not known to this instance",
+        payload={"position_uid": "ghost", "symbol": "BTCUSD"},
+        symbol="BTCUSD", order_uid="o1", position_uid="ghost",
+        exchange_ts=1786560300, received_ts=1786560301.5)
+    assert await repo.quarantine_fill(rec) is True
+    assert await repo.quarantine_fill(rec) is False, "idempotent"
+    rows = await repo.quarantined_fills()
+    assert len(rows) == 1 and "not known" in rows[0]["reason"]
 
 
 async def _duplicate_position_same_signal(repo):
@@ -145,6 +194,8 @@ async def _state_roundtrip(repo):
 
 SCENARIOS = [
     _duplicate_signal, _duplicate_order, _duplicate_fill,
+    _multiple_fills_per_order, _fills_name_their_position,
+    _unmatched_fill_is_quarantined,
     _duplicate_position_same_signal, _two_open_positions_same_symbol,
     _reopen_after_close, _state_roundtrip,
 ]
