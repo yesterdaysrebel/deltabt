@@ -35,7 +35,7 @@ deltabt/
   metrics.py       bootstrap CIs, trade-count gating
   sweep.py         grid search + anchored walk-forward
   research/        the eight pre-registered experiments, nulls, registry, stats
-tests/             152 tests, heavily weighted toward look-ahead and fill integrity
+tests/             172 tests, heavily weighted toward look-ahead and fill integrity
 out/               experiment registry and result tables (per-trade dumps gitignored)
 ```
 
@@ -51,7 +51,7 @@ python -m deltabt.cli wpr-curve                   # trade count vs WPR length
 python -m deltabt.cli sweep                       # parameter grid
 python -m deltabt.cli walkforward                 # out-of-sample validation
 
-pytest -q                                         # 152 tests
+pytest -q                                         # 172 tests
 ```
 
 Candles are cached to Parquet under `data/`, so re-runs are offline and
@@ -69,27 +69,6 @@ instant. Add `--offline` to forbid network access entirely.
 | **Maintenance halts** | Long flat runs followed by a gap-open auction (one measured at +0.32% in a single minute). Stops do not trigger during halts. |
 | **Leverage cap** | Enforced, and position size is floored by a minimum stop distance. |
 | **Basis-point slippage** | Not ticks. A fixed 2-tick slippage spans >100× in relative cost across symbols and would make cross-symbol rankings an artifact of tick size. |
-
-## Layout
-
-```
-deltabt/
-  config.py         paths, exchange constants, StrategyParams / WprLatch
-  data/
-    client.py       REST client: backward pagination, retry, throttle
-    store.py        Parquet cache + product catalog
-    quality.py      synthetic-bar and halt detection, universe screen
-  indicators.py     Pine-exact supertrend / dmi / wpr / atr (numba)
-  wpr_latch.py      the stateful band-traverse gate
-  strategy.py       signal generation, parity and corrected modes
-  costs.py          fees, funding, slippage, contract rounding
-  engine.py         event loop, sizing, mark-triggered exits
-  metrics.py        performance stats with bootstrap CIs
-  sweep.py          grid search and anchored walk-forward
-  runner.py         wiring
-  cli.py            entry point
-tests/              87 tests
-```
 
 ## Two modes
 
