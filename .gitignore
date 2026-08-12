@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# Cached market data. Regenerable from the exchange APIs via deltabt.data,
+# and far too large for version control (~550 MB).
+# ---------------------------------------------------------------------------
+data/
+# another session's working directory in this workspace; not part of this project
+scratch_ist/
+
+# ---------------------------------------------------------------------------
+# Research outputs. The experiment REGISTRY and the summary tables are the
+# durable record and ARE tracked (see the negative rules below). Per-trade
+# dumps and rendered figures are regenerable and are not.
+# ---------------------------------------------------------------------------
+out/**/trades_*.csv
+out/*.png
+out/**/*.png
+out/*.html
+
+# ---------------------------------------------------------------------------
+# Credentials. Nothing in this repo has ever used authenticated endpoints,
+# and V1 paper trading must not either -- these rules exist so that stays true.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+secrets*
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# ---------------------------------------------------------------------------
+# Local / editor
+# ---------------------------------------------------------------------------
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.log
+*.parquet
+*.db
+*.sqlite3

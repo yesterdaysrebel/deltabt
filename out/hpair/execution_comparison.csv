@@ -1,0 +1,4 @@
+label,trades,win_rate,gross_bps,funding_bps,fee_bps,slip_bps,legging_bps,cost_bps,net_bps,median_bps,ci_low,ci_high,t,profit_factor,max_dd_bps,hold_median,spread_entry_med,spread_exit_med,convergence_med,cost_pct_of_gross,pct_converged,pct_stopped,pct_timeout,pct_legged,exec_model,signals,unfilled,fill_rate
+maker/maker,12,0.0,1.51,-68.05,4.72,2.09,0.76,7.57,-74.11,-74.16,-79.54,-68.33,-26.893,0.0,810.3,24.0,607.0,541.0,77.6,501.6,0.0,0.0,100.0,8.3,maker/maker,12,0,100.0
+maker/taker,12,0.0,1.46,-68.05,4.72,3.09,0.76,8.57,-75.17,-75.04,-80.48,-69.61,-28.138,0.0,821.0,24.0,607.0,541.0,77.6,586.9,0.0,0.0,100.0,8.3,maker/taker,12,0,100.0
+taker/taker,12,0.0,2.09,-68.05,4.72,4.0,0.0,8.73,-74.69,-76.04,-79.94,-69.21,-27.745,0.0,814.1,24.0,607.0,541.0,77.6,417.7,0.0,0.0,100.0,0.0,taker/taker,12,0,100.0
