@@ -17,7 +17,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-asyncio>=0.23", "matplotlib>=3.7"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+    "matplotlib>=3.7",
+    # starlette's TestClient dropped its httpx fallback and now REQUIRES
+    # httpx2. Unpinned, a developer machine keeps whatever it installed months
+    # ago and passes, while a clean CI install takes the current starlette and
+    # fails at import. The API tests are the only consumer.
+    "httpx2",
+]
 #: The V1 live paper-trading bot. Note what is NOT here: no exchange SDK, no
 #: signing library, no credential store. V1 reads public market data only.
 live = [
