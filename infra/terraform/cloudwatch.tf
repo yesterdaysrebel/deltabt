@@ -202,12 +202,28 @@ resource "aws_cloudwatch_metric_alarm" "memory" {
   alarm_actions       = local.alarm_actions
 }
 
+# NOTE ON THE DIMENSION BELOW, because it was wrong and silent.
+#
+# `aws_db_instance.main.id` is the DbiResourceId (db-XVL3ETI3UJ3P4AOS23YJB63UEM),
+# NOT the identifier. CloudWatch publishes AWS/RDS metrics under
+# DBInstanceIdentifier = deltabt-paper, so an alarm built from `.id` watches a
+# dimension that has never had a datapoint.
+#
+# The failure was asymmetric and the quiet half was the dangerous one:
+# db-no-connections treats missing data as breaching, so it sat in ALARM and
+# was noticed; db-cpu and db-storage treat it as NOT breaching, so they sat in
+# OK and would never have fired -- a filling disk or a pegged CPU during a
+# 30-day run would have raised nothing at all.
+#
+# Use `.identifier`. tests/live/test_deployment_safety.py asserts it, and
+# scripts/aws_preflight.py now checks at runtime that every alarm's configured
+# dimensions actually resolve to a metric that has data.
 resource "aws_cloudwatch_metric_alarm" "db_storage" {
   alarm_name          = "${local.name}-db-storage"
   alarm_description   = "Database free storage below 2 GB."
   namespace           = "AWS/RDS"
   metric_name         = "FreeStorageSpace"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.id }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
   statistic           = "Minimum"
   period              = 300
   evaluation_periods  = 2
@@ -226,7 +242,7 @@ resource "aws_cloudwatch_metric_alarm" "db_unavailable" {
   alarm_description   = "No connections to the database for 15 minutes. Either PostgreSQL is unavailable or the bot is not running."
   namespace           = "AWS/RDS"
   metric_name         = "DatabaseConnections"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.id }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
   statistic           = "Maximum"
   period              = 300
   evaluation_periods  = 3
@@ -242,7 +258,7 @@ resource "aws_cloudwatch_metric_alarm" "db_cpu" {
   alarm_description   = "Database CPU sustained high. The bot writes a few hundred rows a minute, so this indicates a query problem."
   namespace           = "AWS/RDS"
   metric_name         = "CPUUtilization"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.id }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
   statistic           = "Average"
   period              = 300
   evaluation_periods  = 3
@@ -294,7 +310,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.aws_region
           period = 300
           metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.id],
+            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.identifier],
             [".", "DatabaseConnections", ".", "."],
             [".", "FreeStorageSpace", ".", "."],
           ]

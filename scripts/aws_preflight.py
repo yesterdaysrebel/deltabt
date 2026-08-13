@@ -427,7 +427,71 @@ def check_alarms(ctx: Context) -> Result:
                               "bot-silent has TreatMissingData="
                               f"{alarm.get('TreatMissingData')}; it must be "
                               "'breaching' or a bot that never logs stays green")
-    return Result("cloudwatch_alarms", PASS, f"{len(present)} alarms, silence alarm breaches on missing data")
+    return Result("cloudwatch_alarms", PASS,
+                  f"{len(present)} alarms, silence alarm breaches on missing data")
+
+
+def _ago(seconds: int) -> str:
+    """Absolute UTC timestamp. The CLI does not accept relative durations here,
+    and passing one silently yields a parameter error that reads like a
+    permissions problem."""
+    import datetime
+    t = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=seconds)
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def check_alarms_watch_real_metrics(ctx: Context) -> Result:
+    """Every alarm's configured dimensions must resolve to a metric with data.
+
+    Presence is not enough. An alarm can exist, be correctly configured in
+    every other respect, and be pointed at a dimension value that has never had
+    a datapoint -- and if it treats missing data as NOT breaching, it then sits
+    in OK forever and can never fire.
+
+    That happened here: three AWS/RDS alarms were built from
+    `aws_db_instance.main.id`, which is the DbiResourceId, while CloudWatch
+    publishes under DBInstanceIdentifier = the identifier. Two of them were
+    silent-by-construction for the entire deployment and nothing noticed,
+    because a green alarm looks the same whether it is watching or blind.
+    """
+    ok, data = aws(ctx, "cloudwatch", "describe-alarms", "--alarm-name-prefix", ctx.name)
+    if not ok:
+        return Result("alarms_watch_real_metrics", FAIL, "could not list alarms")
+    alarms = data.get("MetricAlarms", [])
+    if not alarms:
+        if ctx.creates("aws_cloudwatch_metric_alarm"):
+            return Result("alarms_watch_real_metrics", PLANNED, "alarms not created yet")
+        return Result("alarms_watch_real_metrics", FAIL, "no alarms exist")
+
+    blind = []
+    for alarm in alarms:
+        namespace = alarm.get("Namespace")
+        # AWS-published namespaces always emit for a live resource, so "no
+        # data" there means the dimension is wrong. The custom DeltaBt
+        # namespace legitimately has no data until the bot logs, so it is
+        # reported but not failed.
+        if namespace not in ("AWS/RDS", "AWS/EC2"):
+            continue
+        dims = [f"Name={d['Name']},Value={d['Value']}" for d in alarm.get("Dimensions", [])]
+        if not dims:
+            continue
+        found, stats = aws(ctx, "cloudwatch", "get-metric-statistics",
+                           "--namespace", namespace,
+                           "--metric-name", alarm["MetricName"],
+                           "--dimensions", *dims,
+                           "--start-time", _ago(3 * 3600), "--end-time", _ago(0),
+                           "--period", "300", "--statistics", "Maximum")
+        if not found:
+            blind.append(f"{alarm['AlarmName']} (could not query)")
+        elif not stats.get("Datapoints"):
+            blind.append(f"{alarm['AlarmName']} -> {namespace}/{alarm['MetricName']} "
+                         f"{dims} has NO datapoints")
+    if blind:
+        return Result("alarms_watch_real_metrics", FAIL,
+                      "alarms pointed at dimensions with no data: " + "; ".join(blind))
+    watched = sum(1 for a in alarms if a.get("Namespace") in ("AWS/RDS", "AWS/EC2"))
+    return Result("alarms_watch_real_metrics", PASS,
+                  f"all {watched} AWS-namespace alarms resolve to metrics with data")
 
 
 # ---------------------------------------------------------------------------
@@ -440,7 +504,7 @@ INFRASTRUCTURE_CHECKS = [
 
 APPLICATION_CHECKS = INFRASTRUCTURE_CHECKS + [
     check_ecr, check_rds, check_exactly_one_instance, check_no_public_ingress,
-    check_ssm, check_secret, check_alarms,
+    check_ssm, check_secret, check_alarms, check_alarms_watch_real_metrics,
 ]
 
 

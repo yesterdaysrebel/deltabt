@@ -301,3 +301,45 @@ def test_the_experiment_scan_catches_a_planted_start(tmp_path):
     planted = tmp_path / "userdata.sh"
     planted.write_text("docker exec deltabot python -m app forward-test start --days 30\n")
     assert re.search(r"forward-test\s+(start|create)", code(planted))
+
+
+# ---------------------------------------------------------------------------
+# Monitoring that is actually pointed at something
+# ---------------------------------------------------------------------------
+
+def test_rds_alarms_use_the_identifier_not_the_resource_id():
+    """An alarm on the wrong dimension is worse than no alarm.
+
+    `aws_db_instance.main.id` is the DbiResourceId (db-XVL3...); CloudWatch
+    publishes AWS/RDS metrics under DBInstanceIdentifier = deltabt-paper. An
+    alarm built from `.id` watches a dimension that has never had a datapoint.
+
+    Shipped that way, two of the three RDS alarms used
+    `treat_missing_data = notBreaching` and therefore sat in OK permanently --
+    a filling disk or a pegged CPU during a 30-day run would have raised
+    nothing. They reported green because they were not looking, which is the
+    exact failure the bot-silent alarm exists to prevent, reproduced in the
+    database alarms.
+    """
+    text = (ROOT / "infra" / "terraform" / "cloudwatch.tf").read_text()
+    for line in text.splitlines():
+        if "DBInstanceIdentifier" not in line or line.lstrip().startswith("#"):
+            continue
+        assert "aws_db_instance.main.id" not in line.replace(
+            "aws_db_instance.main.identifier", ""), (
+            f"DBInstanceIdentifier must come from .identifier, not .id:\n  {line.strip()}")
+
+
+def test_ec2_alarms_use_the_instance_id():
+    """The mirror case, asserted so the fix above is not over-applied.
+
+    For aws_instance, `.id` IS the i-... instance id, which is what the
+    InstanceId dimension wants. Nothing here should be changed to `.identifier`
+    -- that attribute does not exist on aws_instance.
+    """
+    text = (ROOT / "infra" / "terraform" / "cloudwatch.tf").read_text()
+    lines = [l for l in text.splitlines()
+             if "InstanceId =" in l and not l.lstrip().startswith("#")]
+    assert lines, "no InstanceId dimensions found to check"
+    for line in lines:
+        assert "aws_instance.bot.id" in line, line.strip()
