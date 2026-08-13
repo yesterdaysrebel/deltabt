@@ -535,6 +535,8 @@ class TradingBot:
             created_exchange_ts=order.created_at,
             expires_exchange_ts=order.created_at + self.broker.entry_ttl_seconds
             if self.broker.entry_ttl_seconds else None,
+            requested_price=intent.entry_reference,
+            position_uid=order.position_uid,
             received_ts=wall_now()))
         if not ok:
             self.broker.cancel_order(order.order_uid, "duplicate in database")
@@ -617,6 +619,10 @@ class TradingBot:
             limit_price=p.get("limit_price"), status=p["status"],
             equity_before=self.state.equity, risk_amount=0.0,
             created_exchange_ts=p.get("created_exchange_ts"),
+            filled_exchange_ts=p.get("filled_exchange_ts"),
+            requested_price=p.get("requested_price"),
+            filled_price=p.get("filled_price"),
+            position_uid=p.get("position_uid"),
             received_ts=wall_now(), event_type="EXIT_ORDER_CREATED"))
         if created:
             self.metrics.exit_orders += 1
@@ -661,6 +667,11 @@ class TradingBot:
             exchange_ts=exch, received_ts=wall_now()))
         if ok:
             self.metrics.fills += 1
+            # Record what the order ACTUALLY did, beside what was asked for.
+            await self.repo.record_order_fill(
+                p["order_uid"], filled_price=float(p["price"]),
+                filled_exchange_ts=int(p.get("filled_at") or exch),
+                position_uid=position_uid)
         else:
             # Not an error: the deterministic fill id did its job on a replay.
             log.info("fill already durable; not double-booking",
@@ -716,7 +727,9 @@ class TradingBot:
                     if x.position_uid == ev.payload["position_uid"]), None)
         if pos is None:
             return
-        ok = await self.repo.open_position(_to_record(pos, self.instance_uid))
+        ok = await self.repo.open_position(_to_record(
+            pos, self.instance_uid, self.experiment_id,
+            self.identity.config_hash if self.identity else None))
         if not ok:
             # The database refused it, so a position already exists. The
             # in-memory twin is the wrong one and must go.
@@ -738,7 +751,9 @@ class TradingBot:
                     if x.position_uid == ev.payload["position_uid"]), None)
         if pos is None:
             return
-        rec = _to_record(pos, self.instance_uid)
+        rec = _to_record(
+            pos, self.instance_uid, self.experiment_id,
+            self.identity.config_hash if self.identity else None)
         await self.repo.update_position(rec)
         self.state.apply_close(pos.realized_pnl or 0.0,
                                pos.closed_at or self.clock.now())
@@ -889,7 +904,9 @@ def _identity_from_row(row: dict):
         symbols=tuple(row["symbols"]), snapshot=row.get("snapshot") or {})
 
 
-def _to_record(p: PaperPosition, instance_uid: str) -> PositionRecord:
+def _to_record(p: PaperPosition, instance_uid: str,
+               experiment_id: str | None = None,
+               config_hash: str | None = None) -> PositionRecord:
     return PositionRecord(
         position_uid=p.position_uid, signal_key=p.signal_key,
         instance_uid=instance_uid, symbol=p.symbol, side=p.side,
@@ -915,7 +932,10 @@ def _to_broker_position(r: PositionRecord) -> PaperPosition:
         entry_fee=r.entry_fee, exit_fee=r.exit_fee, funding=r.funding,
         status=r.status, exit_price=r.exit_price, exit_reason=r.exit_reason,
         closed_at=r.closed_at, realized_pnl=r.realized_pnl,
-        r_multiple=r.r_multiple,
+        r_multiple=r.r_multiple, requested_entry=r.requested_entry,
+        planned_r=r.planned_r, fill_rr=r.fill_rr,
+        entry_slippage=r.entry_slippage, exit_slippage=r.exit_slippage,
+        gross_pnl=r.gross_pnl,
         # A recovered position must be immediately triggerable: the ticks that
         # would have hit its stop while the bot was down are gone, so waiting
         # for a tick "after the entry" would leave it unprotected.

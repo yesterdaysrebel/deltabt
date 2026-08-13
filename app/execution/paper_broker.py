@@ -172,6 +172,12 @@ class PaperPosition:
     #: Advanced only once the events are durable, so a restart mid-settlement
     #: redoes the work and the deterministic event id makes the redo a no-op.
     funding_checked_through: int = 0
+    #: What the risk engine approved, versus what the fill produced.
+    requested_entry: float | None = None
+    planned_r: float | None = None
+    entry_slippage: float = 0.0
+    exit_slippage: float = 0.0
+    gross_pnl: float | None = None
 
     @property
     def is_open(self) -> bool:
@@ -607,6 +613,10 @@ class PaperBroker:
             fill_rr=realised_rr(price, intent.stop_price, intent.target_price,
                                 order.side),
             funding_checked_through=when,
+            requested_entry=intent.entry_reference,
+            planned_r=abs(intent.target_price - intent.entry_reference)
+            / intent.risk_per_unit if intent.risk_per_unit else None,
+            entry_slippage=slip,
         )
         self.positions[pos.position_uid] = pos
         order.position_uid = pos.position_uid
@@ -640,6 +650,7 @@ class PaperBroker:
         pos.closed_at = when
         pos.exit_fee = fee
         pos.realized_pnl = pnl
+        pos.gross_pnl = gross
         pos.r_multiple = pnl / pos.initial_risk if pos.initial_risk > 0 else 0.0
         pos.last_price = price
         self.equity += gross - fee

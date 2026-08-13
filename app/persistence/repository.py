@@ -77,6 +77,11 @@ class Repository(ABC):
     @abstractmethod
     async def record_fill(self, rec: FillRecord) -> bool: ...
     @abstractmethod
+    async def record_order_fill(self, order_uid: str, *, filled_price: float,
+                                filled_exchange_ts: int,
+                                position_uid: str | None = None) -> None:
+        """Stamp an order with what it actually did, beside what was asked."""
+    @abstractmethod
     async def fill_exists_for_order(self, order_uid: str) -> bool: ...
     @abstractmethod
     async def load_fills_for_position(self, position_uid: str) -> list: ...
@@ -236,6 +241,19 @@ class InMemoryRepository(Repository):
         o = self._s["orders"].get(order_uid)
         if o:
             o.status = status
+
+    async def record_order_fill(self, order_uid, *, filled_price,
+                                filled_exchange_ts, position_uid=None) -> None:
+        o = self._s["orders"].get(order_uid)
+        if not o:
+            return
+        o.filled_price = filled_price
+        o.filled_exchange_ts = filled_exchange_ts
+        if o.created_exchange_ts is not None:
+            o.fill_delay_seconds = max(
+                0.0, filled_exchange_ts - o.created_exchange_ts)
+        if position_uid:
+            o.position_uid = position_uid
 
     async def record_fill(self, rec: FillRecord) -> bool:
         # UNIQUE(fill_uid): the deterministic id is what makes a replay a
@@ -531,16 +549,20 @@ class PostgresRepository(Repository):
                        signal_key, instance_uid, symbol, side, order_type,
                        purpose, quantity, limit_price, status, equity_before,
                        risk_amount, created_exchange_ts, expires_exchange_ts,
-                       received_ts, event_type)
+                       received_ts, event_type, requested_price, filled_price,
+                       filled_exchange_ts, fill_delay_seconds, position_uid,
+                       reject_reason)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                           $16,$17)
+                           $16,$17,$18,$19,$20,$21,$22,$23)
                    ON CONFLICT (idempotency_key) DO NOTHING
                    RETURNING id""",
                 r.order_uid, r.idempotency_key, r.signal_key, r.instance_uid,
                 r.symbol, r.side, r.order_type, r.purpose, r.quantity,
                 r.limit_price, r.status, r.equity_before, r.risk_amount,
                 _ts(r.created_exchange_ts), _ts(r.expires_exchange_ts),
-                _ts(r.received_ts), r.event_type)
+                _ts(r.received_ts), r.event_type, r.requested_price,
+                r.filled_price, _ts(r.filled_exchange_ts),
+                r.fill_delay_seconds, r.position_uid, r.reject_reason)
         return out is not None
 
     async def update_order_status(self, order_uid: str, status: str) -> None:
@@ -548,6 +570,20 @@ class PostgresRepository(Repository):
             await con.execute(
                 "UPDATE paper_orders SET status=$2, updated_at=now() "
                 "WHERE order_uid=$1", order_uid, status)
+
+    async def record_order_fill(self, order_uid, *, filled_price,
+                                filled_exchange_ts, position_uid=None) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                """UPDATE paper_orders
+                      SET filled_price = $2,
+                          filled_exchange_ts = $3,
+                          position_uid = COALESCE($4, position_uid),
+                          fill_delay_seconds = GREATEST(
+                              0, EXTRACT(EPOCH FROM ($3 - created_exchange_ts))),
+                          updated_at = now()
+                    WHERE order_uid = $1""",
+                order_uid, filled_price, utc(filled_exchange_ts), position_uid)
 
     async def record_fill(self, r: FillRecord) -> bool:
         """Insert one fill. False means it was already durable.
@@ -756,16 +792,20 @@ class PostgresRepository(Repository):
                            instance_uid, symbol, side, status, quantity,
                            entry_price, stop_price, target_price, initial_risk,
                            risk_per_unit, notional, equity_before, entry_fee,
-                           opened_at, strategy_version)
+                           opened_at, strategy_version, requested_entry,
+                           planned_r, fill_rr, entry_slippage, experiment_id,
+                           config_hash)
                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
-                               $15,$16,$17)
+                               $15,$16,$17,$18,$19,$20,$21,$22,$23)
                        ON CONFLICT (signal_key) DO NOTHING
                        RETURNING id""",
                     r.position_uid, r.signal_key, r.instance_uid, r.symbol,
                     r.side, r.status, r.quantity, r.entry_price, r.stop_price,
                     r.target_price, r.initial_risk, r.risk_per_unit, r.notional,
                     r.equity_before, r.entry_fee, utc(r.opened_at),
-                    r.strategy_version)
+                    r.strategy_version, r.requested_entry, r.planned_r,
+                    r.fill_rr, r.entry_slippage, r.experiment_id,
+                    r.config_hash)
             return out is not None
         except Exception as exc:                       # noqa: BLE001
             # ux_positions_open_symbol -- another open position on this symbol.
@@ -780,11 +820,12 @@ class PostgresRepository(Repository):
             await con.execute(
                 """UPDATE positions SET status=$2, exit_price=$3,
                        realized_pnl=$4, r_multiple=$5, exit_reason=$6,
-                       closed_at=$7, exit_fee=$8, funding=$9, hold_seconds=$10
+                       closed_at=$7, exit_fee=$8, funding=$9, hold_seconds=$10,
+                       exit_slippage=$11, gross_pnl=$12
                    WHERE position_uid=$1""",
                 r.position_uid, r.status, r.exit_price, r.realized_pnl,
                 r.r_multiple, r.exit_reason, _ts(r.closed_at), r.exit_fee,
-                r.funding, r.hold_seconds)
+                r.funding, r.hold_seconds, r.exit_slippage, r.gross_pnl)
 
     @staticmethod
     def _to_position(row) -> PositionRecord:
@@ -808,6 +849,11 @@ class PostgresRepository(Repository):
             opened_at=int(row["opened_at"].timestamp()),
             closed_at=int(row["closed_at"].timestamp()) if row["closed_at"] else None,
             hold_seconds=row["hold_seconds"],
+            requested_entry=row["requested_entry"],
+            planned_r=row["planned_r"], fill_rr=row["fill_rr"],
+            entry_slippage=float(row["entry_slippage"] or 0),
+            exit_slippage=float(row["exit_slippage"] or 0),
+            gross_pnl=row["gross_pnl"],
             strategy_version=row["strategy_version"])
 
     async def load_open_positions(self) -> list[PositionRecord]:

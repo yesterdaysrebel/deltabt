@@ -132,6 +132,14 @@ CREATE TABLE IF NOT EXISTS paper_orders (
     purpose             TEXT        NOT NULL,       -- entry | stop | target
     quantity            INTEGER     NOT NULL,
     limit_price         NUMERIC(20,8),
+    -- The price the DECISION was made against, kept beside what actually
+    -- filled, so slippage is a recorded fact rather than a later inference.
+    requested_price     NUMERIC(20,8),
+    filled_price        NUMERIC(20,8),
+    filled_exchange_ts  TIMESTAMPTZ,
+    fill_delay_seconds  NUMERIC(12,3),
+    position_uid        TEXT,
+    reject_reason       TEXT,
     status              TEXT        NOT NULL,       -- NEW | WORKING | FILLED | CANCELLED | EXPIRED
     equity_before       NUMERIC(20,8) NOT NULL,
     risk_amount         NUMERIC(20,8) NOT NULL,
@@ -219,6 +227,15 @@ CREATE TABLE IF NOT EXISTS positions (
     target_price        NUMERIC(20,8) NOT NULL,
     initial_risk        NUMERIC(20,8) NOT NULL,
     risk_per_unit       NUMERIC(20,8) NOT NULL,
+    requested_entry     NUMERIC(20,8),
+    -- planned_r is the reward/risk the risk engine APPROVED; fill_rr is what
+    -- the actual fill produced. They differ by entry slippage, and reporting
+    -- only one hides the degradation the forward test exists to measure.
+    planned_r           NUMERIC(12,6),
+    fill_rr             NUMERIC(12,6),
+    entry_slippage      NUMERIC(20,8) NOT NULL DEFAULT 0,
+    exit_slippage       NUMERIC(20,8) NOT NULL DEFAULT 0,
+    gross_pnl           NUMERIC(20,8),
     notional            NUMERIC(20,8) NOT NULL,
     equity_before       NUMERIC(20,8) NOT NULL,
     entry_fee           NUMERIC(20,8) NOT NULL DEFAULT 0,

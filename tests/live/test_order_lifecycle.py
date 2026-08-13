@@ -416,3 +416,58 @@ async def test_the_full_lifecycle_lands_in_postgres(pg_repo):
         assert [r["order_purpose"] for r in pair] == ["entry", "target"]
         assert [r["liquidity"] for r in pair] == ["taker", "maker"]
         assert all(r["fee"] > 0 for r in pair), "the exit fee now survives"
+
+
+# =====================================================================
+# EVERY PHASE-3 FIELD REACHES THE DATABASE
+# =====================================================================
+
+
+@requires_pg
+@pytest.mark.postgres
+async def test_the_schema_holds_every_field_the_broker_knows(pg_repo):
+    """Found during the final preflight, hours from starting the run.
+
+    `requested_price`, `filled_price`, `planned_r` and `fill_rr` existed on the
+    broker and in the event payloads, but the COLUMNS were never added -- they
+    were in an early schema draft that got reverted during scope-narrowing. The
+    broker knew them and the database silently did not, which is precisely the
+    class of gap this whole phase was about.
+    """
+    async with pg_repo._pool.acquire() as con:
+        rows = await con.fetch(
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name IN "
+            "('paper_orders','positions')")
+    have = {(r["table_name"], r["column_name"]) for r in rows}
+
+    for col in ("requested_price", "filled_price", "filled_exchange_ts",
+                "fill_delay_seconds", "position_uid", "reject_reason"):
+        assert ("paper_orders", col) in have, f"paper_orders.{col} missing"
+    for col in ("planned_r", "fill_rr", "entry_slippage", "exit_slippage",
+                "gross_pnl", "requested_entry", "experiment_id", "config_hash"):
+        assert ("positions", col) in have, f"positions.{col} missing"
+
+
+async def test_planned_and_realised_rr_are_both_recorded():
+    """They differ by entry slippage; one number hides the degradation."""
+    bot = make_bot({})
+    await bot.start()
+    await _open(bot)
+    pos = bot.broker.get_positions()[0]
+    assert pos.planned_r is not None and pos.fill_rr is not None
+    assert pos.fill_rr <= pos.planned_r, "an adverse fill can only degrade it"
+    assert pos.requested_entry is not None
+    assert pos.entry_slippage >= 0
+
+
+async def test_an_order_records_what_was_asked_and_what_filled():
+    bot = make_bot({})
+    await bot.start()
+    await _open(bot)
+    order = [o for o in bot.repo.store["orders"].values()
+             if o.purpose == "entry"][0]
+    assert order.requested_price is not None
+    assert order.filled_price is not None
+    assert order.fill_delay_seconds is not None
+    assert order.position_uid, "the order must name the position it opened"

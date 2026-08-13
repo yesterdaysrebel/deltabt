@@ -87,6 +87,12 @@ class OrderRecord:
     #: also exchange time. Comparing it against a wall clock is audit F8.
     created_exchange_ts: int | None = None
     expires_exchange_ts: int | None = None
+    filled_exchange_ts: int | None = None
+    fill_delay_seconds: float | None = None
+    requested_price: float | None = None
+    filled_price: float | None = None
+    position_uid: str | None = None
+    reject_reason: str | None = None
     received_ts: float | None = None
     event_type: str = "ORDER_CREATED"
 
@@ -142,6 +148,17 @@ class PositionRecord:
     exit_reason: str | None = None
     closed_at: int | None = None
     hold_seconds: int | None = None
+    requested_entry: float | None = None
+    #: planned_r is what risk APPROVED; fill_rr is what the fill produced.
+    #: They differ by entry slippage; reporting one hides the degradation.
+    planned_r: float | None = None
+    fill_rr: float | None = None
+    entry_slippage: float = 0.0
+    exit_slippage: float = 0.0
+    gross_pnl: float | None = None
+    #: Stamped so a position can never be silently attributed to the wrong run.
+    experiment_id: str | None = None
+    config_hash: str | None = None
 
     OPEN_STATES = ("OPENING", "OPEN", "SUSPENDED", "CLOSING")
 
