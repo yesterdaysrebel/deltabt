@@ -117,14 +117,64 @@ resource "aws_s3_bucket_public_access_block" "state" {
 # No AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY anywhere. GitHub presents a
 # short-lived OIDC token; AWS exchanges it for temporary credentials. There is
 # no long-lived secret to leak or rotate.
+#
+# CREATE OR REFERENCE -- and the difference matters a great deal.
+#
+# An account may hold only ONE identity provider per issuer URL, so the GitHub
+# provider is inherently account-wide infrastructure. Other projects' roles can
+# and do federate through the same one. If this stack OWNED a shared provider,
+# a `terraform destroy` here would silently revoke every unrelated project's
+# ability to deploy -- and Terraform would report it as a clean teardown.
+#
+#   create_oidc_provider = true   fresh account: nothing federates yet, so this
+#                                 stack creates and owns it.
+#   create_oidc_provider = false  the provider already exists: reference it
+#                                 read-only. Terraform never creates, modifies,
+#                                 or deletes it, and its thumbprint is left
+#                                 exactly as found.
+#
+# `scripts/bootstrap_check.py` determines which case you are in and prints the
+# flag to use; `scripts/bootstrap.sh` passes it and says so out loud. Neither
+# ever mutates an existing provider.
+variable "create_oidc_provider" {
+  description = <<-EOT
+    Create the GitHub OIDC provider (fresh account), or reference an existing
+    one (shared account). Run scripts/bootstrap_check.py to find out which.
+  EOT
+  type        = bool
+  default     = true
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
+  count = var.create_oidc_provider ? 1 : 0
+
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
 
   # AWS no longer validates this thumbprint for the GitHub issuer -- it trusts
   # the certificate chain directly -- but the argument is still required by the
-  # API, so the long-published GitHub value is supplied.
+  # API, so the long-published GitHub value is supplied. When referencing an
+  # existing provider this is not applied at all: an existing thumbprint is
+  # left as found rather than rewritten to match our code.
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+
+  lifecycle {
+    # Even when this stack does own it, deleting it is not a routine teardown:
+    # every role in the account that federates through GitHub loses its trust
+    # anchor at once.
+    prevent_destroy = true
+  }
+}
+
+data "aws_iam_openid_connect_provider" "github" {
+  count = var.create_oidc_provider ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+}
+
+locals {
+  github_oidc_provider_arn = (var.create_oidc_provider
+    ? one(aws_iam_openid_connect_provider.github[*].arn)
+  : one(data.aws_iam_openid_connect_provider.github[*].arn))
 }
 
 data "aws_iam_policy_document" "github_assume" {
@@ -134,7 +184,7 @@ data "aws_iam_policy_document" "github_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [local.github_oidc_provider_arn]
     }
 
     condition {
@@ -221,7 +271,7 @@ data "aws_iam_policy_document" "github_plan_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [local.github_oidc_provider_arn]
     }
 
     condition {
@@ -287,4 +337,18 @@ output "github_plan_role_arn" {
 
 output "account_id" {
   value = data.aws_caller_identity.current.account_id
+}
+
+output "github_oidc_provider_arn" {
+  description = "The provider these roles federate through."
+  value       = local.github_oidc_provider_arn
+}
+
+output "github_oidc_provider_owned_by_this_stack" {
+  description = <<-EOT
+    false means the provider pre-existed and is only referenced: Terraform will
+    never modify or delete it, and other projects federating through it are
+    unaffected by anything this stack does.
+  EOT
+  value       = var.create_oidc_provider
 }

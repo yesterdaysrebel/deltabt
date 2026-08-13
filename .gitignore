@@ -58,9 +58,10 @@ dist/
 *.tfstate
 *.tfstate.*
 .terraform/
-.terraform.lock.hcl
 terraform.tfvars
 *.auto.tfvars
 !*.tfvars.example
 tfplan
 tfplan.json
+bootstrap.tfplan
+bootstrap.tfplan.json

@@ -37,8 +37,8 @@ echo "=== 1. What already exists ===============================================
 # Never imports. Reports, and prints the import commands if adoption is needed.
 set +e
 python3 scripts/bootstrap_check.py --state-bucket "$BUCKET" --region "$REGION" \
-  --bootstrap-dir "$BOOTSTRAP_DIR"
-CHECK=$?
+  --bootstrap-dir "$BOOTSTRAP_DIR" | tee /tmp/deltabt-bootstrap-check.txt
+CHECK=${PIPESTATUS[0]}
 set -e
 
 if [ "$CHECK" -eq 1 ]; then
@@ -53,6 +53,24 @@ if [ "$CHECK" -eq 2 ]; then
   exit 2
 fi
 
+# Whether to CREATE the GitHub OIDC provider or merely REFERENCE an existing
+# one is decided by what is actually in the account, not by a default. An
+# account holds one provider per issuer, so creating a second is impossible and
+# owning a shared one is dangerous: destroying this stack would revoke every
+# other project's ability to deploy.
+CREATE_OIDC="$(sed -n 's/^BOOTSTRAP_CREATE_OIDC=//p' /tmp/deltabt-bootstrap-check.txt | tail -1)"
+if [ -z "$CREATE_OIDC" ]; then
+  echo "Could not determine whether the OIDC provider exists. Refusing to guess." >&2
+  exit 1
+fi
+echo
+if [ "$CREATE_OIDC" = "true" ]; then
+  echo ">>> GitHub OIDC provider will be CREATED and OWNED by this stack."
+else
+  echo ">>> GitHub OIDC provider already exists and will be REFERENCED ONLY."
+  echo ">>> Terraform will not create, modify, delete or re-thumbprint it."
+fi
+
 echo
 echo "=== 2. Plan =============================================================="
 terraform -chdir="$BOOTSTRAP_DIR" init -input=false
@@ -60,7 +78,8 @@ terraform -chdir="$BOOTSTRAP_DIR" plan -input=false -out=bootstrap.tfplan \
   -var="aws_region=$REGION" \
   -var="github_org=$ORG" \
   -var="github_repo=$REPO" \
-  -var="state_bucket_name=$BUCKET"
+  -var="state_bucket_name=$BUCKET" \
+  -var="create_oidc_provider=$CREATE_OIDC"
 
 terraform -chdir="$BOOTSTRAP_DIR" show -json bootstrap.tfplan > "$BOOTSTRAP_DIR/bootstrap.tfplan.json"
 

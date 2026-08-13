@@ -2,23 +2,35 @@
 """Report which bootstrap trust anchors already exist, and how to adopt them.
 
 The bootstrap stack creates the things that must exist before anything else
-can run: the state bucket, the GitHub OIDC provider, and the three IAM roles.
-It is the ONLY intentionally manual AWS operation in this system, and it runs
-with local state -- so the situation "the resource exists but this state file
-has never seen it" is not an edge case here, it is what happens the second time
-anyone runs it from a different machine.
+can run: the state bucket, the IAM roles, and -- only in a fresh account -- the
+GitHub OIDC provider. It is the ONLY intentionally manual AWS operation in this
+system, and it runs with local state, so "the resource exists but this state
+file has never seen it" is not an edge case here. It is what happens the second
+time anyone runs it from a different machine.
 
 This script never changes anything. It reads AWS, reads the local state if
 there is one, and prints a table plus the exact `terraform import` lines. It
 does NOT import: adoption of an existing trust anchor is a decision, and a
-script that silently imported an IAM role would be a script that silently
-took ownership of who can deploy.
+script that silently imported an IAM role would be a script that silently took
+ownership of who can deploy.
+
+It also answers the one question that cannot be answered by looking at this
+repository alone: does anything ELSE in the account federate through the GitHub
+OIDC provider? An account holds one provider per issuer, so it is shared
+infrastructure by construction. Every role's trust policy is searched, and each
+dependent role and its `sub` restrictions are printed, because owning a
+provider another project depends on means a `terraform destroy` here revokes
+their deployments and reports it as a clean teardown.
 
 Usage:
     python scripts/bootstrap_check.py --state-bucket <name> [--region ap-south-1]
 
+Emits `BOOTSTRAP_CREATE_OIDC=true|false` for scripts/bootstrap.sh to pass
+through as a Terraform variable, so the create-versus-reference choice is
+detected and announced rather than guessed.
+
 Exit codes:
-    0  nothing exists yet (a clean first apply), or everything is managed
+    0  nothing conflicting exists, or everything is managed
     2  something exists in AWS but is not in this state file -- import first
     1  could not determine (no credentials, CLI failure)
 """
@@ -35,10 +47,17 @@ OIDC_HOST = "token.actions.githubusercontent.com"
 #: Terraform address -> human description. Order matters for the report.
 ANCHORS = [
     ("aws_s3_bucket.state", "Terraform state bucket"),
-    ("aws_iam_openid_connect_provider.github", "GitHub OIDC identity provider"),
     ("aws_iam_role.github_deploy", "Terraform infrastructure role"),
     ("aws_iam_role.github_plan", "Pull-request read-only plan role"),
 ]
+
+#: The OIDC provider is handled separately from the anchors above, because it
+#: is the one resource this stack may legitimately NOT own. An account holds
+#: only one identity provider per issuer URL, so it is inherently account-wide:
+#: other projects' roles federate through the same one. Owning a shared
+#: provider means a `terraform destroy` here revokes their deployments too,
+#: and Terraform reports that as a clean teardown.
+OIDC_ADDRESS = "aws_iam_openid_connect_provider.github"
 
 
 def aws(*args: str) -> tuple[bool, dict]:
@@ -104,14 +123,32 @@ def main() -> int:
         exists["aws_s3_bucket.state"] = args.state_bucket
 
     provider_arn = f"arn:aws:iam::{account}:oidc-provider/{OIDC_HOST}"
-    if aws("iam", "get-open-id-connect-provider",
-           "--open-id-connect-provider-arn", provider_arn)[0]:
-        exists["aws_iam_openid_connect_provider.github"] = provider_arn
+    oidc_exists = aws("iam", "get-open-id-connect-provider",
+                      "--open-id-connect-provider-arn", provider_arn)[0]
 
     for address, role in (("aws_iam_role.github_deploy", "deltabt-github-deploy"),
                           ("aws_iam_role.github_plan", "deltabt-github-plan")):
         if aws("iam", "get-role", "--role-name", role, *region)[0]:
             exists[address] = role
+
+    # --- who else federates through the provider? --------------------------
+    dependents: list[tuple[str, list]] = []
+    if oidc_exists:
+        ok, roles = aws("iam", "list-roles")
+        for role in (roles.get("Roles", []) if ok else []):
+            document = json.dumps(role.get("AssumeRolePolicyDocument", {}))
+            if OIDC_HOST not in document:
+                continue
+            subjects = []
+            for statement in role["AssumeRolePolicyDocument"].get("Statement", []):
+                condition = statement.get("Condition", {})
+                for operator in condition.values():
+                    value = operator.get(f"{OIDC_HOST}:sub")
+                    if isinstance(value, str):
+                        subjects.append(value)
+                    elif isinstance(value, list):
+                        subjects.extend(value)
+            dependents.append((role["RoleName"], sorted(set(subjects))))
 
     width = max(len(d) for _, d in ANCHORS) + 2
     print(f"{'Trust anchor':<{width}} {'In AWS':<10} {'In state':<10} Status")
@@ -133,11 +170,41 @@ def main() -> int:
         print(f"{description:<{width}} {'yes' if in_aws else 'no':<10} "
               f"{'yes' if in_state else 'no':<10} {status}")
 
+    # --- the OIDC provider, reported on its own terms ----------------------
+    print()
+    print("GitHub OIDC identity provider")
+    print("-" * (width + 34))
+    if not oidc_exists:
+        create_oidc = True
+        print("  Does not exist. This stack will CREATE and own it.")
+        print("  -> create_oidc_provider = true")
+    else:
+        create_oidc = False
+        print(f"  Exists: {provider_arn}")
+        if dependents:
+            print(f"  {len(dependents)} role(s) federate through it:")
+            for role_name, subjects in dependents:
+                print(f"    - {role_name}")
+                for subject in subjects:
+                    print(f"        sub: {subject}")
+        else:
+            print("  No role currently federates through it.")
+        print()
+        print("  It will be REFERENCED, not owned. Terraform will not create,")
+        print("  modify, delete, or re-thumbprint it, so nothing that already")
+        print("  federates through it is affected by anything this stack does.")
+        print("  -> create_oidc_provider = false")
+
+    # A machine-readable line so bootstrap.sh passes the right flag rather than
+    # guessing, and so the decision is visible in the log either way.
+    print()
+    print(f"BOOTSTRAP_CREATE_OIDC={'true' if create_oidc else 'false'}")
+
     print()
     if not exists:
-        print("Nothing exists yet. This is a clean first bootstrap:")
+        print("No other trust anchor exists yet. This is a clean first bootstrap:")
         print()
-        print("    ./scripts/bootstrap.sh")
+        print("    ./scripts/bootstrap.sh plan")
         return 0
 
     if not unmanaged:
