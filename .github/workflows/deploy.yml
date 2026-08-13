@@ -196,39 +196,26 @@ jobs:
           fi
           [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
 
-      - name: verify on the host, over SSM
-        # The host-side half of the verification, using the only capability
-        # this role has: run one command through SSM and read the result. The
-        # AWS-side half -- exactly one instance, the bot-silent alarm, logs
-        # arriving -- needs reads this role does not have and is run by the
-        # operator with `scripts/verify_deployment.py`.
+      - name: what the deploy document reported
+        # NO second SSM channel. This role's ssm:SendCommand is scoped to the
+        # deltabt-paper-deploy document and that instance -- it cannot invoke
+        # AWS-RunShellScript, and that is the point: a workflow able to run
+        # arbitrary shell on the bot host is a workflow able to do anything to
+        # the experiment. An earlier version of this step reached for
+        # AWS-RunShellScript and was correctly denied.
+        #
+        # The verification therefore lives in the two places that can do it
+        # without widening anything:
+        #   * deploy.sh, on the host, which gates on /readyz and rolls back to
+        #     the previous tag by itself if the new image does not come up;
+        #   * scripts/verify_deployment.py, run by an operator, which checks
+        #     the AWS side too (one instance, the silence alarm, log delivery).
         run: |
-          CMD=$(aws ssm send-command --region "$AWS_REGION" \
-            --document-name AWS-RunShellScript \
-            --instance-ids "${{ vars.BOT_INSTANCE_ID }}" \
-            --parameters 'commands=[
-              "set +e",
-              "echo containers=$(docker ps -q | wc -l)",
-              "docker inspect --format \"image={{.Config.Image}} user={{.Config.User}} readonly={{.HostConfig.ReadonlyRootfs}}\" deltabot",
-              "echo readyz:; curl -fsS --max-time 10 http://127.0.0.1:8000/readyz",
-              "echo healthz:; curl -fsS --max-time 10 http://127.0.0.1:8000/healthz",
-              "echo status:; curl -fsS --max-time 10 http://127.0.0.1:8000/api/status"
-            ]' --query 'Command.CommandId' --output text)
-          for _ in $(seq 1 30); do
-            S=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
-                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query Status --output text 2>/dev/null || echo Pending)
-            case "$S" in Success|Failed|TimedOut|Cancelled) break ;; esac
-            sleep 10
-          done
-          OUT=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
-                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query StandardOutputContent --output text)
-          echo "$OUT"
-          { echo '### Host verification'; echo '```json'; echo "$OUT"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          echo "$OUT" | grep -q '"strategy_config_hash":"5a5412369f3823f3"' \
-            || { echo "::error::frozen strategy hash missing or changed"; exit 1; }
-          echo "$OUT" | grep -q 'containers=1' \
-            || { echo "::error::expected exactly one running container"; exit 1; }
-          [ "$S" = "Success" ] || { echo "::error::host verification $S"; exit 1; }
+          echo "The host script gated on /readyz and did not roll back."
+          echo "Operator verification (14 checks, read-only):"
+          echo "  AWS_PROFILE=... python3 scripts/verify_deployment.py \\"
+          echo "    --instance-id ${{ vars.BOT_INSTANCE_ID }} --region $AWS_REGION \\"
+          echo "    --expected-sha ${{ steps.tag.outputs.tag }}"
 
       - name: the deployed commit, image and config hash
         run: |
