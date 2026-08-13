@@ -1,0 +1,16 @@
+{
+  "agent": { "metrics_collection_interval": 60, "omit_hostname": false },
+  "metrics": {
+    "namespace": "DeltaBt",
+    "append_dimensions": { "InstanceId": "${aws:InstanceId}" },
+    "aggregation_dimensions": [["InstanceId"]],
+    "metrics_collected": {
+      "mem": { "measurement": [{ "name": "mem_used_percent", "rename": "MemoryUsedPercent" }] },
+      "disk": {
+        "resources": ["/"],
+        "measurement": [{ "name": "used_percent", "rename": "DiskUsedPercent" }],
+        "ignore_file_system_types": ["sysfs", "devtmpfs", "tmpfs", "overlay"]
+      }
+    }
+  }
+}

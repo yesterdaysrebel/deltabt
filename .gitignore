@@ -53,3 +53,14 @@ dist/
 *.parquet
 *.db
 *.sqlite3
+
+# Terraform: state and any real variable values must never be committed.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+!*.tfvars.example
+tfplan
+tfplan.json

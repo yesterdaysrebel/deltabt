@@ -1,0 +1,37 @@
+# Copy to terraform.tfvars, or -- better -- pass these with -var in CI so the
+# repository holds no account-specific values at all.
+#
+# Nothing in this file is a secret. There is no exchange credential here
+# because the bot has no order-placement capability, and no database password
+# because RDS generates it into Secrets Manager.
+
+aws_region  = "ap-south-1" # closest region to the India venue
+environment = "paper"
+
+github_org  = "your-github-org"
+github_repo = "deltabt"
+
+# Sized from measurement, not guesswork: ~450 MB RSS steady, under 5% CPU.
+instance_type  = "t4g.small"
+root_volume_gb = 20
+
+db_instance_class        = "db.t4g.micro"
+db_allocated_storage_gb  = 20
+db_backup_retention_days = 35 # must outlive a 30-day run
+db_deletion_protection   = true
+
+# The frozen universe. Changing this changes the experiment identity and
+# invalidates a run in progress.
+bot_symbols = "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
+
+# Leave unset. The deploy workflow owns this parameter after the first deploy.
+# bot_image_tag = ""
+
+# LEAVE EMPTY. Access is via SSM Session Manager, which needs no inbound rule.
+# Populating this opens SSH to the world of whatever you put in it.
+admin_cidrs = []
+
+log_retention_days = 90
+
+# Optional. Empty means the alarms exist but page nobody.
+# alarm_email = "you@example.com"

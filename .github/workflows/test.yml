@@ -1,0 +1,137 @@
+name: test
+
+# The gate everything else depends on. No image is built and no infrastructure
+# is changed unless this passes.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paper-only:
+    name: paper-only safety scan
+    runs-on: ubuntu-latest
+    # Runs FIRST and alone. If the shipped source has gained the ability to
+    # place an order, nothing else about this commit matters.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,live]"
+      - name: AST scan of the shipped source
+        run: pytest tests/live/test_no_live_trading.py -v
+
+      - name: the same boundary across Terraform, shell and workflow YAML
+        # The AST scan cannot see infrastructure. A credential would be
+        # introduced there, not in Python: an IAM grant, an `-e API_KEY=`, a
+        # committed DSN, an ingress rule.
+        run: pytest tests/live/test_deployment_safety.py -q
+
+  tests:
+    name: test suite
+    runs-on: ubuntu-latest
+    needs: paper-only
+
+    services:
+      postgres:
+        # The safety-critical persistence tests have in-memory counterparts
+        # that always run, but PostgreSQL is where the advisory locks and the
+        # transactional exposure reservation are actually enforced. Skipping it
+        # in CI would skip the tests that caught the max_open_positions race.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: deltabt_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DELTABOT_TEST_DSN: postgresql://postgres:postgres@127.0.0.1:5432/deltabt_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev,live]"
+
+      - name: Full suite, including the PostgreSQL-backed tests
+        run: pytest -q
+
+      - name: The frozen strategy hash has not moved
+        # The forward test's identity is this hash. A commit that changes it is
+        # a different experiment wearing the same name, and it must not reach
+        # a host running one.
+        run: |
+          python - <<'PY'
+          import sys
+          from app.config.strategy import StrategyConfig
+          FROZEN = "5a5412369f3823f3"
+          actual = StrategyConfig().config_hash
+          print(f"strategy_config_hash = {actual}")
+          if actual != FROZEN:
+              sys.exit(
+                  f"FROZEN STRATEGY CHANGED: {FROZEN} -> {actual}\n"
+                  "This invalidates any forward test in progress. If the change\n"
+                  "is intended, it is a NEW experiment: update FROZEN here and\n"
+                  "start a new experiment id."
+              )
+          PY
+
+  terraform:
+    name: terraform fmt and validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      - name: fmt
+        run: terraform fmt -check -recursive infra/
+
+      - name: validate the main stack
+        # -backend=false: validation needs no credentials and no state.
+        run: |
+          cd infra/terraform
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: validate the bootstrap stack
+        run: |
+          cd infra/terraform/bootstrap
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: the guard that refuses destructive plans works
+        run: |
+          python - <<'PY'
+          import json, subprocess, tempfile
+          def guard(plan, env=None):
+              with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+                  json.dump(plan, f)
+              return subprocess.run(["python", "scripts/tf_guard.py", f.name],
+                                    capture_output=True, text=True)
+          destructive = {"resource_changes": [{"address": "aws_db_instance.main",
+              "type": "aws_db_instance", "change": {"actions": ["delete", "create"]}}]}
+          benign = {"resource_changes": [{"address": "aws_instance.bot",
+              "type": "aws_instance", "change": {"actions": ["update"]}}]}
+          assert guard(destructive).returncode == 1, "guard failed to refuse a database replacement"
+          assert guard(benign).returncode == 0, "guard refused a harmless plan"
+          print("tf_guard rejects what it should and permits what it should")
+          PY

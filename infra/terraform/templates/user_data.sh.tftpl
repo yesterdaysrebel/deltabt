@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Rendered by Terraform. Runs once at first boot.
+#
+# Deliberately thin: it installs Docker, drops the environment file and the
+# two operational scripts, and registers a systemd unit. It does NOT pull an
+# image or start the bot, because at apply time no image tag exists yet --
+# that is the deploy workflow's job.
+set -euxo pipefail
+exec > >(tee /var/log/deltabt-user-data.log) 2>&1
+
+dnf -y update
+dnf -y install docker amazon-cloudwatch-agent
+systemctl enable --now docker
+
+# Compose is installed for operator convenience -- reproducing the local
+# deploy/vps/docker-compose.yml on the box when debugging. The bot itself is
+# NOT run through it: systemd owns the unit, so exactly one thing decides
+# whether the bot is running. Two restart policies is how you end up with two
+# bots, and two bots interleaving one paper account is the failure this whole
+# design is built to avoid.
+install -d -m 0755 /usr/libexec/docker/cli-plugins
+curl -fsSL -o /usr/libexec/docker/cli-plugins/docker-compose \
+  https://github.com/docker/compose/releases/latest/download/docker-compose-linux-aarch64
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+timedatectl set-timezone UTC
+
+install -d -m 0755 /opt/deltabt
+
+cat > /opt/deltabt/env <<'ENVEOF'
+AWS_REGION=${aws_region}
+ECR_REPOSITORY_URL=${ecr_repository_url}
+ECR_REPOSITORY_NAME=${ecr_repository_name}
+DB_HOST=${db_host}
+DB_PORT=${db_port}
+DB_NAME=${db_name}
+DB_SECRET_ARN=${db_secret_arn}
+SSM_IMAGE_TAG_PARAM=${ssm_image_tag_param}
+SSM_IMAGE_TAG_PREVIOUS_PARAM=${ssm_image_tag_previous_param}
+LOG_GROUP=${log_group}
+DELTABOT_SYMBOLS=${bot_symbols}
+DELTABOT_LOG_LEVEL=INFO
+ENVEOF
+chmod 0644 /opt/deltabt/env
+
+base64 -d <<'B64' > /opt/deltabt/run.sh
+${run_sh_b64}
+B64
+base64 -d <<'B64' > /opt/deltabt/deploy.sh
+${deploy_sh_b64}
+B64
+chmod 0755 /opt/deltabt/run.sh /opt/deltabt/deploy.sh
+
+base64 -d <<'B64' > /opt/aws/amazon-cloudwatch-agent/etc/cw-agent.json
+${cw_agent_b64}
+B64
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cw-agent.json
+
+cat > /etc/systemd/system/deltabt.service <<'UNITEOF'
+[Unit]
+Description=DeltaBot paper-trading forward test
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+ExecStart=/opt/deltabt/run.sh
+ExecStop=/usr/bin/docker stop -t 45 deltabot
+Restart=always
+RestartSec=15
+# Exit 90 means "no image tag configured yet", which is a legitimate resting
+# state and not a failure to retry. Every other exit, clean or not, restarts.
+RestartPreventExitStatus=90
+# A crash-looping bot must not hammer ECR or the exchange, but it must also
+# never give up permanently: an outage lasting hours has to self-heal without
+# an operator. StartLimitIntervalSec=0 disables systemd's give-up behaviour.
+StartLimitIntervalSec=0
+TimeoutStopSec=60
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+UNITEOF
+
+systemctl daemon-reload
+# Enabled so a reboot brings the bot back with no human involved, but NOT
+# started here: there is no image to run until the first deploy.
+systemctl enable deltabt.service
+
+echo "user-data complete"

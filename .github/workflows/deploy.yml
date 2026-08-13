@@ -1,0 +1,225 @@
+name: deploy
+
+# Build the image, push it to ECR, and roll the bot onto it.
+#
+# The image tag is ALWAYS the git SHA. Never `latest`. A forward test whose
+# results cannot be tied to an exact commit is not a forward test, and the
+# image tag is the only durable link between a row in the database and the
+# code that produced it.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Existing tag to roll back to. Leave empty to build this commit."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  # One deploy at a time. Two concurrent SSM deploys would fight over the same
+  # systemd unit and the rollback tag.
+  group: deploy-paper
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+jobs:
+  test:
+    # The whole suite, including the paper-only AST scan, on the exact commit
+    # being shipped. Nothing reaches the host without it.
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: build and push
+    needs: test
+    if: github.event.inputs.image_tag == ''
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-build-${{ github.run_id }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - id: meta
+        run: echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: refuse to rebuild an existing tag
+        # ECR is configured with IMMUTABLE tags, so a push would fail anyway.
+        # Failing here makes the reason obvious instead of surfacing as an
+        # opaque registry error.
+        run: |
+          if aws ecr describe-images --repository-name "${{ vars.ECR_REPOSITORY || 'deltabt' }}" \
+               --image-ids "imageTag=${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::notice::${{ steps.meta.outputs.tag }} is already in ECR; skipping the build."
+            echo "already_built=true" >> "$GITHUB_ENV"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+        if: env.already_built != 'true'
+      - uses: docker/setup-buildx-action@v3
+        if: env.already_built != 'true'
+
+      - name: build for arm64 and push
+        if: env.already_built != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          # The host is Graviton. Building the same architecture it runs on is
+          # also what makes the numba kernels baked at build time usable.
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'deltabt' }}:${{ steps.meta.outputs.tag }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_DIRTY=0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: roll the bot
+    needs: [test, build]
+    # `always()` so a manual rollback (which skips `build`) still runs, but the
+    # build must not have FAILED.
+    if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
+    runs-on: ubuntu-latest
+    environment: paper   # protected: a human approves before the running bot changes
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-deploy-${{ github.run_id }}
+
+      - id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag || needs.build.outputs.tag }}"
+          [ -n "$TAG" ] || { echo "no image tag resolved"; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying $TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: warn if a forward test is running
+        # Not a hard block: a genuine bug fix during a run is sometimes
+        # necessary. But it must be a conscious act, and the log must record
+        # that the code changed underneath a running experiment -- otherwise
+        # the results describe two different systems wearing one name.
+        run: |
+          echo "::warning::If a forward test is RUNNING, this changes the code underneath it."
+          echo "::warning::Per docs/operations.md that means: stop the experiment, deploy, start a NEW experiment id."
+
+      - name: send the deploy command
+        id: send
+        run: |
+          CMD=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name "${{ vars.SSM_DEPLOY_DOCUMENT }}" \
+            --instance-ids "${{ vars.BOT_INSTANCE_ID }}" \
+            --parameters "ImageTag=${{ steps.tag.outputs.tag }}" \
+            --comment "gha ${{ github.run_id }}" \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=$CMD" >> "$GITHUB_OUTPUT"
+          echo "SSM command $CMD"
+
+      - name: wait for it, and fail loudly if it did not take
+        run: |
+          CMD="${{ steps.send.outputs.command_id }}"
+          ID="${{ vars.BOT_INSTANCE_ID }}"
+          # The host script allows up to 900s for readiness plus the same again
+          # for a rollback, so this waits longer than that before giving up.
+          for _ in $(seq 1 190); do
+            STATUS=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                       --command-id "$CMD" --instance-id "$ID" \
+                       --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Success) echo "deploy succeeded"; break ;;
+              Failed|Cancelled|TimedOut) echo "::error::deploy $STATUS"; FAILED=1; break ;;
+            esac
+            sleep 20
+          done
+          echo '### Host output' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD" --instance-id "$ID" \
+            --query 'StandardOutputContent' --output text | tail -80 \
+            >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${FAILED:-0}" = "1" ]; then
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardErrorContent' --output text || true
+            echo "::error::The host rolls back automatically. Verify with /readyz before deploying again."
+            exit 1
+          fi
+          [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
+
+      - name: verify health and readiness on the host, and record what is running
+        # The host script already gates the rollback on /readyz. This asks
+        # again, independently, and records the answer in the run summary --
+        # so "what was deployed, and was it healthy" is answerable months later
+        # from the Actions log alone, without shell access to anything.
+        run: |
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name AWS-RunShellScript \
+            --instance-ids "${{ vars.BOT_INSTANCE_ID }}" \
+            --parameters 'commands=[
+              "set -o pipefail",
+              "echo \"image_tag: $(aws ssm get-parameter --region '"$AWS_REGION"' --name /deltabt/paper/image_tag --query Parameter.Value --output text)\"",
+              "docker inspect --format \"container: {{.Config.Image}} started {{.State.StartedAt}}\" deltabot",
+              "echo \"running containers: $(docker ps -q | wc -l)\"",
+              "echo readyz:; curl -fsS --max-time 10 http://127.0.0.1:8000/readyz",
+              "echo healthz:; curl -fsS --max-time 10 http://127.0.0.1:8000/healthz",
+              "echo status:; curl -fsS --max-time 10 http://127.0.0.1:8000/api/status"
+            ]' \
+            --query 'Command.CommandId' --output text)
+          for _ in $(seq 1 30); do
+            S=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
+                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query Status --output text 2>/dev/null || echo Pending)
+            case "$S" in Success|Failed|TimedOut|Cancelled) break ;; esac
+            sleep 10
+          done
+          OUT=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
+                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query StandardOutputContent --output text)
+          {
+            echo '### Deployed'
+            echo '```json'
+            echo "$OUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$OUT"
+          # /readyz failing here means the deploy step's own gate disagreed with
+          # this one, which is a real problem. /healthz is reported but not
+          # fatal: it is a statement about market data, not about the image.
+          echo "$OUT" | grep -q '"status"' || { echo "::error::no health output from the host"; exit 1; }
+          [ "$S" = "Success" ] || { echo "::error::verification command $S"; exit 1; }
+
+      - name: the deployed commit, image and config hash
+        run: |
+          {
+            echo '### Provenance'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| commit | \`${{ github.sha }}\` |"
+            echo "| image | \`${{ steps.tag.outputs.tag }}\` |"
+            echo "| strategy_config_hash | \`$(python3 -c "from app.config.strategy import StrategyConfig; print(StrategyConfig().config_hash)")\` |"
+            echo
+            echo "The forward experiment was **not** started. Starting it is a"
+            echo "deliberate human action -- see docs/aws_deployment.md section 13."
+          } >> "$GITHUB_STEP_SUMMARY"
