@@ -149,3 +149,36 @@ class TestTimezones:
 
     async def test_null_timestamps_survive(self):
         assert to_ist(None) is None and to_utc(None) is None
+
+
+class TestHeartbeatLogIsValidJson:
+    """The heartbeat line is what the bot-silent alarm counts.
+
+    Before the first websocket message, `seconds_since_ws_message` is +inf.
+    `json.dumps` writes that as a bare `Infinity`, which Python round-trips but
+    which is not RFC-8259 JSON -- and the CloudWatch metric filter that watches
+    this log is not Python. Shipped once and caught on the live host.
+    """
+
+    async def test_a_non_finite_field_never_reaches_the_log(self):
+        import json
+        from app.monitoring.logging import JsonFormatter
+        import logging as _logging
+        from app.monitoring.health import json_safe
+
+        silence = json_safe(float("inf"))
+        assert silence is None, "json_safe must flatten +inf before it is logged"
+
+        record = _logging.LogRecord("app.runtime.bot", _logging.INFO, __file__, 1,
+                                    "heartbeat", (), None)
+        record.seconds_since_ws_message = (
+            round(silence, 1) if silence is not None else None)
+        line = JsonFormatter().format(record)
+        assert "Infinity" not in line and "NaN" not in line, line
+        parsed = json.loads(line)
+        assert parsed["seconds_since_ws_message"] is None
+
+    async def test_the_naive_guard_that_failed_is_documented(self):
+        """`x or -1` does not catch inf, because inf is truthy."""
+        assert (float("inf") or -1) == float("inf")
+        assert round(float("inf"), 1) == float("inf")

@@ -61,6 +61,7 @@ from app.market_data.normalize import (
     normalize_candle,
     normalize_ticker,
 )
+from app.monitoring.health import json_safe
 from app.monitoring.metrics import Metrics
 from app.notifications.base import Notifier, NullNotifier
 from app.persistence.models import (
@@ -967,10 +968,17 @@ class TradingBot:
                 # read during an incident.
                 beat += 1
                 if beat % self.LOG_HEARTBEAT_EVERY == 1:
+                    # json_safe, not `or -1`: "no websocket message yet" is
+                    # naturally +inf, inf is TRUTHY so the fallback never
+                    # fires, and round(inf, 1) is still inf. json.dumps then
+                    # writes a bare `Infinity`, which Python round-trips but
+                    # which is not JSON any other reader accepts -- including
+                    # the CloudWatch metric filters that watch this log.
+                    silence = json_safe(h.get("seconds_since_ws_message"))
                     log.info("heartbeat", extra={
                         "ws_connected": h["ws_connected"],
-                        "seconds_since_ws_message": round(
-                            h.get("seconds_since_ws_message") or -1, 1),
+                        "seconds_since_ws_message": (
+                            round(silence, 1) if silence is not None else None),
                         "last_closed_1m": h["last_closed_1m"],
                         "recent_gaps": h["recent_gaps"],
                         "open_positions": h["open_positions"],
