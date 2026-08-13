@@ -466,7 +466,12 @@ class TradingBot:
     async def drain_broker_events(self) -> None:
         events, self._pending_events = self._pending_events, []
         for ev in events:
-            if ev.kind == "FILL":
+            if ev.kind == "EXIT_ORDER_CREATED":
+                # MUST precede its fill: paper_fills.order_uid is a foreign key
+                # into paper_orders, and the whole of audit F3 was that exits
+                # had no parent row to point at.
+                await self._persist_exit_order(ev)
+            elif ev.kind == "FILL":
                 await self._persist_fill(ev)
             elif ev.kind == "POSITION_OPENED":
                 await self._persist_open(ev)
@@ -479,6 +484,30 @@ class TradingBot:
                 self.metrics.orders_expired += 1
                 await self._event("execution", ev.kind, symbol=ev.symbol,
                                   severity="WARNING", payload=ev.payload)
+
+    async def _persist_exit_order(self, ev) -> None:
+        """Persist the order that closes a position, before its fill.
+
+        Its uid is deterministic ("{position_uid}:exit"), so a replayed close
+        is refused by the unique constraint rather than creating a second exit.
+        """
+        p = ev.payload
+        created = await self.repo.create_order(OrderRecord(
+            order_uid=p["order_uid"], idempotency_key=p["idempotency_key"],
+            signal_key=p["signal_key"], instance_uid=self.instance_uid,
+            symbol=p["symbol"], side=p["side"], order_type=p["order_type"],
+            purpose=p["purpose"], quantity=p["quantity"],
+            limit_price=p.get("limit_price"), status=p["status"],
+            equity_before=self.state.equity, risk_amount=0.0,
+            created_exchange_ts=p.get("created_exchange_ts"),
+            received_ts=wall_now(), event_type="EXIT_ORDER_CREATED"))
+        if created:
+            self.metrics.exit_orders += 1
+        await self._event("execution", "EXIT_ORDER_CREATED",
+                          symbol=p["symbol"],
+                          payload={"order_uid": p["order_uid"],
+                                   "purpose": p["purpose"],
+                                   "duplicate": not created})
 
     async def _persist_fill(self, ev) -> None:
         """Persist a fill exactly as the broker reported it.

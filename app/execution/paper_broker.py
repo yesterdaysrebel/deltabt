@@ -47,6 +47,12 @@ from enum import Enum
 
 from app.execution.allocation import aggregate, fill_uid
 from app.execution.intents import ApprovedOrderIntent
+from app.execution.order_state import (
+    IllegalTransition,
+    OrderStatus,
+    is_terminal,
+    transition,
+)
 from app.persistence.models import new_uid
 from deltabt.costs import SymbolCosts
 
@@ -67,14 +73,6 @@ def realised_rr(entry: float, stop: float, target: float, side: int) -> float:
     if risk <= 0:
         return 0.0
     return reward / risk
-
-
-class OrderStatus(str, Enum):
-    NEW = "NEW"
-    WORKING = "WORKING"
-    FILLED = "FILLED"
-    CANCELLED = "CANCELLED"
-    EXPIRED = "EXPIRED"
 
 
 class ExitReason(str, Enum):
@@ -99,6 +97,12 @@ class PaperOrder:
     limit_price: float | None
     status: OrderStatus = OrderStatus.NEW
     created_at: int = 0
+    #: The price the decision was made against, kept next to what actually
+    #: filled so slippage is a recorded fact rather than a later inference.
+    requested_price: float | None = None
+    filled_price: float | None = None
+    filled_at: int | None = None
+    reject_reason: str | None = None
     #: Set once the order fills and its position exists.
     position_uid: str | None = None
     #: True when the fill came from price reaching a resting order rather than
@@ -177,6 +181,20 @@ class PaperPosition:
         return self.unrealized(price, contract_value) / self.initial_risk
 
 
+def _order_payload(o: "PaperOrder") -> dict:
+    """Everything an order row needs, so the bot reconstructs nothing."""
+    return {
+        "order_uid": o.order_uid, "idempotency_key": o.idempotency_key,
+        "signal_key": o.signal_key, "position_uid": o.position_uid,
+        "symbol": o.symbol, "side": o.side, "order_type": o.order_type,
+        "purpose": o.purpose, "quantity": o.quantity,
+        "limit_price": o.limit_price, "requested_price": o.requested_price,
+        "filled_price": o.filled_price, "status": o.status.value,
+        "created_exchange_ts": o.created_at, "filled_exchange_ts": o.filled_at,
+        "reject_reason": o.reject_reason,
+    }
+
+
 def _fill_payload(f: "PaperFill") -> dict:
     """Everything the persistence layer needs, so it reconstructs nothing."""
     return {
@@ -248,10 +266,6 @@ class PaperBroker:
         self._by_intent: dict[str, str] = {}
         self._pending: dict[str, ApprovedOrderIntent] = {}
         self._fills: list[PaperFill] = []
-        #: Exit fills have no parent order until audit F3 creates one, so they
-        #: are held separately rather than written against a fabricated
-        #: order_uid that violates the foreign key.
-        self._exit_fills: list[PaperFill] = []
         #: order_uid -> fills booked so far, so the next sequence number is
         #: deterministic and a replay reuses it rather than inventing a new id.
         self._fill_seq: dict[str, int] = {}
@@ -278,11 +292,31 @@ class PaperBroker:
         return {"equity": self.equity, "unrealized": unreal,
                 "open_positions": len(open_pos)}
 
+    def set_status(self, order: PaperOrder, requested: OrderStatus,
+                   *, reason: str | None = None) -> bool:
+        """Move an order, refusing anything the state machine forbids.
+
+        A terminal order drifting back to active is how a cancelled order
+        acquires a fill; the dataset would then contain a trade that never
+        happened. Re-applying the current state is a no-op, so a duplicate
+        event is idempotent rather than fatal.
+        """
+        try:
+            order.status = transition(order.order_uid, order.status, requested)
+        except IllegalTransition as exc:
+            log.error("refused an illegal order transition: %s", exc)
+            return False
+        if reason:
+            order.reject_reason = reason
+        return True
+
     def cancel_order(self, order_uid: str, reason: str = "cancelled") -> bool:
         o = self.orders.get(order_uid)
-        if o is None or o.status not in (OrderStatus.NEW, OrderStatus.WORKING):
+        if o is None or is_terminal(o.status):
             return False
-        o.status = OrderStatus.CANCELLED
+        if not self.set_status(o, OrderStatus.CANCELLED, reason=reason):
+            return False
+        self._pending.pop(order_uid, None)
         log.info("paper order cancelled", extra={"order": order_uid,
                                                  "reason": reason})
         return True
@@ -290,7 +324,7 @@ class PaperBroker:
     def modify_order(self, order_uid: str, *, limit_price: float | None = None,
                      quantity: int | None = None) -> bool:
         o = self.orders.get(order_uid)
-        if o is None or o.status not in (OrderStatus.NEW, OrderStatus.WORKING):
+        if o is None or is_terminal(o.status):
             return False
         if limit_price is not None:
             o.limit_price = limit_price
@@ -335,6 +369,7 @@ class PaperBroker:
             limit_price=intent.limit_price,
             status=OrderStatus.WORKING,
             created_at=now if now is not None else intent.bar_open,
+            requested_price=intent.entry_reference,
             passive=intent.order_type == "limit",
         )
         self.orders[order.order_uid] = order
@@ -371,7 +406,9 @@ class PaperBroker:
         return None
 
     def _kill_entry(self, order: PaperOrder, reason: str, expired: bool) -> None:
-        order.status = OrderStatus.EXPIRED if expired else OrderStatus.CANCELLED
+        self.set_status(order,
+                        OrderStatus.EXPIRED if expired else OrderStatus.CANCELLED,
+                        reason=reason)
         self._pending.pop(order.order_uid, None)
         self.events.append(BrokerEvent(
             "ORDER_EXPIRED" if expired else "ORDER_CANCELLED", order.symbol,
@@ -400,13 +437,42 @@ class PaperBroker:
 
     def fills_for_position(self, position_uid: str,
                            purpose: str | None = None) -> list[PaperFill]:
-        return [f for f in (self._fills + self._exit_fills)
+        return [f for f in self._fills
                 if f.position_uid == position_uid
                 and (purpose is None or f.purpose == purpose)]
 
     def allocation_for_position(self, position_uid: str, purpose: str = "entry"):
         """Aggregate of a position's fills -- weighted average, dedup by uid."""
         return aggregate(self.fills_for_position(position_uid, purpose))
+
+    def _open_exit_order(self, pos: PaperPosition, reason: ExitReason,
+                         price: float, when: int, maker: bool) -> PaperOrder:
+        """The order that closes a position.
+
+        Its uid is DETERMINISTIC -- "{position_uid}:exit" -- so replaying a
+        close cannot manufacture a second exit order, exactly as the entry
+        fill's deterministic id prevents a second entry fill.
+        """
+        uid = f"{pos.position_uid}:exit"
+        existing = self.orders.get(uid)
+        if existing is not None:
+            return existing
+        order = PaperOrder(
+            order_uid=uid, idempotency_key=uid, signal_key=pos.signal_key,
+            symbol=pos.symbol,
+            side=-pos.side,                 # closing trades the other way
+            order_type="limit" if maker else "market",
+            purpose={"TAKE_PROFIT": "target", "STOP_LOSS": "stop"}.get(
+                reason.value, "manual"),
+            quantity=pos.quantity,
+            limit_price=price if maker else None,
+            status=OrderStatus.WORKING, created_at=when,
+            requested_price=(pos.target_price if reason is ExitReason.TAKE_PROFIT
+                             else pos.stop_price if reason is ExitReason.STOP_LOSS
+                             else price),
+            position_uid=pos.position_uid, passive=maker)
+        self.orders[uid] = order
+        return order
 
     def _slip(self, price: float, side: int) -> float:
         """Adverse slippage in basis points, applied against the taker."""
@@ -457,7 +523,9 @@ class PaperBroker:
         fee = costs.entry_cost(order.quantity, price)
         slip = abs(price - intent.entry_reference) * order.quantity * costs.contract_value
 
-        order.status = OrderStatus.FILLED
+        self.set_status(order, OrderStatus.FILLED)
+        order.filled_price = price
+        order.filled_at = when
         self.equity -= fee
 
         rpu = (price - intent.stop_price) if order.side == LONG else (intent.stop_price - price)
@@ -520,23 +588,31 @@ class PaperBroker:
         pos.last_price = price
         self.equity += gross - fee
 
-        # The exit fill names its position too. It has no parent order yet --
-        # giving exits real orders is audit F3 and is deliberately NOT done
-        # here, so this fill is held in memory and not persisted. What matters
-        # for F1 is that the association is explicit and deterministic when
-        # F3 wires it through.
-        self._exit_fills.append(PaperFill(
-            fill_uid=f"{pos.position_uid}:x1", order_uid="",
-            position_uid=pos.position_uid, seq=1, purpose="exit",
-            symbol=pos.symbol, side=-pos.side, quantity=pos.quantity,
-            price=price, notional=costs.notional(pos.quantity, price),
+        # AUDIT F3: the exit gets a REAL order, created before its fill, so the
+        # fill has a parent to reference and the lifecycle is complete. The
+        # previous code fabricated an order_uid that the foreign key rejects --
+        # and the write was never even attempted, so exit fee, maker/taker
+        # classification and the ordering-proof timestamp were all lost.
+        exit_order = self._open_exit_order(pos, reason, price, when, maker)
+        exit_fill = self._book_fill(
+            exit_order, pos.position_uid, "exit", price=price,
+            quantity=pos.quantity, notional=costs.notional(pos.quantity, price),
             fee=fee, slippage=0.0,
-            liquidity="maker" if maker else "taker", filled_at=when,
-            tick_ts_us=tick_us))
+            liquidity="maker" if maker else "taker", when=when,
+            tick_us=tick_us)
+        self.set_status(exit_order, OrderStatus.FILLED)
+        exit_order.filled_price = price
+        exit_order.filled_at = when
+
+        self.events.append(BrokerEvent("EXIT_ORDER_CREATED", pos.symbol,
+                                       _order_payload(exit_order)))
+        self.events.append(BrokerEvent("FILL", pos.symbol,
+                                       _fill_payload(exit_fill)))
         self.events.append(BrokerEvent("POSITION_CLOSED", pos.symbol, {
             "position_uid": pos.position_uid, "exit": price,
             "reason": reason.value, "pnl": pnl, "r": pos.r_multiple,
-            "tick_ts_us": tick_us}))
+            "exit_order_uid": exit_order.order_uid,
+            "exit_fee": fee, "tick_ts_us": tick_us}))
         log.info("paper position closed", extra={
             "symbol": pos.symbol, "reason": reason.value, "pnl": pnl,
             "r": pos.r_multiple})

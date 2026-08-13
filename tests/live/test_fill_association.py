@@ -217,12 +217,16 @@ class TestTheRegression:
         await _trade(bot, MKT + 30_000, -1, 64_500.0, 65_000.0, 63_500.0)
 
         fills = list(bot.repo.store["fills"].values())
-        assert len(fills) == 4, "one entry fill per trade"
-        expected_sides = [1, -1, 1, -1]
-        assert [f.side for f in fills] == expected_sides
+        entries = [f for f in fills if f.purpose == "entry"]
+        exits = [f for f in fills if f.purpose == "exit"]
+        assert len(entries) == 4, "one entry fill per trade"
+        assert len(exits) == 3, "three of the four closed (F3 persists exits)"
+        assert [f.side for f in entries] == [1, -1, 1, -1]
+        # an exit trades the OTHER way from the position it closes
+        assert [f.side for f in exits] == [-1, 1, -1]
 
         # every fill names a real position, and that position agrees
-        for f in fills:
+        for f in entries:
             pos = bot.broker.positions[f.position_uid]
             assert pos.side == f.side
             assert pos.symbol == f.symbol
