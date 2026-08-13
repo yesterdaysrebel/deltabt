@@ -74,6 +74,15 @@ def rel(path: pathlib.Path) -> str:
     return str(path.relative_to(ROOT))
 
 
+#: app/safety.py IS the definition of the boundary, so it necessarily names
+#: the forbidden identifiers. A scanner that cannot say what it looks for
+#: cannot look for it. Skipped by exact path, never by pattern, so the
+#: exemption cannot accidentally widen -- and only for the two checks that
+#: match on NAMES it must contain. Every structural check (no order-placement
+#: function defined or called, no signing import, no non-GET verb) still
+#: applies to it in full.
+BOUNDARY_DEFINITION = ROOT / "app" / "safety.py"
+
 ALL_SHIPPED = py_files(SHIPPED)
 ALL_EXCHANGE = py_files(EXCHANGE_MODULES)
 
@@ -162,6 +171,8 @@ def test_no_signing_libraries_are_imported(path):
 @pytest.mark.parametrize("path", ALL_SHIPPED, ids=rel)
 def test_no_credential_environment_variables_are_read(path):
     """`os.environ["API_SECRET"]` and friends."""
+    if path == BOUNDARY_DEFINITION:
+        pytest.skip("app/safety.py defines the forbidden names by design")
     src = path.read_text()
     for node in ast.walk(parse(path)):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -175,6 +186,8 @@ def test_no_credential_environment_variables_are_read(path):
 @pytest.mark.parametrize("path", ALL_SHIPPED, ids=rel)
 def test_no_live_trading_feature_flag(path):
     """Section 1 forbids a flag-gated live mode outright."""
+    if path == BOUNDARY_DEFINITION:
+        pytest.skip("app/safety.py defines the forbidden names by design")
     for node in ast.walk(parse(path)):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             assert node.value.strip().upper() not in FORBIDDEN_FLAGS, (

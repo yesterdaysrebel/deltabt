@@ -97,6 +97,14 @@ class Repository(ABC):
     @abstractmethod
     async def stop_experiment(self, experiment_id: str, reason: str) -> None: ...
 
+    # -- reporting ---------------------------------------------------------
+    @abstractmethod
+    async def report_rows(self, experiment_id: str | None,
+                          since: int | None = None,
+                          until: int | None = None) -> dict:
+        """Raw rows for a report. Aggregation lives in app/reports so the
+        arithmetic has exactly one implementation."""
+
     # -- funding -----------------------------------------------------------
     @abstractmethod
     async def record_funding(self, rec) -> bool:
@@ -258,6 +266,28 @@ class InMemoryRepository(Repository):
 
     async def quarantined_fills(self, limit: int = 100) -> list[dict]:
         return [asdict(r) for r in list(self._s["quarantine"].values())[-limit:]]
+
+    async def report_rows(self, experiment_id=None, since=None, until=None) -> dict:
+        def _win(ts):
+            return (since is None or ts >= since) and (until is None or ts < until)
+
+        sigs = [r for r in self._s["signals"].values()
+                if (experiment_id is None
+                    or getattr(r, "experiment_id", None) == experiment_id)
+                and _win(r.exchange_ts or r.bar_open)]
+        pos = [p for p in self._s["positions"].values() if _win(p.opened_at)]
+        return {
+            "experiment": await self.get_experiment(experiment_id) if experiment_id else None,
+            "signals": [asdict(r) for r in sigs],
+            "orders": [asdict(o) for o in self._s["orders"].values()],
+            "fills": [asdict(f) for f in self._s["fills"].values()],
+            "positions": [asdict(p) for p in pos],
+            "funding": [asdict(f) for f in self._s["funding"].values()
+                        if _win(f.exchange_ts)],
+            "risk_events": [asdict(r) for r in self._s["risk_events"]],
+            "system_events": [asdict(e) for e in self._s["system_events"]],
+            "quarantined": [asdict(q) for q in self._s["quarantine"].values()],
+        }
 
     async def create_experiment(self, ident, planned_days: int = 30) -> bool:
         if ident.experiment_id in self._s["experiments"]:
@@ -592,6 +622,38 @@ class PostgresRepository(Repository):
                 "SELECT * FROM quarantined_fills ORDER BY created_at DESC "
                 "LIMIT $1", limit)
         return [dict(r) for r in rows]
+
+    async def report_rows(self, experiment_id=None, since=None, until=None) -> dict:
+        lo = utc(since) if since else None
+        hi = utc(until) if until else None
+        async with self._pool.acquire() as con:
+            async def q(sql, *a):
+                return [dict(r) for r in await con.fetch(sql, *a)]
+            exp = await self.get_experiment(experiment_id) if experiment_id else None
+            return {
+                "experiment": exp,
+                "signals": await q(
+                    "SELECT * FROM strategy_signals WHERE ($1::text IS NULL OR "
+                    "experiment_id=$1) AND ($2::timestamptz IS NULL OR "
+                    "exchange_ts >= $2) AND ($3::timestamptz IS NULL OR "
+                    "exchange_ts < $3) ORDER BY exchange_ts",
+                    experiment_id, lo, hi),
+                "orders": await q("SELECT * FROM paper_orders ORDER BY created_at"),
+                "fills": await q("SELECT * FROM paper_fills ORDER BY exchange_ts"),
+                "positions": await q(
+                    "SELECT * FROM positions WHERE ($1::timestamptz IS NULL OR "
+                    "opened_at >= $1) AND ($2::timestamptz IS NULL OR "
+                    "opened_at < $2) ORDER BY opened_at", lo, hi),
+                "funding": await q(
+                    "SELECT * FROM funding_events WHERE ($1::timestamptz IS NULL "
+                    "OR exchange_ts >= $1) AND ($2::timestamptz IS NULL OR "
+                    "exchange_ts < $2) ORDER BY exchange_ts", lo, hi),
+                "risk_events": await q(
+                    "SELECT * FROM risk_events ORDER BY occurred_at"),
+                "system_events": await q(
+                    "SELECT * FROM system_events ORDER BY occurred_at"),
+                "quarantined": await q("SELECT * FROM quarantined_fills"),
+            }
 
     async def create_experiment(self, ident, planned_days: int = 30) -> bool:
         try:

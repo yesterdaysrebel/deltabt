@@ -96,4 +96,9 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    # Subcommands go through the CLI; a bare `python -m app` still runs the bot
+    # so existing deployment manifests keep working.
+    if len(sys.argv) > 1:
+        from app.cli import main as cli_main
+        sys.exit(cli_main(sys.argv[1:]))
     sys.exit(asyncio.run(main()))
