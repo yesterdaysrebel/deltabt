@@ -44,8 +44,17 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
 
-def load(name: str):
-    """Import a script from scripts/ as a module. They are tools, not a package.
+def load_file(path: pathlib.Path, name: str):
+    """Import a module by FILE PATH, not by dotted package name.
+
+    Everything here lives outside an installed package: scripts/ holds tools,
+    and the sibling test module is only importable as `tests.live....` when the
+    repository root happens to be on sys.path. It is locally (the editable
+    install puts it there) and is NOT on a clean CI checkout, where pytest
+    inserts `tests/` rather than the repo root -- so `import_module(
+    "tests.live.test_deployment_safety")` raised ModuleNotFoundError in CI
+    while passing on every developer machine. Loading by path removes the
+    dependency on sys.path entirely.
 
     Registered in sys.modules before execution because `dataclasses` resolves
     annotations through `sys.modules[cls.__module__]`, and an unregistered
@@ -53,11 +62,22 @@ def load(name: str):
     """
     if name in sys.modules:
         return sys.modules[name]
-    spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def load(name: str):
+    """A tool from scripts/."""
+    return load_file(SCRIPTS / f"{name}.py", name)
+
+
+def safety_module():
+    """The sibling scanner module, loaded by path so CI and local agree."""
+    return load_file(pathlib.Path(__file__).with_name("test_deployment_safety.py"),
+                     "deltabt_test_deployment_safety")
 
 
 def run_guard(script: str, plan: dict, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -330,7 +350,7 @@ class TestCredentialAndFlagGuards:
     """The scanners in test_deployment_safety.py, shown failing."""
 
     def _scan(self, text: str) -> list[str]:
-        safety = importlib.import_module("tests.live.test_deployment_safety")
+        safety = safety_module()
         hits = []
         if safety.AWS_STATIC_CREDENTIALS.search(text):
             hits.append("static-aws-credential")
@@ -374,7 +394,7 @@ class TestCredentialAndFlagGuards:
         assert self._scan(benign) == [], f"false positive on: {benign!r}"
 
     def test_the_real_deployment_surface_is_clean(self):
-        safety = importlib.import_module("tests.live.test_deployment_safety")
+        safety = safety_module()
         assert safety.FILES, "nothing to scan"
         for path in safety.FILES:
             assert self._scan(safety.code(path)) == [], path
@@ -537,7 +557,7 @@ class TestBootstrapNeverAdoptsSilently:
 class TestNothingStartsTheExperiment:
     def test_no_automation_can_start_a_run(self):
         pattern = re.compile(r"forward-test\s+(start|create)")
-        safety = importlib.import_module("tests.live.test_deployment_safety")
+        safety = safety_module()
         for path in safety.FILES:
             assert not pattern.search(safety.code(path)), path
         for script in SCRIPTS.glob("*"):

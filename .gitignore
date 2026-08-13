@@ -1,8 +1,15 @@
 # ---------------------------------------------------------------------------
 # Cached market data. Regenerable from the exchange APIs via deltabt.data,
 # and far too large for version control (~550 MB).
+#
+# ANCHORED TO THE REPOSITORY ROOT with a leading slash. Written as a bare
+# `data/` it also matched `deltabt/data/` -- the SOURCE PACKAGE holding the
+# REST client, the Parquet store and the universe screen -- and silently kept
+# 737 lines of it out of the repository entirely. Nobody noticed until CI ran
+# from a clean checkout and could not import `deltabt.data`, which took the
+# GET-only client safety check down with it.
 # ---------------------------------------------------------------------------
-data/
+/data/
 # another session's working directory in this workspace; not part of this project
 scratch_ist/
 
