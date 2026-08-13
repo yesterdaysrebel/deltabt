@@ -274,6 +274,11 @@ data "aws_iam_policy_document" "deploy" {
     effect = "Allow"
     actions = [
       "s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+      # Read-only, and only so the preflight can VERIFY versioning is on rather
+      # than report "could not read" as "not enabled". Without it the check
+      # cannot tell a denial from a genuinely unversioned bucket, which sends
+      # an operator to change a setting that was never wrong.
+      "s3:GetBucketVersioning",
     ]
     resources = [
       aws_s3_bucket.state.arn,
@@ -363,7 +368,8 @@ resource "aws_iam_role_policy" "github_plan_state" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject",
+      "s3:DeleteObject", "s3:GetBucketVersioning"]
       Resource = [
         aws_s3_bucket.state.arn,
         "${aws_s3_bucket.state.arn}/*",

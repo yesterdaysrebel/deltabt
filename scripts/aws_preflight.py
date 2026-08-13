@@ -54,6 +54,7 @@ class Context:
     expected_account: str | None
     state_bucket: str | None
     ecr_repository: str
+    phase: str = "application"
     plan: dict = field(default_factory=dict)
     account: str = ""
 
@@ -160,12 +161,20 @@ def check_oidc_provider(ctx: Context) -> Result:
 
 
 def check_iam_roles(ctx: Context) -> Result:
+    # The BOOTSTRAP roles must exist in every phase -- nothing can run without
+    # them. The MAIN-STACK roles are created by the very apply this preflight
+    # gates, so demanding them in the infrastructure phase makes a first apply
+    # impossible: the check would only pass once the thing it gates had already
+    # happened.
     required = {
         "deltabt-github-deploy": "Terraform infrastructure role",
         "deltabt-github-plan": "pull-request read-only plan role",
-        f"{ctx.name}-instance": "EC2 instance role",
-        f"{ctx.name}-github-app-deploy": "application deploy role",
     }
+    if ctx.phase == "application":
+        required.update({
+            f"{ctx.name}-instance": "EC2 instance role",
+            f"{ctx.name}-github-app-deploy": "application deploy role",
+        })
     missing = []
     for role, description in required.items():
         ok, _ = aws(ctx, "iam", "get-role", "--role-name", role, global_service=True)
@@ -180,7 +189,10 @@ def check_iam_roles(ctx: Context) -> Result:
 
 def check_role_trust_is_scoped(ctx: Context) -> Result:
     """A role trusting `repo:*` is trusted by every repository on GitHub."""
-    for role in ("deltabt-github-deploy", f"{ctx.name}-github-app-deploy"):
+    roles = ["deltabt-github-deploy", "deltabt-github-plan"]
+    if ctx.phase == "application":
+        roles.append(f"{ctx.name}-github-app-deploy")
+    for role in roles:
         ok, data = aws(ctx, "iam", "get-role", "--role-name", role, global_service=True)
         if not ok:
             if ctx.creates("aws_iam_role"):
@@ -216,10 +228,19 @@ def check_backend_bucket(ctx: Context) -> Result:
                       "becomes two.")
     ok, ver = aws(ctx, "s3api", "get-bucket-versioning", "--bucket", ctx.state_bucket,
                   global_service=True)
-    if not ok or ver.get("Status") != "Enabled":
+    if not ok:
+        # "Could not read" and "is disabled" are different problems with
+        # different fixes, and reporting the second when it was the first sends
+        # someone to change a setting that was never wrong.
         return Result("terraform_backend", FAIL,
-                      "bucket exists but versioning is not enabled; a truncated "
-                      "state write would be unrecoverable")
+                      f"bucket exists but its versioning setting could not be "
+                      f"read ({ver.get('error')}). The caller most likely lacks "
+                      f"s3:GetBucketVersioning -- that is a permissions fix, not "
+                      f"a bucket fix.")
+    if ver.get("Status") != "Enabled":
+        return Result("terraform_backend", FAIL,
+                      "bucket exists and versioning is genuinely NOT enabled; a "
+                      "truncated state write would be unrecoverable")
     return Result("terraform_backend", PASS, f"s3://{ctx.state_bucket} (versioned)")
 
 
@@ -230,10 +251,12 @@ def check_state_readable(ctx: Context) -> Result:
     ok, data = aws(ctx, "s3api", "head-object", "--bucket", ctx.state_bucket,
                    "--key", key, global_service=True)
     if not ok:
-        if ctx.plan:
+        # Before the first apply there IS no state object, and the apply that
+        # would create it is the one being gated. What matters here is that the
+        # bucket is reachable, which check_backend_bucket already established.
+        if ctx.plan or ctx.phase == "infrastructure":
             return Result("terraform_state_accessible", PLANNED,
-                          f"s3://{ctx.state_bucket}/{key} not written yet; this is "
-                          f"the first apply")
+                          f"{key} not written yet -- first apply")
         return Result("terraform_state_accessible", FAIL,
                       f"cannot read s3://{ctx.state_bucket}/{key}")
     return Result("terraform_state_accessible", PASS,
@@ -441,6 +464,7 @@ def main() -> int:
             plan = json.load(fh)
 
     ctx = Context(region=args.region, environment=args.environment,
+                  phase=args.phase,
                   expected_account=args.account, state_bucket=args.state_bucket,
                   ecr_repository=args.ecr_repository, plan=plan)
 
