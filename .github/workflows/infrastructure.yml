@@ -1,7 +1,27 @@
 name: infrastructure
 
-# Terraform plan on every pull request, apply only from master and only when a
-# human approves the `paper` environment.
+# LIFECYCLE STAGE 2 of 3: INFRASTRUCTURE.
+#
+#   1. BOOTSTRAP    manual, once, from a workstation -- scripts/bootstrap.sh.
+#                   Deliberately NOT a workflow: anything that can create its
+#                   own trust anchor can also replace it.
+#   2. INFRASTRUCTURE  <-- this file. Terraform owns AWS.
+#   3. APPLICATION  deploy.yml. Image and container only; it cannot change
+#                   infrastructure, and its role has no permission to.
+#
+#   The EXPERIMENT is a fourth thing and is deliberately not automated at all.
+#   Nothing in this file, or any other, starts paper trading.
+#
+# TWO PATHS, AND THE DIFFERENCE IS THE POINT:
+#
+#   pull request  -> READ-ONLY. A separate role with ReadOnlyAccess. Plan and
+#                    guards run; no mutation is possible even if the workflow
+#                    is wrong, because the credentials cannot mutate.
+#   push to master -> plan, guards, then a REQUIRED HUMAN APPROVAL on the
+#                    protected `paper` environment, then apply of the exact
+#                    plan file that was reviewed.
+#
+# A pull request can never apply. Not by convention -- by IAM.
 #
 # There are no AWS access keys anywhere in this file. The job exchanges its
 # GitHub OIDC token for a short-lived role session; there is no long-lived
@@ -31,8 +51,27 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
 jobs:
+  safety:
+    name: safety boundary
+    # The infrastructure path runs the boundary tests too. A Terraform change
+    # can introduce a credential, open a port, or make a tag mutable, and none
+    # of that is visible to a plan review.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev,live]"
+      - name: paper-only boundary, shipped source and deployment surface
+        run: |
+          pytest tests/live/test_no_live_trading.py \
+                 tests/live/test_deployment_safety.py \
+                 tests/live/test_deployment_negative_controls.py -q
+
   plan:
     name: plan
+    needs: safety
     runs-on: ubuntu-latest
     outputs:
       changes: ${{ steps.plan.outputs.exitcode }}
@@ -65,6 +104,16 @@ jobs:
       - name: validate
         working-directory: infra/terraform
         run: terraform validate
+
+      - name: AWS preflight -- trust anchors and backend
+        # Fails closed. "Resource missing" is never read as "safe to create"
+        # unless a plan actually creates it, which is why the plan is passed in
+        # below rather than this being a bare existence check.
+        run: |
+          python3 scripts/aws_preflight.py --phase infrastructure \
+            --region "$AWS_REGION" \
+            --account "${{ vars.AWS_ACCOUNT_ID }}" \
+            --state-bucket "${{ vars.TF_STATE_BUCKET }}"
 
       - name: refuse to proceed if AWS holds unmanaged or duplicate deltabt resources
         working-directory: infra/terraform
@@ -101,8 +150,10 @@ jobs:
           terraform show -json tfplan > tfplan.json
           python3 ../../scripts/tf_guard.py tfplan.json
 
-      - name: what this will create, and what it costs
+      - name: cost guard -- refuses NAT gateways, load balancers, EKS, autoscalers
         working-directory: infra/terraform
+        # This FAILS the job rather than warning. A warning in a log nobody
+        # reads is exactly where an accidental $32/month NAT gateway survives.
         run: |
           python3 ../../scripts/tf_cost_preview.py tfplan.json | tee cost.txt
           {
@@ -180,10 +231,24 @@ jobs:
         # re-planned world. What was reviewed is what is applied.
         run: terraform apply -input=false -lock-timeout=5m tfplan
 
+      - name: AWS preflight -- the applied stack
+        # Re-run after apply, in the strict phase, with no plan to excuse an
+        # absence. Everything must now actually exist.
+        run: |
+          python3 scripts/aws_preflight.py --phase application \
+            --region "$AWS_REGION" \
+            --account "${{ vars.AWS_ACCOUNT_ID }}" \
+            --state-bucket "${{ vars.TF_STATE_BUCKET }}"
+
       - name: outputs
         working-directory: infra/terraform
         run: |
-          echo "### Infrastructure" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          terraform output >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Infrastructure"
+            echo '```'
+            terraform output
+            echo '```'
+            echo
+            echo "Successful infrastructure deployment does not create an"
+            echo "experiment and does not start paper trading."
+          } >> "$GITHUB_STEP_SUMMARY"

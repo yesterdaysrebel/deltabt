@@ -8,6 +8,31 @@ phase which does not exist yet.
 
 ---
 
+## Where it runs
+
+Four deployment targets exist. They are alternatives, not layers:
+
+| Target | Status | Document |
+|---|---|---|
+| **AWS** (EC2 + RDS + ECR, Terraform + GitHub Actions) | **the intended path for the 30-day run** | [aws_deployment.md](aws_deployment.md) |
+| VPS (Docker Compose on a rented box) | supported alternative; simpler, more manual | [vps_deployment.md](vps_deployment.md) |
+| Kubernetes (`deploy/kubernetes/`) | earlier target, kept working | below |
+| Local | development only | below |
+
+The AWS path splits into four stages that are deliberately separate:
+
+| Stage | How | Automated? |
+|---|---|---|
+| **BOOTSTRAP** | `scripts/bootstrap.sh` from a workstation | **No — manual, once per account.** A workflow that can create its own trust anchor can replace it |
+| **INFRASTRUCTURE** | `infrastructure.yml` → Terraform | Yes, with a required human approval |
+| **APPLICATION** | `deploy.yml` → ECR → SSM | Yes, with a required human approval |
+| **EXPERIMENT** | `python -m app forward-test …` by hand | **No, and never will be** |
+
+> **Successful infrastructure deployment does not create an experiment and does
+> not start paper trading.**
+
+---
+
 ## Running it
 
 ### Locally

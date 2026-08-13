@@ -1,5 +1,24 @@
 # Deploying DeltaBot to a VPS for the 30-day paper forward test
 
+> **This is the ALTERNATIVE path, not the intended one.**
+>
+> The 30-day run is intended to go on **AWS** —
+> [aws_deployment.md](aws_deployment.md) — where the database is managed, the
+> deployment is reproducible from this repository, and the guards run in CI.
+> This document is not obsolete: it is the simpler path, it needs no AWS
+> account, and everything in it still works. The decision it opens with — that
+> the experiment database must outlive the box — is the same decision AWS makes
+> for you by putting the database in RDS.
+>
+> What this path does **not** give you: Terraform reproducibility, CloudWatch
+> alarms including the bot-silent one, automatic rollback on a failed deploy,
+> the destructive-plan and cost guards, or the fifteen-check AWS preflight. If
+> you take this path, the verification table below is the whole of your safety
+> net and you have to run it by hand.
+>
+> Neither path starts paper trading. **Successful deployment does not create an
+> experiment and does not start paper trading**, on a VPS or on AWS.
+
 **Paper trading only.** The bot reads public market data and has no
 order-placement capability. No exchange credentials are needed anywhere in this
 document, and none should ever be added — the *absence* of the capability is

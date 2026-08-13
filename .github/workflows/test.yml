@@ -1,7 +1,11 @@
 name: test
 
-# The gate everything else depends on. No image is built and no infrastructure
-# is changed unless this passes.
+# LIFECYCLE STAGE 0: the gate everything else depends on. No image is built and
+# no infrastructure is changed unless this passes.
+#
+# Order is deliberate. The paper-only boundary runs FIRST and alone: if the
+# artifact has gained the ability to place an order, nothing else about the
+# commit matters and no further compute should be spent on it.
 
 on:
   push:
@@ -36,6 +40,12 @@ jobs:
         # introduced there, not in Python: an IAM grant, an `-e API_KEY=`, a
         # committed DSN, an ingress rule.
         run: pytest tests/live/test_deployment_safety.py -q
+
+      - name: every guard fails on a deliberately planted violation
+        # A guard that has never been observed to fail is a guard nobody has
+        # tested. Each of these plants the exact violation it defends against
+        # and asserts CI would reject it.
+        run: pytest tests/live/test_deployment_negative_controls.py -q -v
 
   tests:
     name: test suite

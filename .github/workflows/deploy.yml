@@ -1,6 +1,16 @@
 name: deploy
 
-# Build the image, push it to ECR, and roll the bot onto it.
+# LIFECYCLE STAGE 3 of 3: APPLICATION.
+#
+# Build the image, push it to ECR, and roll the bot onto it. This workflow
+# cannot change infrastructure -- its role can push to one ECR repository and
+# invoke one SSM document, and that is all. Terraform is not run here.
+#
+# Deployment goes through SSM Run Command. There is no SSH path: no key pair
+# exists in this stack, and the security group has no inbound rule to use one
+# with.
+#
+# It does not start paper trading. Nothing does, automatically.
 #
 # The image tag is ALWAYS the git SHA. Never `latest`. A forward test whose
 # results cannot be tied to an exact commit is not a forward test, and the
@@ -116,6 +126,17 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Deploying $TAG" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: AWS preflight -- refuse to deploy into infrastructure that is not ready
+        # Includes: exactly one instance, database private, ZERO public
+        # ingress, SSM online, alarms present. Strict phase, no plan supplied,
+        # so nothing may be absent.
+        run: |
+          python3 scripts/aws_preflight.py --phase application \
+            --region "$AWS_REGION" \
+            --account "${{ vars.AWS_ACCOUNT_ID }}" \
+            --state-bucket "${{ vars.TF_STATE_BUCKET }}" \
+            --ecr-repository "${{ vars.ECR_REPOSITORY || 'deltabt' }}"
+
       - name: warn if a forward test is running
         # Not a hard block: a genuine bug fix during a run is sometimes
         # necessary. But it must be a conscious act, and the log must record
@@ -170,45 +191,22 @@ jobs:
           fi
           [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
 
-      - name: verify health and readiness on the host, and record what is running
-        # The host script already gates the rollback on /readyz. This asks
-        # again, independently, and records the answer in the run summary --
-        # so "what was deployed, and was it healthy" is answerable months later
-        # from the Actions log alone, without shell access to anything.
+      - name: verify the deployment -- 13 checks, fails closed
+        # The host script already gated its own rollback on /readyz. This is an
+        # independent verification with a wider question: is the RIGHT code
+        # running, connected, watched, and still bound to no experiment?
         run: |
-          CMD=$(aws ssm send-command --region "$AWS_REGION" \
-            --document-name AWS-RunShellScript \
-            --instance-ids "${{ vars.BOT_INSTANCE_ID }}" \
-            --parameters 'commands=[
-              "set -o pipefail",
-              "echo \"image_tag: $(aws ssm get-parameter --region '"$AWS_REGION"' --name /deltabt/paper/image_tag --query Parameter.Value --output text)\"",
-              "docker inspect --format \"container: {{.Config.Image}} started {{.State.StartedAt}}\" deltabot",
-              "echo \"running containers: $(docker ps -q | wc -l)\"",
-              "echo readyz:; curl -fsS --max-time 10 http://127.0.0.1:8000/readyz",
-              "echo healthz:; curl -fsS --max-time 10 http://127.0.0.1:8000/healthz",
-              "echo status:; curl -fsS --max-time 10 http://127.0.0.1:8000/api/status"
-            ]' \
-            --query 'Command.CommandId' --output text)
-          for _ in $(seq 1 30); do
-            S=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
-                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query Status --output text 2>/dev/null || echo Pending)
-            case "$S" in Success|Failed|TimedOut|Cancelled) break ;; esac
-            sleep 10
-          done
-          OUT=$(aws ssm get-command-invocation --region "$AWS_REGION" --command-id "$CMD" \
-                  --instance-id "${{ vars.BOT_INSTANCE_ID }}" --query StandardOutputContent --output text)
+          python3 scripts/verify_deployment.py \
+            --instance-id "${{ vars.BOT_INSTANCE_ID }}" \
+            --region "$AWS_REGION" \
+            --expected-sha "${{ steps.tag.outputs.tag }}" \
+            | tee verification.txt
           {
-            echo '### Deployed'
-            echo '```json'
-            echo "$OUT"
+            echo '### Deployment verification'
+            echo '```'
+            cat verification.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "$OUT"
-          # /readyz failing here means the deploy step's own gate disagreed with
-          # this one, which is a real problem. /healthz is reported but not
-          # fatal: it is a statement about market data, not about the image.
-          echo "$OUT" | grep -q '"status"' || { echo "::error::no health output from the host"; exit 1; }
-          [ "$S" = "Success" ] || { echo "::error::verification command $S"; exit 1; }
 
       - name: the deployed commit, image and config hash
         run: |
@@ -220,6 +218,8 @@ jobs:
             echo "| image | \`${{ steps.tag.outputs.tag }}\` |"
             echo "| strategy_config_hash | \`$(python3 -c "from app.config.strategy import StrategyConfig; print(StrategyConfig().config_hash)")\` |"
             echo
-            echo "The forward experiment was **not** started. Starting it is a"
-            echo "deliberate human action -- see docs/aws_deployment.md section 13."
+            echo "**Successful infrastructure deployment does not create an"
+            echo "experiment and does not start paper trading.** Starting the"
+            echo "forward test is a deliberate human action taken after the"
+            echo "application preflight passes -- docs/aws_deployment.md section 13."
           } >> "$GITHUB_STEP_SUMMARY"

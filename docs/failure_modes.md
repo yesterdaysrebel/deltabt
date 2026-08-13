@@ -128,6 +128,42 @@ record in the opposite direction.
 
 ---
 
+## Deployment and infrastructure (AWS)
+
+These are infrastructure failures, not trading failures. Each is either
+defended in code or listed as accepted, and the full matrix with verification
+status is [aws_deployment.md section 14](aws_deployment.md#14-failure-modes).
+
+| Failure | Defence | Where |
+|---|---|---|
+| **Host reboots** | systemd unit is `enabled`; state recovers from PostgreSQL. No fabricated exits for the gap | `user_data.sh.tftpl` |
+| **Container exits** | `Restart=always`, `StartLimitIntervalSec=0` — it retries forever rather than giving up after five tries, because an outage lasting hours must self-heal | same |
+| **No image tag configured yet** | `run.sh` exits **90**, matched by `RestartPreventExitStatus`. A plain `exit 0` would be restarted — `Restart=always` means always — giving a 15-second crash loop on a host that is simply waiting for its first deploy | `run.sh` |
+| **A bad image is deployed** | `/readyz` gates; the host restarts the previous tag by itself within 15 minutes | `deploy.sh` |
+| **Rollback also fails** | Reported as *"the problem is not the image"* and the service is left stopped rather than looping into nothing | `deploy.sh` |
+| **The bot goes silent** | `bot-silent` CloudWatch alarm, `treat_missing_data = breaching`. **The single most important alarm**: a dead evaluation loop logs no errors, so error-count alarms stay green through exactly that failure | `cloudwatch.tf` |
+| **Two bots run** | PostgreSQL session advisory lock refuses the second — the authoritative guarantee. `aws_preflight.py` and `aws_unmanaged_check.py` additionally fail on a second tagged instance | `lock.py`, `scripts/` |
+| **Terraform would replace the database** | `prevent_destroy` refuses to plan it; `tf_guard.py` fails CI before a human sees a green check | `rds.tf`, `tf_guard.py` |
+| **A resource exists but is not in state** | Fixed names → Terraform errors instead of adopting. The preflight prints the exact `terraform import` line. **Nothing is ever deleted to "start clean"** | `aws_unmanaged_check.py` |
+| **A NAT gateway (or ALB, EKS, autoscaler) creeps in** | Cost guard **fails** the job. A warning in a log nobody reads is where a $32/month mistake survives | `tf_cost_preview.py` |
+| **Deploying over a running experiment** | Warned, not blocked — a genuine bug fix mid-run is sometimes necessary. The correct procedure is stop → deploy → **new** experiment id | `deploy.yml` |
+
+### Accepted, with the consequence stated
+
+- **Single AZ.** The database is not Multi-AZ and the instance is not in an
+  autoscaling group. An AZ failure means downtime until it returns or until
+  `terraform apply` rebuilds elsewhere. Backups protect the data; nothing
+  protects the ~minutes of availability, and nobody is watching them anyway.
+- **Elastic IP, single instance.** Replacing the instance changes nothing about
+  the address, but it *is* an outage for the duration.
+- **The deploy role can restart the bot.** By design — that is what deploying
+  is. It cannot change infrastructure, read the database, or reach an exchange.
+- **A workstation admin session can run the bootstrap.** That is the one
+  intentionally manual, intentionally privileged operation, and it creates only
+  trust anchors: no EC2, no RDS, no container, no experiment.
+
+---
+
 ## What is deliberately not defended against
 
 Stating these plainly, because an unlisted gap reads as a claim of coverage.
@@ -149,7 +185,8 @@ Stating these plainly, because an unlisted gap reads as a claim of coverage.
   harness was corrected to walk open/low/high/close).
 - **Partial fills.** V1 fills whole orders or nothing. Real fills on a thin book
   can be partial.
-- **Funding on open paper positions.** The schema carries a `funding` column and
-  the cost model supports snapshot funding, but the live loop does not yet apply
-  it. Positions held across a settlement will understate cost. This is a known
-  gap, not an oversight — it needs the settlement grid wired into the tick loop.
+- **Funding rate forecasting.** Snapshot funding *is* applied to open positions
+  now (`app/portfolio/funding.py`, wired into the tick loop by F4), charged at
+  the UTC-anchored settlement instant from the rate on `v2/ticker`. What is not
+  defended against is the rate *changing* between the last tick and the
+  settlement: the last observed rate is used.

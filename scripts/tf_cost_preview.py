@@ -11,6 +11,11 @@ none, deliberately; one appearing in a plan costs more per month than every
 other resource here combined, and it appears the moment somebody moves the
 instance to a private subnet "to be safer".
 
+It FAILS (exit 1) when a plan creates anything on the rejected list. A warning
+is not a control: the plan output nobody reads is exactly where an accidental
+NAT gateway survives. Override deliberately with ALLOW_EXPENSIVE=1, which is
+printed loudly so it cannot happen quietly.
+
 Usage:
     terraform show -json tfplan > tfplan.json
     python scripts/tf_cost_preview.py tfplan.json
@@ -20,7 +25,12 @@ from __future__ import annotations
 
 import collections
 import json
+import os
 import sys
+
+#: When set, an unrecognised resource kind is also a failure and not just a
+#: note. Off by default: a new IAM policy attachment should not block a deploy.
+STRICT = os.environ.get("STRICT_COST_GUARD") == "1"
 
 #: type -> (approximate USD/month at ap-south-1 list price, note)
 #: Rounded and deliberately conservative. Sourced from public on-demand
@@ -35,8 +45,9 @@ EXPECTED = {
     "aws_s3_bucket": (0.1, "state only"),
 }
 
-#: Things this design does not use. Their presence in a plan is a red flag, not
-#: an estimate to add up.
+#: Things this design does not use. Their presence in a plan FAILS the job.
+#: These are not estimates to add up -- they are architecture decisions with
+#: prices attached, and reversing one silently is the mistake to prevent.
 EXPENSIVE = {
     "aws_nat_gateway": "~$32/mo plus data processing. This stack does not need one: "
                        "the bot sits in a public subnet with no ingress rules, and "
@@ -52,6 +63,35 @@ EXPENSIVE = {
     "aws_elasticache_cluster": "Nothing in the bot uses a cache.",
     "aws_vpc_endpoint": "~$7/mo per endpoint per AZ. Only worth it if the instance "
                         "is moved off the public subnet.",
+    "aws_autoscaling_group": "Not a cost problem, a CORRECTNESS one: an autoscaler "
+                             "exists to run more than one of something, and exactly "
+                             "one bot may run.",
+    "aws_ecs_service": "Same objection as an autoscaling group, plus a scheduler "
+                       "that can start a replacement task before the old one exits.",
+    "aws_cloudfront_distribution": "Nothing is served publicly.",
+    "aws_efs_file_system": "The bot keeps no state on disk; the database holds it.",
+}
+
+#: Resources this stack legitimately creates. Anything creatable that is not
+#: here and not priced above is reported as UNEXPECTED -- the point is to
+#: notice a plan growing a resource kind nobody discussed, whatever it is.
+EXPECTED_KINDS = {
+    "aws_vpc", "aws_subnet", "aws_internet_gateway", "aws_route_table",
+    "aws_route_table_association", "aws_security_group", "aws_security_group_rule",
+    "aws_instance", "aws_eip", "aws_ami", "aws_key_pair",
+    "aws_db_instance", "aws_db_subnet_group",
+    "aws_ecr_repository", "aws_ecr_lifecycle_policy",
+    "aws_iam_role", "aws_iam_role_policy", "aws_iam_role_policy_attachment",
+    "aws_iam_instance_profile", "aws_iam_openid_connect_provider",
+    "aws_iam_policy", "aws_iam_policy_attachment",
+    "aws_ssm_parameter", "aws_ssm_document",
+    "aws_cloudwatch_log_group", "aws_cloudwatch_log_metric_filter",
+    "aws_cloudwatch_metric_alarm", "aws_cloudwatch_dashboard",
+    "aws_sns_topic", "aws_sns_topic_subscription",
+    "aws_s3_bucket", "aws_s3_bucket_versioning",
+    "aws_s3_bucket_server_side_encryption_configuration",
+    "aws_s3_bucket_public_access_block", "aws_s3_bucket_policy",
+    "aws_s3_bucket_lifecycle_configuration",
 }
 
 
@@ -88,19 +128,44 @@ def main(path: str) -> int:
     print("  This is an ORDER OF MAGNITUDE, not a quote. Check the real bill after")
     print("  the first week.")
 
-    flagged = [t for t in creating if t in EXPENSIVE]
-    if flagged:
+    unexpected = sorted(
+        t for t in creating
+        if t not in EXPECTED_KINDS and t not in EXPECTED and t not in EXPENSIVE
+    )
+    if unexpected:
         print()
-        print("!" * 72)
-        print("EXPENSIVE RESOURCES THIS ARCHITECTURE DELIBERATELY AVOIDS")
-        print("!" * 72)
-        for rtype in flagged:
-            print(f"\n  {creating[rtype]} x {rtype}")
-            print(f"      {EXPENSIVE[rtype]}")
+        print("UNRECOGNISED RESOURCE KINDS IN THIS PLAN")
+        print("-" * 72)
+        for rtype in unexpected:
+            print(f"  {creating[rtype]} x {rtype}")
         print()
-        print("  Not an error -- but if you did not intend to add these, stop and")
-        print("  read the plan before approving it.")
-    return 0
+        print("  Not necessarily wrong, but nothing in this architecture asked for")
+        print("  them. Price each one before approving, then add it to")
+        print("  EXPECTED_KINDS in this script so the next plan is quiet again.")
+
+    flagged = sorted(t for t in creating if t in EXPENSIVE)
+    if not flagged:
+        return 1 if unexpected and STRICT else 0
+
+    print()
+    print("!" * 72)
+    print("REFUSING THIS PLAN: RESOURCES THIS ARCHITECTURE DELIBERATELY AVOIDS")
+    print("!" * 72)
+    for rtype in flagged:
+        print(f"\n  {creating[rtype]} x {rtype}")
+        print(f"      {EXPENSIVE[rtype]}")
+    print()
+    print("  Each of these was considered and rejected, with the reasoning in")
+    print("  docs/aws_deployment.md. If one is genuinely needed now, that is a")
+    print("  design change to discuss -- not a plan to approve quickly.")
+
+    if os.environ.get("ALLOW_EXPENSIVE") == "1":
+        print()
+        print("ALLOW_EXPENSIVE=1 IS SET -- proceeding with the resources above.")
+        return 0
+    print()
+    print("  To proceed deliberately: ALLOW_EXPENSIVE=1")
+    return 1
 
 
 if __name__ == "__main__":
