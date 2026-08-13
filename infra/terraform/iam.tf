@@ -51,6 +51,12 @@ resource "aws_iam_role_policy" "instance" {
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability",
+          # deploy.sh refuses to touch the running service until it has
+          # confirmed the requested tag is actually in ECR -- a deploy that
+          # half-succeeds is worse than one that never starts. That check is a
+          # metadata read on a repository this host can already pull from, so
+          # it grants no capability the three actions above do not.
+          "ecr:DescribeImages",
         ]
         Resource = aws_ecr_repository.bot.arn
       },
