@@ -302,3 +302,79 @@ class TestFiveMinute:
         b.ingest(upd(720))
         out = b.frame_5m()
         assert out["time"].tolist() == [300]
+
+
+# =====================================================================
+# WARM-UP CONTIGUITY -- found by the final preflight
+# =====================================================================
+
+
+class TestWarmUpRepair:
+    """A bulk paginated fetch can drop a minute a narrow refetch returns.
+
+    Observed on BTCUSD at 2026-08-10 09:57 UTC: the 7-day pull returned 10,079
+    of 10,080 minutes, and a targeted request for that single minute returned
+    it immediately. The data exists; the bulk path loses it.
+
+    A hole makes the 5m bucket containing it incomplete, so it is dropped from
+    the resampled series, and the Wilder chains then treat two non-adjacent
+    bars as adjacent -- so indicator values differ from what the research code
+    produces on the same window. That equivalence is the point of the forward
+    test.
+    """
+
+    def test_find_gaps_locates_holes(self):
+        from app.market_data.backfill import find_gaps
+        from app.market_data.normalize import Candle
+        bars = [Candle("BTCUSD", t, 1, 1, 1, 1, 1) for t in (60, 120, 300, 360)]
+        assert find_gaps(bars) == [(180, 240)]
+
+    def test_find_gaps_on_contiguous_data(self):
+        from app.market_data.backfill import find_gaps
+        from app.market_data.normalize import Candle
+        bars = [Candle("BTCUSD", t, 1, 1, 1, 1, 1) for t in range(60, 600, 60)]
+        assert find_gaps(bars) == []
+
+    @pytest.mark.asyncio
+    async def test_warm_up_refetches_a_dropped_minute(self):
+        from app.market_data.backfill import Backfiller, find_gaps
+        from app.market_data.normalize import Candle
+
+        full = {t: Candle("BTCUSD", t, 100, 101, 99, 100, 5)
+                for t in range(0, 600, 60)}
+        calls: list[tuple[int, int]] = []
+
+        class Flaky(Backfiller):
+            def __init__(self):
+                pass
+
+            async def fetch(self, symbol, start, end):
+                calls.append((start, end))
+                bars = [b for t, b in sorted(full.items()) if start <= t <= end]
+                # the BULK pull drops one minute; a narrow refetch does not
+                if end - start > 300:
+                    bars = [b for b in bars if b.start != 300]
+                return bars
+
+        bars = await Flaky().warm_up("BTCUSD", 1, now=600)
+        assert find_gaps(bars) == [], "the hole must be repaired"
+        assert any(b.start == 300 for b in bars)
+        assert len(calls) >= 2, "a targeted refetch must have been issued"
+
+    @pytest.mark.asyncio
+    async def test_an_unrecoverable_hole_is_returned_not_hidden(self):
+        """A minute the exchange never served is a fact about the market."""
+        from app.market_data.backfill import Backfiller, find_gaps
+        from app.market_data.normalize import Candle
+
+        class Missing(Backfiller):
+            def __init__(self):
+                pass
+
+            async def fetch(self, symbol, start, end):
+                return [Candle("BTCUSD", t, 100, 101, 99, 100, 5)
+                        for t in range(0, 600, 60) if t != 300
+                        and start <= t <= end]
+
+        bars = await Missing().warm_up("BTCUSD", 1, now=600, repair_passes=2)
+        assert find_gaps(bars) == [(300, 300)], "reported, not papered over"
