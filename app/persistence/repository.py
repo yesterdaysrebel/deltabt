@@ -10,12 +10,12 @@ scenario through both.
 
 from __future__ import annotations
 
-import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 
 from app.clock import wall_now
+from app.persistence.jsonb import register_codecs
 from app.persistence.models import (
     DuplicateRecord,
     FillRecord,
@@ -291,8 +291,12 @@ class PostgresRepository(Repository):
 
     async def connect(self) -> None:
         import asyncpg
+        # `init` runs on EVERY pooled connection. Registering the codecs on a
+        # single connection would make behaviour depend on which one a query
+        # happened to acquire (audit F2).
         self._pool = await asyncpg.create_pool(
-            self.dsn, min_size=self._min, max_size=self._max
+            self.dsn, min_size=self._min, max_size=self._max,
+            init=register_codecs,
         )
         await self.migrate()
 
@@ -316,7 +320,7 @@ class PostgresRepository(Repository):
             async with self._pool.acquire() as con:
                 await con.execute(
                     "INSERT INTO strategy_state (key, value, updated_at) "
-                    "VALUES ('_writable_probe', '{}'::jsonb, now()) "
+                    "VALUES ('_writable_probe', '{}', now()) "
                     "ON CONFLICT (key) DO UPDATE SET updated_at = now()"
                 )
             return True
@@ -332,10 +336,10 @@ class PostgresRepository(Repository):
                 """INSERT INTO bot_instance
                    (instance_uid, hostname, pid, strategy_version,
                     strategy_config, risk_config, symbols)
-                   VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7)
                    ON CONFLICT (instance_uid) DO NOTHING""",
                 rec.instance_uid, rec.hostname, rec.pid, rec.strategy_version,
-                json.dumps(rec.strategy_config), json.dumps(rec.risk_config),
+                rec.strategy_config, rec.risk_config,
                 rec.symbols,
             )
 
@@ -351,7 +355,7 @@ class PostgresRepository(Repository):
                 """INSERT INTO heartbeat (instance_uid, beat_at, ws_connected,
                        last_ws_message_at, last_closed_1m, last_closed_5m,
                        open_positions, equity, detail)
-                   VALUES ($1, now(), $2,$3,$4,$5,$6,$7,$8::jsonb)
+                   VALUES ($1, now(), $2,$3,$4,$5,$6,$7,$8)
                    ON CONFLICT (instance_uid) DO UPDATE SET
                        beat_at = now(), ws_connected = EXCLUDED.ws_connected,
                        last_ws_message_at = EXCLUDED.last_ws_message_at,
@@ -364,7 +368,7 @@ class PostgresRepository(Repository):
                 utc(f["last_closed_1m"]) if f.get("last_closed_1m") else None,
                 utc(f["last_closed_5m"]) if f.get("last_closed_5m") else None,
                 int(f.get("open_positions", 0)), f.get("equity"),
-                json.dumps(f.get("detail") or {}),
+                f.get("detail") or {},
             )
 
     # -- market data -------------------------------------------------------
@@ -402,18 +406,18 @@ class PostgresRepository(Repository):
                     target_price, stop_distance_pct, reward_risk,
                     rejection_reason, detail)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-                           $14::jsonb,$15::jsonb,$16::jsonb,$17,$18,$19,$20,$21,
-                           $22,$23::jsonb)
+                           $14,$15,$16,$17,$18,$19,$20,$21,
+                           $22,$23)
                    ON CONFLICT (idempotency_key) DO NOTHING
                    RETURNING id""",
                 r.idempotency_key, r.instance_uid, r.symbol, utc(r.bar_open),
                 _ts(r.exchange_ts), _ts(r.received_ts), r.event_type,
                 r.primary_timeframe, r.confirmation_timeframe, r.direction,
                 r.outcome, r.strategy_version, r.strategy_config_hash,
-                json.dumps(r.conditions_passed), json.dumps(r.conditions_failed),
-                json.dumps(r.indicators), r.entry_price, r.stop_price,
+                r.conditions_passed, r.conditions_failed,
+                r.indicators, r.entry_price, r.stop_price,
                 r.target_price, r.stop_distance_pct, r.reward_risk,
-                r.rejection_reason, json.dumps(r.detail))
+                r.rejection_reason, r.detail)
         return out is not None
 
     async def signal_exists(self, key: str) -> bool:
@@ -508,11 +512,11 @@ class PostgresRepository(Repository):
                 """INSERT INTO quarantined_fills (quarantine_uid, instance_uid,
                        symbol, order_uid, position_uid, reason, payload,
                        exchange_ts, received_ts)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                    ON CONFLICT (quarantine_uid) DO NOTHING
                    RETURNING id""",
                 r.quarantine_uid, r.instance_uid, r.symbol, r.order_uid,
-                r.position_uid, r.reason, json.dumps(r.payload),
+                r.position_uid, r.reason, r.payload,
                 _ts(r.exchange_ts), _ts(r.received_ts))
         return out is not None
 
@@ -608,11 +612,11 @@ class PostgresRepository(Repository):
                 """INSERT INTO risk_events (event_id, instance_uid, symbol,
                        event_type, limit_name, limit_value, observed_value,
                        reason, payload, exchange_ts, received_ts)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                    ON CONFLICT (event_id) DO NOTHING""",
                 r.event_id, r.instance_uid, r.symbol, r.event_type,
                 r.limit_name, r.limit_value, r.observed_value, r.reason,
-                json.dumps(r.payload), _ts(r.exchange_ts), _ts(r.received_ts))
+                r.payload, _ts(r.exchange_ts), _ts(r.received_ts))
 
     async def record_system_event(self, r: SystemEventRecord) -> None:
         async with self._pool.acquire() as con:
@@ -620,10 +624,10 @@ class PostgresRepository(Repository):
                 """INSERT INTO system_events (event_id, instance_uid, symbol,
                        component, event_type, severity, payload,
                        strategy_version, exchange_ts, received_ts)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                    ON CONFLICT (event_id) DO NOTHING""",
                 r.event_id, r.instance_uid, r.symbol, r.component, r.event_type,
-                r.severity, json.dumps(r.payload), r.strategy_version,
+                r.severity, r.payload, r.strategy_version,
                 _ts(r.exchange_ts), _ts(r.received_ts))
 
     async def recent_signals(self, limit: int = 50) -> list[dict]:
@@ -652,7 +656,7 @@ class PostgresRepository(Repository):
         async with self._pool.acquire() as con:
             await con.execute(
                 """INSERT INTO strategy_state (key, value, updated_at)
-                   VALUES ($1, $2::jsonb, now())
+                   VALUES ($1, $2, now())
                    ON CONFLICT (key) DO UPDATE
                    SET value = EXCLUDED.value, updated_at = now()""",
-                key, json.dumps(value))
+                key, value)
