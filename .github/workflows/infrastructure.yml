@@ -89,6 +89,12 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          # The wrapper shims `terraform` and writes its own `exitcode` step
+          # output. The apply gate reads -detailed-exitcode, so two writers of
+          # the same key is exactly the ambiguity to remove: the first run with
+          # a real 41-resource plan produced a correct plan and then skipped
+          # apply, because the gate never saw a 2.
+          terraform_wrapper: false
 
       - name: init
         working-directory: infra/terraform
@@ -140,8 +146,13 @@ jobs:
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="alarm_email=${{ vars.ALARM_EMAIL }}"
           code=$?
+          echo "terraform plan -detailed-exitcode returned: $code"
+          echo "  0 = no changes, 1 = error, 2 = changes present"
           echo "exitcode=$code" >> "$GITHUB_OUTPUT"
-          [ $code -eq 1 ] && exit 1
+          if [ "$code" -eq 1 ]; then
+            echo "::error::terraform plan failed"
+            exit 1
+          fi
           exit 0
 
       - name: refuse a plan that destroys or replaces protected resources
@@ -214,6 +225,12 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          # The wrapper shims `terraform` and writes its own `exitcode` step
+          # output. The apply gate reads -detailed-exitcode, so two writers of
+          # the same key is exactly the ambiguity to remove: the first run with
+          # a real 41-resource plan produced a correct plan and then skipped
+          # apply, because the gate never saw a 2.
+          terraform_wrapper: false
 
       - uses: actions/download-artifact@v4
         with:
