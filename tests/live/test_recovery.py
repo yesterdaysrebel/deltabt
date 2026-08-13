@@ -9,6 +9,8 @@ runs, nothing in memory survives.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from app.config.settings import RiskConfig, Settings
@@ -579,3 +581,110 @@ class TestLiveRegressions:
         await bot._repair_gaps("BTCUSD")
         events = await bot.repo.recent_system_events()
         assert any(e["event_type"] == "GAP_REPAIR_FAILED" for e in events)
+
+
+# =====================================================================
+# THE BAR LOOP MUST NOT BE ABLE TO DIE
+# =====================================================================
+
+
+class TestBarLoopSurvival:
+    """Found on a VPS deployment rehearsal, not by any unit test.
+
+    A transient DNS failure made a database write fail. The bar loop's
+    `except` handler logged and then called _event() -- which writes to the
+    SAME unreachable database -- so the handler itself raised, the exception
+    escaped the `while`, and the task ended.
+
+    The process stayed up. The websocket kept delivering. The candle builder
+    kept ingesting. Nothing was evaluated, persisted or executed again, and
+    /healthz reported the only problem as "gaps" -- because every other signal
+    it reads is updated by the socket callback, not by the loop.
+    """
+
+    async def test_a_failing_event_write_does_not_kill_the_loop(self):
+        bot = make_bot({})
+        await bot.start()
+        calls = {"n": 0}
+
+        async def exploding_event(*a, **k):
+            calls["n"] += 1
+            raise ConnectionError("Temporary failure in name resolution")
+
+        bot._event = exploding_event
+        original = bot.on_closed_1m
+
+        async def failing_bar(bar):
+            raise ConnectionError("Temporary failure in name resolution")
+
+        bot.on_closed_1m = failing_bar
+        bot._pending_bars.append(
+            Candle("BTCUSD", 1_600_000_000, 1, 1, 1, 1, 1))
+
+        task = asyncio.create_task(bot._bar_loop(interval=0.05))
+        await asyncio.sleep(0.4)
+        assert not task.done(), "the loop died inside its own error handler"
+        assert bot.loop_errors_consecutive >= 1
+        assert calls["n"] >= 1, "it did try to record the incident"
+
+        # and it recovers once the fault clears
+        bot.on_closed_1m = original
+        await asyncio.sleep(0.3)
+        bot._stopping.set()
+        await asyncio.wait_for(task, timeout=2)
+        assert bot.loop_errors_consecutive == 0, "should recover"
+
+    async def test_an_unprocessed_bar_is_requeued_not_dropped(self):
+        """A bar dropped here is a bar the audit trail never sees."""
+        bot = make_bot({})
+        await bot.start()
+
+        async def failing_bar(bar):
+            raise ConnectionError("db down")
+
+        bot.on_closed_1m = failing_bar
+        bar = Candle("BTCUSD", 1_600_000_000, 1, 1, 1, 1, 1)
+        bot._pending_bars.append(bar)
+
+        task = asyncio.create_task(bot._bar_loop(interval=0.05))
+        await asyncio.sleep(0.2)
+        bot._stopping.set()
+        await asyncio.wait_for(task, timeout=2)
+        assert bar in bot._pending_bars, "the bar must still be queued"
+
+    async def test_health_notices_a_dead_loop(self):
+        """A flag is not evidence: strategy_running stayed true while the loop
+        was dead, and every other check was green."""
+        from app.monitoring.health import evaluate_health
+        snap = {"ws_connected": True, "seconds_since_ws_message": 0.2,
+                "last_closed_1m": 1_600_000_000, "recent_gaps": 0,
+                "strategy_running": True, "seconds_since_bar_loop": 300.0}
+        r = evaluate_health(snap, db_writable=True, now=1_600_000_070)
+        assert not r.healthy
+        assert "evaluation_loop_alive" in r.failures
+        assert r.checks[-1].detail.startswith("last pass 300")
+
+    async def test_a_live_loop_passes(self):
+        from app.monitoring.health import evaluate_health
+        snap = {"ws_connected": True, "seconds_since_ws_message": 0.2,
+                "last_closed_1m": 1_600_000_000, "recent_gaps": 0,
+                "strategy_running": True, "seconds_since_bar_loop": 1.0}
+        assert evaluate_health(snap, db_writable=True,
+                               now=1_600_000_070).healthy
+
+    async def test_the_heartbeat_is_stamped_even_when_the_pass_fails(self):
+        bot = make_bot({})
+        await bot.start()
+
+        async def failing_bar(bar):
+            raise ConnectionError("db down")
+
+        bot.on_closed_1m = failing_bar
+        bot._pending_bars.append(Candle("BTCUSD", 1_600_000_000, 1, 1, 1, 1, 1))
+        before = bot.last_bar_loop_at
+        task = asyncio.create_task(bot._bar_loop(interval=0.05))
+        await asyncio.sleep(0.2)
+        bot._stopping.set()
+        await asyncio.wait_for(task, timeout=2)
+        assert bot.last_bar_loop_at > before, (
+            "a loop that is alive and failing must still say so")

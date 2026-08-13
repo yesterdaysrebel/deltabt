@@ -1,0 +1,79 @@
+# DeltaBot -- 24/7 PAPER-TRADING forward test on a VPS.
+#
+# This file assumes a MANAGED PostgreSQL reachable at $DATABASE_URL. The
+# experiment database is the deliverable of a 30-day run; putting it on the
+# same box as the bot means one disk failure loses both the bot and the
+# evidence. See docs/vps_deployment.md for the fallback and its consequences.
+#
+# ONE bot. Never a second replica: two instances would interleave one paper
+# account. The PostgreSQL advisory lock is the real guarantee -- a second
+# process refuses to start even if this file is ignored -- but nothing here
+# should invite the situation.
+#
+# PAPER ONLY. There are no exchange credentials in this file and none are
+# needed: the bot reads public market data and cannot place an order.
+
+services:
+  bot:
+    image: deltabt:${DELTABOT_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:?set GIT_SHA to the commit being deployed}
+        GIT_DIRTY: ${GIT_DIRTY:-0}
+    container_name: deltabot
+    restart: unless-stopped
+    # Not "always": `unless-stopped` respects a deliberate `docker stop`, so an
+    # operator halting the bot for an incident is not fought by Docker, while a
+    # crash or a reboot still brings it back.
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed PostgreSQL DSN}
+      DELTABOT_SYMBOLS: "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
+      DELTABOT_LOG_LEVEL: "INFO"
+      DELTABOT_API_PORT: "8000"
+      TZ: "UTC"
+      PYTHONUNBUFFERED: "1"
+
+    # Bound to LOOPBACK. The dashboard is reached over an SSH tunnel, so no
+    # inbound port is opened and no public tunnel service is introduced:
+    #   ssh -N -L 8000:127.0.0.1:8000 user@vps
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    # Data freshness, not process liveness. A bot whose websocket died silently
+    # still answers TCP and still has a live event loop; only /healthz notices.
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import sys,urllib.request;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      # Warm-up backfills ~7 days across four symbols before /healthz can pass.
+      start_period: 300s
+      retries: 3
+
+    # Without this a 30-day run fills the VPS disk with JSON logs and takes the
+    # database down with it.
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"          # ~200 MB ceiling
+
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    user: "10001:10001"
+
+    # Long enough to finish the current write and release the advisory lock.
+    # The feed interrupts a pending receive on SIGTERM, so this is not spent
+    # waiting on a quiet socket.
+    stop_grace_period: 45s
+
+    deploy:
+      resources:
+        limits: {cpus: "2.0", memory: 2G}
+        reservations: {cpus: "0.25", memory: 512M}

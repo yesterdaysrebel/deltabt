@@ -17,6 +17,7 @@ class Metrics:
     candles_5m: int = 0
     incomplete_5m: int = 0
     bad_messages: int = 0
+    loop_errors: int = 0
     signals_detected: int = 0
     signals_rejected: int = 0
     duplicate_signals: int = 0
@@ -41,6 +42,7 @@ _COUNTERS = {
     "candles_5m": "closed 5m candles derived",
     "incomplete_5m": "5m buckets missing at least one minute",
     "bad_messages": "unusable websocket messages dropped",
+    "loop_errors": "bar-loop iterations that raised",
     "signals_detected": "setups detected by the strategy",
     "signals_rejected": "setups rejected by the risk engine",
     "duplicate_signals": "evaluations already recorded (idempotency hits)",

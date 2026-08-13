@@ -40,7 +40,11 @@ class TestEndpoints:
         checks = c.get("/healthz").json()["checks"]
         names = {x["name"] for x in checks}
         assert names == {"websocket_fresh", "candles_fresh", "no_recent_gaps",
-                         "database_writable", "strategy_running"}
+                         "database_writable", "strategy_running",
+                         # A flag is not evidence: the loop can die while every
+                         # other signal stays green, so health asks the loop
+                         # itself when it last ran.
+                         "evaluation_loop_alive"}
 
     async def test_readyz_reports_why_it_is_not_ready(self, client):
         c, _ = client

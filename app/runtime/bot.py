@@ -161,6 +161,10 @@ class TradingBot:
         self.experiment_id: str | None = None
         self.identity = None
         self.started_at = wall_now()
+        #: Wall time of the last bar-loop pass. Health reads it to tell a
+        #: working loop from a dead one; a flag cannot do that.
+        self.last_bar_loop_at = wall_now()
+        self.loop_errors_consecutive = 0
         self._tasks: list[asyncio.Task] = []
         self._stopping = asyncio.Event()
 
@@ -836,6 +840,8 @@ class TradingBot:
             "recent_gaps": self.builder.recent_gap_count(
                 within_seconds=GAP_LOOKBACK, now=now),
             "strategy_running": self.ready and not self._stopping.is_set(),
+            "seconds_since_bar_loop": max(0.0, now - self.last_bar_loop_at),
+            "loop_errors_consecutive": self.loop_errors_consecutive,
             "ready": self.ready,
             "recovery_error": self.recovery_error,
             "open_positions": len(self.broker.get_positions()),
@@ -862,26 +868,62 @@ class TradingBot:
         Deliberately not done inside the socket callback: a database round trip
         in the receive path would block the feed and turn a slow write into a
         stale-feed alert.
+
+        THIS LOOP MUST NOT BE ABLE TO DIE. Found on a VPS deployment rehearsal:
+        a transient DNS failure made a database write fail, the `except` handler
+        logged and then called _event() -- which writes to the same unreachable
+        database -- so the handler itself raised, the exception escaped the
+        `while`, and the task ended. The process stayed up, the feed kept
+        running, the candle builder kept ingesting, and NOTHING was evaluated,
+        persisted or executed again. /healthz reported the only problem as
+        "gaps", because every other signal it reads is updated by the socket
+        callback rather than by this loop.
+
+        So: the handler does no unguarded I/O, unprocessed bars are put BACK on
+        the queue instead of being dropped, and every pass stamps a heartbeat
+        that health checks against.
         """
         while not self._stopping.is_set():
+            bars: list = []
             try:
+                now = int(wall_now())
                 # roll_on_clock is an OPERATIONAL fallback for a symbol that
                 # printed nothing for a minute, so it reads the wall clock by
                 # design. Order expiry below reads MARKET time.
-                now = int(wall_now())
                 for bar in self.builder.roll_on_clock(now, grace=CANDLE_ROLL_GRACE):
                     self._pending_bars.append(bar)
                 bars, self._pending_bars = self._pending_bars, []
-                for bar in sorted(bars, key=lambda b: (b.start, b.symbol)):
-                    await self.on_closed_1m(bar)
+                bars.sort(key=lambda b: (b.start, b.symbol))
+                while bars:
+                    await self.on_closed_1m(bars[0])
+                    bars.pop(0)          # only once it is safely handled
                 # Sweep stale entry orders even when no tick has arrived --
                 # a silent feed is exactly when they would otherwise pile up.
                 self._pending_events.extend(
                     self.broker.expire_stale_entries(self.clock.now()))
                 await self.drain_broker_events()
+                self.loop_errors_consecutive = 0
             except Exception:                              # noqa: BLE001
-                log.exception("bar loop error")
-                await self._event("bot", "LOOP_ERROR", severity="ERROR")
+                # Whatever was not processed goes back on the queue rather than
+                # vanishing. A bar dropped here is a bar the audit trail never
+                # sees.
+                self._pending_bars = bars + self._pending_bars
+                self.loop_errors_consecutive += 1
+                self.metrics.loop_errors += 1
+                log.exception("bar loop error (consecutive=%d)",
+                              self.loop_errors_consecutive)
+                # NO unguarded I/O in the handler. Recording the incident is
+                # best-effort; failing to record it must never kill the loop.
+                try:
+                    await self._event("bot", "LOOP_ERROR", severity="ERROR",
+                                      payload={"consecutive":
+                                               self.loop_errors_consecutive})
+                except Exception:                          # noqa: BLE001
+                    log.warning("could not persist the loop error either")
+            finally:
+                # Stamped even on failure: the loop is alive and trying, which
+                # is what the health check needs to distinguish from dead.
+                self.last_bar_loop_at = wall_now()
             try:
                 await asyncio.wait_for(self._stopping.wait(), timeout=interval)
             except asyncio.TimeoutError:

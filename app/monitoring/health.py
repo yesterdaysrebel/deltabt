@@ -18,6 +18,10 @@ from app.config.settings import MAX_CLOSED_1M_AGE, MAX_WS_SILENCE
 #: Length of the base bar, so age can be measured from close rather than open.
 BAR_SECONDS = 60
 
+#: The bar loop runs every second. Twenty passes of grace absorbs a slow
+#: database write without tolerating a dead loop.
+MAX_LOOP_SILENCE = 20.0
+
 
 def json_safe(value):
     """Replace inf/NaN with None so a snapshot can always be serialised.
@@ -68,7 +72,8 @@ class HealthReport:
 def evaluate_health(snapshot: dict, *, db_writable: bool,
                     now: float | None = None,
                     max_ws_silence: float = MAX_WS_SILENCE,
-                    max_1m_age: float = MAX_CLOSED_1M_AGE) -> HealthReport:
+                    max_1m_age: float = MAX_CLOSED_1M_AGE,
+                    max_loop_silence: float = MAX_LOOP_SILENCE) -> HealthReport:
     """The five conditions from section 14. All must hold."""
     now = now if now is not None else time.time()
     checks: list[HealthCheck] = []
@@ -100,6 +105,17 @@ def evaluate_health(snapshot: dict, *, db_writable: bool,
     running = bool(snapshot.get("strategy_running"))
     checks.append(HealthCheck("strategy_running", running,
                               "" if running else "strategy engine is not running"))
+
+    # A FLAG is not evidence. The evaluation loop can die while the process,
+    # the socket and the candle builder all keep working -- observed when a
+    # transient DNS failure killed the loop inside its own error handler, and
+    # every other health signal stayed green because they are updated by the
+    # socket callback. So health asks the loop itself when it last ran.
+    since_loop = snapshot.get("seconds_since_bar_loop")
+    if since_loop is not None:
+        checks.append(HealthCheck(
+            "evaluation_loop_alive", since_loop < max_loop_silence,
+            f"last pass {since_loop:.1f}s ago (limit {max_loop_silence:.0f}s)"))
 
     return HealthReport(healthy=all(c.ok for c in checks), checks=checks,
                         snapshot=snapshot)
