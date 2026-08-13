@@ -929,7 +929,12 @@ class TradingBot:
             except asyncio.TimeoutError:
                 pass
 
+    #: How often the heartbeat also says something in the LOG, not just the
+    #: database. See the note in _heartbeat_loop.
+    LOG_HEARTBEAT_EVERY = 20        # 20 x 15s = every 5 minutes
+
     async def _heartbeat_loop(self, interval: float = 15.0) -> None:
+        beat = 0
         while not self._stopping.is_set():
             try:
                 h = self.health_snapshot()
@@ -940,6 +945,42 @@ class TradingBot:
                     last_closed_5m=None,
                     open_positions=h["open_positions"], equity=h["equity"],
                     detail=self.metrics.as_dict())
+
+                # A LIVENESS LINE IN THE LOG, periodically.
+                #
+                # The `bot-silent` CloudWatch alarm is the only thing that
+                # catches a dead evaluation loop -- a dead loop logs no errors,
+                # so error-count alarms stay green through exactly that
+                # failure. Its premise is "the bot evaluates every symbol every
+                # bar, so silence means it is not running".
+                #
+                # That premise was false. A quiet market produces NO_SETUP
+                # evaluations, which are persisted but not logged, so a
+                # perfectly healthy bot went 41 minutes without writing a
+                # single line and the alarm fired. An alarm that cries wolf
+                # during normal operation is one an operator learns to ignore,
+                # which is worse than not having it.
+                #
+                # The heartbeat already runs every 15s and already knows
+                # everything worth saying. Saying it out loud every 5 minutes
+                # makes the alarm's premise true, and gives the log a pulse to
+                # read during an incident.
+                beat += 1
+                if beat % self.LOG_HEARTBEAT_EVERY == 1:
+                    log.info("heartbeat", extra={
+                        "ws_connected": h["ws_connected"],
+                        "seconds_since_ws_message": round(
+                            h.get("seconds_since_ws_message") or -1, 1),
+                        "last_closed_1m": h["last_closed_1m"],
+                        "recent_gaps": h["recent_gaps"],
+                        "open_positions": h["open_positions"],
+                        "equity": h["equity"],
+                        "signals": self.metrics.signals_detected,
+                        "orders": self.metrics.orders,
+                        "fills": self.metrics.fills,
+                        "loop_errors": self.metrics.loop_errors,
+                        "uptime_seconds": int(h.get("uptime_seconds") or 0),
+                    })
             except Exception:                              # noqa: BLE001
                 log.exception("heartbeat failed")
             try:
