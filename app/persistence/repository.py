@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict
 
 from app.clock import wall_now
+from app.execution.order_state import RESERVING, TERMINAL
 from app.persistence.jsonb import register_codecs
 from app.persistence.models import (
     DuplicateRecord,
@@ -29,6 +30,16 @@ from app.persistence.models import (
 )
 
 log = logging.getLogger(__name__)
+
+
+#: Serialises the approve path. Transaction-scoped, so it is released on
+#: COMMIT or ROLLBACK -- including a rollback caused by kill -9. Distinct from
+#: the session-scoped single-instance lock; the two cannot collide.
+EXPOSURE_LOCK_KEY = -8_142_003_771_099_211_501
+
+#: Order states that hold exposure / are finished, as SQL literals.
+_RESERVING_SQL = tuple(sorted(s.value for s in RESERVING))
+_TERMINAL_SQL = tuple(sorted(s.value for s in TERMINAL))
 
 
 def _ts(value):
@@ -71,9 +82,30 @@ class Repository(ABC):
 
     # -- execution ---------------------------------------------------------
     @abstractmethod
+    async def reserve_entry_slot(self, rec: OrderRecord,
+                                 max_open_positions: int) -> bool:
+        """Count exposure and create the entry order ATOMICALLY.
+
+        Returns False when the slot is already taken. The order row IS the
+        reservation, so there is no window between deciding and reserving --
+        which is the window two entries slipped through 1.1s apart.
+        """
+
+    @abstractmethod
     async def create_order(self, rec: OrderRecord) -> bool: ...
     @abstractmethod
+    async def effective_exposure(self) -> int:
+        """Open positions plus entry orders that can still become one."""
+    @abstractmethod
     async def update_order_status(self, order_uid: str, status: str) -> None: ...
+    @abstractmethod
+    async def resize_order(self, order_uid: str, quantity: int) -> None:
+        """Persist a pre-fill amendment.
+
+        The broker reduces quantity so realised risk stays inside the approved
+        budget. Without persisting it the order row claims the original size,
+        and the fill then looks PARTIAL when the order in fact filled in full.
+        """
     @abstractmethod
     async def record_fill(self, rec: FillRecord) -> bool: ...
     @abstractmethod
@@ -228,6 +260,23 @@ class InMemoryRepository(Repository):
     async def signal_exists(self, idempotency_key: str) -> bool:
         return idempotency_key in self._s["signals"]
 
+    async def effective_exposure(self) -> int:
+        open_pos = sum(1 for p in self._s["positions"].values() if p.is_open)
+        reserving = sum(
+            1 for o in self._s["orders"].values()
+            if o.purpose == "entry" and o.status in _RESERVING_SQL
+            and not o.position_uid)
+        return open_pos + reserving
+
+    async def reserve_entry_slot(self, rec: OrderRecord,
+                                 max_open_positions: int) -> bool:
+        # Single-threaded asyncio and no await between the count and the
+        # insert, so this is atomic for the same reason the SQL version is:
+        # nothing can interleave.
+        if await self.effective_exposure() >= max_open_positions:
+            return False
+        return await self.create_order(rec)
+
     async def create_order(self, rec: OrderRecord) -> bool:
         if rec.idempotency_key in self._s["order_keys"]:
             return False
@@ -242,17 +291,16 @@ class InMemoryRepository(Repository):
         if o:
             o.status = status
 
+    async def resize_order(self, order_uid: str, quantity: int) -> None:
+        o = self._s["orders"].get(order_uid)
+        if o is not None and o.status not in _TERMINAL_SQL:
+            o.quantity = quantity
+
     async def record_order_fill(self, order_uid, *, filled_price,
                                 filled_exchange_ts, position_uid=None) -> None:
+        """Deprecated: record_fill() advances the order. Position link only."""
         o = self._s["orders"].get(order_uid)
-        if not o:
-            return
-        o.filled_price = filled_price
-        o.filled_exchange_ts = filled_exchange_ts
-        if o.created_exchange_ts is not None:
-            o.fill_delay_seconds = max(
-                0.0, filled_exchange_ts - o.created_exchange_ts)
-        if position_uid:
+        if o is not None and position_uid and not o.position_uid:
             o.position_uid = position_uid
 
     async def record_fill(self, rec: FillRecord) -> bool:
@@ -267,7 +315,24 @@ class InMemoryRepository(Repository):
         self._s["fills"][rec.fill_uid] = rec
         self._s["fill_seq_keys"].add(key)
         self._s["fills_by_order"].setdefault(rec.order_uid, []).append(rec)
+        self._advance_order_for_fill(rec)
         return True
+
+    def _advance_order_for_fill(self, rec: FillRecord) -> None:
+        """Mirror of the SQL: derive the state from the durable fills."""
+        o = self._s["orders"].get(rec.order_uid)
+        if o is None or o.status in _TERMINAL_SQL:
+            return                              # never resurrect a terminal order
+        filled = sum(f.quantity
+                     for f in self._s["fills_by_order"].get(rec.order_uid, []))
+        o.status = ("FILLED" if filled >= o.quantity else "PARTIALLY_FILLED")
+        o.filled_price = rec.price
+        o.filled_exchange_ts = rec.exchange_ts or rec.filled_at
+        if o.created_exchange_ts is not None:
+            o.fill_delay_seconds = max(
+                0.0, (rec.exchange_ts or rec.filled_at) - o.created_exchange_ts)
+        if not o.position_uid:
+            o.position_uid = rec.position_uid
 
     async def fill_exists_for_order(self, order_uid: str) -> bool:
         return bool(self._s["fills_by_order"].get(order_uid))
@@ -544,25 +609,28 @@ class PostgresRepository(Repository):
 
     async def create_order(self, r: OrderRecord) -> bool:
         async with self._pool.acquire() as con:
-            out = await con.fetchval(
-                """INSERT INTO paper_orders (order_uid, idempotency_key,
-                       signal_key, instance_uid, symbol, side, order_type,
-                       purpose, quantity, limit_price, status, equity_before,
-                       risk_amount, created_exchange_ts, expires_exchange_ts,
-                       received_ts, event_type, requested_price, filled_price,
-                       filled_exchange_ts, fill_delay_seconds, position_uid,
-                       reject_reason)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                           $16,$17,$18,$19,$20,$21,$22,$23)
-                   ON CONFLICT (idempotency_key) DO NOTHING
-                   RETURNING id""",
-                r.order_uid, r.idempotency_key, r.signal_key, r.instance_uid,
-                r.symbol, r.side, r.order_type, r.purpose, r.quantity,
-                r.limit_price, r.status, r.equity_before, r.risk_amount,
-                _ts(r.created_exchange_ts), _ts(r.expires_exchange_ts),
-                _ts(r.received_ts), r.event_type, r.requested_price,
-                r.filled_price, _ts(r.filled_exchange_ts),
-                r.fill_delay_seconds, r.position_uid, r.reject_reason)
+            return await self._insert_order(con, r)
+
+    async def _insert_order(self, con, r: OrderRecord) -> bool:
+        out = await con.fetchval(
+            """INSERT INTO paper_orders (order_uid, idempotency_key,
+                   signal_key, instance_uid, symbol, side, order_type,
+                   purpose, quantity, limit_price, status, equity_before,
+                   risk_amount, created_exchange_ts, expires_exchange_ts,
+                   received_ts, event_type, requested_price, filled_price,
+                   filled_exchange_ts, fill_delay_seconds, position_uid,
+                   reject_reason)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                       $16,$17,$18,$19,$20,$21,$22,$23)
+               ON CONFLICT (idempotency_key) DO NOTHING
+               RETURNING id""",
+            r.order_uid, r.idempotency_key, r.signal_key, r.instance_uid,
+            r.symbol, r.side, r.order_type, r.purpose, r.quantity,
+            r.limit_price, r.status, r.equity_before, r.risk_amount,
+            _ts(r.created_exchange_ts), _ts(r.expires_exchange_ts),
+            _ts(r.received_ts), r.event_type, r.requested_price,
+            r.filled_price, _ts(r.filled_exchange_ts),
+            r.fill_delay_seconds, r.position_uid, r.reject_reason)
         return out is not None
 
     async def update_order_status(self, order_uid: str, status: str) -> None:
@@ -571,19 +639,66 @@ class PostgresRepository(Repository):
                 "UPDATE paper_orders SET status=$2, updated_at=now() "
                 "WHERE order_uid=$1", order_uid, status)
 
+    async def resize_order(self, order_uid: str, quantity: int) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                "UPDATE paper_orders SET quantity=$2, updated_at=now() "
+                "WHERE order_uid=$1 AND status <> ALL($3::text[])",
+                order_uid, quantity, list(_TERMINAL_SQL))
+
+    _EXPOSURE_SQL = """
+        SELECT (SELECT count(*) FROM positions
+                 WHERE status IN ('OPENING','OPEN','SUSPENDED','CLOSING'))
+             + (SELECT count(*) FROM paper_orders
+                 WHERE purpose = 'entry'
+                   AND status <> ALL($1::text[])
+                   AND position_uid IS NULL)
+    """
+
+    async def effective_exposure(self) -> int:
+        async with self._pool.acquire() as con:
+            return int(await con.fetchval(self._EXPOSURE_SQL,
+                                          list(_TERMINAL_SQL)))
+
+    async def reserve_entry_slot(self, r: OrderRecord,
+                                 max_open_positions: int) -> bool:
+        """Count and insert inside ONE transaction, serialised by a lock.
+
+        pg_advisory_xact_lock makes concurrent approvals take turns, and the
+        lock is released by COMMIT or ROLLBACK -- including the implicit
+        rollback when a process is killed, so a crash between reserving and
+        persisting cannot strand the slot.
+
+        A FILLED entry order is terminal AND carries a position_uid, so it is
+        counted once via positions and never double-counted here.
+        """
+        async with self._pool.acquire() as con:
+            async with con.transaction():
+                await con.execute("SELECT pg_advisory_xact_lock($1)",
+                                  EXPOSURE_LOCK_KEY)
+                exposure = int(await con.fetchval(self._EXPOSURE_SQL,
+                                                  list(_TERMINAL_SQL)))
+                if exposure >= max_open_positions:
+                    log.info("entry refused: exposure already reserved",
+                             extra={"symbol": r.symbol, "exposure": exposure,
+                                    "limit": max_open_positions})
+                    return False
+                return await self._insert_order(con, r)
+
     async def record_order_fill(self, order_uid, *, filled_price,
                                 filled_exchange_ts, position_uid=None) -> None:
+        """Deprecated: record_fill() now advances the order transactionally.
+
+        Kept so a caller that stamps the position link separately still works,
+        but it must NOT set status -- doing so outside the fill transaction is
+        the bug this replaced.
+        """
         async with self._pool.acquire() as con:
             await con.execute(
                 """UPDATE paper_orders
-                      SET filled_price = $2,
-                          filled_exchange_ts = $3,
-                          position_uid = COALESCE($4, position_uid),
-                          fill_delay_seconds = GREATEST(
-                              0, EXTRACT(EPOCH FROM ($3 - created_exchange_ts))),
+                      SET position_uid = COALESCE(position_uid, $2),
                           updated_at = now()
-                    WHERE order_uid = $1""",
-                order_uid, filled_price, utc(filled_exchange_ts), position_uid)
+                    WHERE order_uid = $1""", order_uid, position_uid)
 
     async def record_fill(self, r: FillRecord) -> bool:
         """Insert one fill. False means it was already durable.
@@ -608,6 +723,18 @@ class PostgresRepository(Repository):
 
     async def _insert_fill(self, r: FillRecord) -> bool:
         async with self._pool.acquire() as con:
+            async with con.transaction():
+                inserted = await self._insert_fill_row(con, r)
+                if inserted:
+                    # BUG 2: the parent order must advance in the SAME
+                    # transaction as its fill. Persisting one without the other
+                    # is what left filled orders sitting in WORKING, which made
+                    # fill-rate and expiry-rate meaningless and tripped the
+                    # "order unexpectedly WORKING" alarm on every trade.
+                    await self._advance_order_for_fill(con, r)
+                return inserted
+
+    async def _insert_fill_row(self, con, r: FillRecord) -> bool:
             out = await con.fetchval(
                 """INSERT INTO paper_fills (fill_uid, order_uid, instance_uid,
                        position_uid, seq, purpose,
@@ -624,7 +751,41 @@ class PostgresRepository(Repository):
                 r.quantity, r.price, r.notional, r.fee, r.slippage,
                 r.liquidity, utc(r.filled_at), r.tick_ts_us,
                 _ts(r.exchange_ts), _ts(r.received_ts), r.event_type)
-        return out is not None
+            return out is not None
+
+    async def _advance_order_for_fill(self, con, r: FillRecord) -> None:
+        """WORKING -> PARTIALLY_FILLED -> FILLED, per the existing lifecycle.
+
+        The state is DERIVED from the sum of durable fills rather than assumed,
+        so a replay recomputes the same answer and multiple fills land in the
+        right intermediate state. No second state machine is introduced: the
+        terminal set and the transition rules are the ones in
+        app/execution/order_state.py.
+
+        The WHERE clause refuses to touch a terminal order, so a stale fill
+        replayed against a CANCELLED or EXPIRED order cannot resurrect it.
+        """
+        await con.execute(
+            """
+            WITH filled AS (
+                SELECT coalesce(sum(quantity), 0) AS q
+                  FROM paper_fills WHERE order_uid = $1
+            )
+            UPDATE paper_orders o
+               SET status = CASE WHEN filled.q >= o.quantity
+                                 THEN 'FILLED' ELSE 'PARTIALLY_FILLED' END,
+                   filled_price = $2,
+                   filled_exchange_ts = $3,
+                   position_uid = COALESCE(o.position_uid, $4),
+                   fill_delay_seconds = GREATEST(0, EXTRACT(EPOCH FROM
+                       ($3 - o.created_exchange_ts))),
+                   updated_at = now()
+              FROM filled
+             WHERE o.order_uid = $1
+               AND o.status <> ALL($5::text[])
+            """,
+            r.order_uid, r.price, _ts(r.exchange_ts or r.filled_at),
+            r.position_uid, list(_TERMINAL_SQL))
 
     async def fill_exists_for_order(self, order_uid: str) -> bool:
         async with self._pool.acquire() as con:

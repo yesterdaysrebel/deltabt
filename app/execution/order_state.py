@@ -49,6 +49,17 @@ class OrderStatus(str, Enum):
 TERMINAL = frozenset({OrderStatus.FILLED, OrderStatus.CANCELLED,
                       OrderStatus.REJECTED, OrderStatus.EXPIRED})
 
+#: An entry order in one of these states still HOLDS EXPOSURE: it has not
+#: filled, so no position exists yet, but it can still create one. Counting
+#: only positions is what let two entries pass a max_open_positions=1 gate
+#: 1.1 seconds apart -- between the first approval and its fill there was an
+#: approved order and no position, so the gate saw zero.
+#:
+#: Deliberately the complement of TERMINAL rather than a hand-listed set: a
+#: state added later is reserving until someone declares it terminal, which is
+#: the safe direction to be wrong in.
+RESERVING = frozenset(s for s in OrderStatus if s not in TERMINAL)
+
 #: States paper execution can actually produce. Enforced by a test so the
 #: venue-only states cannot silently appear in the forward-test dataset.
 PAPER_REACHABLE = frozenset({OrderStatus.NEW, OrderStatus.WORKING,
@@ -101,6 +112,11 @@ class IllegalTransition(Exception):
 
 def is_terminal(status: OrderStatus) -> bool:
     return status in TERMINAL
+
+
+def holds_exposure(status: OrderStatus) -> bool:
+    """True if an entry order in this state can still become a position."""
+    return status in RESERVING
 
 
 def can_transition(current: OrderStatus, requested: OrderStatus) -> bool:

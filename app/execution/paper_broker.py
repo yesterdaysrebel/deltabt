@@ -353,7 +353,8 @@ class PaperBroker:
     # -- submission --------------------------------------------------------
 
     def submit_order(self, intent: ApprovedOrderIntent,
-                     *, now: int | None = None) -> PaperOrder | None:
+                     *, now: int | None = None,
+                     order_uid: str | None = None) -> PaperOrder | None:
         """Accepts a risk-approved intent and nothing else.
 
         Returns None if this intent was already submitted, which is what makes
@@ -374,7 +375,11 @@ class PaperBroker:
             return None
 
         order = PaperOrder(
-            order_uid=new_uid("ord"),
+            # The uid is supplied by the caller when the DATABASE has already
+            # reserved the slot under it, so the durable reservation and the
+            # in-memory order are the same object rather than two that have to
+            # be reconciled.
+            order_uid=order_uid or new_uid("ord"),
             idempotency_key=intent.intent_id,
             signal_key=intent.signal_key,
             symbol=intent.symbol,

@@ -45,6 +45,7 @@ from app.config.settings import (
 )
 from app.config.strategy import FROZEN, StrategyConfig
 from app.execution.allocation import UnmatchedFill, resolve_position
+from app.execution.order_state import OrderStatus
 from app.execution.paper_broker import ExitReason, PaperBroker, PaperPosition
 from app.forwardtest.identity import (
     EXECUTION_FIELDS,
@@ -520,28 +521,66 @@ class TradingBot:
             await self._place(exp, decision, market_now)
 
     async def _place(self, exp, decision, market_now: int) -> None:
+        """Reserve exposure in the DATABASE, then create the paper order.
+
+        BUG 1. The risk engine's max_open_positions gate counted POSITIONS.
+        Between approving BTCUSD and evaluating ETHUSD -- 1.1 seconds, same 5m
+        bar -- the first had an approved ORDER and no position yet, so the gate
+        saw zero and approved a second entry against a limit of one.
+
+        The order row is now the reservation: counted and inserted inside one
+        transaction, serialised by a transaction-scoped advisory lock. There is
+        no window between deciding and reserving because they are the same
+        operation.
+        """
         intent = decision.intent
-        order = self.broker.submit_order(intent, now=market_now)
-        if order is None:
-            log.warning("broker declined the intent", extra={"symbol": exp.symbol})
-            return
-        ok = await self.repo.create_order(OrderRecord(
-            order_uid=order.order_uid, idempotency_key=intent.intent_id,
+        order_uid = new_uid("ord")
+        ttl = self.broker.entry_ttl_seconds
+        record = OrderRecord(
+            order_uid=order_uid, idempotency_key=intent.intent_id,
             signal_key=intent.signal_key, instance_uid=self.instance_uid,
-            symbol=order.symbol, side=order.side, order_type=order.order_type,
-            purpose="entry", quantity=order.quantity,
-            limit_price=order.limit_price, status=order.status.value,
+            symbol=intent.symbol, side=intent.side,
+            order_type=intent.order_type, purpose="entry",
+            quantity=intent.quantity, limit_price=intent.limit_price,
+            status=OrderStatus.WORKING.value,
             equity_before=intent.equity_before, risk_amount=intent.risk_amount,
-            created_exchange_ts=order.created_at,
-            expires_exchange_ts=order.created_at + self.broker.entry_ttl_seconds
-            if self.broker.entry_ttl_seconds else None,
-            requested_price=intent.entry_reference,
-            position_uid=order.position_uid,
-            received_ts=wall_now()))
-        if not ok:
-            self.broker.cancel_order(order.order_uid, "duplicate in database")
-            log.warning("order already durable; cancelling the in-memory twin")
+            created_exchange_ts=market_now,
+            expires_exchange_ts=(market_now + ttl) if ttl else None,
+            requested_price=intent.entry_reference, received_ts=wall_now())
+
+        reserved = await self.repo.reserve_entry_slot(
+            record, self.settings.risk.max_open_positions)
+        if not reserved:
+            exposure = await self.repo.effective_exposure()
+            reason = (f"max_open_positions {self.settings.risk.max_open_positions} "
+                      f"already reserved (effective exposure {exposure}: open "
+                      f"positions plus pending entry orders)")
+            exp.outcome = Outcome.REJECTED
+            exp.rejection_reason = reason
+            self.metrics.reservations_refused += 1
+            await self.repo.record_risk_event(RiskEventRecord(
+                event_id=new_uid("risk"), instance_uid=self.instance_uid,
+                symbol=exp.symbol, event_type="LIMIT_BREACH",
+                reason=reason, limit_name="max_open_positions",
+                limit_value=self.settings.risk.max_open_positions,
+                observed_value=exposure, exchange_ts=market_now,
+                received_ts=wall_now()))
+            log.info("entry refused at the reservation gate",
+                     extra={"symbol": exp.symbol, "exposure": exposure})
             return
+
+        order = self.broker.submit_order(intent, now=market_now,
+                                         order_uid=order_uid)
+        if order is None:
+            # The broker declined after the slot was reserved, so the
+            # reservation must be released or it would block every future
+            # entry for the rest of the run.
+            await self.repo.update_order_status(
+                order_uid, OrderStatus.CANCELLED.value)
+            log.warning("broker declined after reservation; slot released",
+                        extra={"symbol": exp.symbol})
+            return
+
         self.metrics.orders += 1
         await self._event("execution", "PAPER_ORDER_CREATED", symbol=order.symbol,
                           payload={"order_uid": order.order_uid,
@@ -594,6 +633,14 @@ class TradingBot:
                 await self._persist_open(ev)
             elif ev.kind == "POSITION_CLOSED":
                 await self._persist_close(ev)
+            elif ev.kind == "ORDER_RESIZED":
+                # The broker cut the size to hold the risk budget. Persist the
+                # amendment, or the order row keeps claiming the approved
+                # quantity and its full fill is then mis-derived as PARTIAL.
+                await self.repo.resize_order(ev.payload["order_uid"],
+                                             int(ev.payload["filled"]))
+                await self._event("execution", "ORDER_RESIZED",
+                                  symbol=ev.symbol, payload=ev.payload)
             elif ev.kind == "FUNDING":
                 await self._persist_funding(ev)
             elif ev.kind in ("ORDER_EXPIRED", "ORDER_CANCELLED"):
@@ -667,11 +714,6 @@ class TradingBot:
             exchange_ts=exch, received_ts=wall_now()))
         if ok:
             self.metrics.fills += 1
-            # Record what the order ACTUALLY did, beside what was asked for.
-            await self.repo.record_order_fill(
-                p["order_uid"], filled_price=float(p["price"]),
-                filled_exchange_ts=int(p.get("filled_at") or exch),
-                position_uid=position_uid)
         else:
             # Not an error: the deterministic fill id did its job on a replay.
             log.info("fill already durable; not double-booking",
