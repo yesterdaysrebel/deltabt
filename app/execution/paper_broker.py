@@ -54,6 +54,7 @@ from app.execution.order_state import (
     transition,
 )
 from app.persistence.models import new_uid
+from app.portfolio.funding import settlements_for_position
 from deltabt.costs import SymbolCosts
 
 log = logging.getLogger(__name__)
@@ -167,6 +168,10 @@ class PaperPosition:
     #: below the planned figure. Recorded so the forward test measures the
     #: degradation instead of assuming it away.
     fill_rr: float | None = None
+    #: Exchange time through which funding settlements have been charged.
+    #: Advanced only once the events are durable, so a restart mid-settlement
+    #: redoes the work and the deterministic event id makes the redo a no-op.
+    funding_checked_through: int = 0
 
     @property
     def is_open(self) -> bool:
@@ -269,6 +274,11 @@ class PaperBroker:
         #: order_uid -> fills booked so far, so the next sequence number is
         #: deterministic and a replay reuses it rather than inventing a new id.
         self._fill_seq: dict[str, int] = {}
+        #: Funding settlements already applied in memory. Makes the in-memory
+        #: effect idempotent at source, so persistence never has to "undo" a
+        #: charge -- an undo is wrong whenever the event being replayed is a
+        #: stale one the broker did not just apply.
+        self._funding_charged: set[str] = set()
         self.events: list[BrokerEvent] = []
 
     # -- introspection (brief section 9) -----------------------------------
@@ -445,6 +455,51 @@ class PaperBroker:
         """Aggregate of a position's fills -- weighted average, dedup by uid."""
         return aggregate(self.fills_for_position(position_uid, purpose))
 
+    def settle_funding(self, symbol: str, now: int, *, rate_percent: float,
+                       mark_price: float, interval: int) -> list[BrokerEvent]:
+        """Charge every settlement crossed since each position was last checked.
+
+        Snapshot semantics, exactly as the research model: whatever is open at
+        the instant pays the full interval. Called from the tick path so a
+        settlement is charged as soon as market time passes it, not at close.
+        """
+        before = len(self.events)
+        for pos in self.get_positions(symbol):
+            if pos.status not in ("OPEN", "SUSPENDED"):
+                continue
+            costs = self.costs[pos.symbol]
+            for s in settlements_for_position(
+                    position_uid=pos.position_uid, symbol=pos.symbol,
+                    side=pos.side, quantity=pos.quantity,
+                    contract_value=costs.contract_value,
+                    opened_at=pos.opened_at,
+                    checked_through=pos.funding_checked_through,
+                    now=now, interval=interval, rate_percent=rate_percent,
+                    mark_price=mark_price):
+                if s.event_id in self._funding_charged:
+                    continue
+                self._funding_charged.add(s.event_id)
+                pos.funding += s.funding_amount
+                # Realised cash flow at the instant, so equity tracks the same
+                # arithmetic the close later uses:
+                #   pnl = gross - entry_fee - exit_fee - funding
+                self.equity -= s.funding_amount
+                self.events.append(BrokerEvent("FUNDING", pos.symbol, {
+                    "event_id": s.event_id, "position_uid": s.position_uid,
+                    "symbol": s.symbol, "side": s.side, "quantity": s.quantity,
+                    "exchange_ts": s.exchange_ts,
+                    "funding_rate": s.funding_rate,
+                    "mark_price": s.mark_price, "notional": s.notional,
+                    "funding_amount": s.funding_amount,
+                    "interval_seconds": s.interval_seconds,
+                    "rate_source": s.rate_source}))
+            pos.funding_checked_through = max(pos.funding_checked_through, now)
+        return self.events[before:]
+
+    def mark_funding_charged(self, event_ids) -> None:
+        """Seed the applied set during recovery, from the durable ledger."""
+        self._funding_charged.update(event_ids)
+
     def _open_exit_order(self, pos: PaperPosition, reason: ExitReason,
                          price: float, when: int, maker: bool) -> PaperOrder:
         """The order that closes a position.
@@ -551,6 +606,7 @@ class PaperBroker:
             armed_after_us=tick_us,
             fill_rr=realised_rr(price, intent.stop_price, intent.target_price,
                                 order.side),
+            funding_checked_through=when,
         )
         self.positions[pos.position_uid] = pos
         order.position_uid = pos.position_uid

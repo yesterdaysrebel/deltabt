@@ -86,6 +86,15 @@ class Repository(ABC):
     @abstractmethod
     async def quarantined_fills(self, limit: int = 100) -> list[dict]: ...
 
+    # -- funding -----------------------------------------------------------
+    @abstractmethod
+    async def record_funding(self, rec) -> bool:
+        """Insert one settlement. False if already charged (idempotent)."""
+    @abstractmethod
+    async def funding_for_position(self, position_uid: str) -> list: ...
+    @abstractmethod
+    async def total_funding(self, since: int | None = None) -> float: ...
+
     # -- positions ---------------------------------------------------------
     @abstractmethod
     async def open_position(self, rec: PositionRecord) -> bool: ...
@@ -139,6 +148,7 @@ class InMemoryRepository(Repository):
         s.setdefault("fills_by_order", {})
         s.setdefault("fill_seq_keys", set())
         s.setdefault("quarantine", {})
+        s.setdefault("funding", {})
         s.setdefault("positions", {})
         s.setdefault("positions_by_signal", {})
         s.setdefault("risk_events", [])
@@ -236,6 +246,23 @@ class InMemoryRepository(Repository):
 
     async def quarantined_fills(self, limit: int = 100) -> list[dict]:
         return [asdict(r) for r in list(self._s["quarantine"].values())[-limit:]]
+
+    async def record_funding(self, rec) -> bool:
+        key = (rec.position_uid, rec.exchange_ts)
+        if rec.event_id in self._s["funding"] or any(
+                (r.position_uid, r.exchange_ts) == key
+                for r in self._s["funding"].values()):
+            return False
+        self._s["funding"][rec.event_id] = rec
+        return True
+
+    async def funding_for_position(self, position_uid: str) -> list:
+        return [r for r in self._s["funding"].values()
+                if r.position_uid == position_uid]
+
+    async def total_funding(self, since: int | None = None) -> float:
+        return sum(r.funding_amount for r in self._s["funding"].values()
+                   if since is None or r.exchange_ts >= since)
 
     async def open_position(self, rec: PositionRecord) -> bool:
         if rec.signal_key in self._s["positions_by_signal"]:
@@ -526,6 +553,56 @@ class PostgresRepository(Repository):
                 "SELECT * FROM quarantined_fills ORDER BY created_at DESC "
                 "LIMIT $1", limit)
         return [dict(r) for r in rows]
+
+    async def record_funding(self, r) -> bool:
+        """False means already charged. Matches the in-memory twin.
+
+        ON CONFLICT covers event_id; the (position_uid, exchange_ts) index
+        raises instead, so it is caught and reported the same way.
+        """
+        try:
+            return await self._insert_funding(r)
+        except Exception as exc:                           # noqa: BLE001
+            if "ux_funding_position_instant" in str(exc):
+                log.info("settlement already charged for this position",
+                         extra={"position_uid": r.position_uid,
+                                "exchange_ts": r.exchange_ts})
+                return False
+            raise
+
+    async def _insert_funding(self, r) -> bool:
+        async with self._pool.acquire() as con:
+            out = await con.fetchval(
+                """INSERT INTO funding_events (event_id, instance_uid,
+                       position_uid, symbol, side, quantity, exchange_ts,
+                       received_ts, funding_rate, mark_price, notional,
+                       funding_amount, interval_seconds, rate_source)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                   ON CONFLICT (event_id) DO NOTHING
+                   RETURNING id""",
+                r.event_id, r.instance_uid, r.position_uid, r.symbol, r.side,
+                r.quantity, utc(r.exchange_ts), _ts(r.received_ts),
+                r.funding_rate, r.mark_price, r.notional, r.funding_amount,
+                r.interval_seconds, r.rate_source)
+        return out is not None
+
+    async def funding_for_position(self, position_uid: str) -> list:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                "SELECT * FROM funding_events WHERE position_uid=$1 "
+                "ORDER BY exchange_ts", position_uid)
+        return [dict(r) for r in rows]
+
+    async def total_funding(self, since: int | None = None) -> float:
+        async with self._pool.acquire() as con:
+            if since is None:
+                v = await con.fetchval("SELECT COALESCE(sum(funding_amount),0) "
+                                       "FROM funding_events")
+            else:
+                v = await con.fetchval(
+                    "SELECT COALESCE(sum(funding_amount),0) FROM funding_events "
+                    "WHERE exchange_ts >= $1", utc(since))
+        return float(v)
 
     # -- positions ---------------------------------------------------------
 

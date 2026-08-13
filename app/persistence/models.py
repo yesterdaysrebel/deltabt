@@ -193,6 +193,26 @@ class QuarantinedFillRecord:
     received_ts: float | None = None
 
 
+@dataclass
+class FundingEventRecord:
+    """One funding settlement charged to one position."""
+
+    event_id: str
+    instance_uid: str
+    position_uid: str
+    symbol: str
+    side: int
+    quantity: int
+    exchange_ts: int
+    funding_rate: float          # percent per interval
+    mark_price: float
+    notional: float
+    funding_amount: float        # positive = paid by this position
+    interval_seconds: int
+    rate_source: str = "ticker"
+    received_ts: float | None = None
+
+
 class DuplicateRecord(Exception):
     """A uniqueness constraint rejected the write.
 

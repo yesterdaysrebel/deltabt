@@ -202,6 +202,39 @@ CREATE TABLE IF NOT EXISTS positions (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_positions_open_symbol
     ON positions (symbol) WHERE status IN ('OPENING', 'OPEN', 'SUSPENDED', 'CLOSING');
 
+-- ---------------------------------------------------------------------------
+-- FUNDING LEDGER  (audit F4)
+-- ---------------------------------------------------------------------------
+-- A ledger rather than a running total on the position, so each settlement is
+-- individually auditable: which rate, on what notional, at which exchange
+-- instant, and from which source.
+CREATE TABLE IF NOT EXISTS funding_events (
+    id                  BIGSERIAL PRIMARY KEY,
+    event_id            TEXT        NOT NULL UNIQUE,
+    instance_uid        TEXT        NOT NULL,
+    position_uid        TEXT        NOT NULL,
+    symbol              TEXT        NOT NULL,
+    side                SMALLINT    NOT NULL,
+    quantity            INTEGER     NOT NULL,
+    exchange_ts         TIMESTAMPTZ NOT NULL,
+    received_ts         TIMESTAMPTZ,
+    funding_rate        NUMERIC(20,10) NOT NULL,   -- PERCENT per interval
+    mark_price          NUMERIC(20,8) NOT NULL,
+    notional            NUMERIC(20,8) NOT NULL,
+    -- positive = paid by this position, negative = received
+    funding_amount      NUMERIC(20,8) NOT NULL,
+    interval_seconds    INTEGER     NOT NULL,
+    -- Delta publishes no "funding applied" event, so this is the last rate
+    -- observed before the instant. Recorded so the reconstruction is honest.
+    rate_source         TEXT        NOT NULL DEFAULT 'ticker',
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- One charge per position per settlement. A restart across a settlement
+-- redoes the work; this makes the redo a no-op.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_funding_position_instant
+    ON funding_events (position_uid, exchange_ts);
+CREATE INDEX IF NOT EXISTS ix_funding_symbol ON funding_events (symbol, exchange_ts);
+
 CREATE TABLE IF NOT EXISTS risk_events (
     id              BIGSERIAL PRIMARY KEY,
     event_id        TEXT        NOT NULL UNIQUE,

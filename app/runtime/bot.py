@@ -59,6 +59,7 @@ from app.monitoring.metrics import Metrics
 from app.notifications.base import Notifier, NullNotifier
 from app.persistence.models import (
     FillRecord,
+    FundingEventRecord,
     QuarantinedFillRecord,
     InstanceRecord,
     OrderRecord,
@@ -141,6 +142,12 @@ class TradingBot:
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
+        #: Latest funding rate (PERCENT per interval) and mark price seen on
+        #: v2/ticker, per symbol. Delta publishes no "funding applied" event,
+        #: so a settlement is charged at the last rate observed before it --
+        #: an approximation, recorded as such on the ledger row.
+        self._funding_rate: dict[str, float] = {}
+        self._last_mark: dict[str, float] = {}
         self.ready = False
         self.recovery_error: str | None = None
         self.started_at = wall_now()
@@ -216,7 +223,26 @@ class TradingBot:
                                   severity="CRITICAL",
                                   payload={"symbol": p.symbol})
                 return
-            self.broker.positions[p.position_uid] = _to_broker_position(p)
+            pos = _to_broker_position(p)
+            # Rebuild the funding watermark from the LEDGER, not from the
+            # position row. Without this a restart re-walks every settlement
+            # since the position opened; each would be refused as a duplicate,
+            # but the work and the log noise are avoidable and the intent
+            # should be explicit.
+            charged = await self.repo.funding_for_position(p.position_uid)
+            if charged:
+                stamps = [c["exchange_ts"] if isinstance(c, dict) else c.exchange_ts
+                          for c in charged]
+                stamps = [int(t.timestamp()) if hasattr(t, "timestamp") else int(t)
+                          for t in stamps]
+                pos.funding_checked_through = max(stamps)
+                self.broker.mark_funding_charged(
+                    c["event_id"] if isinstance(c, dict) else c.event_id
+                    for c in charged)
+                pos.funding = sum(
+                    float(c["funding_amount"] if isinstance(c, dict)
+                          else c.funding_amount) for c in charged)
+            self.broker.positions[p.position_uid] = pos
 
         log.info("recovered %d open position(s)", len(positions))
         await self._event("recovery", "STATE_RESTORED", payload={
@@ -264,10 +290,33 @@ class TradingBot:
         if tick.symbol not in self.builder:
             return
         self.clock.observe(tick.ts)
+        if tick.funding_rate is not None:
+            self._funding_rate[tick.symbol] = tick.funding_rate
+        self._last_mark[tick.symbol] = tick.mark
+        self._settle_funding(tick.symbol, tick.ts)
         # Execution advances on every tick, so stops and targets do not wait
         # for a bar close.
         for ev in self.broker.process_market_event(tick):
             self._pending_events.append(ev)
+
+    def _settle_funding(self, symbol: str, now: int) -> None:
+        """Charge any settlement market time has just passed.
+
+        Driven from the tick path so a settlement is charged at the instant it
+        is crossed, not deferred to the close -- which is what "snapshot, not
+        pro-rata" means.
+        """
+        rate = self._funding_rate.get(symbol)
+        mark = self._last_mark.get(symbol)
+        if rate is None or mark is None:
+            return
+        spec = self.costs.get(symbol)
+        if spec is None:
+            return
+        evs = self.broker.settle_funding(
+            symbol, now, rate_percent=rate, mark_price=mark,
+            interval=spec.funding_interval_seconds)
+        self._pending_events.extend(evs)
 
     def _on_candle(self, upd) -> None:
         if upd.symbol not in self.builder:
@@ -477,6 +526,8 @@ class TradingBot:
                 await self._persist_open(ev)
             elif ev.kind == "POSITION_CLOSED":
                 await self._persist_close(ev)
+            elif ev.kind == "FUNDING":
+                await self._persist_funding(ev)
             elif ev.kind in ("ORDER_EXPIRED", "ORDER_CANCELLED"):
                 await self.repo.update_order_status(
                     ev.payload["order_uid"],
@@ -565,6 +616,34 @@ class TradingBot:
         await self.notifier.send("FILL QUARANTINED", exc.reason,
                                  severity="CRITICAL")
         log.error("quarantined an unmatched fill", extra={"reason": exc.reason})
+
+    async def _persist_funding(self, ev) -> None:
+        """Write one settlement to the ledger.
+
+        The event id is deterministic, so a restart across a settlement redoes
+        the work and this becomes a no-op rather than a double charge.
+        """
+        p = ev.payload
+        first = await self.repo.record_funding(FundingEventRecord(
+            event_id=p["event_id"], instance_uid=self.instance_uid,
+            position_uid=p["position_uid"], symbol=p["symbol"],
+            side=p["side"], quantity=p["quantity"],
+            exchange_ts=p["exchange_ts"], funding_rate=p["funding_rate"],
+            mark_price=p["mark_price"], notional=p["notional"],
+            funding_amount=p["funding_amount"],
+            interval_seconds=p["interval_seconds"],
+            rate_source=p["rate_source"], received_ts=wall_now()))
+        if not first:
+            # Already in the ledger. Nothing to undo: the broker refuses to
+            # apply a settlement twice, so equity is already correct. Undoing
+            # here would be wrong whenever the replayed event is a stale one
+            # the broker did not just apply.
+            log.info("funding already charged; not double-booking",
+                     extra={"event_id": p["event_id"]})
+            return
+        self.metrics.funding_events += 1
+        await self._event("funding", "FUNDING_SETTLED", symbol=p["symbol"],
+                          payload=p)
 
     async def _persist_open(self, ev) -> None:
         pos = next((x for x in self.broker.positions.values()
@@ -762,4 +841,7 @@ def _to_broker_position(r: PositionRecord) -> PaperPosition:
         # A recovered position must be immediately triggerable: the ticks that
         # would have hit its stop while the bot was down are gone, so waiting
         # for a tick "after the entry" would leave it unprotected.
-        armed_after_us=None)
+        armed_after_us=None,
+        # Funding already charged is in the ledger; the watermark is rebuilt
+        # from it during recovery so a restart cannot re-charge the past.
+        funding_checked_through=r.opened_at)
