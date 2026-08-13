@@ -65,6 +65,61 @@ variable "state_bucket_name" {
   type        = string
 }
 
+# ---------------------------------------------------------------------------
+# GitHub is migrating OIDC subjects to an IMMUTABLE form that pins the owner
+# and the repository to their NUMERIC IDs:
+#
+#     repo:yesterdaysrebel@256862558/deltabt@1331985440:ref:refs/heads/master
+#
+# rather than the legacy name-based
+#
+#     repo:yesterdaysrebel/deltabt:ref:refs/heads/master
+#
+# That is a real security improvement: a name can be released and re-registered
+# by someone else, and a trust policy written against a name would follow it to
+# the new owner. A numeric id cannot be re-registered.
+#
+# It also silently breaks every name-based trust policy. Observed here as
+# `AccessDenied: Not authorized to perform sts:AssumeRoleWithWebIdentity`, with
+# CloudTrail showing the immutable subject GitHub actually sent.
+#
+# BOTH forms are trusted below, each pinned exactly. No wildcard: a pattern
+# like `repo:yesterdaysrebel*/deltabt*` would also match a repository somebody
+# else creates named `yesterdaysrebel-evil/deltabt-x`.
+#
+# Find the ids with:
+#     gh api users/<owner> --jq .id
+#     gh api repos/<owner>/<repo> --jq .id
+# ---------------------------------------------------------------------------
+
+variable "github_owner_id" {
+  description = "Numeric GitHub owner id, for the immutable OIDC subject. Empty disables it."
+  type        = string
+  default     = ""
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository id, for the immutable OIDC subject. Empty disables it."
+  type        = string
+  default     = ""
+}
+
+locals {
+  repo_immutable = (var.github_owner_id != "" && var.github_repo_id != ""
+    ? "${var.github_org}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}"
+  : null)
+
+  #: Both spellings of "this repository", each exact.
+  repo_forms = compact(["${var.github_org}/${var.github_repo}", local.repo_immutable])
+
+  deploy_subjects = flatten([for r in local.repo_forms : [
+    "repo:${r}:ref:refs/heads/${var.deploy_branch}",
+    "repo:${r}:environment:paper",
+  ]])
+
+  plan_subjects = [for r in local.repo_forms : "repo:${r}:pull_request"]
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
@@ -199,10 +254,7 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${var.deploy_branch}",
-        "repo:${var.github_org}/${var.github_repo}:environment:paper",
-      ]
+      values   = local.deploy_subjects
     }
   }
 }
@@ -283,7 +335,7 @@ data "aws_iam_policy_document" "github_plan_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:pull_request"]
+      values   = local.plan_subjects
     }
   }
 }

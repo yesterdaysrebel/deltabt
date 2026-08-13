@@ -26,6 +26,22 @@ variable "github_repo" {
   default     = "deltabt"
 }
 
+variable "github_owner_id" {
+  description = <<-EOT
+    Numeric GitHub owner id. GitHub's immutable OIDC subject pins the owner and
+    repository to their numeric ids, which a rename cannot follow. Empty falls
+    back to the legacy name-based subject alone. `gh api users/<owner> --jq .id`
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository id. `gh api repos/<o>/<r> --jq .id`"
+  type        = string
+  default     = ""
+}
+
 # --- compute ---------------------------------------------------------------
 
 variable "instance_type" {

@@ -135,6 +135,8 @@ jobs:
           terraform plan -input=false -lock-timeout=5m -detailed-exitcode -out=tfplan \
             -var="github_org=${{ github.repository_owner }}" \
             -var="github_repo=${{ github.event.repository.name }}" \
+            -var="github_owner_id=${{ github.repository_owner_id }}" \
+            -var="github_repo_id=${{ github.repository_id }}" \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="alarm_email=${{ vars.ALARM_EMAIL }}"
           code=$?

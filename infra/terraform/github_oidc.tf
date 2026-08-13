@@ -42,11 +42,14 @@ resource "aws_iam_role" "github_app_deploy" {
         # protected `paper` environment. Without the `sub` condition ANY GitHub
         # repository in the world could assume the role; with a trailing `:*`
         # any branch or pull request in this one could.
+        #
+        # Both the legacy name-based subject and GitHub's IMMUTABLE
+        # numeric-id subject are listed, each pinned exactly -- see the long
+        # note in infra/terraform/bootstrap/main.tf. A name-only policy is
+        # denied outright on repositories that have moved to immutable
+        # subjects.
         "ForAnyValue:StringLike" = {
-          "token.actions.githubusercontent.com:sub" = [
-            "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/master",
-            "repo:${var.github_org}/${var.github_repo}:environment:paper",
-          ]
+          "token.actions.githubusercontent.com:sub" = local.github_subjects
         }
       }
     }]
@@ -98,4 +101,19 @@ resource "aws_iam_role_policy" "github_app_deploy" {
       },
     ]
   })
+}
+
+locals {
+  #: Both spellings of "this repository", each exact. Empty ids fall back to
+  #: the legacy form alone.
+  repo_immutable = (var.github_owner_id != "" && var.github_repo_id != ""
+    ? "${var.github_org}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}"
+  : null)
+
+  repo_forms = compact(["${var.github_org}/${var.github_repo}", local.repo_immutable])
+
+  github_subjects = flatten([for r in local.repo_forms : [
+    "repo:${r}:ref:refs/heads/master",
+    "repo:${r}:environment:paper",
+  ]])
 }
