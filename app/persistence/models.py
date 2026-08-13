@@ -61,6 +61,11 @@ class SignalRecord:
     exchange_ts: int | None = None
     received_ts: float | None = None
     event_type: str = "SIGNAL_EVALUATED"
+    #: Which experiment produced this decision, and under what composite
+    #: configuration. Stamped so a run cannot be silently mixed with another.
+    experiment_id: str | None = None
+    config_hash: str | None = None
+    git_sha: str | None = None
 
 
 @dataclass

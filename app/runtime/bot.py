@@ -46,6 +46,11 @@ from app.config.settings import (
 from app.config.strategy import FROZEN, StrategyConfig
 from app.execution.allocation import UnmatchedFill, resolve_position
 from app.execution.paper_broker import ExitReason, PaperBroker, PaperPosition
+from app.forwardtest.identity import (
+    EXECUTION_FIELDS,
+    ConfigurationDrift,
+    build_identity,
+)
 from app.market_data.backfill import Backfiller
 from app.market_data.candle_builder import CandleBuilder
 from app.market_data.delta_ws import DeltaMarketFeed
@@ -150,6 +155,10 @@ class TradingBot:
         self._last_mark: dict[str, float] = {}
         self.ready = False
         self.recovery_error: str | None = None
+        #: Set once an experiment is bound. Every decision row is stamped with
+        #: it so a run can never be silently mixed with another.
+        self.experiment_id: str | None = None
+        self.identity = None
         self.started_at = wall_now()
         self._tasks: list[asyncio.Task] = []
         self._stopping = asyncio.Event()
@@ -164,6 +173,15 @@ class TradingBot:
             return False
 
         await self.repo.connect()
+
+        # FAIL CLOSED before anything else touches the market. If the running
+        # configuration does not match the experiment already in the database,
+        # the bot must not trade: adopting the new configuration would silently
+        # make the second half of a 30-day run a different experiment from the
+        # first (audit F5).
+        if not await self.bind_experiment():
+            return False
+
         await self.repo.register_instance(InstanceRecord(
             instance_uid=self.instance_uid, hostname=socket.gethostname(),
             pid=os.getpid(), strategy_version=self.strategy.version,
@@ -187,6 +205,51 @@ class TradingBot:
         await self._event("bot", "READY")
         await self.notifier.send("bot ready",
                                  f"{self.strategy.version} on {', '.join(self.symbols)}")
+        return True
+
+    def current_identity(self, experiment_id: str):
+        """Identity of the configuration this process is actually running."""
+        return build_identity(
+            experiment_id, self.strategy, self.settings.risk,
+            {f: getattr(self.broker, f, None) if f != "slippage_bps"
+             else self.settings.risk.slippage_bps for f in EXECUTION_FIELDS},
+            self.symbols)
+
+    async def bind_experiment(self) -> bool:
+        """Attach to the active experiment, or refuse to run.
+
+        Three outcomes, and only the first two allow trading:
+          * no active experiment -> run unbound (development), and say so;
+          * active experiment whose configuration matches -> bind;
+          * active experiment whose configuration has MOVED -> refuse.
+        """
+        active = await self.repo.active_experiment()
+        if active is None:
+            log.warning("no active forward-test experiment; running unbound. "
+                        "Decisions will not carry an experiment id.")
+            return True
+
+        exp_id = active["experiment_id"]
+        mine = self.current_identity(exp_id)
+        recorded = _identity_from_row(active)
+        diffs = mine.differences(recorded)
+        if diffs:
+            drift = ConfigurationDrift(exp_id, diffs)
+            self.recovery_error = str(drift)
+            log.error("%s", drift)
+            await self._event("forwardtest", "CONFIG_DRIFT_REFUSED",
+                              severity="CRITICAL",
+                              payload={"experiment_id": exp_id,
+                                       "differences": diffs})
+            await self.notifier.send("CONFIGURATION DRIFT -- refusing to start",
+                                     str(drift), severity="CRITICAL")
+            return False
+
+        self.experiment_id = exp_id
+        self.identity = mine
+        log.info("bound to experiment", extra={
+            "experiment_id": exp_id, "config_hash": mine.config_hash,
+            "git_sha": mine.git_sha})
         return True
 
     async def recover(self) -> None:
@@ -495,6 +558,9 @@ class TradingBot:
             direction=exp.direction, outcome=exp.outcome.value,
             strategy_version=exp.strategy_version,
             strategy_config_hash=exp.strategy_config_hash,
+            experiment_id=self.experiment_id,
+            config_hash=self.identity.config_hash if self.identity else None,
+            git_sha=self.identity.git_sha if self.identity else None,
             conditions_passed=exp.conditions_passed,
             conditions_failed=exp.conditions_failed,
             indicators=exp.indicators, entry_price=exp.entry_price,
@@ -809,6 +875,18 @@ class TradingBot:
 
 
 # --- record <-> broker translation -----------------------------------------
+
+
+def _identity_from_row(row: dict):
+    """Rebuild the recorded identity so it can be compared field by field."""
+    from app.forwardtest.identity import ExperimentIdentity
+    return ExperimentIdentity(
+        experiment_id=row["experiment_id"], strategy_hash=row["strategy_hash"],
+        risk_hash=row["risk_hash"], execution_hash=row["execution_hash"],
+        config_hash=row["config_hash"], git_sha=row["git_sha"],
+        git_dirty=bool(row.get("git_dirty")), app_version=row["app_version"],
+        strategy_version=row["strategy_version"],
+        symbols=tuple(row["symbols"]), snapshot=row.get("snapshot") or {})
 
 
 def _to_record(p: PaperPosition, instance_uid: str) -> PositionRecord:

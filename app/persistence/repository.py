@@ -86,6 +86,17 @@ class Repository(ABC):
     @abstractmethod
     async def quarantined_fills(self, limit: int = 100) -> list[dict]: ...
 
+    # -- forward test ------------------------------------------------------
+    @abstractmethod
+    async def create_experiment(self, ident, planned_days: int = 30) -> bool:
+        """Register a new experiment. False if the id already exists."""
+    @abstractmethod
+    async def active_experiment(self) -> dict | None: ...
+    @abstractmethod
+    async def get_experiment(self, experiment_id: str) -> dict | None: ...
+    @abstractmethod
+    async def stop_experiment(self, experiment_id: str, reason: str) -> None: ...
+
     # -- funding -----------------------------------------------------------
     @abstractmethod
     async def record_funding(self, rec) -> bool:
@@ -149,6 +160,7 @@ class InMemoryRepository(Repository):
         s.setdefault("fill_seq_keys", set())
         s.setdefault("quarantine", {})
         s.setdefault("funding", {})
+        s.setdefault("experiments", {})
         s.setdefault("positions", {})
         s.setdefault("positions_by_signal", {})
         s.setdefault("risk_events", [])
@@ -246,6 +258,32 @@ class InMemoryRepository(Repository):
 
     async def quarantined_fills(self, limit: int = 100) -> list[dict]:
         return [asdict(r) for r in list(self._s["quarantine"].values())[-limit:]]
+
+    async def create_experiment(self, ident, planned_days: int = 30) -> bool:
+        if ident.experiment_id in self._s["experiments"]:
+            return False
+        if any(e["status"] == "RUNNING" for e in self._s["experiments"].values()):
+            return False                       # ux_forward_test_running
+        row = ident.to_dict()
+        row.update(status="RUNNING", planned_days=planned_days,
+                   started_at=None, stopped_at=None, stop_reason=None)
+        self._s["experiments"][ident.experiment_id] = row
+        return True
+
+    async def active_experiment(self) -> dict | None:
+        for e in self._s["experiments"].values():
+            if e["status"] == "RUNNING":
+                return e
+        return None
+
+    async def get_experiment(self, experiment_id: str) -> dict | None:
+        return self._s["experiments"].get(experiment_id)
+
+    async def stop_experiment(self, experiment_id: str, reason: str) -> None:
+        e = self._s["experiments"].get(experiment_id)
+        if e:
+            e["status"] = "STOPPED"
+            e["stop_reason"] = reason
 
     async def record_funding(self, rec) -> bool:
         key = (rec.position_uid, rec.exchange_ts)
@@ -428,19 +466,20 @@ class PostgresRepository(Repository):
                    (idempotency_key, instance_uid, symbol, bar_open,
                     exchange_ts, received_ts, event_type,
                     primary_timeframe, confirmation_timeframe, direction, outcome,
-                    strategy_version, strategy_config_hash, conditions_passed,
+                    strategy_version, strategy_config_hash,
+                    experiment_id, config_hash, git_sha, conditions_passed,
                     conditions_failed, indicators, entry_price, stop_price,
                     target_price, stop_distance_pct, reward_risk,
                     rejection_reason, detail)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-                           $14,$15,$16,$17,$18,$19,$20,$21,
-                           $22,$23)
+                           $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
                    ON CONFLICT (idempotency_key) DO NOTHING
                    RETURNING id""",
                 r.idempotency_key, r.instance_uid, r.symbol, utc(r.bar_open),
                 _ts(r.exchange_ts), _ts(r.received_ts), r.event_type,
                 r.primary_timeframe, r.confirmation_timeframe, r.direction,
                 r.outcome, r.strategy_version, r.strategy_config_hash,
+                r.experiment_id, r.config_hash, r.git_sha,
                 r.conditions_passed, r.conditions_failed,
                 r.indicators, r.entry_price, r.stop_price,
                 r.target_price, r.stop_distance_pct, r.reward_risk,
@@ -553,6 +592,47 @@ class PostgresRepository(Repository):
                 "SELECT * FROM quarantined_fills ORDER BY created_at DESC "
                 "LIMIT $1", limit)
         return [dict(r) for r in rows]
+
+    async def create_experiment(self, ident, planned_days: int = 30) -> bool:
+        try:
+            async with self._pool.acquire() as con:
+                out = await con.fetchval(
+                    """INSERT INTO forward_test (experiment_id, status,
+                           config_hash, strategy_hash, risk_hash,
+                           execution_hash, git_sha, git_dirty, app_version,
+                           strategy_version, symbols, snapshot, planned_days)
+                       VALUES ($1,'RUNNING',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                       ON CONFLICT (experiment_id) DO NOTHING
+                       RETURNING experiment_id""",
+                    ident.experiment_id, ident.config_hash, ident.strategy_hash,
+                    ident.risk_hash, ident.execution_hash, ident.git_sha,
+                    ident.git_dirty, ident.app_version, ident.strategy_version,
+                    list(ident.symbols), ident.snapshot, planned_days)
+            return out is not None
+        except Exception as exc:                          # noqa: BLE001
+            if "ux_forward_test_running" in str(exc):
+                log.error("another experiment is already RUNNING")
+                return False
+            raise
+
+    async def active_experiment(self) -> dict | None:
+        async with self._pool.acquire() as con:
+            row = await con.fetchrow(
+                "SELECT * FROM forward_test WHERE status='RUNNING'")
+        return dict(row) if row else None
+
+    async def get_experiment(self, experiment_id: str) -> dict | None:
+        async with self._pool.acquire() as con:
+            row = await con.fetchrow(
+                "SELECT * FROM forward_test WHERE experiment_id=$1",
+                experiment_id)
+        return dict(row) if row else None
+
+    async def stop_experiment(self, experiment_id: str, reason: str) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                "UPDATE forward_test SET status='STOPPED', stopped_at=now(), "
+                "stop_reason=$2 WHERE experiment_id=$1", experiment_id, reason)
 
     async def record_funding(self, r) -> bool:
         """False means already charged. Matches the in-memory twin.

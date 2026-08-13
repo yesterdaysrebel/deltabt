@@ -14,9 +14,40 @@
 --     cannot express both the replayable ordering and the processing lag, and
 --     conflating them is audit finding F8.
 
+-- ---------------------------------------------------------------------------
+-- FORWARD-TEST IDENTITY  (audit F5)
+-- ---------------------------------------------------------------------------
+-- The experiment is the unit of reproducibility. config_hash is COMPOSITE over
+-- strategy AND risk AND execution: risk_per_trade used to be an environment
+-- variable that could change between restarts without altering any recorded
+-- hash, which made the run unreproducible with nothing looking wrong.
+CREATE TABLE IF NOT EXISTS forward_test (
+    experiment_id       TEXT        PRIMARY KEY,
+    status              TEXT        NOT NULL DEFAULT 'RUNNING',  -- RUNNING | STOPPED | COMPLETE
+    config_hash         TEXT        NOT NULL,
+    strategy_hash       TEXT        NOT NULL,
+    risk_hash           TEXT        NOT NULL,
+    execution_hash      TEXT        NOT NULL,
+    git_sha             TEXT        NOT NULL,
+    git_dirty           BOOLEAN     NOT NULL DEFAULT FALSE,
+    app_version         TEXT        NOT NULL,
+    strategy_version    TEXT        NOT NULL,
+    symbols             TEXT[]      NOT NULL,
+    snapshot            JSONB       NOT NULL,
+    planned_days        INTEGER     NOT NULL DEFAULT 30,
+    started_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    stopped_at          TIMESTAMPTZ,
+    stop_reason         TEXT
+);
+-- At most one experiment may be RUNNING. Two concurrent runs against one
+-- database would interleave their datasets.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_forward_test_running
+    ON forward_test ((status)) WHERE status = 'RUNNING';
+
 CREATE TABLE IF NOT EXISTS bot_instance (
     id                  BIGSERIAL PRIMARY KEY,
     instance_uid        TEXT        NOT NULL UNIQUE,
+    experiment_id       TEXT        REFERENCES forward_test (experiment_id),
     hostname            TEXT        NOT NULL,
     pid                 INTEGER     NOT NULL,
     started_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -71,6 +102,9 @@ CREATE TABLE IF NOT EXISTS strategy_signals (
     outcome                 TEXT        NOT NULL,   -- DETECTED | NO_SETUP | SUPPRESSED | REJECTED | APPROVED
     strategy_version        TEXT        NOT NULL,
     strategy_config_hash    TEXT        NOT NULL,
+    experiment_id           TEXT,
+    config_hash             TEXT,
+    git_sha                 TEXT,
     conditions_passed       JSONB       NOT NULL,
     conditions_failed       JSONB       NOT NULL,
     indicators              JSONB       NOT NULL,
@@ -174,6 +208,8 @@ CREATE TABLE IF NOT EXISTS positions (
     position_uid        TEXT        NOT NULL UNIQUE,
     signal_key          TEXT        NOT NULL UNIQUE,
     instance_uid        TEXT        NOT NULL,
+    experiment_id       TEXT,
+    config_hash         TEXT,
     symbol              TEXT        NOT NULL,
     side                SMALLINT    NOT NULL,
     status              TEXT        NOT NULL,       -- OPENING | OPEN | SUSPENDED | CLOSING | CLOSED

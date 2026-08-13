@@ -27,7 +27,8 @@ async def pg_repo():
             "TRUNCATE paper_fills, quarantined_fills, funding_events, "
             "paper_orders, positions, "
             "strategy_signals, risk_events, system_events, market_candles, "
-            "heartbeat, bot_instance, strategy_state RESTART IDENTITY CASCADE")
+            "heartbeat, bot_instance, forward_test, strategy_state "
+            "RESTART IDENTITY CASCADE")
     try:
         yield repo
     finally:
