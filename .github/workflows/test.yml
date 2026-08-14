@@ -17,7 +17,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: test-${{ github.ref }}
+  # github.workflow resolves to the CALLER's name, so the copy deploy.yml
+  # invokes via workflow_call lands in `test-deploy-<ref>` while the run this
+  # push triggers directly lands in `test-test-<ref>`. Keyed on the ref alone
+  # the two collided, and cancel-in-progress killed the standalone run on
+  # every push to master -- so the `test` check was permanently cancelled, and
+  # a cancelled deploy took the only surviving test run down with it.
+  group: test-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

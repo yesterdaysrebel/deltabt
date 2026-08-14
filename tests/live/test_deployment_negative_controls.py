@@ -874,3 +874,121 @@ class TestTheReportStaysInSyncWithTheBot:
         sec = mod.sections(_probe(started="2026-08-13T19:42:44.492000000Z"))
         assert mod.container_started(sec) is not None
         assert mod.container_started({"CONTAINER": "user=x readonly=true"}) is None
+
+
+# ===========================================================================
+# Trade detail in the report
+#
+# Aggregates hide the thing worth reading. The panel's objection to the whole
+# strategy was cost-per-R: a 21.6 bps median 1R leaves round-trip costs eating
+# 0.36-0.71R of a 2R target. A report that prints P&L but not 1R-in-bps omits
+# the number actually under test, so the per-trade table carries it.
+#
+# The bracket and stop checks are risk-control assertions, not commentary: a
+# long whose stop sits above entry, or a position still open well past -1R,
+# is a control failure however healthy the process looks.
+# ===========================================================================
+
+def _pos(symbol="SOLUSD", side="LONG", entry=76.3432656, stop=75.586,
+         target=77.812, current=75.85, r=-0.651, status="OPEN", qty=65):
+    return {"symbol": symbol, "side": side, "status": status, "quantity": qty,
+            "entry": entry, "stop": stop, "target": target,
+            "current_price": current, "unrealized_pnl": -32.06, "r": r,
+            "opened_ist": "2026-08-14 03:40:07 IST"}
+
+
+def _probe_with(positions=(), trades=(), **kw):
+    text = _probe(**kw)
+    return text.replace(
+        "===HEALTHZ===",
+        "===POSITIONS===\n" + json.dumps(list(positions)) +
+        "\n===TRADES===\n" + json.dumps(list(trades)) + "\n===HEALTHZ===")
+
+
+class TestTheReportShowsTheTrades:
+    def test_an_open_position_is_shown_with_its_geometry(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe_with(positions=[_pos()]), beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "SOLUSD" in out and "-0.651R" in out
+        # 1R = 0.7573 on a 76.343 entry = 99.2 bps, and the target sits at 1.94R.
+        assert "99.2" in out, "1R in basis points is the number under test"
+        assert "1.94R" in out
+
+    def test_closed_trades_are_summarised_in_r(self, monkeypatch, capsys):
+        closed = [dict(_pos(status="CLOSED"), exit=77.812, pnl=95.5, r=1.94,
+                       reason="target", closed_ist="2026-08-14 05:00:00 IST"),
+                  dict(_pos(status="CLOSED", symbol="BTCUSD"), exit=75.586,
+                       pnl=-49.2, r=-1.0, reason="stop",
+                       closed_ist="2026-08-14 06:00:00 IST")]
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe_with(trades=closed), beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "won **1**" in out
+        assert "+0.94R" in out, "total R across the closed trades"
+
+    def test_a_report_with_no_trades_at_all_still_renders(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys, _probe_with(),
+                                beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "### Open" not in out and "### Closed" not in out
+
+
+class TestTheTradeTableIsARiskCheck:
+    def test_an_inverted_long_bracket_needs_a_human(self, monkeypatch, capsys):
+        """Stop above entry on a long is a broken bracket, not a bad trade."""
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe_with(positions=[_pos(entry=76.0, stop=77.0, target=78.0, r=0.1)]),
+            beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "bracket is inverted" in out
+
+    def test_a_correct_short_bracket_stays_quiet(self, monkeypatch, capsys):
+        """The negative control: a short's stop is ABOVE entry by design."""
+        code, _ = _run_report(
+            monkeypatch, capsys,
+            _probe_with(positions=[_pos(side="SHORT", entry=76.0, stop=77.0,
+                                        target=74.0, r=-0.2)]),
+            beats=HEALTHY_BEATS)
+        assert code == 0, "a short is not an inverted long"
+
+    def test_a_position_past_minus_one_r_needs_a_human(self, monkeypatch, capsys):
+        """Past -1R with the position open means the stop did not fire."""
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe_with(positions=[_pos(r=-1.4)]),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "stop should have triggered" in out
+
+    def test_a_small_overshoot_is_tolerated(self, monkeypatch, capsys):
+        """Stops fire on MARK price; this quote is last-traded. -1.02R is noise."""
+        code, _ = _run_report(monkeypatch, capsys,
+                              _probe_with(positions=[_pos(r=-1.02)]),
+                              beats=HEALTHY_BEATS)
+        assert code == 0
+
+    def test_two_open_positions_break_the_frozen_risk_cap(self, monkeypatch, capsys):
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe_with(positions=[_pos(), _pos(symbol="BTCUSD")]),
+            beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "max_open_positions=1" in out
+
+    def test_one_open_position_does_not(self, monkeypatch, capsys):
+        code, _ = _run_report(monkeypatch, capsys,
+                              _probe_with(positions=[_pos()]), beats=HEALTHY_BEATS)
+        assert code == 0
+
+
+class TestTheTestWorkflowActuallyRuns:
+    def test_the_reusable_call_does_not_cancel_the_standalone_run(self):
+        """Keyed on the ref alone, deploy's nested copy killed the push run.
+
+        github.workflow is the CALLER's name, so it separates the two.
+        """
+        text = (ROOT / ".github" / "workflows" / "test.yml").read_text()
+        assert "group: test-${{ github.workflow }}-${{ github.ref }}" in text, (
+            "test.yml's concurrency group must distinguish the reusable call "
+            "from the push-triggered run, or one silently cancels the other")

@@ -178,6 +178,24 @@ def as_json(text: str) -> dict:
         return {}
 
 
+def as_json_list(text: str) -> list[dict]:
+    try:
+        loaded = json.loads(text)
+    except Exception:                                          # noqa: BLE001
+        return []
+    return [d for d in loaded if isinstance(d, dict)] if isinstance(loaded, list) else []
+
+
+def num(value: object) -> float | None:
+    """A float, or None -- so a missing field never renders as 0.0."""
+    return float(value) if isinstance(value, (int, float)) else None
+
+
+def fmt(value: object, places: int = 4) -> str:
+    n = num(value)
+    return "—" if n is None else f"{n:.{places}f}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--instance-id", required=True)
@@ -259,6 +277,87 @@ def main() -> int:
     fills = db.get("paper_fills", 0)
     closed = db.get("closed_trades_total", 0)
     print(f"Orders **{orders}** · fills **{fills}** · closed trades **{closed}**\n")
+
+    # --- 2b. the trades themselves ------------------------------------------
+    # Aggregates hide the thing worth reading. Every trade is shown with the
+    # geometry that decides whether the strategy can survive costs at all:
+    # 1R measured in basis points of entry, and how many R the target sits at.
+    # The panel's central objection was that a 21.6 bps median 1R leaves
+    # round-trip costs eating 0.36-0.71R of a 2R target, so a report that
+    # prints P&L without printing R-in-bps omits the number under test.
+    trades = as_json_list(sec.get("TRADES", ""))
+    positions = as_json_list(sec.get("POSITIONS", ""))
+    open_now = [t for t in positions if str(t.get("status", "")).upper() == "OPEN"]
+    done = [t for t in trades if str(t.get("status", "")).upper() != "OPEN"]
+
+    def geometry(t: dict) -> tuple[float | None, float | None]:
+        """(1R in bps of entry, target distance in R)."""
+        entry, stop, target = num(t.get("entry")), num(t.get("stop")), num(t.get("target"))
+        if entry is None or stop is None or not entry:
+            return None, None
+        r = abs(entry - stop)
+        if not r:
+            return None, None
+        return r / abs(entry) * 1e4, (abs(target - entry) / r if target is not None else None)
+
+    if open_now:
+        print("### Open\n")
+        print("| Symbol | Side | Qty | Entry | Stop | Target | Now | R | Unrealised | 1R (bps) | Target |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|")
+        for t in open_now:
+            bps, rr = geometry(t)
+            r_now = num(t.get("r"))
+            print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} | {t.get('quantity', '—')} "
+                  f"| {fmt(t.get('entry'))} | {fmt(t.get('stop'))} | {fmt(t.get('target'))} "
+                  f"| {fmt(t.get('current_price'))} | {'—' if r_now is None else f'{r_now:+.3f}R'} "
+                  f"| {fmt(t.get('unrealized_pnl'), 2)} "
+                  f"| {'—' if bps is None else f'{bps:.1f}'} "
+                  f"| {'—' if rr is None else f'{rr:.2f}R'} |")
+        print()
+
+    for t in open_now:
+        side = str(t.get("side", "")).upper()
+        entry, stop = num(t.get("entry")), num(t.get("stop"))
+        target, r_now = num(t.get("target")), num(t.get("r"))
+        sym = t.get("symbol", "?")
+        # A long's stop sits below entry and its target above; inverted for a
+        # short. Anything else means the bracket was built wrong, and a wrong
+        # bracket is a risk-management failure however healthy the process is.
+        if None not in (entry, stop, target):
+            ordered = (stop < entry < target) if side == "LONG" else (target < entry < stop)
+            if not ordered:
+                problems.append(f"{sym} {side} bracket is inverted: stop {stop}, "
+                                f"entry {entry}, target {target}")
+        # Past -1R the stop should already have fired. Stops trigger on MARK
+        # price while this quote is last-traded, so a small transient overshoot
+        # is normal; well beyond it is not.
+        if r_now is not None and r_now <= -1.10:
+            problems.append(f"{sym} is at {r_now:+.2f}R with the position still "
+                            f"open — the stop should have triggered by -1R")
+
+    if done:
+        print("### Closed\n")
+        print("| Symbol | Side | Entry | Exit | R | P&L | Reason | Closed |")
+        print("|---|---|---|---|---|---|---|---|")
+        for t in done:
+            r_done = num(t.get("r"))
+            print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} | {fmt(t.get('entry'))} "
+                  f"| {fmt(t.get('exit'))} | {'—' if r_done is None else f'{r_done:+.3f}R'} "
+                  f"| {fmt(t.get('pnl'), 2)} | {t.get('reason') or '—'} "
+                  f"| {t.get('closed_ist') or '—'} |")
+        print()
+        rs = [num(t.get("r")) for t in done]
+        rs = [r for r in rs if r is not None]
+        if rs:
+            wins = sum(1 for r in rs if r > 0)
+            print(f"Closed: **{len(rs)}** · won **{wins}** · "
+                  f"total **{sum(rs):+.2f}R** · mean **{sum(rs) / len(rs):+.3f}R**\n")
+
+    # An open position the risk cap should have prevented is a control failure,
+    # not a market outcome, so it is a problem even on a profitable day.
+    if len(open_now) > 1:
+        problems.append(f"{len(open_now)} positions open at once; the frozen "
+                        f"configuration allows max_open_positions=1")
 
     # --- 3. WHY no trades? --------------------------------------------------
     if not orders:
