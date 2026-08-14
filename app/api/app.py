@@ -187,7 +187,12 @@ def create_app(bot) -> FastAPI:
 
     @app.get("/api/trades")
     async def trades(limit: int = 50) -> list[dict]:
-        rows = await bot.repo.load_recent_positions(limit)
+        # Scoped to the bound experiment. The daily report's closed-trade
+        # table is built from this endpoint, so an unscoped read put the
+        # PREVIOUS run's trades in this run's report -- V1's SOLUSD -1.19R
+        # would have been the first line of V2's P&L. Unbound (development)
+        # still shows everything, because there is no run to be wrong about.
+        rows = await bot.repo.load_recent_positions(limit, bot.experiment_id)
         return [{
             "symbol": p.symbol, "side": "LONG" if p.side > 0 else "SHORT",
             "status": p.status, "entry": p.entry_price, "stop": p.stop_price,

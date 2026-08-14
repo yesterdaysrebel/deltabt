@@ -157,6 +157,10 @@ class TradingBot:
         self._last_mark: dict[str, float] = {}
         self.ready = False
         self.recovery_error: str | None = None
+        #: True once recover() has loaded the persisted risk state into
+        #: self.state. Until then self.state is a FRESH RiskState, and writing
+        #: that back on shutdown would destroy the real one -- see stop().
+        self._state_loaded = False
         #: Set once an experiment is bound. Every decision row is stamped with
         #: it so a run can never be silently mixed with another.
         self.experiment_id: str | None = None
@@ -313,6 +317,9 @@ class TradingBot:
                           else c.funding_amount) for c in charged)
             self.broker.positions[p.position_uid] = pos
 
+        # Only now is self.state the real one. Both early returns above leave
+        # it fresh on purpose, and stop() must not write those back.
+        self._state_loaded = True
         log.info("recovered %d open position(s)", len(positions))
         await self._event("recovery", "STATE_RESTORED", payload={
             "open_positions": len(positions), "equity": self.state.equity,
@@ -1013,7 +1020,23 @@ class TradingBot:
                 await t
             except (asyncio.CancelledError, Exception):    # noqa: BLE001
                 pass
-        await self._save_state()
+        # NEVER persist a state that was never loaded. A startup that refuses
+        # -- configuration drift, a lost advisory lock, a failed reconciliation
+        # -- returns before recover() runs, so self.state is still
+        # RiskState.fresh(starting_equity). Saving it here overwrote the real
+        # row with a blank one, and that is not hypothetical: the deploy at
+        # 2026-08-14 10:22:55 refused on config drift, rolled itself back, and
+        # on the way out reset equity, peak_equity, trades_today, the
+        # consecutive-loss counter and the drawdown baseline to zero.
+        #
+        # The fail-closed path existed to protect the experiment and was
+        # quietly damaging it instead. A refusing bot must leave the database
+        # exactly as it found it.
+        if self._state_loaded:
+            await self._save_state()
+        else:
+            log.warning("not persisting risk state: it was never loaded, so "
+                        "what is in memory is a fresh state, not the run's")
         await self._event("bot", "SHUTDOWN", payload={
             "open_positions": len(self.broker.get_positions())})
         await self.repo.stop_instance(self.instance_uid)
@@ -1042,7 +1065,14 @@ def _to_record(p: PaperPosition, instance_uid: str,
                config_hash: str | None = None) -> PositionRecord:
     return PositionRecord(
         position_uid=p.position_uid, signal_key=p.signal_key,
-        instance_uid=instance_uid, symbol=p.symbol, side=p.side,
+        instance_uid=instance_uid,
+        # Both callers already passed these; the record simply never took them,
+        # so positions.experiment_id and positions.config_hash were NULL for
+        # every trade ever recorded. The column's own comment says "stamped so
+        # a position can never be silently attributed to the wrong run", which
+        # is exactly what was happening.
+        experiment_id=experiment_id, config_hash=config_hash,
+        symbol=p.symbol, side=p.side,
         status=p.status, quantity=p.quantity, entry_price=p.entry_price,
         stop_price=p.stop_price, target_price=p.target_price,
         initial_risk=p.initial_risk, risk_per_unit=p.risk_per_unit,

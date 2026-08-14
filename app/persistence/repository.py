@@ -47,6 +47,17 @@ def _ts(value):
     return utc(value) if value else None
 
 
+def _stamp(value):
+    """Anything time-shaped -> unix seconds, or None.
+
+    The in-memory twin keeps unix ints while Postgres hands back datetimes,
+    and the experiment window has to compare against both.
+    """
+    if value is None:
+        return None
+    return int(value.timestamp()) if hasattr(value, "timestamp") else int(value)
+
+
 class Repository(ABC):
     """Everything the bot needs to persist, and nothing it does not."""
 
@@ -159,7 +170,14 @@ class Repository(ABC):
     @abstractmethod
     async def load_open_positions(self) -> list[PositionRecord]: ...
     @abstractmethod
-    async def load_recent_positions(self, limit: int = 50) -> list[PositionRecord]: ...
+    async def load_recent_positions(self, limit: int = 50,
+                                    experiment_id: str | None = None
+                                    ) -> list[PositionRecord]:
+        """Recent positions, optionally only one run's.
+
+        The daily report's closed-trade table is built from this, not from
+        report_rows, so scoping report_rows alone left the previous run's
+        trades in the report a reader actually opens."""
 
     # -- audit -------------------------------------------------------------
     @abstractmethod
@@ -354,21 +372,45 @@ class InMemoryRepository(Repository):
         def _win(ts):
             return (since is None or ts >= since) and (until is None or ts < until)
 
+        exp = await self.get_experiment(experiment_id) if experiment_id else None
+
+        # Mirrors the Postgres twin: every table is scoped to the experiment's
+        # own window, not just signals. The in-memory store has no created_at,
+        # so each record's own stamp stands in for it -- close enough to keep
+        # the two implementations answering the same question.
+        elo = _stamp(exp.get("started_at")) if exp else None
+        ehi = _stamp(exp.get("stopped_at")) if exp else None
+
+        def _exp_win(ts):
+            if ts is None:
+                return True
+            return ((elo is None or ts >= elo) and (ehi is None or ts < ehi))
+
+        def _both(day_ts, exp_ts=None):
+            return _win(day_ts) and _exp_win(day_ts if exp_ts is None else exp_ts)
+
         sigs = [r for r in self._s["signals"].values()
                 if (experiment_id is None
                     or getattr(r, "experiment_id", None) == experiment_id)
-                and _win(r.exchange_ts or r.bar_open)]
-        pos = [p for p in self._s["positions"].values() if _win(p.opened_at)]
+                and _both(r.exchange_ts or r.bar_open)]
+        pos = [p for p in self._s["positions"].values() if _both(p.opened_at)]
         return {
-            "experiment": await self.get_experiment(experiment_id) if experiment_id else None,
+            "experiment": exp,
             "signals": [asdict(r) for r in sigs],
-            "orders": [asdict(o) for o in self._s["orders"].values()],
-            "fills": [asdict(f) for f in self._s["fills"].values()],
+            "orders": [asdict(o) for o in self._s["orders"].values()
+                       if _exp_win(getattr(o, "received_ts", None))],
+            "fills": [asdict(f) for f in self._s["fills"].values()
+                      if _both(f.exchange_ts)],
             "positions": [asdict(p) for p in pos],
             "funding": [asdict(f) for f in self._s["funding"].values()
-                        if _win(f.exchange_ts)],
-            "risk_events": [asdict(r) for r in self._s["risk_events"]],
-            "system_events": [asdict(e) for e in self._s["system_events"]],
+                        if _both(f.exchange_ts)],
+            # occurred_at is a server-side DEFAULT now() in Postgres, so the
+            # in-memory stand-in is received_ts -- also wall time, also the
+            # clock started_at comes from.
+            "risk_events": [asdict(r) for r in self._s["risk_events"]
+                            if _exp_win(_stamp(r.received_ts))],
+            "system_events": [asdict(e) for e in self._s["system_events"]
+                              if _exp_win(_stamp(e.received_ts))],
             "quarantined": [asdict(q) for q in self._s["quarantine"].values()],
         }
 
@@ -431,9 +473,13 @@ class InMemoryRepository(Repository):
     async def load_open_positions(self) -> list[PositionRecord]:
         return [p for p in self._s["positions"].values() if p.is_open]
 
-    async def load_recent_positions(self, limit: int = 50) -> list[PositionRecord]:
+    async def load_recent_positions(self, limit: int = 50,
+                                    experiment_id: str | None = None
+                                    ) -> list[PositionRecord]:
         rows = sorted(self._s["positions"].values(), key=lambda p: p.opened_at,
                       reverse=True)
+        if experiment_id is not None:
+            rows = [p for p in rows if p.experiment_id == experiment_id]
         return rows[:limit]
 
     async def record_risk_event(self, rec: RiskEventRecord) -> None:
@@ -827,29 +873,81 @@ class PostgresRepository(Repository):
             async def q(sql, *a):
                 return [dict(r) for r in await con.fetch(sql, *a)]
             exp = await self.get_experiment(experiment_id) if experiment_id else None
+
+            # THE EXPERIMENT'S OWN WINDOW.
+            #
+            # Only `signals` carried an experiment filter. Orders, fills,
+            # positions, funding, risk and system events were read whole, so
+            # asking for experiment B's report returned experiment A's trades
+            # -- V2 reported "2 positions opened, 3 fills, -$58.37" at four
+            # evaluations old, all of it V1's.
+            #
+            # Scoping by created_at rather than by an experiment_id column is
+            # deliberate. Four of these tables have no such column, and
+            # forward_test has a unique index on status='RUNNING', so at most
+            # one experiment exists at a time and [started_at, stopped_at)
+            # partitions every table cleanly by insertion time. It also does
+            # the right thing for a position that spans the boundary: opened
+            # under V1 and closed under V2, it belongs to V1, which is the run
+            # whose rules chose the entry.
+            #
+            # The experiment window is a SEPARATE predicate from the caller's
+            # day window, not a narrowing of it. The day window keeps selecting
+            # on each table's own domain column (market time), because a daily
+            # report is a day of MARKET activity; the experiment window selects
+            # on created_at, which every one of these tables has and which is
+            # the same clock forward_test.started_at is stamped from. Folding
+            # the two together would have silently redefined what --day means.
+            elo = exp.get("started_at") if exp is not None else None
+            ehi = exp.get("stopped_at") if exp is not None else None
+
+            # `exp_col` is per table because they do not share one clock:
+            # created_at is wall time on insert, which is what started_at is
+            # stamped from and so the exact right boundary. positions,
+            # risk_events and system_events have no created_at, so they fall
+            # back to their own stamp -- market time for positions, which can
+            # sit a couple of seconds either side of the boundary. That is
+            # immaterial against a 30-day experiment and is why the fallback is
+            # acceptable rather than a schema change mid-run.
+            def win(day_col, exp_col):
+                return (f"($1::timestamptz IS NULL OR {day_col} >= $1) AND "
+                        f"($2::timestamptz IS NULL OR {day_col} < $2) AND "
+                        f"($3::timestamptz IS NULL OR {exp_col} >= $3) AND "
+                        f"($4::timestamptz IS NULL OR {exp_col} < $4)")
+
             return {
                 "experiment": exp,
                 "signals": await q(
-                    "SELECT * FROM strategy_signals WHERE ($1::text IS NULL OR "
-                    "experiment_id=$1) AND ($2::timestamptz IS NULL OR "
-                    "exchange_ts >= $2) AND ($3::timestamptz IS NULL OR "
-                    "exchange_ts < $3) ORDER BY exchange_ts",
-                    experiment_id, lo, hi),
-                "orders": await q("SELECT * FROM paper_orders ORDER BY created_at"),
-                "fills": await q("SELECT * FROM paper_fills ORDER BY exchange_ts"),
+                    "SELECT * FROM strategy_signals WHERE ($5::text IS NULL OR "
+                    f"experiment_id=$5) AND {win('exchange_ts', 'created_at')} "
+                    "ORDER BY exchange_ts", lo, hi, elo, ehi, experiment_id),
+                "orders": await q(
+                    "SELECT * FROM paper_orders WHERE "
+                    f"{win('created_at', 'created_at')} ORDER BY created_at",
+                    lo, hi, elo, ehi),
+                "fills": await q(
+                    "SELECT * FROM paper_fills WHERE "
+                    f"{win('exchange_ts', 'created_at')} ORDER BY exchange_ts",
+                    lo, hi, elo, ehi),
                 "positions": await q(
-                    "SELECT * FROM positions WHERE ($1::timestamptz IS NULL OR "
-                    "opened_at >= $1) AND ($2::timestamptz IS NULL OR "
-                    "opened_at < $2) ORDER BY opened_at", lo, hi),
+                    "SELECT * FROM positions WHERE "
+                    f"{win('opened_at', 'opened_at')} ORDER BY opened_at",
+                    lo, hi, elo, ehi),
                 "funding": await q(
-                    "SELECT * FROM funding_events WHERE ($1::timestamptz IS NULL "
-                    "OR exchange_ts >= $1) AND ($2::timestamptz IS NULL OR "
-                    "exchange_ts < $2) ORDER BY exchange_ts", lo, hi),
+                    "SELECT * FROM funding_events WHERE "
+                    f"{win('exchange_ts', 'created_at')} ORDER BY exchange_ts",
+                    lo, hi, elo, ehi),
                 "risk_events": await q(
-                    "SELECT * FROM risk_events ORDER BY occurred_at"),
+                    "SELECT * FROM risk_events WHERE "
+                    f"{win('occurred_at', 'occurred_at')} ORDER BY occurred_at",
+                    lo, hi, elo, ehi),
                 "system_events": await q(
-                    "SELECT * FROM system_events ORDER BY occurred_at"),
-                "quarantined": await q("SELECT * FROM quarantined_fills"),
+                    "SELECT * FROM system_events WHERE "
+                    f"{win('occurred_at', 'occurred_at')} ORDER BY occurred_at",
+                    lo, hi, elo, ehi),
+                "quarantined": await q(
+                    "SELECT * FROM quarantined_fills WHERE "
+                    f"{win('created_at', 'created_at')}", lo, hi, elo, ehi),
             }
 
     async def create_experiment(self, ident, planned_days: int = 30) -> bool:
@@ -1024,10 +1122,14 @@ class PostgresRepository(Repository):
                 "('OPENING','OPEN','SUSPENDED','CLOSING') ORDER BY opened_at")
         return [self._to_position(r) for r in rows]
 
-    async def load_recent_positions(self, limit: int = 50) -> list[PositionRecord]:
+    async def load_recent_positions(self, limit: int = 50,
+                                    experiment_id: str | None = None
+                                    ) -> list[PositionRecord]:
         async with self._pool.acquire() as con:
             rows = await con.fetch(
-                "SELECT * FROM positions ORDER BY opened_at DESC LIMIT $1", limit)
+                "SELECT * FROM positions WHERE ($2::text IS NULL OR "
+                "experiment_id=$2) ORDER BY opened_at DESC LIMIT $1",
+                limit, experiment_id)
         return [self._to_position(r) for r in rows]
 
     # -- audit -------------------------------------------------------------
