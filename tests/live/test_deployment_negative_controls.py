@@ -636,9 +636,12 @@ class TestNothingStartsTheExperiment:
         assert "AN EXPERIMENT IS ACTIVE" in source
 
     def test_the_frozen_hash_is_asserted_end_to_end(self):
-        from app.config.strategy import StrategyConfig
-        frozen = "632efcaff62c4d7c"
-        assert StrategyConfig().config_hash == frozen
+        from app.config.strategy import FROZEN
+        frozen = "d7837e445bc74781"
+        assert FROZEN.config_hash == frozen, (
+            "assert against what SHIPS. StrategyConfig() is the dataclass "
+            "default, which is V2; FROZEN is set explicitly so a variant "
+            "switch is one visible line -- see app/config/variants.py")
         assert frozen in (SCRIPTS / "verify_deployment.py").read_text()
         assert frozen in (ROOT / ".github" / "workflows" / "test.yml").read_text()
 
@@ -684,7 +687,7 @@ def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
         "systemd_restarts=0",
         "===HEALTHZ===", json.dumps({"status": "healthy"}),
         "===READYZ===", json.dumps({"status": "healthy"}),
-        "===STATUS===", json.dumps({"strategy_config_hash": "632efcaff62c4d7c"}),
+        "===STATUS===", json.dumps({"strategy_config_hash": "d7837e445bc74781"}),
         "===PERSISTENCE===", json.dumps(body),
         "===END===",
     ])

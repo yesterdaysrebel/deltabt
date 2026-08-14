@@ -364,7 +364,10 @@ class TestRules:
         e = evaluate(p, c, CFG, symbol="BTCUSD")
         assert e.conditions_passed or e.conditions_failed or e.rejection_reason
         assert "primary" in e.indicators and "confirmation" in e.indicators
-        assert e.strategy_version.startswith("H-WPR-1-VariantA-V2@")
+        # CFG here is StrategyConfig(), the dataclass default, which is not
+        # necessarily FROZEN -- this module tests the engine, not the
+        # shipped variant. Assert against the config actually passed in.
+        assert e.strategy_version.startswith(f"{CFG.name}@")
         assert e.summary()
 
     def test_failed_conditions_are_named_individually(self):
@@ -545,10 +548,25 @@ class TestVariantRegistry:
             f"two variants share a config hash, so their signals would be "
             f"indistinguishable in the audit trail: {hashes}")
 
-    def test_v2_is_what_ships(self):
+    def test_v1_is_what_ships(self):
+        """Switched from V2 to V1 on 2026-08-14 by explicit instruction.
+
+        The registry must name what actually runs. A registry that says one
+        thing while FROZEN says another is worse than no registry, because it
+        invites a reader to trust it.
+        """
+        from app.config.strategy import FROZEN
+        from app.config.variants import V1
+        assert FROZEN.config_hash == V1.config_hash
+        assert FROZEN.name == "H-WPR-1-VariantA"
+
+    def test_the_withdrawn_variant_is_still_reachable(self):
+        """V2 stays a one-line switch, with its measured numbers attached."""
         from app.config.strategy import FROZEN
         from app.config.variants import V2
-        assert FROZEN.config_hash == V2.config_hash
+        V2.validate()
+        assert V2.confirm_wpr is True and V2.fire_once is True
+        assert V2.config_hash != FROZEN.config_hash
 
     def test_v1_really_is_the_old_rule_set(self):
         from app.config.variants import V1

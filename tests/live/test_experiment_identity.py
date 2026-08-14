@@ -8,8 +8,32 @@ have been invisible. And nothing refused to start on a change, so a 30-day
 experiment could quietly become two different experiments.
 
 The requirement is explicit: "Do not modify the expected hash to make tests
-pass." Every test here asserts the frozen strategy hash is still
-632efcaff62c4d7c.
+pass." Every test here asserts the frozen strategy hash is exactly
+d7837e445bc74781.
+
+THAT CONSTANT HAS MOVED TWICE, AND BOTH TIMES ON PURPOSE
+
+    5a5412369f3823f3  original V1
+    632efcaff62c4d7c  V2: oscillator on both timeframes, one-shot firing
+    d7837e445bc74781  back to V1's rules, 2026-08-14, by explicit instruction
+
+(V1's rules hash differently the second time because StrategyConfig gained
+confirm_wpr and fire_once in between, so the hashed blob has two more keys.)
+
+The rule the docstring states is about DRIFT: a hash that moves because a
+parameter changed underneath a running experiment, with the test edited
+afterwards to hide it. A deliberate variant switch is the opposite -- the
+whole point of the hash is that it MUST move, loudly, so that signals
+recorded before and after are distinguishable in the audit trail and the bot
+refuses to continue an experiment across the change. It did refuse, at
+2026-08-14 11:03:56, which is the mechanism working.
+
+The test of whether an update here is legitimate: can you name the commit
+that changed the configuration and the reason? For this one, see FROZEN in
+app/config/strategy.py and V1/V2 in app/config/variants.py, both of which
+carry the measured results that motivated it. If you cannot answer that, the
+hash moved by accident and the correct fix is the configuration, not this
+constant.
 """
 
 from __future__ import annotations
@@ -33,7 +57,7 @@ from tests.live.test_recovery import make_bot
 
 pytestmark = pytest.mark.asyncio
 
-FROZEN_STRATEGY_HASH = "632efcaff62c4d7c"
+FROZEN_STRATEGY_HASH = "d7837e445bc74781"
 EXEC = {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25,
         "min_fill_rr": 1.7, "slippage_bps": 2.0}
 SYMS = ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD")
@@ -143,7 +167,7 @@ class TestCodeVersion:
     async def test_the_identity_carries_version_and_universe(self):
         i = ident()
         assert i.app_version == APP_VERSION
-        assert i.strategy_version.startswith("H-WPR-1-VariantA-V2@")
+        assert i.strategy_version.startswith("H-WPR-1-VariantA@")
         assert set(i.symbols) == set(SYMS)
 
     async def test_the_snapshot_holds_the_full_configuration(self):

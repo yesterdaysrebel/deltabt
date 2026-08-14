@@ -81,7 +81,7 @@ class TestPreflightChecks:
         r = await _run(repo=mem_repo)
         by = {c.name: c for c in r.checks}
         assert by["strategy config valid"].verdict is Verdict.PASS
-        assert "632efcaff62c4d7c" in by["config hash computed"].detail
+        assert "d7837e445bc74781" in by["config hash computed"].detail
 
     async def test_an_invalid_risk_config_blocks(self, mem_repo):
         bad = Settings(risk=RiskConfig.__new__(RiskConfig))
@@ -338,5 +338,5 @@ async def test_a_report_builds_from_postgres(pg_repo):
     out = rep.render_final()
     assert "H-WPR-1-PAPER-TEST" in out
     assert ident.config_hash in out
-    assert "632efcaff62c4d7c" in out, "the frozen strategy hash must appear"
+    assert "d7837e445bc74781" in out, "the frozen strategy hash must appear"
     assert "ADX 28" in out and "WPR 140" in out

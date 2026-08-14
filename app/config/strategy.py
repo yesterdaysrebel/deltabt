@@ -177,5 +177,28 @@ class StrategyConfig:
         return f"{self.name}@{self.config_hash}"
 
 
-FROZEN = StrategyConfig()
+#: WHAT IS RUNNING. Set deliberately rather than left at the dataclass
+#: defaults, so switching variants is one visible line and the diff says which
+#: rule set was chosen -- see app/config/variants.py for the alternatives and
+#: their measured results.
+#:
+#: V1, by explicit instruction on 2026-08-14. The oscillator is on the 5m
+#: signal timeframe only; 1m supplies Supertrend and ADX/DI agreement. Two
+#: reasons, both stated at the time:
+#:
+#:   * The specification says "supertrend is up in both 5m and 1m ... ADX check
+#:     also". "Both timeframes" attaches to Supertrend and ADX. Putting the
+#:     oscillator on 1m as well was an interpretation added at implementation
+#:     time, and it is the change that cut the trade count by roughly two
+#:     thirds.
+#:   * V1 measures better on every window (test -0.0169R over n=111 without
+#:     halting, against V2's -0.2852R over n=76 with a drawdown halt) and
+#:     reaches a 30-trade sample about three times sooner. Neither has a
+#:     demonstrated edge; V1 reaches a verdict faster.
+#:
+#: fire_once=False comes with it: this is V1 exactly as it ran, level
+#: triggered. max_open_positions=1 refuses the repeat entries at the risk gate,
+#: which is why suppressing them measured as ~0.4% of trades.
+FROZEN = StrategyConfig(name="H-WPR-1-VariantA",
+                        confirm_wpr=False, fire_once=False)
 FROZEN.validate()

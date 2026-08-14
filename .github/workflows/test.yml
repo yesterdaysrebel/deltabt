@@ -96,9 +96,12 @@ jobs:
         run: |
           python - <<'PY'
           import sys
-          from app.config.strategy import StrategyConfig
-          FROZEN = "632efcaff62c4d7c"
-          actual = StrategyConfig().config_hash
+          from app.config.strategy import FROZEN as CONFIG
+          # The hash of what SHIPS, not of the dataclass defaults. Those
+          # stopped being the same thing when FROZEN was set explicitly so
+          # that variants could be switched in one visible line.
+          FROZEN = "d7837e445bc74781"
+          actual = CONFIG.config_hash
           print(f"strategy_config_hash = {actual}")
           if actual != FROZEN:
               sys.exit(

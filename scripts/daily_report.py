@@ -31,7 +31,7 @@ import subprocess
 import sys
 import time
 
-FROZEN_STRATEGY_HASH = "632efcaff62c4d7c"
+FROZEN_STRATEGY_HASH = "d7837e445bc74781"
 #: The COMPOSITE hash also covers risk, execution and the git SHA, so it moves
 #: on every deploy and cannot be pinned here. The bot already refuses to trade
 #: an experiment whose composite hash it does not match (see
@@ -313,8 +313,12 @@ def main() -> int:
             print(f"| {k} | {v} |")
         print()
 
-    orders = db.get("paper_orders", 0)
-    fills = db.get("paper_fills", 0)
+    # THIS RUN's orders and fills, not the database's. The probe still reports
+    # the all-time totals under `paper_orders` / `paper_fills` for the
+    # persistence section; using them here printed the previous experiment's
+    # execution under this experiment's heading.
+    orders = db.get("orders_run", db.get("paper_orders", 0))
+    fills = db.get("fills_run", db.get("paper_fills", 0))
     closed = db.get("closed_trades_total", 0)
     print(f"Orders **{orders}** · fills **{fills}** · closed trades **{closed}**\n")
 

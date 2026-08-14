@@ -2,7 +2,7 @@
 
 WHY THIS EXISTS
 
-    V2 is the configuration being forward-tested. The others are kept reachable
+    V1 is the configuration being forward-tested. The others are kept reachable
     so that switching is a one-line, hash-recorded change rather than an
     archaeology exercise -- and so nobody re-derives a variant that was already
     measured and rejected.
@@ -27,29 +27,38 @@ HOW TO SWITCH
 
 from __future__ import annotations
 
-from app.config.strategy import StrategyConfig
+from app.config.strategy import FROZEN, StrategyConfig
 
-#: WHAT IS BEING FORWARD-TESTED. Williams %R on BOTH timeframes, one signal per
-#: FALSE->TRUE transition of the complete setup, hard 2R target.
+#: BACKUP. Williams %R on BOTH timeframes, one signal per FALSE->TRUE
+#: transition of the complete setup, hard 2R target.
 #:
 #:   TRAIN  n=85   net -0.1988   -8.33%   halted on drawdown
 #:   VALID  n=68   net -0.2321   -7.65%   halted on drawdown
 #:   TEST   n=76   net -0.2852  -10.44%   halted on drawdown
 #:
-#: Chosen over the alternatives because it is the specification actually
-#: traded by hand. The backtest models none of the discretion that goes with
-#: that -- which setup to take when several fire at once, when to stand aside
-#: -- and at ~85 trades a year the arbitrary tie-break alone moves the result
-#: materially. The forward test exists to close that gap.
+#: Shipped 2026-08-14 and withdrawn the same day. The oscillator on 1m was an
+#: interpretation added at implementation time -- the specification reads
+#: "supertrend is up in both 5m and 1m ... ADX check also", attaching "both
+#: timeframes" to Supertrend and ADX, not to Williams %R. That single filter
+#: costs roughly two thirds of the trades and measures worse on every window,
+#: which also pushes a 30-trade sample about three times further away.
 V2 = StrategyConfig()
 
-#: The V1 rule set: oscillator on 5m only, level-triggered, hard 2R. This is
-#: what ran as H-WPR-1-PAPER-AWS-20260813 and it is the best-measured of the
-#: family, which is not the same as good.
+#: WHAT IS BEING FORWARD-TESTED, by explicit instruction on 2026-08-14.
+#: Oscillator on the 5m signal timeframe only, 1m supplying Supertrend and
+#: ADX/DI agreement, level-triggered, hard 2R. This is what ran as
+#: H-WPR-1-PAPER-AWS-20260813 and it is the best-measured of the family, which
+#: is not the same as good.
 #:
 #:   TRAIN  n=237  net -0.0414   -5.52%   halted on drawdown
 #:   VALID  n=94   net -0.1887   -8.66%   halted on drawdown
 #:   TEST   n=111  net -0.0169   -1.18%   did not halt
+#:
+#: Level triggering comes with it, deliberately: this is V1 exactly as it ran.
+#: It re-emits on every bar the conjunction holds, and max_open_positions=1
+#: refuses those repeats at the risk gate -- which is why suppressing them
+#: (V1 with fire_once=True) measured as a ~0.4% change in trade count and is
+#: not worth a second variant to carry.
 #:
 #: NOTE ON ITS HASH. This reconstruction hashes to d7837e445bc74781, NOT the
 #: 5a5412369f3823f3 that the live experiment recorded. The rules are identical;
@@ -64,6 +73,9 @@ V2 = StrategyConfig()
 #: naming this for the rules it actually implements is what makes it reachable.
 V1 = StrategyConfig(name="H-WPR-1-VariantA",
                     confirm_wpr=False, fire_once=False)
+assert V1.config_hash == FROZEN.config_hash, (
+    "V1 is what FROZEN is set to; if these diverge one of them was edited "
+    "without the other and the registry no longer describes what runs")
 
 #: V2's entry with level triggering instead of one-shot. Measured
 #: indistinguishable from V2 everywhere -- max_open_positions=1 already refuses
