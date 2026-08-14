@@ -1,0 +1,81 @@
+name: daily-report
+
+# The daily forward-test report. Runs on GitHub's schedule, on GitHub's
+# runners, so it needs nobody's laptop to be on.
+#
+# It is a READ-ONLY observer. It authenticates as deltabt-paper-github-monitor,
+# which can read infrastructure and invoke exactly one fixed SSM document --
+# not AWS-RunShellScript, and not the deploy document. It cannot deploy, cannot
+# change infrastructure, and cannot touch the experiment.
+#
+# Alerting is deliberately unconfigured, so this is the pull that replaces it:
+# the report lands in the run summary, and a FAILED run emails you, which is
+# the notification path that costs nothing and needs no SNS.
+
+on:
+  schedule:
+    # 01:30 UTC = 07:00 IST. After the UTC day boundary, so the report covers
+    # a COMPLETE previous day rather than a partial one.
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "UTC date to report on (YYYY-MM-DD). Blank = yesterday."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: daily-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: forward-test daily report
+    runs-on: ubuntu-latest
+    # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
+    # this job cannot make one -- gating it would only mean the report waits
+    # for a human, which defeats the point of it running unattended.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_MONITOR_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          role-session-name: gha-report-${{ github.run_id }}
+
+      - name: build the report
+        id: report
+        run: |
+          set +e
+          python3 scripts/daily_report.py \
+            --instance-id "${{ vars.BOT_INSTANCE_ID }}" \
+            --document "${{ vars.SSM_MONITOR_DOCUMENT }}" \
+            --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            ${{ github.event.inputs.day && format('--day {0}', github.event.inputs.day) || '' }} \
+            > report.md
+          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          cat report.md
+
+      - name: keep the report
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-${{ github.run_id }}
+          path: report.md
+          retention-days: 90
+
+      - name: fail the run if the report found a problem
+        # A failing run is the notification. GitHub emails the actor on a
+        # scheduled-workflow failure, so "something needs a human" reaches you
+        # without SNS, an address, or any alarm action.
+        run: |
+          if [ "${{ steps.report.outputs.exitcode }}" != "0" ]; then
+            echo "::error::The daily report found something that needs attention -- see the summary."
+            exit 1
+          fi
+          echo "All clear."

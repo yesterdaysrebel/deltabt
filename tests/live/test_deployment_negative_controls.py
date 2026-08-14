@@ -544,10 +544,74 @@ class TestBootstrapNeverAdoptsSilently:
 
         Anything that can create its own trust anchor can also replace it, and
         then who may deploy is decided by whoever can push a branch.
+
+        The set is pinned as well as the intent, so a NEW workflow has to be
+        added here consciously -- a workflow appearing unnoticed is how a
+        repository grows a second path to production.
         """
         workflows = {p.name for p in (ROOT / ".github" / "workflows").glob("*.yml")}
-        assert workflows == {"test.yml", "infrastructure.yml", "deploy.yml"}, \
-            f"unexpected workflow: {workflows}"
+        assert workflows == {"test.yml", "infrastructure.yml", "deploy.yml",
+                             "monitor.yml"}, f"unexpected workflow: {workflows}"
+
+        # The intent, asserted directly rather than only via the set above.
+        # Comments are stripped: infrastructure.yml documents the bootstrap in
+        # prose precisely BECAUSE it does not run it, and a scanner that reads
+        # that as a violation teaches everyone to delete the explanation.
+        code = safety_module().code
+        for path in (ROOT / ".github" / "workflows").glob("*.yml"):
+            text = code(path)
+            assert "bootstrap.sh" not in text, f"{path.name} runs the bootstrap"
+
+            # VALIDATING the bootstrap config in CI is fine and wanted -- it is
+            # `terraform validate -backend=false`, which reads no state and
+            # changes nothing. What must never appear is an APPLY, or an init
+            # that binds to real state. The earlier version of this assertion
+            # banned the directory outright and would have pushed someone to
+            # delete a useful syntax check to make a test pass.
+            if "infra/terraform/bootstrap" not in text:
+                continue
+            assert "terraform apply" not in text, \
+                f"{path.name} applies the bootstrap stack"
+            assert "-backend-config" not in text or "-backend=false" in text, \
+                f"{path.name} initialises the bootstrap stack against real state"
+
+    def test_the_monitor_workflow_cannot_change_anything(self):
+        """The daily report is an observer and must stay one.
+
+        It runs unattended on a schedule with no environment gate -- which is
+        correct only for as long as it cannot make a change. If it ever gains
+        the ability to apply, deploy, or run arbitrary shell, that gate becomes
+        load-bearing and its absence becomes the defect.
+        """
+        # Comment-stripped: monitor.yml NAMES AWS-RunShellScript and the deploy
+        # document in order to say it deliberately uses neither.
+        text = safety_module().code(ROOT / ".github" / "workflows" / "monitor.yml")
+        for forbidden in ("terraform apply", "terraform plan", "docker build",
+                          "docker push", "AWS-RunShellScript", "SSM_DEPLOY_DOCUMENT",
+                          "AWS_DEPLOY_ROLE_ARN", "AWS_TERRAFORM_ROLE_ARN",
+                          "forward-test start", "forward-test stop"):
+            assert forbidden not in text, f"monitor.yml references {forbidden!r}"
+        assert "AWS_MONITOR_ROLE_ARN" in text
+        assert "SSM_MONITOR_DOCUMENT" in text
+
+    def test_the_monitor_role_and_document_are_read_only(self):
+        tf = (ROOT / "infra" / "terraform" / "monitoring.tf").read_text()
+        code = "\n".join(l for l in tf.splitlines() if not l.lstrip().startswith("#"))
+        # Every granted action must be a read. One write anywhere in this role
+        # and "read-only observer" stops being true.
+        import re
+        actions = re.findall(r'"((?:ec2|rds|ecr|cloudwatch|logs|ssm|s3|iam):[A-Za-z*]+)"', code)
+        assert actions, "no actions found to check"
+        allowed_verbs = ("Describe", "Get", "List", "Filter")
+        for a in actions:
+            service, verb = a.split(":")
+            assert verb.startswith(allowed_verbs) or a == "ssm:SendCommand", \
+                f"monitor role grants a non-read action: {a}"
+        # SendCommand is the one exception, and it is scoped to the monitor
+        # document -- never AWS-RunShellScript, never the deploy document.
+        assert "aws_ssm_document.monitor.arn" in code
+        assert "AWS-RunShellScript" not in code
+        assert "aws_ssm_document.deploy" not in code
 
 
 # ===========================================================================
