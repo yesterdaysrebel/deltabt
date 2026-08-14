@@ -13,6 +13,33 @@ WHY THIS EXISTS
     badly -- they allow four concurrent positions where production allows one,
     which turned a t of +8.30 into a negative result once corrected.
 
+    !! THE TRADE COUNTS BELOW ARE OVERSTATED, AND NOT YET RE-MEASURED !!
+
+    Found 2026-08-14 while measuring max_open_positions. The simulator these
+    came from resolves a trade's entry and exit inside ONE loop iteration, with
+    the UTC day taken from the ENTRY bar. So a position opened Monday and
+    stopped out Tuesday books its loss under Monday, and the day roll then
+    clears the consecutive-loss counter. The live engine cannot do that:
+    roll_day fires when Tuesday's first bar arrives and apply_close increments
+    the streak on Tuesday.
+
+    Net effect: the simulator under-applies max_consecutive_losses and finds
+    more trades than production would. On TRAIN, V1 measures n=237 that way
+    against n=91 on a bar-by-bar simulator that matches the engine's ordering.
+
+    Direction is known; the corrected per-trade R is not, because the
+    replacement simulator has not itself been validated against a replay
+    through app/risk/engine.py. Treat the RANKING here as usable and the
+    absolute figures as provisional until that is done.
+
+    ON CONCURRENCY, measured 2026-08-14 with the corrected simulator:
+    raising max_open_positions does NOT buy more trades. Four correlated
+    instruments lose together, the account reaches the 10% drawdown halt
+    sooner, and the run ends with roughly a third of the trades. VALID and
+    TEST both get materially worse per trade at every N > 1. The ceiling is 4
+    regardless -- the engine and ux_positions_open_symbol both allow one
+    position per symbol.
+
     net R is per trade, after fees, slippage and funding. TEST is the window
     2026-04-16 -> 2026-08-12, opened once and now spent; treat further
     measurements against it as in-sample.

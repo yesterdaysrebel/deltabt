@@ -175,6 +175,68 @@ class TestLimits:
         assert not d.approved
         assert d.limit_name == "max_consecutive_losses"
 
+    def test_the_streak_clears_on_the_next_utc_day(self):
+        """Otherwise the brake never releases.
+
+        FOUND 2026-08-14. consecutive_losses was incremented in apply_close on
+        a loss and cleared in exactly ONE place -- apply_close on a win.
+        roll_day reset day, day_start_equity, daily_pnl and trades_today and
+        left the streak alone. So at the limit every entry was rejected,
+        clearing the streak needed a win, and a win needed an entry. The halt
+        was permanent and silent: no alert, no halt event, and a daily report
+        that said "the setup simply did not occur" every morning forever.
+        """
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        for i in range(3):
+            s.apply_close(-50.0, NOW + i * 3600)
+        assert not approve(state=s).approved
+
+        s.roll_day(NOW + 86_400)
+        assert s.consecutive_losses == 0
+        assert approve(state=s, now=NOW + 86_400).approved, (
+            "a new UTC day must release the brake, or the bot never trades again")
+
+    def test_but_it_does_not_clear_within_the_same_day(self):
+        """The negative control: it is a DAILY breaker, not a no-op."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        for i in range(3):
+            s.apply_close(-50.0, NOW + i * 60)
+        s.roll_day(NOW + 3600)                    # same UTC day
+        assert s.consecutive_losses == 3
+        assert not approve(state=s, now=NOW + 3600).approved
+
+    def test_a_win_still_clears_it_immediately(self):
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.apply_close(-50.0, NOW)
+        s.apply_close(-50.0, NOW + 60)
+        assert s.consecutive_losses == 2
+        s.apply_close(+80.0, NOW + 120)
+        assert s.consecutive_losses == 0
+
+    def test_a_week_of_silence_does_not_leave_it_stuck(self):
+        """The regression, stated as the symptom an operator would see."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        for i in range(5):
+            s.apply_close(-50.0, NOW + i * 3600)
+        for d in range(1, 8):
+            s.roll_day(NOW + d * 86_400)
+        assert s.consecutive_losses == 0
+        assert approve(state=s, now=NOW + 7 * 86_400).approved
+
+    def test_the_other_daily_counters_still_reset_too(self):
+        """Guard against a fix that resets the streak and breaks its siblings."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.trades_today = 4
+        s.apply_close(-50.0, NOW)
+        s.roll_day(NOW + 86_400)
+        assert (s.trades_today, s.daily_pnl) == (0, 0.0)
+        assert s.day_start_equity == s.equity
+
     def test_cooldown_after_trade(self):
         s = RiskState.fresh(10_000.0)
         s.roll_day(NOW)

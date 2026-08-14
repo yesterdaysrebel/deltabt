@@ -77,6 +77,24 @@ class RiskState:
         self.day_start_equity = self.equity
         self.daily_pnl = 0.0
         self.trades_today = 0
+        # THE STREAK IS A DAILY CIRCUIT BREAKER, AND RESETTING IT HERE IS WHAT
+        # MAKES IT ONE.
+        #
+        # consecutive_losses was incremented in apply_close on a loss and
+        # cleared in exactly one place: apply_close on a WIN. Nothing else
+        # touched it. So once it reached max_consecutive_losses the engine
+        # rejected every entry, clearing the streak required a win, and a win
+        # required an entry. The halt was permanent and silent -- the daily
+        # report would have printed "the setup simply did not occur" every
+        # morning forever.
+        #
+        # It is reset here rather than removed because every backtest of this
+        # strategy family measured it as a daily breaker (see
+        # app/config/variants.py); a permanent halt is a rule no measurement
+        # describes. At the measured ~37% win rate, three losses in a row
+        # arrives after about eight trades, so a 30-day forward test would have
+        # gone quiet in its first week.
+        self.consecutive_losses = 0
         return True
 
     def apply_close(self, pnl: float, now: int) -> None:
