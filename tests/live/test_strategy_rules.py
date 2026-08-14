@@ -364,7 +364,7 @@ class TestRules:
         e = evaluate(p, c, CFG, symbol="BTCUSD")
         assert e.conditions_passed or e.conditions_failed or e.rejection_reason
         assert "primary" in e.indicators and "confirmation" in e.indicators
-        assert e.strategy_version.startswith("H-WPR-1-VariantA@")
+        assert e.strategy_version.startswith("H-WPR-1-VariantA-V2@")
         assert e.summary()
 
     def test_failed_conditions_are_named_individually(self):
@@ -407,3 +407,157 @@ class TestRules:
         from app.config.strategy import Adx
         assert not any("percentile" in f for f in Adx.__dataclass_fields__)
         assert isinstance(CFG.adx.minimum, float)
+
+
+# ===========================================================================
+# V2: the two changes to the V1 rule set
+#
+# 1. The Williams %R gate applies on BOTH timeframes. V1 computed the 1m value
+#    and persisted it to strategy_signals, but conf_long/conf_short never
+#    referenced it, so the oscillator gated on 5m alone.
+#
+# 2. A signal fires only on the COMPLETE setup's FALSE -> TRUE transition. V1
+#    was level-triggered and re-emitted on every bar the setup stayed true. The
+#    repeats were absorbed by max_open_positions at the risk gate, which is a
+#    different thing from not emitting them.
+#
+# Each test is paired with the case it must NOT fire on.
+# ===========================================================================
+
+def _stub(direction=-1.0, adx=30.0, plus=30.0, minus=10.0, wpr=-30.0, wpr_prev=-40.0):
+    """One bar of indicator values, as IndicatorSnapshot.at() returns them."""
+    return {"close": 100.0, "supertrend": 95.0, "direction": direction,
+            "plus_di": plus, "minus_di": minus, "adx": adx,
+            "wpr": wpr, "wpr_prev": wpr_prev, "leg_low": 94.0, "leg_high": 106.0,
+            "leg_start_bar": 0, "leg_truncated": False, "bar_open": 0}
+
+
+class TestConfirmationWprIsPartOfTheDecision:
+    def test_a_long_needs_the_1m_oscillator_too(self):
+        from app.strategy.rules import _checks
+        p = _stub()                                   # 5m: full long setup
+        c_ok = _stub()                                # 1m: rising, above -80
+        c_bad = _stub(wpr=-90.0, wpr_prev=-95.0)      # 1m: rising but BELOW -80
+        assert all(v for _, v in _checks(p, c_ok, CFG)[0]), "control: should pass"
+        assert not all(v for _, v in _checks(p, c_bad, CFG)[0]), (
+            "1m WPR below -80 must block the long -- this is the V1 defect")
+
+    def test_a_falling_1m_oscillator_blocks_a_long(self):
+        from app.strategy.rules import _checks
+        p = _stub()
+        c_falling = _stub(wpr=-30.0, wpr_prev=-20.0)  # above -80 but FALLING
+        assert not all(v for _, v in _checks(p, c_falling, CFG)[0])
+
+    def test_the_short_side_mirrors(self):
+        from app.strategy.rules import _checks
+        p = _stub(direction=1.0, plus=10.0, minus=30.0, wpr=-40.0, wpr_prev=-30.0)
+        c_ok = _stub(direction=1.0, plus=10.0, minus=30.0, wpr=-40.0, wpr_prev=-30.0)
+        c_bad = _stub(direction=1.0, plus=10.0, minus=30.0, wpr=-10.0, wpr_prev=-5.0)
+        assert all(v for _, v in _checks(p, c_ok, CFG)[1])
+        assert not all(v for _, v in _checks(p, c_bad, CFG)[1]), (
+            "1m WPR above -20 must block the short")
+
+    def test_v1_behaviour_is_not_reachable_by_config(self):
+        """Disabling the defining component must fail loudly, not revert to V1."""
+        with pytest.raises(ValueError, match="confirm_wpr"):
+            StrategyConfig(confirm_wpr=False).validate()
+
+
+class TestOneShotFiring:
+    @staticmethod
+    def _find_signal(cfg):
+        """Walk a synthetic series, classifying every bar.
+
+        Three sets, because they are genuinely different things:
+          fired    -- a signal was emitted (Outcome.DETECTED)
+          repeats  -- suppressed because the setup was already true
+          passed   -- the CONJUNCTION was satisfied, whether or not a signal
+                      survived the later stop-distance and leg-truncation
+                      checks. `direction` is set the moment the conjunction
+                      passes, so it marks that boundary exactly.
+        """
+        p, c = swinging(2400, seed=11), swinging(2400 * 5, step=60, seed=11)
+        need = warmup_bars(cfg) + 2
+        fired, repeats, passed = [], [], []
+        for i in range(need, len(p)):
+            prim = p.iloc[:i + 1].reset_index(drop=True)
+            conf = c[c.time <= int(p.time.iloc[i])].reset_index(drop=True)
+            if len(conf) < need:
+                continue
+            e = evaluate(prim, conf, cfg, symbol="BTCUSD")
+            if e.outcome is Outcome.DETECTED:
+                fired.append(i)
+            if e.detail.get("suppressed_repeat"):
+                repeats.append(i)
+            if e.direction is not None or e.detail.get("suppressed_repeat"):
+                passed.append(i)
+        return fired, repeats, passed
+
+    def test_a_repeat_is_suppressed_and_says_so(self):
+        fired, repeats, _ = self._find_signal(CFG)
+        assert repeats, (
+            "the synthetic series never produced a continuously-true setup, so "
+            "this test proves nothing -- fix the fixture, not the assertion")
+        for i in repeats:
+            assert i not in fired
+
+    def test_level_triggering_fires_on_those_same_bars(self):
+        """Negative control: with fire_once off, the suppressed bars DO fire."""
+        level = StrategyConfig(fire_once=False)
+        _, repeats_level, passed_level = self._find_signal(level)
+        assert not repeats_level, "fire_once=False must not suppress anything"
+        _, repeats_once, _ = self._find_signal(CFG)
+        for i in repeats_once:
+            assert i in passed_level, (
+                f"bar {i} was suppressed as a repeat, but level-triggering does "
+                f"not even reach the conjunction there; the suppression is "
+                f"hiding a different bug")
+
+    def test_one_shot_takes_strictly_fewer_signals(self):
+        fired_once, _, _ = self._find_signal(CFG)
+        fired_level, _, _ = self._find_signal(StrategyConfig(fire_once=False))
+        assert set(fired_once) <= set(fired_level)
+        assert len(fired_once) < len(fired_level)
+
+    def test_evaluate_is_still_a_pure_function_of_its_bars(self):
+        """One-shot must not have introduced state between calls."""
+        p, c = swinging(1200, seed=7), swinging(1200 * 5, step=60, seed=7)
+        first = evaluate(p, c, CFG, symbol="BTCUSD")
+        for _ in range(3):
+            again = evaluate(p, c, CFG, symbol="BTCUSD")
+            assert again.outcome is first.outcome
+            assert again.direction == first.direction
+            assert again.rejection_reason == first.rejection_reason
+
+
+class TestVariantRegistry:
+    """The backup variants must stay reachable, valid and distinguishable."""
+
+    def test_every_variant_validates(self):
+        from app.config.variants import ALL
+        for name, cfg in ALL.items():
+            cfg.validate()
+
+    def test_variants_have_distinct_hashes(self):
+        from app.config.variants import ALL
+        hashes = {n: c.config_hash for n, c in ALL.items()}
+        assert len(set(hashes.values())) == len(hashes), (
+            f"two variants share a config hash, so their signals would be "
+            f"indistinguishable in the audit trail: {hashes}")
+
+    def test_v2_is_what_ships(self):
+        from app.config.strategy import FROZEN
+        from app.config.variants import V2
+        assert FROZEN.config_hash == V2.config_hash
+
+    def test_v1_really_is_the_old_rule_set(self):
+        from app.config.variants import V1
+        assert V1.confirm_wpr is False and V1.fire_once is False
+
+    def test_a_v2_named_config_cannot_disable_the_oscillator(self):
+        """Reverting the defining component while keeping the name is drift."""
+        with pytest.raises(ValueError, match="confirm_wpr"):
+            StrategyConfig(confirm_wpr=False).validate()
+
+    def test_but_naming_it_honestly_is_allowed(self):
+        StrategyConfig(name="H-WPR-1-VariantA", confirm_wpr=False).validate()

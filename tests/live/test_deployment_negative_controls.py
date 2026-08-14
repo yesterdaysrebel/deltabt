@@ -637,7 +637,7 @@ class TestNothingStartsTheExperiment:
 
     def test_the_frozen_hash_is_asserted_end_to_end(self):
         from app.config.strategy import StrategyConfig
-        frozen = "5a5412369f3823f3"
+        frozen = "632efcaff62c4d7c"
         assert StrategyConfig().config_hash == frozen
         assert frozen in (SCRIPTS / "verify_deployment.py").read_text()
         assert frozen in (ROOT / ".github" / "workflows" / "test.yml").read_text()
@@ -684,7 +684,7 @@ def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
         "systemd_restarts=0",
         "===HEALTHZ===", json.dumps({"status": "healthy"}),
         "===READYZ===", json.dumps({"status": "healthy"}),
-        "===STATUS===", json.dumps({"strategy_config_hash": "5a5412369f3823f3"}),
+        "===STATUS===", json.dumps({"strategy_config_hash": "632efcaff62c4d7c"}),
         "===PERSISTENCE===", json.dumps(body),
         "===END===",
     ])
@@ -992,3 +992,33 @@ class TestTheTestWorkflowActuallyRuns:
         assert "group: test-${{ github.workflow }}-${{ github.ref }}" in text, (
             "test.yml's concurrency group must distinguish the reusable call "
             "from the push-triggered run, or one silently cancels the other")
+
+
+class TestTheReportShowsEntryTimeInIST:
+    def test_an_open_position_shows_when_it_was_entered(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe_with(positions=[_pos()]), beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "Entered (IST)" in out
+        assert "2026-08-14 03:40:07" in out, "the entry timestamp must be shown"
+
+    def test_a_closed_trade_shows_entry_exit_and_duration(self, monkeypatch, capsys):
+        closed = [dict(_pos(status="CLOSED"), exit=77.812, pnl=95.5, r=1.94,
+                       reason="target", closed_ist="2026-08-14 05:10:07 IST")]
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe_with(trades=closed), beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "2026-08-14 03:40:07" in out and "2026-08-14 05:10:07" in out
+        assert "1h30" in out, "held duration derived from the two IST stamps"
+
+    def test_a_missing_timestamp_renders_as_a_dash_not_a_crash(self, monkeypatch, capsys):
+        p = _pos(); p.pop("opened_ist")
+        code, out = _run_report(monkeypatch, capsys, _probe_with(positions=[p]),
+                                beats=HEALTHY_BEATS)
+        assert code == 0 and "Entered (IST)" in out
+
+    def test_the_duration_helper_rejects_unparseable_input(self):
+        mod = _report()
+        assert mod.held("nonsense", "also nonsense") == "—"
+        assert mod.held("2026-08-14 03:00:00 IST", "2026-08-14 03:45:00 IST") == "45m"
+        assert mod.held("2026-08-14 03:00:00 IST", "2026-08-14 09:30:00 IST") == "6h30"

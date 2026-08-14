@@ -90,7 +90,7 @@ class WilliamsR:
 class StrategyConfig:
     """The complete, resolved rule set. Hashed into every idempotency key."""
 
-    name: str = "H-WPR-1-VariantA"
+    name: str = "H-WPR-1-VariantA-V2"
     primary_timeframe: str = "5m"
     confirmation_timeframe: str = "1m"
 
@@ -98,10 +98,20 @@ class StrategyConfig:
     adx: Adx = field(default_factory=Adx)
     williams_r: WilliamsR = field(default_factory=WilliamsR)
 
-    #: Components of the confirmation timeframe. Trend agreement only -- the
-    #: oscillator lives on the primary timeframe.
+    #: Components of the confirmation timeframe.
     confirm_supertrend: bool = True
     confirm_adx_di: bool = True
+    #: V2. The 1m Williams %R is now part of the confirmation. V1 computed it
+    #: and even persisted it, but never put it in the decision, so the gate was
+    #: 5m-only while the specification called for both timeframes.
+    confirm_wpr: bool = True
+
+    #: V2. Emit a signal only on the bar the COMPLETE setup goes FALSE -> TRUE.
+    #: V1 was level-triggered: it re-emitted on every bar the setup stayed true,
+    #: so one setup could be entered repeatedly. Masked in V1 by
+    #: max_open_positions=1, which refused the repeats at the risk gate -- but a
+    #: risk gate absorbing a signalling defect is not the same as not having it.
+    fire_once: bool = True
 
     #: Target as a multiple of the structural risk distance.
     target_r: float = 2.0
@@ -113,15 +123,26 @@ class StrategyConfig:
     def validate(self) -> None:
         if self.williams_r.rule != "variant_a":
             raise ValueError(
-                f"williams_r.rule must be 'variant_a' in V1, got "
+                f"williams_r.rule must be 'variant_a', got "
                 f"{self.williams_r.rule!r}. The other candidate rules (original "
                 f"Pine uptick, traverse latch, variant C crossover) fire at "
                 f"wildly different rates and are not interchangeable."
             )
         if self.primary_timeframe != "5m" or self.confirmation_timeframe != "1m":
             raise ValueError(
-                f"V1 is frozen at 5m primary / 1m confirmation, got "
+                f"V2 is frozen at 5m primary / 1m confirmation, got "
                 f"{self.primary_timeframe}/{self.confirmation_timeframe}"
+            )
+        # The oscillator on both timeframes is what V2 IS. A config that turns
+        # it off has reverted to V1's rule set, so it must not still be called
+        # V2 -- that combination is the exact drift the config hash exists to
+        # make impossible. Naming it V1 is allowed and is how the variants
+        # module reaches the older rule set.
+        if not self.confirm_wpr and "V2" in self.name:
+            raise ValueError(
+                f"confirm_wpr=False is V1's rule (5m-only oscillator) but the "
+                f"name is {self.name!r}. Name it for the rules it actually "
+                f"implements -- see app/config/variants.py."
             )
         if self.adx.minimum <= 0:
             raise ValueError("adx.minimum must be a positive absolute threshold")

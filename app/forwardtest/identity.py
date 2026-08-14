@@ -12,9 +12,9 @@ configuration drift. Two specific holes:
   configuration can move underneath it is not one experiment.
 
 So the experiment is identified by a COMPOSITE hash over strategy AND risk AND
-execution parameters, plus the code that ran. ``strategy_config_hash`` is left
-exactly as it was -- it still means "the strategy rules" and is still
-5a5412369f3823f3 -- and the composite sits alongside it.
+execution parameters, plus the code that ran. ``strategy_config_hash`` still
+means exactly "the strategy rules" -- it was 5a5412369f3823f3 for V1 and moved
+when the rules moved -- and the composite sits alongside it.
 
 FAIL CLOSED. If the running configuration does not match the experiment that is
 already in the database, the bot refuses to trade. It does not adopt the new

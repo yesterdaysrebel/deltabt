@@ -97,7 +97,7 @@ jobs:
           python - <<'PY'
           import sys
           from app.config.strategy import StrategyConfig
-          FROZEN = "5a5412369f3823f3"
+          FROZEN = "632efcaff62c4d7c"
           actual = StrategyConfig().config_hash
           print(f"strategy_config_hash = {actual}")
           if actual != FROZEN:

@@ -25,7 +25,7 @@ import subprocess
 import sys
 import time
 
-FROZEN_STRATEGY_HASH = "5a5412369f3823f3"
+FROZEN_STRATEGY_HASH = "632efcaff62c4d7c"
 
 PASS, FAIL = "PASS", "FAIL"
 

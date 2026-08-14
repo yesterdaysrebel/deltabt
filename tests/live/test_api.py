@@ -65,7 +65,7 @@ class TestEndpoints:
         s = c.get("/api/status").json()
         assert s["strategy_config_hash"] == bot.strategy.config_hash
         assert s["symbols"] == list(bot.symbols)
-        assert s["strategy_version"].startswith("H-WPR-1-VariantA@")
+        assert s["strategy_version"].startswith("H-WPR-1-VariantA-V2@")
 
     async def test_market_endpoint_reports_indicators(self, client):
         c, _ = client

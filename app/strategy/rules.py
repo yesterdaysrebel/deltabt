@@ -118,6 +118,59 @@ def _finite(*vals) -> bool:
     return all(v is not None and np.isfinite(v) for v in vals)
 
 
+def _checks(p: dict, c: dict, cfg: StrategyConfig) -> tuple[list, list]:
+    """The complete long and short conjunctions at one bar.
+
+    Pulled out of ``evaluate`` so the identical logic can be applied to the
+    PREVIOUS closed bar as well, which is what makes one-shot firing possible
+    without holding any state -- see ``evaluate``.
+    """
+    st_long = p["direction"] < 0          # Pine: direction < 0 is bullish
+    st_short = p["direction"] > 0
+    adx_ok = p["adx"] >= cfg.adx.minimum
+    di_long = p["plus_di"] > p["minus_di"]
+    di_short = p["minus_di"] > p["plus_di"]
+
+    # Williams %R Variant A: above -80 AND rising (mirrored for shorts).
+    # `wpr_prev` is the previous CLOSED bar, never a forming one.
+    wpr_rising = _finite(p["wpr_prev"]) and p["wpr"] > p["wpr_prev"]
+    wpr_falling = _finite(p["wpr_prev"]) and p["wpr"] < p["wpr_prev"]
+
+    cst_long = c["direction"] < 0
+    cst_short = c["direction"] > 0
+    cadx_ok = c["adx"] >= cfg.adx.minimum
+    cdi_long = c["plus_di"] > c["minus_di"]
+    cdi_short = c["minus_di"] > c["plus_di"]
+    # V2: the same oscillator rule, on the confirmation timeframe.
+    cwpr_rising = _finite(c["wpr_prev"]) and c["wpr"] > c["wpr_prev"]
+    cwpr_falling = _finite(c["wpr_prev"]) and c["wpr"] < c["wpr_prev"]
+
+    conf_long = ((cst_long if cfg.confirm_supertrend else True)
+                 and ((cadx_ok and cdi_long) if cfg.confirm_adx_di else True)
+                 and ((c["wpr"] > -80.0 and cwpr_rising) if cfg.confirm_wpr else True))
+    conf_short = ((cst_short if cfg.confirm_supertrend else True)
+                  and ((cadx_ok and cdi_short) if cfg.confirm_adx_di else True)
+                  and ((c["wpr"] < -20.0 and cwpr_falling) if cfg.confirm_wpr else True))
+
+    checks_long = [
+        ("primary_supertrend_bullish", st_long),
+        ("primary_adx_ge_min", adx_ok),
+        ("primary_di_plus_dominant", di_long),
+        ("primary_wpr_above_-80", p["wpr"] > -80.0),
+        ("primary_wpr_rising", wpr_rising),
+        ("confirm_1m_agrees_long", conf_long),
+    ]
+    checks_short = [
+        ("primary_supertrend_bearish", st_short),
+        ("primary_adx_ge_min", adx_ok),
+        ("primary_di_minus_dominant", di_short),
+        ("primary_wpr_below_-20", p["wpr"] < -20.0),
+        ("primary_wpr_falling", wpr_falling),
+        ("confirm_1m_agrees_short", conf_short),
+    ]
+    return checks_long, checks_short
+
+
 def evaluate(
     primary: pd.DataFrame,
     confirmation: pd.DataFrame,
@@ -172,51 +225,30 @@ def evaluate(
             f"the structural stop is not determinable from it")
         return exp
 
-    # ---- primary timeframe (5m): the full indicator stack ------------------
-    st_long = p["direction"] < 0          # Pine: direction < 0 is bullish
-    st_short = p["direction"] > 0
-    adx_ok = p["adx"] >= cfg.adx.minimum
-    di_long = p["plus_di"] > p["minus_di"]
-    di_short = p["minus_di"] > p["plus_di"]
-
-    # Williams %R Variant A: above -80 AND rising (mirrored for shorts).
-    # `wpr_prev` is the previous CLOSED primary bar, never a forming one.
-    wpr_rising = _finite(p["wpr_prev"]) and p["wpr"] > p["wpr_prev"]
-    wpr_falling = _finite(p["wpr_prev"]) and p["wpr"] < p["wpr_prev"]
-    wpr_long = p["wpr"] > -80.0 and wpr_rising
-    wpr_short = p["wpr"] < -20.0 and wpr_falling
-
-    # ---- confirmation timeframe (1m): trend agreement only -----------------
-    cst_long = c["direction"] < 0
-    cst_short = c["direction"] > 0
-    cadx_ok = c["adx"] >= cfg.adx.minimum
-    cdi_long = c["plus_di"] > c["minus_di"]
-    cdi_short = c["minus_di"] > c["plus_di"]
-
-    conf_long = ((cst_long if cfg.confirm_supertrend else True)
-                 and ((cadx_ok and cdi_long) if cfg.confirm_adx_di else True))
-    conf_short = ((cst_short if cfg.confirm_supertrend else True)
-                  and ((cadx_ok and cdi_short) if cfg.confirm_adx_di else True))
-
-    checks_long = [
-        ("primary_supertrend_bullish", st_long),
-        ("primary_adx_ge_min", adx_ok),
-        ("primary_di_plus_dominant", di_long),
-        ("primary_wpr_above_-80", p["wpr"] > -80.0),
-        ("primary_wpr_rising", wpr_rising),
-        ("confirm_1m_agrees_long", conf_long),
-    ]
-    checks_short = [
-        ("primary_supertrend_bearish", st_short),
-        ("primary_adx_ge_min", adx_ok),
-        ("primary_di_minus_dominant", di_short),
-        ("primary_wpr_below_-20", p["wpr"] < -20.0),
-        ("primary_wpr_falling", wpr_falling),
-        ("confirm_1m_agrees_short", conf_short),
-    ]
-
+    checks_long, checks_short = _checks(p, c, cfg)
     long_ok = all(v for _, v in checks_long)
     short_ok = all(v for _, v in checks_short)
+
+    # ---- one-shot: fire on the setup's FALSE -> TRUE edge -------------------
+    # Evaluated from the SAME window rather than from remembered state. A flag
+    # carried between calls would have to survive restarts, replays and
+    # duplicate feed messages; recomputing the previous closed bar cannot drift,
+    # cannot be stale after a redeploy, and keeps evaluate() a pure function of
+    # the bars it is handed -- which two existing tests rely on.
+    if cfg.fire_once and (long_ok or short_ok):
+        prev_long, prev_short = _checks(P.at(-2), C.at(-2), cfg)
+        was_long = all(v for _, v in prev_long)
+        was_short = all(v for _, v in prev_short)
+        if (long_ok and was_long) or (short_ok and was_short):
+            exp.outcome = Outcome.NO_SETUP
+            side = "long" if long_ok else "short"
+            exp.conditions_passed = [n for n, _ in
+                                     (checks_long if long_ok else checks_short)]
+            exp.rejection_reason = (
+                f"{side} setup was already true on the previous closed bar; "
+                f"one signal per FALSE->TRUE transition")
+            exp.detail["suppressed_repeat"] = True
+            return exp
 
     if long_ok and short_ok:
         # Structurally impossible (Supertrend cannot be both), but if it ever

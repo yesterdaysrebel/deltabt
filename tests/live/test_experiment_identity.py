@@ -9,7 +9,7 @@ experiment could quietly become two different experiments.
 
 The requirement is explicit: "Do not modify the expected hash to make tests
 pass." Every test here asserts the frozen strategy hash is still
-5a5412369f3823f3.
+632efcaff62c4d7c.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from tests.live.test_recovery import make_bot
 
 pytestmark = pytest.mark.asyncio
 
-FROZEN_STRATEGY_HASH = "5a5412369f3823f3"
+FROZEN_STRATEGY_HASH = "632efcaff62c4d7c"
 EXEC = {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25,
         "min_fill_rr": 1.7, "slippage_bps": 2.0}
 SYMS = ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD")
@@ -143,7 +143,7 @@ class TestCodeVersion:
     async def test_the_identity_carries_version_and_universe(self):
         i = ident()
         assert i.app_version == APP_VERSION
-        assert i.strategy_version.startswith("H-WPR-1-VariantA@")
+        assert i.strategy_version.startswith("H-WPR-1-VariantA-V2@")
         assert set(i.symbols) == set(SYMS)
 
     async def test_the_snapshot_holds_the_full_configuration(self):

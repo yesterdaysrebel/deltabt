@@ -31,8 +31,13 @@ import subprocess
 import sys
 import time
 
-FROZEN_STRATEGY_HASH = "5a5412369f3823f3"
-FROZEN_CONFIG_HASH = "ab43fbad6bf3945c"
+FROZEN_STRATEGY_HASH = "632efcaff62c4d7c"
+#: The COMPOSITE hash also covers risk, execution and the git SHA, so it moves
+#: on every deploy and cannot be pinned here. The bot already refuses to trade
+#: an experiment whose composite hash it does not match (see
+#: app/forwardtest/identity.py), so this report checks the strategy hash --
+#: the part that must never move inside one experiment -- and lets the runtime
+#: enforce the composite.
 FROZEN_RISK_HASH = "db4ecc872c759c52"
 
 #: Below this, performance numbers are noise. Stated on every report so the
@@ -196,6 +201,41 @@ def fmt(value: object, places: int = 4) -> str:
     return "—" if n is None else f"{n:.{places}f}"
 
 
+def ist(stamp: object) -> str:
+    """The host already renders IST; keep the clock time, drop the redundancy.
+
+    Every other timestamp in this report is UTC, so an unlabelled local time
+    would be ambiguous exactly where it matters -- comparing an entry against a
+    log line. The column header carries the zone; this drops the repeated
+    " IST" suffix and the date when it is today's report anyway.
+    """
+    if not stamp:
+        return "—"
+    text = str(stamp).replace(" IST", "").strip()
+    return text or "—"
+
+
+def held(opened: object, closed: object) -> str:
+    """How long the position was open, from the two IST stamps."""
+    a, b = parse_ist(opened), parse_ist(closed)
+    if a is None or b is None:
+        return "—"
+    minutes = int((b - a).total_seconds() // 60)
+    if minutes < 0:
+        return "—"
+    return f"{minutes}m" if minutes < 90 else f"{minutes // 60}h{minutes % 60:02d}"
+
+
+def parse_ist(stamp: object) -> datetime.datetime | None:
+    if not stamp:
+        return None
+    try:
+        return datetime.datetime.strptime(
+            str(stamp).replace(" IST", "").strip(), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--instance-id", required=True)
@@ -302,12 +342,14 @@ def main() -> int:
 
     if open_now:
         print("### Open\n")
-        print("| Symbol | Side | Qty | Entry | Stop | Target | Now | R | Unrealised | 1R (bps) | Target |")
-        print("|---|---|---|---|---|---|---|---|---|---|---|")
+        print("| Symbol | Side | Qty | Entered (IST) | Entry | Stop | Target | Now | R "
+              "| Unrealised | 1R (bps) | Target |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for t in open_now:
             bps, rr = geometry(t)
             r_now = num(t.get("r"))
             print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} | {t.get('quantity', '—')} "
+                  f"| {ist(t.get('opened_ist'))} "
                   f"| {fmt(t.get('entry'))} | {fmt(t.get('stop'))} | {fmt(t.get('target'))} "
                   f"| {fmt(t.get('current_price'))} | {'—' if r_now is None else f'{r_now:+.3f}R'} "
                   f"| {fmt(t.get('unrealized_pnl'), 2)} "
@@ -337,14 +379,17 @@ def main() -> int:
 
     if done:
         print("### Closed\n")
-        print("| Symbol | Side | Entry | Exit | R | P&L | Reason | Closed |")
-        print("|---|---|---|---|---|---|---|---|")
+        print("| Symbol | Side | Entered (IST) | Closed (IST) | Held | Entry | Exit "
+              "| R | P&L | Reason |")
+        print("|---|---|---|---|---|---|---|---|---|---|")
         for t in done:
             r_done = num(t.get("r"))
-            print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} | {fmt(t.get('entry'))} "
-                  f"| {fmt(t.get('exit'))} | {'—' if r_done is None else f'{r_done:+.3f}R'} "
-                  f"| {fmt(t.get('pnl'), 2)} | {t.get('reason') or '—'} "
-                  f"| {t.get('closed_ist') or '—'} |")
+            print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} "
+                  f"| {ist(t.get('opened_ist'))} | {ist(t.get('closed_ist'))} "
+                  f"| {held(t.get('opened_ist'), t.get('closed_ist'))} "
+                  f"| {fmt(t.get('entry'))} | {fmt(t.get('exit'))} "
+                  f"| {'—' if r_done is None else f'{r_done:+.3f}R'} "
+                  f"| {fmt(t.get('pnl'), 2)} | {t.get('reason') or '—'} |")
         print()
         rs = [num(t.get("r")) for t in done]
         rs = [r for r in rs if r is not None]
