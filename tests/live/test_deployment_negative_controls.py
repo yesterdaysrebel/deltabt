@@ -32,6 +32,7 @@ failure mode these tests exist to prevent.
 from __future__ import annotations
 
 import importlib.util
+import datetime
 import json
 import pathlib
 import re
@@ -734,6 +735,56 @@ def _beat(ts, silence):
 
 
 HEALTHY_BEATS = [_beat(f"2026-08-13T2{h}:00:00.000Z", 0.3) for h in range(4)]
+
+
+class TestZeroEvaluationsMeansDifferentThingsAtDifferentAges:
+    """Scoping evaluations_24h to the experiment broke this check.
+
+    It used to count the whole database, so zero meant the loop was dead.
+    Now a run that started twenty minutes ago legitimately has zero, and
+    escalating that would fire on EVERY experiment start -- the same cry-wolf
+    failure this report already had with hourly feed reconnects.
+    """
+
+    @staticmethod
+    def _aged(minutes):
+        """A probe whose RUNNING experiment started `minutes` ago."""
+        began = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(minutes=minutes))
+        return _probe(evaluations_24h=0, outcomes_24h={},
+                      # No orders either -- the "why no trades" section this
+                      # check lives in only renders when nothing was placed.
+                      orders_run=0, fills_run=0, paper_orders=0, paper_fills=0,
+                      experiments=[{"experiment_id": "E", "status": "RUNNING",
+                                    "started_at": began.strftime("%Y-%m-%dT%H:%M:%S"),
+                                    "planned_days": 30}])
+
+    def test_a_young_run_with_no_evaluations_is_a_note(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys, self._aged(5),
+                                beats=HEALTHY_BEATS)
+        assert code == 0, "a one-minute-old experiment must not page anyone"
+        assert "All clear" in out
+        assert "no evaluations yet" in out
+
+    def test_an_old_run_with_no_evaluations_needs_a_human(self, monkeypatch, capsys):
+        """The case the check exists for: the loop really has stopped."""
+        code, out = _run_report(monkeypatch, capsys, self._aged(600),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "the loop may not be running" in out
+
+    def test_the_boundary_is_the_stated_one(self, monkeypatch, capsys):
+        mod = _report()
+        assert mod.MIN_RUN_AGE_FOR_SILENCE == 3600.0
+        code, _ = _run_report(monkeypatch, capsys, self._aged(61),
+                              beats=HEALTHY_BEATS)
+        assert code == 1, "just past the threshold must escalate"
+
+    def test_a_run_that_is_evaluating_is_unaffected(self, monkeypatch, capsys):
+        """The negative control: normal activity at any age stays quiet."""
+        code, out = _run_report(monkeypatch, capsys, _probe(), beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "no evaluations" not in out
 
 
 class TestTheReportVerdictReactsToErrors:

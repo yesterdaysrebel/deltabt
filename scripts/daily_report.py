@@ -44,6 +44,11 @@ FROZEN_RISK_HASH = "db4ecc872c759c52"
 #: reader is never invited to draw a conclusion the sample cannot support.
 MIN_CLOSED_TRADES = 30
 
+#: How old a RUNNING experiment must be before "zero evaluations" is treated as
+#: a dead loop rather than a young run. Twelve 5m bars, plus room for the
+#: backfill and indicator warm-up that precede the first evaluation.
+MIN_RUN_AGE_FOR_SILENCE = 3600.0
+
 #: Mirrors app.config.settings.MAX_WS_SILENCE -- the silence after which the
 #: client forces its own reconnect. Duplicated rather than imported because
 #: this script runs in CI without the application installed; a test asserts
@@ -146,9 +151,14 @@ def parse_ts(value: str) -> datetime.datetime | None:
         offset = tail[len(tail) - 6:] if tail.endswith(("+00:00",)) else ""
         text = f"{head}.{digits or '0'}{offset or '+00:00'}"
     try:
-        return datetime.datetime.fromisoformat(text)
+        out = datetime.datetime.fromisoformat(text)
     except ValueError:
         return None
+    # Storage is UTC throughout, but not every source spells it: docker stamps
+    # carry Z while forward_test.started_at arrives bare. Returning a naive
+    # datetime for the second kind makes it unsubtractable from the first, so
+    # the assumption is made explicit here rather than at each call site.
+    return out if out.tzinfo else out.replace(tzinfo=datetime.timezone.utc)
 
 
 def container_started(sec: dict[str, str]) -> datetime.datetime | None:
@@ -292,11 +302,16 @@ def main() -> int:
     running = [e for e in experiments if str(e.get("status")).upper() == "RUNNING"]
     if len(running) != 1:
         problems.append(f"expected exactly 1 RUNNING experiment, found {len(running)}")
+    run_age_seconds = None
     if running:
         e = running[0]
         started = str(e.get("started_at", ""))[:19]
         print(f"**Experiment** `{e.get('experiment_id')}` · {e.get('status')} · "
               f"started {started}Z · planned {e.get('planned_days')} days\n")
+        began = parse_ts(str(e.get("started_at", "")))
+        if began:
+            run_age_seconds = (
+                datetime.datetime.now(datetime.timezone.utc) - began).total_seconds()
     if db.get("signals_unbound", 0) and running:
         notes.append(f"{db['signals_unbound']} pre-binding signals carry no experiment id "
                      f"(expected: they predate the run and stay out of the dataset)")
@@ -423,7 +438,23 @@ def main() -> int:
                   "never all true at the same bar close. No risk gate was reached, "
                   "so nothing was rejected — the setup simply did not occur.\n")
         elif evals == 0:
-            problems.append("no evaluations at all in 24h — the loop may not be running")
+            # "Zero evaluations" stopped meaning "the loop is dead" the moment
+            # this count became experiment-scoped. A run that started twenty
+            # minutes ago has legitimately evaluated nothing, and escalating
+            # that would fire on EVERY experiment start -- the cry-wolf failure
+            # this report already had once with feed reconnects.
+            #
+            # A 5m bar closes every 300s, and warm-up needs the backfill to
+            # finish first, so an hour is comfortably long enough that silence
+            # is real. Below it the fact is still reported, just not escalated.
+            if run_age_seconds is not None and run_age_seconds < MIN_RUN_AGE_FOR_SILENCE:
+                notes.append(
+                    f"no evaluations yet: the experiment is "
+                    f"{int(run_age_seconds // 60)} minutes old (not escalated "
+                    f"below {int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes)")
+            else:
+                problems.append(
+                    "no evaluations at all in 24h — the loop may not be running")
         else:
             print("No rejection reasons recorded and no orders placed.\n")
 
