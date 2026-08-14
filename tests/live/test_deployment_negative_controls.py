@@ -641,3 +641,236 @@ class TestNothingStartsTheExperiment:
         assert StrategyConfig().config_hash == frozen
         assert frozen in (SCRIPTS / "verify_deployment.py").read_text()
         assert frozen in (ROOT / ".github" / "workflows" / "test.yml").read_text()
+
+
+# ===========================================================================
+# The daily report's verdict
+#
+# The first production report printed eighteen ERROR lines and then concluded
+# "Nothing in this report needs a human". The count was computed and thrown
+# away: it never reached `problems`, and `problems` alone sets the exit code
+# that the scheduled workflow turns into an email. So no quantity of
+# application errors could ever raise an alarm.
+#
+# The fix cannot simply be "any ERROR fails", because Delta recycles the
+# market-data websocket about once an hour and the client resubscribes in
+# ~1.5s. Escalating those would page a human every morning for a socket
+# working exactly as designed -- and an alarm that cries wolf daily is the
+# same as no alarm. So errors are attributed (retired container vs running
+# one) and then judged: application errors always escalate, feed errors only
+# when the heartbeat shows the data actually stopped.
+#
+# Every test below pairs the failure it detects with the benign case it must
+# stay quiet on.
+# ===========================================================================
+
+def _report():
+    return load("daily_report")
+
+
+def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
+    """A probe payload in the ===SECTION=== format the report parses."""
+    body = {"experiments": [{"experiment_id": "H-WPR-1-PAPER-AWS-20260813",
+                             "status": "RUNNING",
+                             "started_at": "2026-08-13T19:41:15",
+                             "planned_days": 30}],
+            "evaluations_24h": 412, "outcomes_24h": {"NO_SETUP": 400},
+            "paper_orders": 1, "paper_fills": 1, "closed_trades_total": 0}
+    body.update(db)
+    return "\n".join([
+        "===CONTAINER===",
+        "deltabt:abc|Up 8 hours (healthy)",
+        f"user=10001:10001 readonly=true restarts=0 started={started}",
+        "systemd_restarts=0",
+        "===HEALTHZ===", json.dumps({"status": "healthy"}),
+        "===READYZ===", json.dumps({"status": "healthy"}),
+        "===STATUS===", json.dumps({"strategy_config_hash": "5a5412369f3823f3"}),
+        "===PERSISTENCE===", json.dumps(body),
+        "===END===",
+    ])
+
+
+def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=()):
+    """Drive main() against canned AWS responses; return (exit code, markdown)."""
+    mod = _report()
+    mod.problems.clear()
+    mod.notes.clear()
+
+    def fake_aws(*args, region):
+        head = tuple(args[:2])
+        if head == ("ssm", "send-command"):
+            return True, {"Command": {"CommandId": "c1"}}
+        if head == ("ssm", "get-command-invocation"):
+            return True, {"Status": "Success", "StandardOutputContent": probe_text}
+        if head == ("ec2", "describe-instances"):
+            return True, {"Reservations": [{"Instances": [{"InstanceId": "i-1"}]}]}
+        if head == ("cloudwatch", "describe-alarms"):
+            return True, {"MetricAlarms": []}
+        if head == ("logs", "filter-log-events"):
+            pattern = args[args.index("--filter-pattern") + 1]
+            picked = (beats if "heartbeat" in pattern
+                      else errors if "$.level" in pattern else gaps)
+            return True, {"events": [{"message": json.dumps(d)} for d in picked]}
+        raise AssertionError(f"unexpected AWS call: {args}")
+
+    monkeypatch.setattr(mod, "aws", fake_aws)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None, raising=False)
+    monkeypatch.setattr(sys, "argv", ["daily_report.py", "--instance-id", "i-1",
+                                      "--document", "d", "--day", "2026-08-13"])
+    code = mod.main()
+    return code, capsys.readouterr().out
+
+
+def _err(ts, logger, message="boom"):
+    return {"ts": ts, "level": "ERROR", "logger": logger, "message": message}
+
+
+def _beat(ts, silence):
+    return {"ts": ts, "level": "INFO", "logger": "app.runtime.bot",
+            "message": "heartbeat", "seconds_since_ws_message": silence}
+
+
+HEALTHY_BEATS = [_beat(f"2026-08-13T2{h}:00:00.000Z", 0.3) for h in range(4)]
+
+
+class TestTheReportVerdictReactsToErrors:
+    def test_an_application_error_needs_a_human(self, monkeypatch, capsys):
+        code, out = _run_report(
+            monkeypatch, capsys, _probe(),
+            errors=[_err("2026-08-13T21:00:00.000Z", "app.runtime.bot",
+                         "bar loop error (consecutive=3)")],
+            beats=HEALTHY_BEATS)
+        assert code == 1, "an application error must set the exit code"
+        assert "NEEDS ATTENTION" in out
+        assert "app.runtime.bot" in out
+
+    def test_but_hourly_feed_reconnects_do_not(self, monkeypatch, capsys):
+        """The negative control. These are the errors production actually emits."""
+        code, out = _run_report(
+            monkeypatch, capsys, _probe(),
+            errors=[_err(f"2026-08-13T2{h}:20:00.000Z", "app.market_data.delta_ws",
+                         "feed error: no close frame received or sent")
+                    for h in range(3)],
+            beats=HEALTHY_BEATS)
+        assert code == 0, "a recovered reconnect must not page anyone"
+        assert "All clear" in out
+        assert "3 feed reconnect" in out
+
+    def test_a_feed_that_never_came_back_does_need_a_human(self, monkeypatch, capsys):
+        """Same feed errors, but the heartbeat proves data actually stopped."""
+        mod = _report()
+        code, out = _run_report(
+            monkeypatch, capsys, _probe(),
+            errors=[_err("2026-08-13T21:20:00.000Z", "app.market_data.delta_ws",
+                         "feed error")],
+            beats=HEALTHY_BEATS + [_beat("2026-08-13T23:00:00.000Z",
+                                         mod.MAX_FEED_SILENCE + 1)])
+        assert code == 1
+        assert "feed silence reached" in out
+
+    def test_errors_from_a_retired_container_are_not_todays_problem(
+            self, monkeypatch, capsys):
+        """Shutdown noise from the container a restart replaced must not alarm."""
+        code, out = _run_report(
+            monkeypatch, capsys, _probe(started="2026-08-13T19:42:44.492000000Z"),
+            errors=[_err("2026-08-13T19:42:38.119Z", "uvicorn.error", "Traceback"),
+                    _err("2026-08-13T19:05:00.622Z", "app.runtime.bot", "bar loop")],
+            beats=HEALTHY_BEATS)
+        assert code == 0, "a dead container's last words are not a live fault"
+        assert "retired container" in out
+
+    def test_and_the_same_errors_after_the_restart_do_alarm(self, monkeypatch, capsys):
+        """Identical lines, moved past the start time: the attribution is real."""
+        code, _ = _run_report(
+            monkeypatch, capsys, _probe(started="2026-08-13T19:00:00.000000000Z"),
+            errors=[_err("2026-08-13T19:42:38.119Z", "uvicorn.error", "Traceback"),
+                    _err("2026-08-13T19:05:00.622Z", "app.runtime.bot", "bar loop")],
+            beats=HEALTHY_BEATS)
+        assert code == 1
+
+    def test_a_silent_bar_loop_is_a_problem(self, monkeypatch, capsys):
+        """No heartbeats at all means feed health cannot be judged -- not that it passed."""
+        code, out = _run_report(monkeypatch, capsys, _probe(), errors=[], beats=[])
+        assert code == 1
+        assert "no heartbeat lines" in out
+
+    def test_a_clean_day_still_passes(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys, _probe(),
+                                errors=[], beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "All clear" in out
+
+
+class TestTheReportNeverSilentlyTruncates:
+    def test_log_queries_follow_the_next_token(self):
+        """One page read as a total under-reports worst when things go wrong."""
+        mod = _report()
+        mod.problems.clear()
+        pages = [{"events": [{"message": json.dumps({"ts": "1", "message": "a"})}],
+                  "nextToken": "t2"},
+                 {"events": [{"message": json.dumps({"ts": "2", "message": "b"})}]}]
+        calls: list[tuple] = []
+
+        def fake_aws(*args, region):
+            calls.append(args)
+            return True, pages[len(calls) - 1]
+
+        mod.aws = fake_aws
+        try:
+            events, truncated = mod.log_events("g", 0, "p", "ap-south-1")
+        finally:
+            mod.aws = mod.__dict__["aws"]
+        assert len(events) == 2, "the second page was dropped"
+        assert truncated is False
+        assert "--next-token" in calls[1]
+
+    def test_hitting_the_cap_is_reported_rather_than_hidden(self):
+        mod = _report()
+        mod.problems.clear()
+        page = {"events": [{"message": json.dumps({"ts": "1", "message": "x"})}] * 50,
+                "nextToken": "more"}
+        mod.aws = lambda *a, region: (True, page)
+        events, truncated = mod.log_events("g", 0, "p", "ap-south-1")
+        assert truncated is True
+        assert len(events) == mod.LOG_EVENT_CAP
+
+    def test_no_log_query_passes_a_bare_limit(self):
+        """--limit caps the page; the count then reads as a total. Use the pager."""
+        source = _report_source()
+        assert '"--limit"' not in source, (
+            "a --limit on filter-log-events silently truncates the count")
+
+
+def _report_source():
+    return "\n".join(l for l in (SCRIPTS / "daily_report.py").read_text().splitlines()
+                     if not l.lstrip().startswith("#"))
+
+
+class TestTheReportStaysInSyncWithTheBot:
+    def test_the_silence_threshold_matches_the_client(self):
+        """Duplicated because CI runs the script without the app installed."""
+        from app.config.settings import MAX_WS_SILENCE
+        assert _report().MAX_WS_SILENCE == MAX_WS_SILENCE
+
+    def test_escalation_is_above_the_clients_own_reconnect_trigger(self):
+        mod = _report()
+        assert mod.MAX_FEED_SILENCE > mod.MAX_WS_SILENCE, (
+            "escalating at or below the reconnect trigger fires on every reconnect")
+
+    def test_the_probe_reports_container_start_time(self):
+        """Without it the report cannot tell shutdown noise from a live fault."""
+        tf = (ROOT / "infra" / "terraform" / "monitoring.tf").read_text()
+        assert "State.StartedAt" in tf
+
+    def test_docker_nanosecond_precision_parses(self):
+        """docker emits 9 fractional digits; datetime accepts at most 6."""
+        mod = _report()
+        parsed = mod.parse_ts("2026-08-13T19:42:44.492000000Z")
+        assert parsed is not None and parsed.year == 2026
+        assert mod.parse_ts("not a time") is None
+
+    def test_the_start_time_is_read_out_of_the_probe(self):
+        mod = _report()
+        sec = mod.sections(_probe(started="2026-08-13T19:42:44.492000000Z"))
+        assert mod.container_started(sec) is not None
+        assert mod.container_started({"CONTAINER": "user=x readonly=true"}) is None

@@ -29,6 +29,7 @@ import datetime
 import json
 import subprocess
 import sys
+import time
 
 FROZEN_STRATEGY_HASH = "5a5412369f3823f3"
 FROZEN_CONFIG_HASH = "ab43fbad6bf3945c"
@@ -37,6 +38,29 @@ FROZEN_RISK_HASH = "db4ecc872c759c52"
 #: Below this, performance numbers are noise. Stated on every report so the
 #: reader is never invited to draw a conclusion the sample cannot support.
 MIN_CLOSED_TRADES = 30
+
+#: Mirrors app.config.settings.MAX_WS_SILENCE -- the silence after which the
+#: client forces its own reconnect. Duplicated rather than imported because
+#: this script runs in CI without the application installed; a test asserts
+#: the two stay equal.
+MAX_WS_SILENCE = 30.0
+
+#: Four times the client's own reconnect trigger. Below this the reconnect
+#: machinery is working as designed; above it, it tried and failed to restore
+#: the feed, which is the only websocket condition worth waking someone for.
+MAX_FEED_SILENCE = 120.0
+
+#: Hard ceiling on events pulled per log query. A report that stops counting at
+#: a page boundary and prints the result as a total is worse than one that
+#: admits it truncated, so hitting this is stated in the report.
+LOG_EVENT_CAP = 2000
+
+#: Errors from the market-data feed are judged by whether the feed recovered,
+#: never by how many were logged. Delta recycles the websocket roughly hourly
+#: and the client resubscribes in ~1.5s; counting those as faults would page a
+#: human every morning for a socket doing exactly what it is supposed to do.
+#: Everything outside this prefix is an application error and always escalates.
+FEED_LOGGER_PREFIX = "app.market_data."
 
 problems: list[str] = []
 notes: list[str] = []
@@ -67,7 +91,6 @@ def probe(instance: str, document: str, day: str, region: str) -> str:
         problems.append(f"could not invoke the monitor document: {sent.get('error')}")
         return ""
     command_id = sent["Command"]["CommandId"]
-    import time
     for _ in range(40):
         time.sleep(6)
         ok, inv = aws("ssm", "get-command-invocation", "--command-id", command_id,
@@ -78,6 +101,58 @@ def probe(instance: str, document: str, day: str, region: str) -> str:
             return inv.get("StandardOutputContent", "")
     problems.append("monitor probe timed out")
     return ""
+
+
+def log_events(group: str, since_ms: int, pattern: str,
+               region: str) -> tuple[list[dict], bool]:
+    """Page through filter-log-events. Returns (parsed JSON events, truncated).
+
+    filter-log-events pages. Reading one page and printing its length as a
+    24h total silently under-reports the moment there is more than a page of
+    it -- and under-reports worst exactly when things are going wrong.
+    """
+    out: list[dict] = []
+    token: str | None = None
+    while len(out) < LOG_EVENT_CAP:
+        extra = ["--next-token", token] if token else []
+        ok, page = aws("logs", "filter-log-events", "--log-group-name", group,
+                       "--start-time", str(since_ms), "--filter-pattern", pattern,
+                       *extra, region=region)
+        if not ok:
+            problems.append(f"could not read {group}: {page.get('error')}")
+            return out, False
+        for e in page.get("events", []):
+            parsed = as_json(e.get("message", ""))
+            if parsed:
+                out.append(parsed)
+        token = page.get("nextToken")
+        if not token:
+            break
+    out.sort(key=lambda d: str(d.get("ts", "")))
+    return out[:LOG_EVENT_CAP], len(out) >= LOG_EVENT_CAP
+
+
+def parse_ts(value: str) -> datetime.datetime | None:
+    """Parse an ISO8601 UTC stamp, tolerating docker's nanosecond precision."""
+    text = str(value).strip().replace("Z", "+00:00")
+    if "." in text:                       # datetime accepts at most microseconds
+        head, _, tail = text.partition(".")
+        digits = "".join(c for c in tail if c.isdigit())[:6]
+        offset = tail[len(tail) - 6:] if tail.endswith(("+00:00",)) else ""
+        text = f"{head}.{digits or '0'}{offset or '+00:00'}"
+    try:
+        return datetime.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def container_started(sec: dict[str, str]) -> datetime.datetime | None:
+    """Pull started=... out of the probe's docker inspect line."""
+    for line in sec.get("CONTAINER", "").splitlines():
+        for field in line.split():
+            if field.startswith("started="):
+                return parse_ts(field.split("=", 1)[1])
+    return None
 
 
 def sections(text: str) -> dict[str, str]:
@@ -244,29 +319,96 @@ def main() -> int:
           f"{firing if firing else ''}\n")
 
     since = int((now - datetime.timedelta(hours=24)).timestamp() * 1000)
-    ok, errs = aws("logs", "filter-log-events", "--log-group-name", log_group,
-                   "--start-time", str(since), "--limit", "25",
-                   "--filter-pattern", '{ $.level = "ERROR" || $.level = "CRITICAL" }',
-                   region=args.region)
-    events = errs.get("events", []) if ok else []
-    print(f"ERROR/CRITICAL log lines in 24h: **{len(events)}**\n")
-    if events:
+
+    # --- feed continuity ----------------------------------------------------
+    # The heartbeat records how long since the last websocket message, so it
+    # measures the thing that actually matters -- whether market data stopped --
+    # instead of how loudly the client complained about a socket it then fixed.
+    beats, beats_cut = log_events(log_group, since, '{ $.message = "heartbeat" }',
+                                  args.region)
+    silences = [b["seconds_since_ws_message"] for b in beats
+                if isinstance(b.get("seconds_since_ws_message"), (int, float))]
+    worst = max(silences) if silences else None
+    unknown = sum(1 for b in beats if b.get("seconds_since_ws_message") is None)
+
+    if not beats:
+        problems.append("no heartbeat lines in 24h -- the bar loop may not be "
+                        "running, and feed health cannot be judged either way")
+    elif worst is not None and worst > MAX_FEED_SILENCE:
+        problems.append(f"feed silence reached {worst:.0f}s (the client forces a "
+                        f"reconnect at {MAX_WS_SILENCE:.0f}s, so this means the "
+                        f"reconnect did not restore the feed)")
+    if unknown:
+        notes.append(f"{unknown} heartbeat(s) reported unknown feed silence "
+                     f"(no websocket message had arrived yet at that point)")
+    if beats:
+        measured = f", worst silence **{worst:.1f}s**" if worst is not None else ""
+        print(f"Feed continuity: **{len(beats)}** heartbeats{measured} "
+              f"(client reconnects at {MAX_WS_SILENCE:.0f}s, report escalates "
+              f"above {MAX_FEED_SILENCE:.0f}s)\n")
+
+    # --- errors, attributed and classified ----------------------------------
+    errs, errs_cut = log_events(
+        log_group, since, '{ $.level = "ERROR" || $.level = "CRITICAL" }', args.region)
+    if errs_cut or beats_cut:
+        problems.append(f"log query hit the {LOG_EVENT_CAP}-event cap; counts below "
+                        f"are floors, not totals")
+
+    # Partition on the record itself. Identity tests like `d not in stale` compare
+    # dicts by value, so two identical log lines would collapse into one bucket.
+    started = container_started(sec)
+    if started is None and errs:
+        notes.append("container start time unavailable, so every error is "
+                     "attributed to the running container")
+
+    def retired(d: dict) -> bool:
+        if started is None:
+            return False
+        t = parse_ts(d.get("ts", ""))
+        return t is not None and t < started
+
+    stale = [d for d in errs if retired(d)]
+    live = [d for d in errs if not retired(d)]
+    feed = [d for d in live if str(d.get("logger", "")).startswith(FEED_LOGGER_PREFIX)]
+    app_errs = [d for d in live
+                if not str(d.get("logger", "")).startswith(FEED_LOGGER_PREFIX)]
+
+    print(f"ERROR/CRITICAL in 24h: **{len(errs)}** — "
+          f"{len(stale)} from a retired container, {len(feed)} feed reconnects, "
+          f"**{len(app_errs)} application**\n")
+
+    # A retired container's shutdown noise is not today's problem; say so once
+    # rather than reprinting the same tracebacks every morning until they age out.
+    if stale:
+        notes.append(f"{len(stale)} error(s) predate the current container "
+                     f"(started {started:%Y-%m-%d %H:%M:%S}Z) and belong to the "
+                     f"instance it replaced")
+    if feed:
+        if worst is not None and worst <= MAX_FEED_SILENCE:
+            notes.append(f"{len(feed)} feed reconnect(s), all recovered — worst "
+                         f"observed silence {worst:.1f}s stayed under "
+                         f"{MAX_FEED_SILENCE:.0f}s")
+        else:
+            problems.append(f"{len(feed)} feed error(s) and no heartbeat evidence "
+                            f"that the feed came back")
+    if app_errs:
+        loggers = sorted({str(d.get("logger", "?")) for d in app_errs})
+        problems.append(f"{len(app_errs)} application ERROR/CRITICAL line(s) since "
+                        f"the container started, from: {', '.join(loggers)}")
         print("```")
-        for e in events[:5]:
-            print(e["message"][:220])
+        for d in app_errs[:5]:
+            print(f"{d.get('ts')} {d.get('logger')} "
+                  f"{str(d.get('message', '')).splitlines()[0][:150]}")
         print("```\n")
 
     # Gaps: a data-quality property of the universe, tracked as evidence.
-    ok, gaps = aws("logs", "filter-log-events", "--log-group-name", log_group,
-                   "--start-time", str(since), "--limit", "200",
-                   "--filter-pattern", '{ $.message = "*gap*" }', region=args.region)
+    gaps, gaps_cut = log_events(log_group, since, '{ $.message = "*gap*" }', args.region)
+    if gaps_cut:
+        notes.append(f"gap query hit the {LOG_EVENT_CAP}-event cap; the gap counts "
+                     f"below are floors, not totals")
     detected: dict[str, int] = {}
     unrepaired = 0
-    for e in (gaps.get("events", []) if ok else []):
-        try:
-            d = json.loads(e["message"])
-        except Exception:                                      # noqa: BLE001
-            continue
+    for d in gaps:
         if "gap detected" in d.get("message", ""):
             detected[d.get("symbol", "?")] = detected.get(d.get("symbol", "?"), 0) + 1
         if d.get("message", "").startswith("gap repair fetched 0"):

@@ -44,7 +44,10 @@ resource "aws_ssm_document" "monitor" {
           "set +e",
           "echo '===CONTAINER==='",
           "docker ps --filter name=deltabot --format '{{.Image}}|{{.Status}}'",
-          "docker inspect deltabot -f 'user={{.Config.User}} readonly={{.HostConfig.ReadonlyRootfs}} restarts={{.RestartCount}}'",
+          # started= lets the report tell a live fault from the shutdown noise of
+          # a container that no longer exists. Without it every restart looks
+          # like an incident the next morning.
+          "docker inspect deltabot -f 'user={{.Config.User}} readonly={{.HostConfig.ReadonlyRootfs}} restarts={{.RestartCount}} started={{.State.StartedAt}}'",
           "echo \"systemd_restarts=$(systemctl show deltabt -p NRestarts --value)\"",
           "echo '===HEALTHZ==='",
           "curl -sS --max-time 10 http://127.0.0.1:8000/healthz",
