@@ -852,7 +852,7 @@ class TestZeroEvaluationsMeansDifferentThingsAtDifferentAges:
         assert "no evaluations" not in out
 
 
-class TestTheWhyNoTradesSectionAnswersItsOwnHeading:
+class TestTheRejectionSectionAnswersItsOwnHeading:
     """A heading with nothing under it is worse than no heading at all.
 
     The first run of H-WPR-1-PAPER-AWS-V1-20260814-2 printed
@@ -866,8 +866,8 @@ class TestTheWhyNoTradesSectionAnswersItsOwnHeading:
     @staticmethod
     def _section(out):
         """The body between the heading and the next one, whitespace stripped."""
-        head = "## Why there were no trades"
-        assert head in out, "the section must render when no orders were placed"
+        head = "## Why setups did not become trades"
+        assert head in out, "the section must always render"
         rest = out.split(head, 1)[1]
         return rest.split("\n## ", 1)[0].strip()
 
@@ -1212,6 +1212,110 @@ class TestABrandNewInstanceIsNotABlindAlarm:
     def test_the_threshold_is_the_stated_one(self):
         preflight = load("aws_preflight")
         assert preflight.MIN_METRIC_AGE == 900.0
+
+
+class TestTheReportPrintsWhatTheRunIsMeasuring:
+    """Every column below was recorded from the first run and none of it was
+    reported, so the questions the forward test exists to answer had to be
+    settled by querying the database by hand.
+    """
+
+    @staticmethod
+    def _econ(**kw):
+        base = {"symbol": "BANKUSD", "side": 1, "r_multiple": 1.872,
+                "planned_r": 2.0, "fill_rr": 1.81, "notional": 4000.0,
+                "entry_fee": 2.36, "exit_fee": 2.44, "funding": 0.5,
+                "entry_slippage": 0.8, "exit_slippage": 0.9,
+                "realized_pnl": 93.49, "exit_reason": "TAKE_PROFIT",
+                "hold_seconds": 11431}
+        base.update(kw)
+        return base
+
+    def test_cost_per_r_is_reported(self, monkeypatch, capsys):
+        """The panel's binding constraint, which the report never printed."""
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(economics=[self._econ()]),
+                                beats=HEALTHY_BEATS)
+        assert "## Cost, and what it leaves" in out
+        assert "cost/R" in out
+        # 1R = |93.49| / 1.872 = 49.94; cost = 2.36+2.44+0.5+0.8+0.9 = 7.00
+        assert "0.140R" in out, out
+
+    def test_planned_versus_filled_degradation_is_reported(self, monkeypatch, capsys):
+        """schema.sql: 'reporting only one hides the degradation the forward
+        test exists to measure' -- and the report showed neither."""
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(economics=[self._econ()]),
+                                beats=HEALTHY_BEATS)
+        assert "Approved-to-filled reward/risk moved **-0.190**" in out
+
+    def test_drawdown_is_reported_and_escalates_with_the_gate_off(
+            self, monkeypatch, capsys):
+        """max_drawdown_pct is disabled for these runs, so nothing enforces it."""
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe(risk_state={"equity": 8500.0, "peak_equity": 10000.0,
+                               "wins": 1, "losses": 4, "consecutive_losses": 2}),
+            beats=HEALTHY_BEATS)
+        assert "## Equity" in out and "15.00%" in out
+        assert code == 1
+        assert "DISABLED for this run" in out
+
+    def test_a_modest_drawdown_is_reported_without_escalating(
+            self, monkeypatch, capsys):
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe(risk_state={"equity": 9800.0, "peak_equity": 10000.0,
+                               "wins": 1, "losses": 1, "consecutive_losses": 0}),
+            beats=HEALTHY_BEATS)
+        assert "2.00%" in out
+        assert code == 0
+
+    def test_a_symbol_that_never_trades_is_named(self, monkeypatch, capsys):
+        """THE CASE THAT PROMPTED THIS. AKEUSD and BEATUSD had every setup
+        refused for stop width and the aggregates showed nothing."""
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe(by_symbol=[
+                {"symbol": "AKEUSD", "setups": 8, "approved": 0, "rejected": 8,
+                 "min_stop_pct": 5.06, "max_stop_pct": 11.44},
+                {"symbol": "BTCUSD", "setups": 4, "approved": 2, "rejected": 2,
+                 "min_stop_pct": 0.18, "max_stop_pct": 0.38}],
+                bar_quality=[{"symbol": "AKEUSD", "bars": 1440, "synthetic": 0},
+                             {"symbol": "BTCUSD", "bars": 1440, "synthetic": 14}]),
+            beats=HEALTHY_BEATS)
+        assert "## Per symbol" in out
+        assert "5.06–11.44" in out
+        assert "no setup has ever been approved for AKEUSD" in out
+        assert "BTCUSD" in out
+        assert code == 0, "a symbol not trading is a finding, not a fault"
+
+    def test_a_stale_open_position_escalates(self, monkeypatch, capsys):
+        """There is no time stop: only STOP_LOSS and TAKE_PROFIT close."""
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(oldest_open_seconds=5 * 86400),
+                                beats=HEALTHY_BEATS)
+        assert "Oldest open position" in out
+        assert code == 1
+        assert "no time stop" in out
+
+    def test_a_normal_open_position_does_not_escalate(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(oldest_open_seconds=3600),
+                                beats=HEALTHY_BEATS)
+        assert "Oldest open position: **1.0h**" in out
+        assert code == 0
+
+    def test_rejections_are_shown_even_when_orders_exist(self, monkeypatch, capsys):
+        """The section was gated on 'no orders', which is how a symbol refused
+        on every single setup stayed invisible."""
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe(orders_run=4, fills_run=4, paper_orders=4, paper_fills=4,
+                   rejections_24h={"stop 20.95% exceeds max_stop_pct 5.00%": 7}),
+            beats=HEALTHY_BEATS)
+        assert "## Why setups did not become trades" in out
+        assert "exceeds max_stop_pct" in out
 
 
 class TestTheReportVerdictReactsToErrors:

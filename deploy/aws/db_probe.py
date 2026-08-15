@@ -109,6 +109,78 @@ async def collect(con) -> dict:
         "strategy_hash, risk_hash, git_sha, snapshot->'risk' as risk "
         "from forward_test")]
 
+    # --- what the run is actually measuring ---------------------------------
+    #
+    # Every column below is recorded and none of it was reported. schema.sql
+    # says why planned_r and fill_rr matter: "reporting only one hides the
+    # degradation the forward test exists to measure" -- and the report showed
+    # neither. Cost as a fraction of R is the panel's binding constraint and
+    # had to be computed by hand.
+    out["economics"] = [dict(r) for r in await con.fetch(
+        """select symbol, side, r_multiple, planned_r, fill_rr, notional,
+                  entry_fee, exit_fee, funding, entry_slippage, exit_slippage,
+                  realized_pnl, exit_reason, hold_seconds
+             from positions
+            where status = 'CLOSED'
+              and ($1::timestamptz is null or opened_at >= $1)
+            order by closed_at""", since)]
+
+    # PER SYMBOL. AKEUSD and BEATUSD had 15 of 15 setups refused and the
+    # aggregates showed nothing, because a symbol that never trades is
+    # invisible in a total. Found only by querying by hand.
+    out["by_symbol"] = [dict(r) for r in await con.fetch(
+        """select symbol,
+                  count(*) filter (where outcome <> 'NO_SETUP')      setups,
+                  count(*) filter (where outcome = 'APPROVED')       approved,
+                  count(*) filter (where rejection_reason is not null) rejected,
+                  min(stop_distance_pct)                             min_stop_pct,
+                  max(stop_distance_pct)                             max_stop_pct
+             from strategy_signals
+            where ($1::text is null or experiment_id = $1)
+            group by symbol order by symbol""", rid)]
+
+    # Rejections for the WHOLE RUN, not just the last 24h, and reported even
+    # when orders exist -- the section was gated on "no orders", which is how
+    # a symbol refused on every single setup stayed hidden.
+    out["rejections_run"] = {(r["rejection_reason"] or "")[:90]: r["n"]
+                             for r in await con.fetch(
+        """select rejection_reason, count(*) n from strategy_signals
+            where rejection_reason is not null
+              and ($1::text is null or experiment_id = $1)
+            group by 1 order by 2 desc limit 15""", rid)}
+
+    # The drawdown gate is DISABLED for these runs, so the number nobody is
+    # enforcing is the one that most needs reporting.
+    state = await con.fetchval(
+        "select value from strategy_state where key = 'risk_state'")
+    if state:
+        st = json.loads(state) if isinstance(state, str) else state
+        out["risk_state"] = {k: st.get(k) for k in
+                             ("equity", "peak_equity", "day_start_equity",
+                              "daily_pnl", "trades_today", "consecutive_losses",
+                              "wins", "losses", "realized_pnl")}
+
+    # Nothing but stop or target closes a position -- TIME_EXIT is declared and
+    # never emitted -- so a wide-stop setup can sit indefinitely. V3 makes that
+    # materially likelier.
+    out["oldest_open_seconds"] = await con.fetchval(
+        "select extract(epoch from (now() - min(opened_at)))::bigint "
+        "from positions where status in ('OPENING','OPEN','SUSPENDED','CLOSING')")
+
+    # Is BANKUSD's shortened halt threshold actually suppressing anything, and
+    # how much of each symbol's price history is forward-filled?
+    out["bar_quality"] = [dict(r) for r in await con.fetch(
+        """select symbol, count(*) bars,
+                  count(*) filter (where volume = 0 and open = close
+                                     and high = low and open = high) synthetic
+             from market_candles
+            where timeframe = '1m' and bar_open > now() - interval '24 hours'
+            group by symbol order by symbol""")]
+
+    out["halt_events_24h"] = await con.fetchval(
+        "select count(*) from system_events where component = 'halt' "
+        "and received_ts > now() - interval '24 hours'") or 0
+
     return out
 
 

@@ -501,7 +501,10 @@ def main() -> int:
     # So the body is composed FIRST and the heading is printed only with it.
     # notes/problems still get their entry, because escalation is a separate
     # concern from explanation and the daily digest is read on its own.
-    if not orders:
+    # NOT gated on "no orders" any more. It was, and that is how AKEUSD and
+    # BEATUSD stayed hidden while every one of their 15 setups was refused:
+    # one order anywhere in the universe suppressed the whole breakdown.
+    if True:
         body = ""
         rejections = db.get("rejections_24h") or {}
         if rejections:
@@ -545,8 +548,108 @@ def main() -> int:
             mix = ", ".join(f"`{k}` {v}" for k, v in sorted(outcomes.items()))
             body = (f"{evals} evaluation(s), no order placed and no risk-gate "
                     f"rejection recorded. Outcome mix: {mix or 'none recorded'}.\n")
-        print("## Why there were no trades\n")
+        print("## Why setups did not become trades\n")
         print(body)
+
+    # --- 3b. what the run is measuring --------------------------------------
+    econ = db.get("economics") or []
+    if econ:
+        print("## Cost, and what it leaves\n")
+        print("The binding constraint per the panel review is cost, not "
+              "signal: a fixed fraction of notional against a variable R. "
+              "Every column here was recorded from the first run and none of "
+              "it was reported.\n")
+        print("| Symbol | R | planned R | fill R | slip | fees | funding | "
+              "cost | cost/R | held |")
+        print("|---|---|---|---|---|---|---|---|---|---|")
+        tot_cost = tot_r_value = 0.0
+        for t in econ:
+            r = num(t.get("r_multiple"))
+            fees = (num(t.get("entry_fee")) or 0) + (num(t.get("exit_fee")) or 0)
+            slip = ((num(t.get("entry_slippage")) or 0)
+                    + (num(t.get("exit_slippage")) or 0))
+            fund = num(t.get("funding")) or 0
+            cost = fees + slip + fund
+            # R in currency: |realised| / |r_multiple| recovers one R, which is
+            # what cost has to be compared against.
+            pnl = num(t.get("realized_pnl"))
+            r_value = (abs(pnl) / abs(r)) if (pnl is not None and r) else None
+            cpr = (cost / r_value) if r_value else None
+            if r_value:
+                tot_cost += cost
+                tot_r_value += r_value
+            hold_s = t.get("hold_seconds")
+            print(f"| {t.get('symbol','?')} "
+                  f"| {'—' if r is None else f'{r:+.3f}'} "
+                  f"| {fmt(t.get('planned_r'), 2)} | {fmt(t.get('fill_rr'), 2)} "
+                  f"| {slip:.2f} | {fees:.2f} | {fund:.2f} | {cost:.2f} "
+                  f"| {'—' if cpr is None else f'{cpr:.3f}R'} "
+                  f"| {'—' if not hold_s else f'{int(hold_s)//3600}h{int(hold_s)%3600//60:02d}'} |")
+        print()
+        if tot_r_value:
+            share = tot_cost / tot_r_value
+            print(f"Cost consumed **{share:.3f}R** per trade on average "
+                  f"({len(econ)} closed). The research put this at ~0.55R at a "
+                  f"median 1R of 21.6 bps, and estimated 0.15R needs a median "
+                  f"R near 80 bps.\n")
+        # planned_r vs fill_rr is the degradation schema.sql names explicitly.
+        deg = [(num(t.get("planned_r")), num(t.get("fill_rr"))) for t in econ]
+        deg = [(p, f) for p, f in deg if p and f]
+        if deg:
+            mean = sum(f - p for p, f in deg) / len(deg)
+            print(f"Approved-to-filled reward/risk moved **{mean:+.3f}** on "
+                  f"average -- entry slippage between what the risk engine "
+                  f"approved and what the fill produced.\n")
+
+    rs = db.get("risk_state") or {}
+    if rs:
+        eq, peak = num(rs.get("equity")), num(rs.get("peak_equity"))
+        dd = ((peak - eq) / peak) if (peak and eq is not None and peak > 0) else None
+        print("## Equity\n")
+        print(f"Equity **{fmt(eq, 2)}** · peak **{fmt(peak, 2)}** · drawdown "
+              f"**{'—' if dd is None else f'{100*dd:.2f}%'}** · "
+              f"wins {rs.get('wins')} losses {rs.get('losses')} · "
+              f"streak {rs.get('consecutive_losses')}\n")
+        # The drawdown halt is disabled for these runs, so nothing enforces
+        # this number. That is exactly why it is printed.
+        if dd is not None and dd >= 0.10:
+            problems.append(
+                f"drawdown {100*dd:.2f}% -- the max_drawdown_pct halt is "
+                f"DISABLED for this run, so nothing stops it compounding")
+
+    by_sym = db.get("by_symbol") or []
+    if by_sym:
+        print("## Per symbol\n")
+        print("A symbol that never trades is invisible in a total. AKEUSD and "
+              "BEATUSD had every setup refused for stop width and the "
+              "aggregates showed nothing.\n")
+        print("| Symbol | Setups | Approved | Rejected | Stop % range | Bars | Synthetic |")
+        print("|---|---|---|---|---|---|---|")
+        quality = {q["symbol"]: q for q in (db.get("bar_quality") or [])}
+        for r in by_sym:
+            q = quality.get(r["symbol"], {})
+            bars, syn = q.get("bars"), q.get("synthetic")
+            pct = f"{100*syn/bars:.0f}%" if bars else "—"
+            lo, hi = num(r.get("min_stop_pct")), num(r.get("max_stop_pct"))
+            rng = "—" if lo is None else f"{lo:.2f}–{hi:.2f}"
+            print(f"| {r['symbol']} | {r.get('setups', 0)} | {r.get('approved', 0)} "
+                  f"| {r.get('rejected', 0)} | {rng} | {bars or '—'} | {pct} |")
+        print()
+        dead = [r["symbol"] for r in by_sym
+                if r.get("setups", 0) >= 5 and not r.get("approved")]
+        if dead:
+            notes.append(f"no setup has ever been approved for {', '.join(dead)} "
+                         f"-- configured and evaluating, but not trading")
+
+    oldest = db.get("oldest_open_seconds")
+    if oldest:
+        hours = int(oldest) / 3600.0
+        print(f"Oldest open position: **{hours:.1f}h**. Only STOP_LOSS and "
+              f"TAKE_PROFIT close a position -- there is no time stop -- so a "
+              f"target that cannot be reached is held indefinitely.\n")
+        if hours >= 72:
+            problems.append(f"a position has been open {hours:.0f}h with no "
+                            f"time stop to release it")
 
     # --- 4. sample size -----------------------------------------------------
     print("## Sample size\n")
