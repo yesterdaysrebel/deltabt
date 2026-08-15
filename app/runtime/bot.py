@@ -1086,7 +1086,27 @@ def _to_record(p: PaperPosition, instance_uid: str,
         entry_fee=p.entry_fee, exit_fee=p.exit_fee, funding=p.funding,
         exit_price=p.exit_price, realized_pnl=p.realized_pnl,
         r_multiple=p.r_multiple, exit_reason=p.exit_reason,
-        closed_at=p.closed_at)
+        closed_at=p.closed_at,
+        # DROPPED HERE, EXACTLY LIKE experiment_id AND config_hash WERE.
+        #
+        # The broker computes every one of these -- planned_r and fill_rr at
+        # fill time, the slippages on each side, gross_pnl on close -- and this
+        # converter simply did not carry them, so the INSERT and the UPDATE
+        # both wrote NULL. Every closed position on every run has had them
+        # empty, which is why the report's cost table could only ever show a
+        # dash for the two that matter most.
+        #
+        # schema.sql on planned_r and fill_rr: "They differ by entry slippage,
+        # and reporting only one hides the degradation the forward test exists
+        # to measure." Neither was ever recorded, so the degradation was not
+        # measured at all.
+        requested_entry=p.requested_entry,
+        planned_r=p.planned_r, fill_rr=p.fill_rr,
+        entry_slippage=p.entry_slippage, exit_slippage=p.exit_slippage,
+        gross_pnl=p.gross_pnl,
+        # Not a broker field: derived, and only once the position is closed.
+        hold_seconds=(int(p.closed_at - p.opened_at)
+                      if p.closed_at and p.opened_at else None))
 
 
 def _to_broker_position(r: PositionRecord) -> PaperPosition:

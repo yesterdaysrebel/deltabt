@@ -349,3 +349,68 @@ class TestARefusalDoesNotWipeRiskState:
         await bot.stop()
         assert RiskState.from_dict(
             await bot.repo.get_state(STATE_KEY)).equity == pytest.approx(9_500.0)
+
+
+class TestClosedPositionsCarryTheirEconomics:
+    """_to_record dropped every economic field the broker computes.
+
+    The same defect as experiment_id and config_hash, in the same function:
+    the broker sets planned_r and fill_rr at fill time, both slippages and
+    gross_pnl on close, and the converter did not carry them -- so the INSERT
+    and the UPDATE both wrote NULL. Every closed position on every run has had
+    them empty.
+
+    schema.sql on the first two: "They differ by entry slippage, and reporting
+    only one hides the degradation the forward test exists to measure."
+    Neither was ever recorded, so it was never measured.
+    """
+
+    @staticmethod
+    def _closed():
+        from app.execution.paper_broker import PaperPosition
+        return PaperPosition(
+            position_uid="pos_1", signal_key="sig_1", symbol="BANKUSD",
+            side=1, quantity=100, entry_price=0.0376, stop_price=0.0369,
+            target_price=0.0390, risk_per_unit=0.0007, initial_risk=50.0,
+            notional=2810.05, equity_before=10000.0, opened_at=1_786_800_000,
+            strategy_version="H-WPR-1-VariantA@d7837e445bc74781",
+            entry_fee=2.22, exit_fee=0.69, funding=1.78,
+            status="CLOSED", exit_price=0.0389, realized_pnl=93.49,
+            r_multiple=1.872, exit_reason="TAKE_PROFIT",
+            closed_at=1_786_811_431,
+            requested_entry=0.0375, planned_r=2.0, fill_rr=1.81,
+            entry_slippage=0.8, exit_slippage=0.9, gross_pnl=98.18)
+
+    async def test_every_economic_field_survives_the_conversion(self):
+        from app.runtime.bot import _to_record
+        r = _to_record(self._closed(), "bot_1", experiment_id="E",
+                       config_hash="c")
+        assert r.planned_r == 2.0
+        assert r.fill_rr == 1.81
+        assert r.entry_slippage == 0.8
+        assert r.exit_slippage == 0.9
+        assert r.gross_pnl == 98.18
+        assert r.requested_entry == 0.0375
+
+    async def test_hold_seconds_is_derived_from_the_timestamps(self):
+        """Not a broker field -- the record has it and nothing computed it."""
+        from app.runtime.bot import _to_record
+        r = _to_record(self._closed(), "bot_1")
+        assert r.hold_seconds == 11431
+
+    async def test_an_open_position_has_no_hold_seconds(self):
+        """Deriving it from a missing closed_at must not invent a duration."""
+        from app.runtime.bot import _to_record
+        p = self._closed()
+        p.closed_at = None
+        p.status = "OPEN"
+        assert _to_record(p, "bot_1").hold_seconds is None
+
+    async def test_planned_and_filled_reward_risk_are_both_present(self):
+        """Reporting only one hides the degradation, per schema.sql."""
+        from app.runtime.bot import _to_record
+        r = _to_record(self._closed(), "bot_1")
+        assert r.planned_r is not None and r.fill_rr is not None
+        assert r.planned_r != r.fill_rr, (
+            "the fixture must differ or this asserts nothing")
+
