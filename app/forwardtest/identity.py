@@ -72,6 +72,32 @@ EXECUTION_FIELDS = ("entry_ttl_seconds", "max_entry_deviation", "min_fill_rr",
                     "slippage_bps")
 
 
+def execution_params(values: dict, symbols) -> dict:
+    """THE execution dict. Built here so there is exactly one of it.
+
+    It used to be constructed twice -- once in the CLI when an experiment is
+    CREATED, once in the bot when it VERIFIES itself against that experiment --
+    from two different sources: a literal in app/cli.py and the broker's
+    attributes via EXECUTION_FIELDS. Nothing made the two agree.
+
+    Adding the per-symbol halt thresholds to the CLI side alone was enough to
+    make every bot refuse to start, with the only difference being a hash:
+
+        configuration drift in experiment H-WPR-1-PAPER-AWS-V1-20260815:
+        execution_hash: 1c8ebc1cac2b63bd -> 2371829d9c618ba1
+
+    The guard was right and the experiment was unusable -- the bot could never
+    match an identity it had no way to reproduce. One function, called by both
+    sides, is what makes "the configuration that ran" checkable at all.
+    """
+    from app.market_data.market_state import halt_min_run
+    out = {f: values[f] for f in EXECUTION_FIELDS}
+    # Sorted so symbol ORDER cannot move the hash, matching how the universe
+    # itself is hashed.
+    out["halt_min_run"] = {s: halt_min_run(s) for s in sorted(symbols)}
+    return out
+
+
 @dataclass(frozen=True)
 class ExperimentIdentity:
     experiment_id: str

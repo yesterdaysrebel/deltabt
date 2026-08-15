@@ -49,6 +49,7 @@ from app.execution.order_state import OrderStatus
 from app.execution.paper_broker import ExitReason, PaperBroker, PaperPosition
 from app.forwardtest.identity import (
     EXECUTION_FIELDS,
+    execution_params,
     ConfigurationDrift,
     build_identity,
 )
@@ -222,8 +223,10 @@ class TradingBot:
         """Identity of the configuration this process is actually running."""
         return build_identity(
             experiment_id, self.strategy, self.settings.risk,
-            {f: getattr(self.broker, f, None) if f != "slippage_bps"
-             else self.settings.risk.slippage_bps for f in EXECUTION_FIELDS},
+            execution_params(
+                {f: getattr(self.broker, f, None) if f != "slippage_bps"
+                 else self.settings.risk.slippage_bps for f in EXECUTION_FIELDS},
+                self.symbols),
             self.symbols)
 
     async def bind_experiment(self) -> bool:

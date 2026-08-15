@@ -24,10 +24,9 @@ from datetime import datetime, timezone
 
 from app.config.settings import Settings
 from app.config.variants import resolve_strategy
-from app.forwardtest.identity import build_identity
+from app.forwardtest.identity import build_identity, execution_params
 from app.forwardtest.preflight import run_preflight
 from app.market_data.backfill import Backfiller
-from app.market_data.market_state import halt_min_run
 from app.monitoring.logging import configure
 from app.persistence.repository import PostgresRepository
 
@@ -106,14 +105,15 @@ async def cmd_start(args) -> int:
         return 1
 
     exp_id = args.experiment_id or default_experiment_id()
-    # The halt thresholds go into the EXECUTION hash, so shortening one for a
-    # thinly traded symbol is a recorded configuration change rather than an
-    # invisible edit. Only the symbols in this run are included: an override
-    # for a symbol nobody trades must not move the hash.
+    # execution_params() is shared with TradingBot.current_identity, which is
+    # what verifies a running process against this experiment. Constructing it
+    # here instead is how the two silently diverged and made every bot refuse
+    # to start on an execution_hash it could not reproduce.
     ident = build_identity(
         exp_id, resolve_strategy(), settings.risk,
-        {**EXEC_PARAMS, "slippage_bps": settings.risk.slippage_bps,
-         "halt_min_run": {s: halt_min_run(s) for s in sorted(settings.symbols)}},
+        execution_params({**EXEC_PARAMS,
+                          "slippage_bps": settings.risk.slippage_bps},
+                         settings.symbols),
         settings.symbols)
     created = await repo.create_experiment(ident, planned_days=args.days)
     if not created:

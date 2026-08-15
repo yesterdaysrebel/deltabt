@@ -46,6 +46,8 @@ from app.config.settings import RiskConfig, Settings
 from app.config.strategy import FROZEN, Adx, StrategyConfig, WilliamsR
 from app.forwardtest.identity import (
     APP_VERSION,
+    EXECUTION_FIELDS,
+    execution_params,
     UNKNOWN_SHA,
     ConfigurationDrift,
     ExperimentIdentity,
@@ -203,12 +205,17 @@ class TestDifferences:
 async def _register(bot, **risk_over):
     """Put an experiment in the database matching (or not) the bot."""
     risk = replace(RiskConfig(), **risk_over) if risk_over else bot.settings.risk
+    # execution_params(), not a hand-built dict: this helper stands in for the
+    # CLI creating the experiment, and building it separately here is the same
+    # divergence that made every bot refuse to start in production.
     i = build_identity(
         "H-WPR-1-PAPER-TEST", bot.strategy, risk,
-        {"entry_ttl_seconds": bot.broker.entry_ttl_seconds,
-         "max_entry_deviation": bot.broker.max_entry_deviation,
-         "min_fill_rr": bot.broker.min_fill_rr,
-         "slippage_bps": bot.settings.risk.slippage_bps},
+        execution_params(
+            {"entry_ttl_seconds": bot.broker.entry_ttl_seconds,
+             "max_entry_deviation": bot.broker.max_entry_deviation,
+             "min_fill_rr": bot.broker.min_fill_rr,
+             "slippage_bps": bot.settings.risk.slippage_bps},
+            bot.symbols),
         bot.symbols)
     await bot.repo.connect()
     await bot.repo.create_experiment(i)
@@ -281,6 +288,70 @@ class TestFailClosed:
         assert row["experiment_id"] == "H-WPR-1-PAPER-TEST"
         assert row["config_hash"] == bot.identity.config_hash
         assert row["git_sha"]
+
+
+class TestBothSidesComputeTheSameExecutionHash:
+    """The CLI creates the experiment; the bot verifies itself against it.
+
+    They used to build the execution dict independently -- a literal in
+    app/cli.py and the broker's attributes via EXECUTION_FIELDS -- with nothing
+    making them agree. Adding the per-symbol halt thresholds to the CLI side
+    alone made every bot refuse to start against an experiment it could not
+    reproduce:
+
+        configuration drift in experiment H-WPR-1-PAPER-AWS-V1-20260815:
+        execution_hash: 1c8ebc1cac2b63bd -> 2371829d9c618ba1
+
+    The guard was correct and the experiment was unusable, which is the worst
+    of both. This is the test that would have caught it.
+    """
+
+    SYMS = ("BTCUSD", "ETHUSD", "SOLUSD", "BEATUSD", "BANKUSD", "AKEUSD")
+
+    def _cli_side(self, symbols):
+        from app.cli import EXEC_PARAMS
+        return execution_params({**EXEC_PARAMS, "slippage_bps": 2.0}, symbols)
+
+    def _bot_side(self, symbols):
+        """What TradingBot.current_identity builds, with a stub broker."""
+        broker = type("B", (), {"entry_ttl_seconds": 90,
+                                "max_entry_deviation": 0.25,
+                                "min_fill_rr": 1.7})()
+        return execution_params(
+            {f: getattr(broker, f, None) if f != "slippage_bps" else 2.0
+             for f in EXECUTION_FIELDS}, symbols)
+
+    async def test_the_two_sides_agree(self):
+        assert self._cli_side(self.SYMS) == self._bot_side(self.SYMS)
+
+    async def test_they_agree_on_the_resulting_hash(self):
+        a = build_identity("E", FROZEN, RiskConfig(), self._cli_side(self.SYMS), self.SYMS)
+        b = build_identity("E", FROZEN, RiskConfig(), self._bot_side(self.SYMS), self.SYMS)
+        assert a.execution_hash == b.execution_hash
+        assert a.config_hash == b.config_hash
+
+    async def test_the_halt_thresholds_are_actually_in_there(self):
+        """Otherwise the two could agree by both omitting them."""
+        d = self._cli_side(self.SYMS)
+        assert d["halt_min_run"]["BANKUSD"] == 5
+        assert d["halt_min_run"]["BTCUSD"] == 20
+
+    async def test_symbol_order_does_not_move_the_execution_hash(self):
+        a = self._cli_side(self.SYMS)
+        b = self._cli_side(tuple(reversed(self.SYMS)))
+        assert a == b
+
+    async def test_changing_a_threshold_does_move_it(self):
+        """The point of recording them: a change must be visible."""
+        import app.market_data.market_state as ms
+        base = self._cli_side(self.SYMS)
+        original = dict(ms.HALT_MIN_RUN_OVERRIDES)
+        try:
+            ms.HALT_MIN_RUN_OVERRIDES["BANKUSD"] = 7
+            assert self._cli_side(self.SYMS) != base
+        finally:
+            ms.HALT_MIN_RUN_OVERRIDES.clear()
+            ms.HALT_MIN_RUN_OVERRIDES.update(original)
 
 
 class TestSingleActiveExperiment:
