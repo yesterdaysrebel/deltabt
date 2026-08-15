@@ -1318,6 +1318,53 @@ class TestTheReportPrintsWhatTheRunIsMeasuring:
         assert "exceeds max_stop_pct" in out
 
 
+class TestPostgresNumericsSurviveTheProbe:
+    """db_probe serialises with json.dumps(default=str), so every NUMERIC
+    column arrives as a string.
+
+    num() accepted only int/float, so the entire cost table rendered as "—"
+    and 0.00 against data that was fully populated -- entry_fee 2.21993942,
+    r_multiple 1.872476. A zero there reads as measured-and-negligible rather
+    than not-read, which is worse than omitting the column.
+    """
+
+    def test_numeric_strings_parse(self):
+        mod = _report()
+        assert mod.num("2.21993942") == 2.21993942
+        assert mod.num("1.872476") == 1.872476
+        assert mod.num("-0.5") == -0.5
+
+    def test_absent_stays_absent(self):
+        """The reason num() exists: a missing field must not render as 0.0."""
+        mod = _report()
+        for v in (None, "", "TAKE_PROFIT", [], {}):
+            assert mod.num(v) is None, v
+        assert mod.fmt(None) == "—"
+
+    def test_the_cost_table_reads_stringified_numerics(self, monkeypatch, capsys):
+        """End to end, in the shape the probe actually emits."""
+        econ = [{"symbol": "BANKUSD", "side": 1, "r_multiple": "1.872476",
+                 "planned_r": None, "fill_rr": None, "notional": "2810.04989760",
+                 "entry_fee": "2.21993942", "exit_fee": "0.68634086",
+                 "funding": "1.77526566", "entry_slippage": "0.00000000",
+                 "exit_slippage": "0.00000000", "realized_pnl": "93.49255646",
+                 "exit_reason": "TAKE_PROFIT", "hold_seconds": None}]
+        code, out = _run_report(monkeypatch, capsys, _probe(economics=econ),
+                                beats=HEALTHY_BEATS)
+        assert "+1.872" in out, "r_multiple must render"
+        assert "4.68" in out, "fees must sum, not read as zero"
+        assert "| 0.00 | 0.00 | 0.00 |" not in out
+
+    def test_the_per_symbol_stop_range_reads_them_too(self, monkeypatch, capsys):
+        code, out = _run_report(
+            monkeypatch, capsys,
+            _probe(by_symbol=[{"symbol": "AKEUSD", "setups": 15, "approved": 0,
+                               "rejected": 15, "min_stop_pct": "5.06",
+                               "max_stop_pct": "11.44"}]),
+            beats=HEALTHY_BEATS)
+        assert "5.06–11.44" in out
+
+
 class TestTheReportVerdictReactsToErrors:
     def test_an_application_error_needs_a_human(self, monkeypatch, capsys):
         code, out = _run_report(

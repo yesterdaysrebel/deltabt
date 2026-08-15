@@ -215,8 +215,26 @@ def as_json_list(text: str) -> list[dict]:
 
 
 def num(value: object) -> float | None:
-    """A float, or None -- so a missing field never renders as 0.0."""
-    return float(value) if isinstance(value, (int, float)) else None
+    """A float, or None -- so a missing field never renders as 0.0.
+
+    STRINGS COUNT, because PostgreSQL NUMERIC arrives as one. db_probe.py
+    serialises with json.dumps(default=str), so every NUMERIC column -- fees,
+    funding, r_multiple, stop_distance_pct -- reaches this as "2.21993942".
+    Rejecting those rendered the entire cost table as "—" and 0.00 on data
+    that was fully populated, which is worse than omitting it: a zero reads as
+    measured-and-negligible rather than not-read.
+
+    Non-numeric strings still return None. The point of this function is that
+    absent stays visibly absent.
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
 
 
 def fmt(value: object, places: int = 4) -> str:
