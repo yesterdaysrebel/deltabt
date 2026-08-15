@@ -100,9 +100,14 @@ async def collect(con) -> dict:
     # RUNNING experiment is the one that was intended, not merely that some
     # experiment is running. With two experiments live at once, "a run exists"
     # stopped being enough to identify which run this is.
+    # The risk snapshot comes along so the report can check limits against
+    # what the experiment ACTUALLY recorded rather than a constant. The report
+    # hardcoded max_open_positions=1 and called two open positions a control
+    # failure on the first day the limit was raised to six.
     out["experiments"] = [dict(r) for r in await con.fetch(
         "select experiment_id, status, started_at, planned_days, "
-        "strategy_hash, risk_hash, git_sha from forward_test")]
+        "strategy_hash, risk_hash, git_sha, snapshot->'risk' as risk "
+        "from forward_test")]
 
     return out
 

@@ -327,6 +327,15 @@ def main() -> int:
         problems.append(f"STRATEGY HASH CHANGED: {got_strategy} != {want_strategy}")
 
     experiments = db.get("experiments") or []
+    _running = [e for e in experiments
+                if str(e.get("status")).upper() == "RUNNING"]
+    _risk = (_running[0].get("risk") if _running else None) or {}
+    if isinstance(_risk, str):
+        try:
+            _risk = json.loads(_risk)
+        except ValueError:
+            _risk = {}
+    max_open = _risk.get("max_open_positions")
     # The risk hash was the original audit finding: risk_per_trade could change
     # between restarts with nothing in the data reflecting it. The runtime
     # refuses to CONTINUE an experiment across such a change, but only the
@@ -461,9 +470,23 @@ def main() -> int:
 
     # An open position the risk cap should have prevented is a control failure,
     # not a market outcome, so it is a problem even on a profitable day.
-    if len(open_now) > 1:
-        problems.append(f"{len(open_now)} positions open at once; the frozen "
-                        f"configuration allows max_open_positions=1")
+    #
+    # THE LIMIT IS READ FROM THE EXPERIMENT, NOT ASSUMED. It was hardcoded to 1,
+    # so the first day the cap was raised to six the report called two open
+    # positions a control failure -- flagging the configuration under test as
+    # the fault, the same shape as "four symbols configured". The experiment
+    # records its own risk snapshot; anything else is a second copy of the
+    # configuration that can disagree with the one actually running.
+    #
+    # None means the snapshot predates this column. Unknown is not license to
+    # assume: the check is skipped and said to be skipped, rather than run
+    # against a guess.
+    if max_open is None:
+        notes.append("open-position cap not checked: this experiment's record "
+                     "carries no risk snapshot")
+    elif len(open_now) > max_open:
+        problems.append(f"{len(open_now)} positions open at once; this "
+                        f"experiment allows max_open_positions={max_open}")
 
     # --- 3. WHY no trades? --------------------------------------------------
     # THE SECTION MUST ANSWER ITS OWN HEADING.

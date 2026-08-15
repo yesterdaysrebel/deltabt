@@ -1064,6 +1064,66 @@ class TestTheReportCountsInstancesPerStack:
         assert "expected exactly 1 running bot instance" in out
 
 
+class TestTheOpenPositionCapComesFromTheExperiment:
+    """It was hardcoded to 1.
+
+    The first day the cap was raised to six, the report called two open
+    positions a control failure:
+
+        2 positions open at once; the frozen configuration allows
+        max_open_positions=1
+
+    That is the configuration under test being reported as the fault -- the
+    same shape as "four symbols configured" blocking a six-symbol universe.
+    The experiment records its own risk snapshot, and anything else is a second
+    copy of the configuration that can disagree with the one actually running.
+    """
+
+    @staticmethod
+    def _make(max_open, n_open):
+        exp = {"experiment_id": "E", "status": "RUNNING",
+               "started_at": "2026-08-13T19:41:15", "planned_days": 30}
+        if max_open is not None:
+            exp["risk"] = {"max_open_positions": max_open}
+        positions = [{"symbol": f"SYM{i}", "side": "LONG", "status": "OPEN",
+                      "quantity": 1,
+                      "opened_ist": "2026-08-14 10:00:00", "entry": 100.0,
+                      "stop": 99.0, "target": 102.0, "current_price": 100.5,
+                      "r": 0.5, "unrealized_pnl": 1.0}
+                     for i in range(n_open)]
+        return _probe_with(positions, experiments=[exp])
+
+    def test_six_open_under_a_cap_of_six_is_not_a_problem(self, monkeypatch, capsys):
+        code, out = _run_report(monkeypatch, capsys, self._make(6, 6),
+                                beats=HEALTHY_BEATS)
+        assert "positions open at once" not in out
+        assert code == 0, out
+
+    def test_seven_open_under_a_cap_of_six_still_needs_a_human(self, monkeypatch, capsys):
+        """The check must not have been weakened into a no-op."""
+        code, out = _run_report(monkeypatch, capsys, self._make(6, 7),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "7 positions open at once" in out
+        assert "max_open_positions=6" in out
+
+    def test_two_open_under_a_cap_of_one_still_needs_a_human(self, monkeypatch, capsys):
+        """The original case, which must survive the generalisation."""
+        code, out = _run_report(monkeypatch, capsys, self._make(1, 2),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "2 positions open at once" in out
+        assert "max_open_positions=1" in out
+
+    def test_a_missing_snapshot_is_a_note_not_a_guess(self, monkeypatch, capsys):
+        """Older rows predate the column. Unknown must not become assumed."""
+        code, out = _run_report(monkeypatch, capsys, self._make(None, 3),
+                                beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "not checked" in out
+        assert "positions open at once" not in out
+
+
 class TestTheReportVerdictReactsToErrors:
     def test_an_application_error_needs_a_human(self, monkeypatch, capsys):
         code, out = _run_report(
@@ -1299,10 +1359,19 @@ class TestTheTradeTableIsARiskCheck:
                               beats=HEALTHY_BEATS)
         assert code == 0
 
+    #: The cap now comes from the experiment's own risk snapshot rather than a
+    #: constant in the report, so a test about breaching it has to say what the
+    #: experiment allowed. See TestTheOpenPositionCapComesFromTheExperiment.
+    CAPPED_AT_ONE = [{"experiment_id": "H-WPR-1-PAPER-AWS-20260813",
+                      "status": "RUNNING", "started_at": "2026-08-13T19:41:15",
+                      "planned_days": 30,
+                      "risk": {"max_open_positions": 1}}]
+
     def test_two_open_positions_break_the_frozen_risk_cap(self, monkeypatch, capsys):
         code, out = _run_report(
             monkeypatch, capsys,
-            _probe_with(positions=[_pos(), _pos(symbol="BTCUSD")]),
+            _probe_with(positions=[_pos(), _pos(symbol="BTCUSD")],
+                        experiments=self.CAPPED_AT_ONE),
             beats=HEALTHY_BEATS)
         assert code == 1
         assert "max_open_positions=1" in out
