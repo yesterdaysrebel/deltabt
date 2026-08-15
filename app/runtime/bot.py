@@ -849,6 +849,7 @@ class TradingBot:
             "ws_connected": self.feed.stats.connected,
             "seconds_since_ws_message": self.feed.stats.seconds_since_last_message,
             "last_closed_1m": self.builder.last_closed_1m_start,
+            "last_closed_1m_by_symbol": self.builder.last_closed_1m_by_symbol(),
             "recent_gaps": self.builder.recent_gap_count(
                 within_seconds=GAP_LOOKBACK, now=now),
             "strategy_running": self.ready and not self._stopping.is_set(),

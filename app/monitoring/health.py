@@ -83,17 +83,48 @@ def evaluate_health(snapshot: dict, *, db_writable: bool,
         "websocket_fresh", silence < max_ws_silence,
         f"{silence:.1f}s since the last message (limit {max_ws_silence:.0f}s)"))
 
-    last_1m = snapshot.get("last_closed_1m")
+    # THIS IS A FEED CHECK, SO IT MEASURES THE FRESHEST SYMBOL, NOT THE STALEST.
+    #
+    # It used to read builder.last_closed_1m_start, which is a min() across
+    # symbols. That is right for four liquid majors, where any one going quiet
+    # means the socket has died. It inverts the moment the universe contains a
+    # thin instrument: BANKUSD prints no bar for five minutes at a time because
+    # nobody traded, and on 2026-08-15 that held candles_fresh red on all three
+    # hosts at once while BTCUSD and ETHUSD were 24 seconds old.
+    #
+    # A dead feed still fails, because when nothing is arriving EVERY symbol
+    # goes stale and the freshest goes with them. What is given up is noticing
+    # ONE symbol's subscription dying while the rest flow -- which is what
+    # no_recent_gaps and the report's per-symbol gap table are for, and which
+    # this check could not distinguish from ordinary illiquidity anyway.
+    #
     # Age is measured from the bar's CLOSE, not its open. A bar is stamped at
     # its open, so measuring from there makes the youngest possible bar 60s old
     # and leaves only 30s of headroom against a 90s limit -- and a symbol that
     # prints nothing for a minute (rolled by the clock fallback) then reads as
     # ~125s and fails a check it should pass. Observed on the live feed.
-    age = (now - (last_1m + BAR_SECONDS)) if last_1m else float("inf")
-    checks.append(HealthCheck(
-        "candles_fresh", age < max_1m_age,
-        f"last closed 1m bar closed {age:.0f}s ago (limit {max_1m_age:.0f}s)"
-        if last_1m else "no closed 1m bar yet"))
+    def _age(start) -> float:
+        return (now - (start + BAR_SECONDS)) if start else float("inf")
+
+    per_symbol = snapshot.get("last_closed_1m_by_symbol") or {}
+    if per_symbol:
+        ages = {sym: _age(start) for sym, start in per_symbol.items()}
+        age = min(ages.values())
+        lagging = sorted((s for s, a in ages.items() if a >= max_1m_age),
+                         key=lambda s: -ages[s])
+        detail = (f"freshest bar closed {age:.0f}s ago (limit {max_1m_age:.0f}s)"
+                  if age != float("inf") else "no closed 1m bar yet")
+        if lagging:
+            detail += ("; quiet: "
+                       + ", ".join(f"{s} {ages[s]:.0f}s" for s in lagging[:4]))
+    else:
+        # No per-symbol map: an older snapshot, or a caller that supplies only
+        # the aggregate. Fall back rather than reporting healthy on no data.
+        age = _age(snapshot.get("last_closed_1m"))
+        detail = (f"last closed 1m bar closed {age:.0f}s ago "
+                  f"(limit {max_1m_age:.0f}s)"
+                  if age != float("inf") else "no closed 1m bar yet")
+    checks.append(HealthCheck("candles_fresh", age < max_1m_age, detail))
 
     gaps = snapshot.get("recent_gaps", 0)
     checks.append(HealthCheck("no_recent_gaps", gaps == 0,

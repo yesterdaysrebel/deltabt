@@ -30,6 +30,66 @@ def flat_bar(start, px=100.0):
 # =====================================================================
 
 
+class TestFeedFreshnessIsAboutTheFeedNotTheQuietestSymbol:
+    """candles_fresh read the STALEST symbol, via a min() across builders.
+
+    Right for four liquid majors, where any one going quiet means the socket
+    died. Wrong the moment the universe holds a thin instrument: on 2026-08-15
+    BANKUSD printed no bar for five minutes because nobody traded it, and that
+    held candles_fresh red on all three hosts simultaneously while BTCUSD and
+    ETHUSD were 24 seconds old. It also would have escalated every daily
+    report, since the report only downgrades healthz to a note when
+    no_recent_gaps is the ONLY failure.
+    """
+
+    NOW = 1_786_800_000.0
+
+    def _health(self, ages_seconds: dict):
+        """ages_seconds: symbol -> how long ago its last bar CLOSED."""
+        from app.monitoring.health import evaluate_health
+        from app.monitoring.health import BAR_SECONDS
+        per = {s: int(self.NOW - a - BAR_SECONDS) for s, a in ages_seconds.items()}
+        snap = {"seconds_since_ws_message": 1.0, "recent_gaps": 0,
+                "strategy_running": True, "seconds_since_bar_loop": 1.0,
+                "last_closed_1m": min(per.values()) if per else None,
+                "last_closed_1m_by_symbol": per}
+        report = evaluate_health(snap, db_writable=True, now=self.NOW)
+        return {c.name: c for c in report.checks}["candles_fresh"]
+
+    def test_one_quiet_thin_symbol_does_not_fail_the_feed(self):
+        """THE BUG. BANKUSD silent, the majors flowing."""
+        c = self._health({"BTCUSD": 24, "ETHUSD": 25, "SOLUSD": 30,
+                          "BANKUSD": 325})
+        assert c.ok, c.detail
+        assert "BANKUSD" in c.detail, "the quiet symbol must still be reported"
+
+    def test_a_dead_feed_still_fails(self):
+        """THE NEGATIVE CONTROL. Nothing arriving means every symbol stale."""
+        c = self._health({"BTCUSD": 400, "ETHUSD": 410, "BANKUSD": 900})
+        assert not c.ok
+        assert "freshest" in c.detail
+
+    def test_everything_fresh_is_quiet_about_it(self):
+        c = self._health({"BTCUSD": 10, "ETHUSD": 12, "BANKUSD": 15})
+        assert c.ok
+        assert "quiet:" not in c.detail
+
+    def test_no_bars_at_all_fails(self):
+        c = self._health({})
+        assert not c.ok
+
+    def test_the_aggregate_fallback_still_works(self):
+        """A snapshot without the per-symbol map must not read as healthy."""
+        from app.monitoring.health import evaluate_health
+        from app.monitoring.health import BAR_SECONDS
+        snap = {"seconds_since_ws_message": 1.0, "recent_gaps": 0,
+                "strategy_running": True, "seconds_since_bar_loop": 1.0,
+                "last_closed_1m": int(self.NOW - 600 - BAR_SECONDS)}
+        report = evaluate_health(snap, db_writable=True, now=self.NOW)
+        c = {x.name: x for x in report.checks}["candles_fresh"]
+        assert not c.ok, "600s stale with no per-symbol map must still fail"
+
+
 class TestPerSymbolHaltThreshold:
     """A threshold calibrated on maintenance does not fit thin liquidity.
 

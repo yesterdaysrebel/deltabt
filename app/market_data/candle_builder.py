@@ -356,9 +356,20 @@ class CandleBuilder:
 
     @property
     def last_closed_1m_start(self) -> int | None:
+        """The STALEST symbol's last closed bar.
+
+        Kept as min() because callers that report "how far behind is the
+        slowest thing" want exactly this. Health must NOT use it -- see
+        last_closed_1m_by_symbol and the note in evaluate_health.
+        """
         vals = [b.last_closed_1m_start for b in self.builders.values()
                 if b.last_closed_1m_start is not None]
         return min(vals) if vals else None
+
+    def last_closed_1m_by_symbol(self) -> dict[str, int | None]:
+        """Per symbol, so a thin instrument's silence is distinguishable from
+        a dead feed. One aggregate number cannot express both."""
+        return {sym: b.last_closed_1m_start for sym, b in self.builders.items()}
 
     def recent_gap_count(self, *, within_seconds: float, now: int) -> int:
         return sum(b.recent_gap_count(within_seconds=within_seconds, now=now)
