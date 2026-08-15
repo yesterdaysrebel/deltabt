@@ -81,6 +81,7 @@ jobs:
           python3 scripts/daily_report.py \
             --instance-id "${{ vars[matrix.instance_var] }}" \
             --log-group "${{ matrix.log_group }}" \
+            --stack "${{ matrix.stack }}" \
             --document "${{ vars[matrix.document_var] }}" \
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --expect-strategy-hash "${{ matrix.strategy_hash }}" \

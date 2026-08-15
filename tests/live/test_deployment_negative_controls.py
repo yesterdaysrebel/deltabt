@@ -731,7 +731,7 @@ def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
 
 
 def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=(),
-                extra_argv=()):
+                extra_argv=(), instances=(("i-1", None),), alarms=()):
     """Drive main() against canned AWS responses; return (exit code, markdown)."""
     mod = _report()
     mod.problems.clear()
@@ -744,9 +744,15 @@ def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=(),
         if head == ("ssm", "get-command-invocation"):
             return True, {"Status": "Success", "StandardOutputContent": probe_text}
         if head == ("ec2", "describe-instances"):
-            return True, {"Reservations": [{"Instances": [{"InstanceId": "i-1"}]}]}
+            # (id, stack); stack None means the host carries no Stack tag.
+            return True, {"Reservations": [{"Instances": [
+                {"InstanceId": i,
+                 "Tags": ([{"Key": "Stack", "Value": st}] if st else [])}
+                for i, st in instances]}]}
         if head == ("cloudwatch", "describe-alarms"):
-            return True, {"MetricAlarms": []}
+            # (name, state)
+            return True, {"MetricAlarms": [
+                {"AlarmName": n, "StateValue": st} for n, st in alarms]}
         if head == ("logs", "filter-log-events"):
             pattern = args[args.index("--filter-pattern") + 1]
             picked = (beats if "heartbeat" in pattern
@@ -970,6 +976,92 @@ class TestTheReportChecksTheRunItWasPointedAt:
                                 beats=HEALTHY_BEATS)
         assert code == 0
         assert "RISK HASH" not in out
+
+
+class TestTheReportCountsInstancesPerStack:
+    """It asked for exactly one instance ANYWHERE, which was right while there
+    was one experiment.
+
+    With two running side by side it fired on BOTH daily reports, each naming
+    the other stack's host as the fault:
+
+        expected exactly 1 running bot instance, found 2:
+        ['i-04005b0d4b20e198c', 'i-00a4acce037259971']
+
+    The same correction had already been made in aws_preflight.py and
+    verify_deployment.py; this file was missed because it enumerates instances
+    itself rather than sharing their helper.
+    """
+
+    def _run(self, monkeypatch, capsys, instances, stack="v1"):
+        argv = ("--stack", stack) if stack else ()
+        return _run_report(monkeypatch, capsys, _probe(), beats=HEALTHY_BEATS,
+                           extra_argv=argv, instances=instances)
+
+    def test_two_stacks_are_not_a_problem_for_either_report(self, monkeypatch, capsys):
+        for stack in ("v1", "v2"):
+            code, out = self._run(monkeypatch, capsys,
+                                  [("i-aaa", "v1"), ("i-bbb", "v2")], stack)
+            assert code == 0, out
+            assert "expected exactly 1 running" not in out
+            assert "no running instance tagged" not in out
+            assert "Instances **1**" in out, "it must count ITS OWN stack"
+
+    def test_two_instances_in_ONE_stack_still_needs_a_human(self, monkeypatch, capsys):
+        code, out = self._run(monkeypatch, capsys,
+                              [("i-aaa", "v1"), ("i-bbb", "v1")])
+        assert code == 1
+        assert "expected exactly 1 running instance in stack v1" in out
+
+    def test_a_missing_stack_needs_a_human(self, monkeypatch, capsys):
+        """The host this report is about is not running at all."""
+        code, out = self._run(monkeypatch, capsys, [("i-bbb", "v2")])
+        assert code == 1
+        assert "no running instance tagged Stack=v1" in out
+
+    def test_no_instances_at_all_needs_a_human(self, monkeypatch, capsys):
+        code, out = self._run(monkeypatch, capsys, [])
+        assert code == 1
+        assert "no running bot instance found" in out
+
+    def test_each_stack_only_escalates_on_its_own_alarms(self, monkeypatch, capsys):
+        """Both stacks share the deltabt-paper- prefix, so an unfiltered read
+        made ONE host's alarm fail BOTH reports.
+
+        v1 kept the unsuffixed names, so it cannot be selected by prefix -- it
+        is "everything that is not another stack's", which this pins down.
+        """
+        alarms = [("deltabt-paper-v2-restart-loop", "ALARM"),
+                  ("deltabt-paper-bot-silent", "OK")]
+        both = [("i-aaa", "v1"), ("i-bbb", "v2")]
+
+        code, out = _run_report(monkeypatch, capsys, _probe(),
+                                beats=HEALTHY_BEATS, extra_argv=("--stack", "v2"),
+                                instances=both, alarms=alarms)
+        assert code == 1 and "deltabt-paper-v2-restart-loop" in out
+
+        code, out = _run_report(monkeypatch, capsys, _probe(),
+                                beats=HEALTHY_BEATS, extra_argv=("--stack", "v1"),
+                                instances=both, alarms=alarms)
+        assert code == 0, "v1 must not fail on v2's alarm"
+        assert "deltabt-paper-v2-restart-loop" not in out
+
+    def test_v1_still_sees_its_own_unsuffixed_alarm(self, monkeypatch, capsys):
+        """The negative control for the 'not another stack's' rule."""
+        code, out = _run_report(
+            monkeypatch, capsys, _probe(), beats=HEALTHY_BEATS,
+            extra_argv=("--stack", "v1"),
+            instances=[("i-aaa", "v1"), ("i-bbb", "v2")],
+            alarms=[("deltabt-paper-bot-silent", "ALARM")])
+        assert code == 1
+        assert "deltabt-paper-bot-silent" in out
+
+    def test_without_a_stack_the_old_single_host_rule_holds(self, monkeypatch, capsys):
+        """Unstacked deployments must not silently lose the check."""
+        code, out = self._run(monkeypatch, capsys,
+                              [("i-aaa", None), ("i-bbb", None)], stack=None)
+        assert code == 1
+        assert "expected exactly 1 running bot instance" in out
 
 
 class TestTheReportVerdictReactsToErrors:

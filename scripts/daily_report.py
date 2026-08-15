@@ -55,6 +55,13 @@ MIN_CLOSED_TRADES = 30
 #: backfill and indicator warm-up that precede the first evaluation.
 MIN_RUN_AGE_FOR_SILENCE = 3600.0
 
+#: Stack names, and which one kept the unsuffixed resource names. Mirrors
+#: local.stacks / local.legacy_stack in infra/terraform/ec2.tf; duplicated
+#: rather than imported because this script runs on a CI runner with no
+#: Terraform state to read.
+KNOWN_STACKS = ("v1", "v2")
+LEGACY_STACK = "v1"
+
 #: Mirrors app.config.settings.MAX_WS_SILENCE -- the silence after which the
 #: client forces its own reconnect. Duplicated rather than imported because
 #: this script runs in CI without the application installed; a test asserts
@@ -539,22 +546,69 @@ def main() -> int:
 
     # --- 6. infrastructure --------------------------------------------------
     print("## Infrastructure\n")
+    # ONE BOT PER STACK, NOT ONE BOT IN TOTAL.
+    #
+    # This asked for exactly one instance anywhere, which was right while there
+    # was one experiment. With two running side by side it fired on BOTH
+    # reports every day, naming the other stack's host as the fault -- the same
+    # correction already made in aws_preflight.py and verify_deployment.py, and
+    # missed here because this file enumerates instances itself.
+    #
+    # Two bots in ONE stack is still fatal: they share a database, and the
+    # advisory lock, the single-RUNNING-experiment index and
+    # ux_positions_open_symbol are all per-database.
     ok, data = aws("ec2", "describe-instances", "--filters",
                    "Name=tag:Project,Values=deltabt",
                    f"Name=tag:Environment,Values={args.environment}",
                    "Name=instance-state-name,Values=pending,running", region=args.region)
-    ids = ([i["InstanceId"] for r in data.get("Reservations", []) for i in r.get("Instances", [])]
-           if ok else [])
-    if len(ids) != 1:
-        problems.append(f"expected exactly 1 running bot instance, found {len(ids)}: {ids}")
+    by_stack: dict = {}
+    if ok:
+        for r in data.get("Reservations", []):
+            for i in r.get("Instances", []):
+                tags = {t["Key"]: t["Value"] for t in i.get("Tags", [])}
+                by_stack.setdefault(tags.get("Stack", "<untagged>"), []).append(
+                    i["InstanceId"])
+    ids = [i for v in by_stack.values() for i in v]
+    mine = by_stack.get(args.stack) if args.stack else None
+    if not ids:
+        problems.append("no running bot instance found")
+    elif args.stack and mine is None:
+        problems.append(f"no running instance tagged Stack={args.stack}; "
+                        f"found {sorted(by_stack)}")
+    elif mine is not None and len(mine) != 1:
+        problems.append(f"expected exactly 1 running instance in stack "
+                        f"{args.stack}, found {len(mine)}: {mine}. Two bots "
+                        f"share one database and will interleave one account.")
+    elif args.stack is None and len(ids) != 1:
+        problems.append(f"expected exactly 1 running bot instance, found "
+                        f"{len(ids)}: {ids}")
+
+    # ALARMS ARE FILTERED TO THIS STACK, for the same reason the instance count
+    # is. Both stacks share the prefix, so an unfiltered read made each report
+    # escalate on the other host's alarms -- two red reports for one problem,
+    # each naming a resource its own experiment does not own.
+    #
+    # The legacy stack has no suffix, so it cannot be selected by prefix: it is
+    # "everything under deltabt-paper- that is not another stack's". That is
+    # ugly and it is the price of v1 keeping the names it was created with.
+    other_prefixes = tuple(f"{name}-{s}-" for s in KNOWN_STACKS
+                           if args.stack and s != args.stack)
+
+    def mine_alarm(alarm_name: str) -> bool:
+        if not args.stack:
+            return True
+        if args.stack == LEGACY_STACK:
+            return not alarm_name.startswith(other_prefixes)
+        return alarm_name.startswith(f"{name}-{args.stack}-")
 
     ok, alarms = aws("cloudwatch", "describe-alarms", "--alarm-name-prefix", name,
                      region=args.region)
     firing = [a["AlarmName"] for a in alarms.get("MetricAlarms", [])
-              if a["StateValue"] == "ALARM"] if ok else ["<could not read alarms>"]
+              if a["StateValue"] == "ALARM" and mine_alarm(a["AlarmName"])
+              ] if ok else ["<could not read alarms>"]
     if firing:
         problems.append(f"alarms in ALARM: {', '.join(firing)}")
-    print(f"Instances **{len(ids)}** · alarms in ALARM **{len(firing)}** "
+    print(f"Instances **{len(mine) if mine is not None else len(ids)}** · alarms in ALARM **{len(firing)}** "
           f"{firing if firing else ''}\n")
 
     since = int((now - datetime.timedelta(hours=24)).timestamp() * 1000)
