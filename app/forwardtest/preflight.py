@@ -149,8 +149,21 @@ async def run_preflight(settings: Settings, strategy: StrategyConfig, *,
             "that would run")
 
     # ---- universe -----------------------------------------------------
-    add("four symbols configured", len(settings.symbols) == 4,
-        ", ".join(settings.symbols))
+    # NOT "exactly four". The count was pinned to the original universe, so
+    # widening it to six blocked the start with the symbol list echoed back as
+    # the failure -- a check reporting the intended configuration as the fault.
+    #
+    # What actually has to hold is that the universe is non-empty and that no
+    # symbol appears twice: a duplicate would double that symbol's weight in
+    # the results while every per-symbol guard still saw one position, and
+    # nothing downstream would report it. The specific membership is already
+    # recorded in the experiment identity, which is what makes a change to it
+    # visible.
+    dupes = sorted({s for s in settings.symbols
+                    if list(settings.symbols).count(s) > 1})
+    add("universe configured", bool(settings.symbols) and not dupes,
+        ", ".join(settings.symbols) + (f" -- DUPLICATED: {dupes}" if dupes else "")
+        or "no symbols configured")
     if costs is not None:
         missing = [s for s in settings.symbols if s not in costs]
         add("contract specs available", not missing,

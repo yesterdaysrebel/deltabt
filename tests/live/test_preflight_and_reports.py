@@ -97,10 +97,32 @@ class TestPreflightChecks:
         c = [x for x in r.checks if x.name == "market clock initialised"][0]
         assert c.blocking and "exchange time is unknown" in c.detail
 
-    async def test_a_wrong_sized_universe_blocks(self, mem_repo):
-        r = await _run(repo=mem_repo, settings=Settings(symbols=("BTCUSD",)))
-        assert any(c.name == "four symbols configured" and c.blocking
-                   for c in r.checks)
+    async def test_a_universe_of_any_size_is_allowed(self, mem_repo):
+        """The count used to be pinned to four, which blocked widening it.
+
+        A single symbol is a legitimate configuration and six is the one now
+        being forward-tested; neither is a fault. Membership is recorded in the
+        experiment identity, which is what makes a change to it visible.
+        """
+        for syms in (("BTCUSD",),
+                     ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD"),
+                     ("BTCUSD", "ETHUSD", "SOLUSD", "BEATUSD", "BANKUSD", "AKEUSD")):
+            r = await _run(repo=mem_repo, settings=Settings(symbols=syms))
+            c = [x for x in r.checks if x.name == "universe configured"][0]
+            assert not c.blocking, f"{syms} should be allowed: {c.detail}"
+
+    async def test_a_duplicated_symbol_blocks(self, mem_repo):
+        """It would double that symbol's weight while every per-symbol guard
+        still saw one position, and nothing downstream would report it."""
+        r = await _run(repo=mem_repo,
+                       settings=Settings(symbols=("BTCUSD", "ETHUSD", "BTCUSD")))
+        c = [x for x in r.checks if x.name == "universe configured"][0]
+        assert c.blocking and "DUPLICATED" in c.detail
+
+    async def test_an_empty_universe_blocks(self, mem_repo):
+        r = await _run(repo=mem_repo, settings=Settings(symbols=()))
+        c = [x for x in r.checks if x.name == "universe configured"][0]
+        assert c.blocking
 
     async def test_an_unwritable_database_blocks(self, mem_repo):
         mem_repo.writable = False

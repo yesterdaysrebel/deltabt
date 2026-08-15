@@ -45,9 +45,20 @@ PGPASSWORD="$(printf '%s' "$SECRET" | python3 -c 'import json,sys;print(json.loa
 unset SECRET
 export PGPASSWORD
 
+# NOT $DB_NAME. On the host that will USE the new database, /opt/deltabt/env
+# already names it -- so connecting to $DB_NAME to create $DB_NEW means
+# connecting to the database that does not exist yet:
+#
+#   FATAL:  database "deltabt_v2" does not exist
+#
+# The admin connection has to target something that certainly exists. `postgres`
+# is created by RDS on every PostgreSQL instance and is never the application's
+# database, so it cannot collide with a stack.
+DB_ADMIN="${DB_ADMIN:-postgres}"
+
 psql_admin() {
   psql --host "$DB_HOST" --port "$DB_PORT" --username "$PGUSER" \
-       --dbname "$DB_NAME" --set ON_ERROR_STOP=1 --no-psqlrc --tuples-only "$@"
+       --dbname "$DB_ADMIN" --set ON_ERROR_STOP=1 --no-psqlrc --tuples-only "$@"
 }
 
 if [ -n "$(psql_admin -c "select 1 from pg_database where datname = '$DB_NEW'")" ]; then
