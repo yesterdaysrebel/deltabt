@@ -1,6 +1,13 @@
 resource "aws_cloudwatch_log_group" "bot" {
-  name              = "/deltabt/${var.environment}/bot"
+  for_each = local.stacks
+
+  name              = each.value.log_group
   retention_in_days = var.log_retention_days
+}
+
+moved {
+  from = aws_cloudwatch_log_group.bot
+  to   = aws_cloudwatch_log_group.bot["v1"]
 }
 
 # Notifications are optional because they need an address, which is a decision
@@ -34,22 +41,26 @@ locals {
 # evaluation loop dead inside its own error handler. Error-count alarms are
 # silent for exactly that failure, because a dead loop logs no errors.
 resource "aws_cloudwatch_log_metric_filter" "heartbeat" {
-  name           = "${local.name}-log-lines"
-  log_group_name = aws_cloudwatch_log_group.bot.name
+  for_each = local.stacks
+
+  name           = "${local.name}${each.value.suffix}-log-lines"
+  log_group_name = aws_cloudwatch_log_group.bot[each.key].name
   pattern        = "{ $.level = * }"
 
   metric_transformation {
     name      = "LogLines"
-    namespace = "DeltaBt"
+    namespace = each.value.metric_namespace
     value     = "1"
     unit      = "Count"
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "silent" {
-  alarm_name          = "${local.name}-bot-silent"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-bot-silent"
   alarm_description   = "The bot has logged nothing for 15 minutes. It evaluates every symbol every bar, so silence means it is not running."
-  namespace           = "DeltaBt"
+  namespace           = each.value.metric_namespace
   metric_name         = "LogLines"
   statistic           = "Sum"
   period              = 300
@@ -66,13 +77,15 @@ resource "aws_cloudwatch_metric_alarm" "silent" {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "critical" {
-  name           = "${local.name}-critical"
-  log_group_name = aws_cloudwatch_log_group.bot.name
+  for_each = local.stacks
+
+  name           = "${local.name}${each.value.suffix}-critical"
+  log_group_name = aws_cloudwatch_log_group.bot[each.key].name
   pattern        = "{ $.level = \"CRITICAL\" }"
 
   metric_transformation {
     name          = "CriticalEvents"
-    namespace     = "DeltaBt"
+    namespace     = each.value.metric_namespace
     value         = "1"
     default_value = "0"
     unit          = "Count"
@@ -80,9 +93,11 @@ resource "aws_cloudwatch_log_metric_filter" "critical" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "critical" {
-  alarm_name          = "${local.name}-critical-events"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-critical-events"
   alarm_description   = "CRITICAL logged. In this codebase that means configuration drift, a lost advisory lock, or a refusal to start."
-  namespace           = "DeltaBt"
+  namespace           = each.value.metric_namespace
   metric_name         = "CriticalEvents"
   statistic           = "Sum"
   period              = 300
@@ -94,13 +109,15 @@ resource "aws_cloudwatch_metric_alarm" "critical" {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "errors" {
-  name           = "${local.name}-errors"
-  log_group_name = aws_cloudwatch_log_group.bot.name
+  for_each = local.stacks
+
+  name           = "${local.name}${each.value.suffix}-errors"
+  log_group_name = aws_cloudwatch_log_group.bot[each.key].name
   pattern        = "{ $.level = \"ERROR\" }"
 
   metric_transformation {
     name          = "ErrorEvents"
-    namespace     = "DeltaBt"
+    namespace     = each.value.metric_namespace
     value         = "1"
     default_value = "0"
     unit          = "Count"
@@ -108,9 +125,11 @@ resource "aws_cloudwatch_log_metric_filter" "errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "errors" {
-  alarm_name          = "${local.name}-error-rate"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-error-rate"
   alarm_description   = "Sustained errors. A handful during a reconnect is normal; 20 in five minutes is not."
-  namespace           = "DeltaBt"
+  namespace           = each.value.metric_namespace
   metric_name         = "ErrorEvents"
   statistic           = "Sum"
   period              = 300
@@ -126,13 +145,15 @@ resource "aws_cloudwatch_metric_alarm" "errors" {
 # nobody was watching. A bot that restarts every few minutes reports healthy
 # between restarts and would otherwise be invisible.
 resource "aws_cloudwatch_log_metric_filter" "starts" {
-  name           = "${local.name}-starts"
-  log_group_name = aws_cloudwatch_log_group.bot.name
+  for_each = local.stacks
+
+  name           = "${local.name}${each.value.suffix}-starts"
+  log_group_name = aws_cloudwatch_log_group.bot[each.key].name
   pattern        = "{ $.message = \"starting\" }"
 
   metric_transformation {
     name          = "BotStarts"
-    namespace     = "DeltaBt"
+    namespace     = each.value.metric_namespace
     value         = "1"
     default_value = "0"
     unit          = "Count"
@@ -140,9 +161,11 @@ resource "aws_cloudwatch_log_metric_filter" "starts" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "restart_loop" {
-  alarm_name          = "${local.name}-restart-loop"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-restart-loop"
   alarm_description   = "The bot started more than three times in half an hour. A deploy is one; four is a crash loop."
-  namespace           = "DeltaBt"
+  namespace           = each.value.metric_namespace
   metric_name         = "BotStarts"
   statistic           = "Sum"
   period              = 1800
@@ -158,11 +181,13 @@ resource "aws_cloudwatch_metric_alarm" "restart_loop" {
 # ---------------------------------------------------------------------------
 
 resource "aws_cloudwatch_metric_alarm" "instance_status" {
-  alarm_name          = "${local.name}-instance-status"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-instance-status"
   alarm_description   = "EC2 or hypervisor status check failing."
   namespace           = "AWS/EC2"
   metric_name         = "StatusCheckFailed"
-  dimensions          = { InstanceId = aws_instance.bot.id }
+  dimensions          = { InstanceId = aws_instance.bot[each.key].id }
   statistic           = "Maximum"
   period              = 60
   evaluation_periods  = 3
@@ -173,11 +198,13 @@ resource "aws_cloudwatch_metric_alarm" "instance_status" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "disk" {
-  alarm_name          = "${local.name}-disk"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-disk"
   alarm_description   = "Root volume filling. Docker images and logs are the usual cause."
   namespace           = "DeltaBt"
   metric_name         = "DiskUsedPercent"
-  dimensions          = { InstanceId = aws_instance.bot.id }
+  dimensions          = { InstanceId = aws_instance.bot[each.key].id }
   statistic           = "Maximum"
   period              = 300
   evaluation_periods  = 2
@@ -188,11 +215,13 @@ resource "aws_cloudwatch_metric_alarm" "disk" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "memory" {
-  alarm_name          = "${local.name}-memory"
+  for_each = local.stacks
+
+  alarm_name          = "${local.name}${each.value.suffix}-memory"
   alarm_description   = "Host memory pressure. Steady state is ~450 MB, so this is not normal."
   namespace           = "DeltaBt"
   metric_name         = "MemoryUsedPercent"
-  dimensions          = { InstanceId = aws_instance.bot.id }
+  dimensions          = { InstanceId = aws_instance.bot[each.key].id }
   statistic           = "Average"
   period              = 300
   evaluation_periods  = 3
@@ -270,61 +299,142 @@ resource "aws_cloudwatch_metric_alarm" "db_cpu" {
 
 # ---------------------------------------------------------------------------
 # One screen to answer "is the forward test still running properly?"
+#
+# One dashboard, not one per stack: the question is about the experiment as a
+# whole, and two dashboards would mean noticing a dead bot depends on which tab
+# you happened to open. Each stack contributes its own row of widgets; the
+# database is shared and appears once.
 # ---------------------------------------------------------------------------
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = local.name
 
   dashboard_body = jsonencode({
-    widgets = [
-      {
-        type = "metric", x = 0, y = 0, width = 12, height = 6
-        properties = {
-          title  = "Bot output (silence means it is not running)"
-          region = var.aws_region
-          period = 300
-          stat   = "Sum"
-          metrics = [
-            ["DeltaBt", "LogLines"],
-            [".", "ErrorEvents"],
-            [".", "CriticalEvents"],
-          ]
-        }
-      },
-      {
-        type = "metric", x = 12, y = 0, width = 12, height = 6
-        properties = {
-          title  = "Host"
-          region = var.aws_region
-          period = 300
-          metrics = [
-            ["DeltaBt", "MemoryUsedPercent", "InstanceId", aws_instance.bot.id],
-            [".", "DiskUsedPercent", ".", "."],
-            ["AWS/EC2", "CPUUtilization", ".", "."],
-          ]
-        }
-      },
-      {
-        type = "metric", x = 0, y = 6, width = 12, height = 6
-        properties = {
-          title  = "Database"
-          region = var.aws_region
-          period = 300
-          metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.identifier],
-            [".", "DatabaseConnections", ".", "."],
-            [".", "FreeStorageSpace", ".", "."],
-          ]
-        }
-      },
-      {
-        type = "log", x = 12, y = 6, width = 12, height = 6
-        properties = {
-          title  = "Recent incidents"
-          region = var.aws_region
-          query  = "SOURCE '${aws_cloudwatch_log_group.bot.name}' | fields @timestamp, level, logger, message | filter level in ['ERROR','CRITICAL'] | sort @timestamp desc | limit 50"
-          view   = "table"
-        }
-      },
-    ]
+    widgets = concat(
+      flatten([
+        for idx, k in sort(keys(local.stacks)) : [
+          {
+            type = "metric", x = 0, y = idx * 6, width = 12, height = 6
+            properties = {
+              title  = "${k} (${local.stacks[k].variant}) output -- silence means it is not running"
+              region = var.aws_region
+              period = 300
+              stat   = "Sum"
+              metrics = [
+                ["DeltaBt/${k}", "LogLines"],
+                [".", "ErrorEvents"],
+                [".", "CriticalEvents"],
+              ]
+            }
+          },
+          {
+            type = "metric", x = 12, y = idx * 6, width = 12, height = 6
+            properties = {
+              title  = "${k} host"
+              region = var.aws_region
+              period = 300
+              metrics = [
+                ["DeltaBt", "MemoryUsedPercent", "InstanceId", aws_instance.bot[k].id],
+                [".", "DiskUsedPercent", ".", "."],
+                ["AWS/EC2", "CPUUtilization", ".", "."],
+              ]
+            }
+          },
+        ]
+      ]),
+      [
+        {
+          type = "metric", x = 0, y = length(local.stacks) * 6, width = 12, height = 6
+          properties = {
+            title  = "Database (shared)"
+            region = var.aws_region
+            period = 300
+            metrics = [
+              ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.identifier],
+              [".", "DatabaseConnections", ".", "."],
+              [".", "FreeStorageSpace", ".", "."],
+            ]
+          }
+        },
+        {
+          type = "log", x = 12, y = length(local.stacks) * 6, width = 12, height = 6
+          properties = {
+            title  = "Recent incidents, both runs"
+            region = var.aws_region
+            query = join(" | ", concat(
+              [join(", ", [for g in aws_cloudwatch_log_group.bot : "SOURCE '${g.name}'"])],
+              ["fields @timestamp, level, logger, message",
+                "filter level in ['ERROR','CRITICAL']",
+              "sort @timestamp desc", "limit 50"],
+            ))
+            view = "table"
+          }
+        },
+      ],
+    )
   })
+}
+
+# ---------------------------------------------------------------------------
+# STATE MIGRATION for the metric filters and alarms.
+#
+# The legacy stack keeps every one of these names (suffix is ""), so without
+# these blocks Terraform plans a delete of the unkeyed resource and a create of
+# the keyed one AT THE SAME NAME. PutMetricAlarm and PutMetricFilter are
+# upserts, so whether that ends with an alarm or with nothing depends on the
+# order Terraform happens to choose. A rename has no such ambiguity.
+# ---------------------------------------------------------------------------
+
+moved {
+  from = aws_cloudwatch_log_metric_filter.heartbeat
+  to   = aws_cloudwatch_log_metric_filter.heartbeat["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_log_metric_filter.critical
+  to   = aws_cloudwatch_log_metric_filter.critical["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_log_metric_filter.errors
+  to   = aws_cloudwatch_log_metric_filter.errors["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_log_metric_filter.starts
+  to   = aws_cloudwatch_log_metric_filter.starts["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.silent
+  to   = aws_cloudwatch_metric_alarm.silent["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.critical
+  to   = aws_cloudwatch_metric_alarm.critical["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.errors
+  to   = aws_cloudwatch_metric_alarm.errors["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.restart_loop
+  to   = aws_cloudwatch_metric_alarm.restart_loop["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.instance_status
+  to   = aws_cloudwatch_metric_alarm.instance_status["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.disk
+  to   = aws_cloudwatch_metric_alarm.disk["v1"]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.memory
+  to   = aws_cloudwatch_metric_alarm.memory["v1"]
 }

@@ -20,7 +20,9 @@
 # ---------------------------------------------------------------------------
 
 resource "aws_ssm_document" "monitor" {
-  name            = "${local.name}-monitor"
+  for_each = local.stacks
+
+  name            = "${local.name}${each.value.suffix}-monitor"
   document_type   = "Command"
   document_format = "YAML"
 
@@ -133,7 +135,7 @@ resource "aws_iam_role_policy" "github_monitor" {
         Sid      = "ReadTheBotLog"
         Effect   = "Allow"
         Action   = ["logs:FilterLogEvents", "logs:DescribeLogStreams", "logs:GetLogEvents"]
-        Resource = "${aws_cloudwatch_log_group.bot.arn}:*"
+        Resource = [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"]
       },
       {
         Sid    = "RunTheREADONLYProbeDocumentOnly"
@@ -141,10 +143,11 @@ resource "aws_iam_role_policy" "github_monitor" {
         Action = ["ssm:SendCommand"]
         # NOT AWS-RunShellScript, and NOT the deploy document. This role can
         # run exactly one fixed, read-only script on exactly one instance.
-        Resource = [
-          aws_ssm_document.monitor.arn,
-          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.bot.id}",
-        ]
+        Resource = concat(
+          [for d in aws_ssm_document.monitor : d.arn],
+          [for i in aws_instance.bot :
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${i.id}"],
+        )
       },
       {
         Sid      = "ReadBackTheResult"
@@ -161,7 +164,12 @@ output "github_monitor_role_arn" {
   value       = aws_iam_role.github_monitor.arn
 }
 
-output "ssm_monitor_document" {
-  description = "Set as the SSM_MONITOR_DOCUMENT repository variable."
-  value       = aws_ssm_document.monitor.name
+output "ssm_monitor_documents" {
+  description = "Set as the SSM_MONITOR_DOCUMENT_<STACK> repository variables."
+  value       = { for k, d in aws_ssm_document.monitor : k => d.name }
+}
+
+moved {
+  from = aws_ssm_document.monitor
+  to   = aws_ssm_document.monitor["v1"]
 }

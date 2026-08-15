@@ -55,12 +55,25 @@ umask 077
 printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC
 
+# THE DEFAULTS BELOW ARE THE STRICT CONFIGURATION, DELIBERATELY.
+#
+# A host whose /opt/deltabt/env predates these variables falls back to
+# max_open=1, a 10% drawdown halt and a 3-loss streak limit -- not to the
+# relaxed values. That combination will not match the risk hash of an
+# experiment started with the relaxed limits, so the bot refuses to bind and
+# says so, instead of quietly running a different configuration than the one
+# the experiment claims to be measuring.
+#
 # --rm plus systemd Restart=always: one owner of the lifecycle, not two.
 # Docker's own restart policy is deliberately NOT used, because then a
 # `systemctl stop` would be fought by dockerd.
 exec docker run --rm --name deltabot \
   --env-file /run/deltabt/env \
   -e "DELTABOT_SYMBOLS=$DELTABOT_SYMBOLS" \
+  -e "DELTABOT_VARIANT=${DELTABOT_VARIANT:-V1}" \
+  -e "DELTABOT_MAX_OPEN=${DELTABOT_MAX_OPEN:-1}" \
+  -e "DELTABOT_MAX_DRAWDOWN=${DELTABOT_MAX_DRAWDOWN:-0.10}" \
+  -e "DELTABOT_MAX_CONSEC_LOSSES=${DELTABOT_MAX_CONSEC_LOSSES:-3}" \
   -e "DELTABOT_LOG_LEVEL=$DELTABOT_LOG_LEVEL" \
   -e DELTABOT_API_PORT=8000 \
   -e TZ=UTC \

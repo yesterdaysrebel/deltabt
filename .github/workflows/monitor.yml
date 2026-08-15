@@ -34,8 +34,34 @@ concurrency:
 
 jobs:
   report:
-    name: forward-test daily report
+    name: "daily report: ${{ matrix.stack }} (${{ matrix.variant }})"
     runs-on: ubuntu-latest
+    # ONE JOB PER CONCURRENT EXPERIMENT.
+    #
+    # fail-fast is off deliberately: a problem on one host must not cancel the
+    # other's report. They are separate experiments on separate databases and
+    # the whole value of the report is that it is produced unattended, so
+    # losing v2's report because v1 was unhealthy would be exactly backwards.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: v1
+            variant: V1
+            instance_var: BOT_INSTANCE_ID_V1
+            document_var: SSM_MONITOR_DOCUMENT_V1
+            strategy_hash: d7837e445bc74781
+            # NOT /deltabt/paper/v1/bot. The original stack kept its original
+            # log group name, because renaming a log group deletes it and with
+            # it the run's operational history. Passed explicitly so the two
+            # naming schemes cannot be confused for one rule.
+            log_group: /deltabt/paper/bot
+          - stack: v2
+            variant: V2
+            instance_var: BOT_INSTANCE_ID_V2
+            document_var: SSM_MONITOR_DOCUMENT_V2
+            strategy_hash: "632efcaff62c4d7c"
+            log_group: /deltabt/paper/v2/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.
@@ -53,9 +79,12 @@ jobs:
         run: |
           set +e
           python3 scripts/daily_report.py \
-            --instance-id "${{ vars.BOT_INSTANCE_ID }}" \
-            --document "${{ vars.SSM_MONITOR_DOCUMENT }}" \
+            --instance-id "${{ vars[matrix.instance_var] }}" \
+            --log-group "${{ matrix.log_group }}" \
+            --document "${{ vars[matrix.document_var] }}" \
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            --expect-strategy-hash "${{ matrix.strategy_hash }}" \
+            ${{ vars.EXPECTED_RISK_HASH && format('--expect-risk-hash {0}', vars.EXPECTED_RISK_HASH) || '' }} \
             ${{ github.event.inputs.day && format('--day {0}', github.event.inputs.day) || '' }} \
             > report.md
           echo "exitcode=$?" >> "$GITHUB_OUTPUT"
@@ -65,7 +94,7 @@ jobs:
       - name: keep the report
         uses: actions/upload-artifact@v4
         with:
-          name: daily-report-${{ github.run_id }}
+          name: daily-report-${{ matrix.stack }}-${{ github.run_id }}
           path: report.md
           retention-days: 90
 

@@ -103,13 +103,32 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: roll the bot
+    name: "roll ${{ matrix.stack }} (${{ matrix.variant }})"
     needs: [test, build]
     # `always()` so a manual rollback (which skips `build`) still runs, but the
     # build must not have FAILED.
     if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
     runs-on: ubuntu-latest
     environment: paper   # protected: a human approves before the running bot changes
+    # ONE JOB PER HOST, AND fail-fast IS OFF.
+    #
+    # The two hosts run different experiments against different databases. If
+    # v1 refuses the image on configuration drift, that says nothing about v2,
+    # and cancelling v2 mid-roll would leave it on neither the old image nor
+    # the new one. Each rolls, verifies and rolls itself back independently.
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - stack: v1
+            variant: V1
+            instance_var: BOT_INSTANCE_ID_V1
+            document_var: SSM_DEPLOY_DOCUMENT_V1
+          - stack: v2
+            variant: V2
+            instance_var: BOT_INSTANCE_ID_V2
+            document_var: SSM_DEPLOY_DOCUMENT_V2
     steps:
       - uses: actions/checkout@v4
 
@@ -156,8 +175,8 @@ jobs:
         run: |
           CMD=$(aws ssm send-command \
             --region "$AWS_REGION" \
-            --document-name "${{ vars.SSM_DEPLOY_DOCUMENT }}" \
-            --instance-ids "${{ vars.BOT_INSTANCE_ID }}" \
+            --document-name "${{ vars[matrix.document_var] }}" \
+            --instance-ids "${{ vars[matrix.instance_var] }}" \
             --parameters "ImageTag=${{ steps.tag.outputs.tag }}" \
             --comment "gha ${{ github.run_id }}" \
             --query 'Command.CommandId' --output text)
@@ -167,7 +186,7 @@ jobs:
       - name: wait for it, and fail loudly if it did not take
         run: |
           CMD="${{ steps.send.outputs.command_id }}"
-          ID="${{ vars.BOT_INSTANCE_ID }}"
+          ID="${{ vars[matrix.instance_var] }}"
           # The host script allows up to 900s for readiness plus the same again
           # for a rollback, so this waits longer than that before giving up.
           for _ in $(seq 1 190); do
@@ -214,7 +233,7 @@ jobs:
           echo "The host script gated on /readyz and did not roll back."
           echo "Operator verification (14 checks, read-only):"
           echo "  AWS_PROFILE=... python3 scripts/verify_deployment.py \\"
-          echo "    --instance-id ${{ vars.BOT_INSTANCE_ID }} --region $AWS_REGION \\"
+          echo "    --instance-id ${{ vars[matrix.instance_var] }} --region $AWS_REGION \\"
           echo "    --expected-sha ${{ steps.tag.outputs.tag }}"
 
       - name: the deployed commit, image and config hash

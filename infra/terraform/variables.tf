@@ -131,7 +131,64 @@ variable "bot_image_tag" {
 variable "bot_symbols" {
   description = "Frozen universe. Changing it changes the experiment identity."
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
+  default     = "BTCUSD,ETHUSD,SOLUSD,BEATUSD,BANKUSD,AKEUSD"
+}
+
+# --- the two concurrent runs -----------------------------------------------
+
+variable "stacks" {
+  description = <<-EOT
+    One entry per concurrently running experiment. Each gets its own EC2
+    instance, its own database on the shared RDS instance, its own log group,
+    deploy document, monitor document and alarms.
+
+    A SEPARATE DATABASE PER STACK IS LOAD-BEARING, NOT TIDINESS. Four
+    invariants make two experiments in one database impossible:
+    ux_forward_test_running allows one RUNNING experiment; ux_positions_open
+    _symbol allows one open position per symbol across the whole table;
+    strategy_state stores risk state under the single key "risk_state"; and
+    load_open_positions() takes no experiment filter, so each bot would
+    recover the other's positions. Splitting the database resolves all four
+    without touching code that today's audit findings were about.
+
+    "v1" keeps the original database because that is where the open BTCUSD
+    position and the run history live.
+  EOT
+  type = map(object({
+    variant = string
+    db_name = string
+  }))
+  default = {
+    v1 = { variant = "V1", db_name = "" } # "" means the RDS default database
+    v2 = { variant = "V2", db_name = "deltabt_v2" }
+  }
+}
+
+variable "max_open_positions" {
+  description = "Concurrent positions per experiment. Part of the risk hash."
+  type        = number
+  default     = 6
+}
+
+variable "max_drawdown_pct" {
+  description = <<-EOT
+    Peak-to-trough halt. 1.0 disables it: equity would have to reach zero.
+    Disabled for the paper runs by explicit instruction on 2026-08-14. It is
+    the only thing that stops losses compounding and MUST be restored before
+    anything trades real capital.
+  EOT
+  type        = number
+  default     = 1.0
+}
+
+variable "max_consecutive_losses" {
+  description = <<-EOT
+    Daily circuit breaker; the streak resets on the UTC day roll. 0 disables
+    the gate. Note that the risk engine must SKIP the check at 0 rather than
+    compare against it, since a fresh state already satisfies `losses >= 0`.
+  EOT
+  type        = number
+  default     = 0
 }
 
 # --- access ----------------------------------------------------------------
