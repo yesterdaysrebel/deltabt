@@ -1145,6 +1145,75 @@ class TestTheOpenPositionCapComesFromTheExperiment:
         assert "positions open at once" not in out
 
 
+class TestABrandNewInstanceIsNotABlindAlarm:
+    """The check failed the very apply that created the instance.
+
+    EC2 does not publish StatusCheckFailed for the first few minutes of an
+    instance's life, so `alarms_watch_real_metrics` reported the new host's
+    alarm as pointed at a dimension with no data -- three times on 2026-08-15,
+    once per stack. The apply had already succeeded each time, so the red run
+    reported a misconfiguration that did not exist while saying nothing about
+    the one the check is built to catch.
+
+    "No datapoints yet" and "no datapoints ever" are different claims.
+    """
+
+    @staticmethod
+    def _ctx(preflight):
+        return preflight.Context(region="ap-south-1", environment="paper",
+                                 expected_account="1", state_bucket="b",
+                                 ecr_repository="deltabt")
+
+    def _stub(self, monkeypatch, preflight, age_seconds, datapoints):
+        import datetime
+        launched = (datetime.datetime.now(datetime.timezone.utc)
+                    - datetime.timedelta(seconds=age_seconds))
+
+        def fake(ctx, *args, global_service=False):
+            head = tuple(args[:2])
+            if head == ("cloudwatch", "describe-alarms"):
+                return True, {"MetricAlarms": [{
+                    "AlarmName": "deltabt-paper-v3-instance-status",
+                    "Namespace": "AWS/EC2", "MetricName": "StatusCheckFailed",
+                    "Dimensions": [{"Name": "InstanceId", "Value": "i-new"}]}]}
+            if head == ("ec2", "describe-instances"):
+                return True, {"Reservations": [{"Instances": [
+                    {"InstanceId": "i-new", "LaunchTime": launched.isoformat()}]}]}
+            if head == ("cloudwatch", "get-metric-statistics"):
+                return True, {"Datapoints": datapoints}
+            raise AssertionError(args)
+
+        monkeypatch.setattr(preflight, "aws", fake)
+
+    def test_a_young_instance_with_no_datapoints_passes(self, monkeypatch):
+        preflight = load("aws_preflight")
+        self._stub(monkeypatch, preflight, age_seconds=90, datapoints=[])
+        r = preflight.check_alarms_watch_real_metrics(self._ctx(preflight))
+        assert r.status == preflight.PASS, r.detail
+        assert "warming" in r.detail, "the fact must still be reported"
+
+    def test_an_old_instance_with_no_datapoints_still_fails(self, monkeypatch):
+        """THE NEGATIVE CONTROL. The blind-alarm bug this check exists for --
+        three RDS alarms built from the wrong id -- must still be caught."""
+        preflight = load("aws_preflight")
+        self._stub(monkeypatch, preflight, age_seconds=6 * 3600, datapoints=[])
+        r = preflight.check_alarms_watch_real_metrics(self._ctx(preflight))
+        assert r.status == preflight.FAIL
+        assert "NO datapoints" in r.detail
+
+    def test_a_young_instance_with_data_is_simply_fine(self, monkeypatch):
+        preflight = load("aws_preflight")
+        self._stub(monkeypatch, preflight, age_seconds=90,
+                   datapoints=[{"Maximum": 0.0}])
+        r = preflight.check_alarms_watch_real_metrics(self._ctx(preflight))
+        assert r.status == preflight.PASS
+        assert "warming" not in r.detail
+
+    def test_the_threshold_is_the_stated_one(self):
+        preflight = load("aws_preflight")
+        assert preflight.MIN_METRIC_AGE == 900.0
+
+
 class TestTheReportVerdictReactsToErrors:
     def test_an_application_error_needs_a_human(self, monkeypatch, capsys):
         code, out = _run_report(

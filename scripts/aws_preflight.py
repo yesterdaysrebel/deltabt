@@ -33,6 +33,10 @@ import sys
 from dataclasses import dataclass, field
 
 PASS, FAIL, PLANNED = "PASS", "FAIL", "PLANNED"
+
+#: How old an EC2 instance must be before an empty metric series counts as a
+#: misconfigured alarm rather than one that has simply not had data yet.
+MIN_METRIC_AGE = 900.0
 OIDC_HOST = "token.actions.githubusercontent.com"
 
 
@@ -477,6 +481,18 @@ def check_alarms_watch_real_metrics(ctx: Context) -> Result:
     publishes under DBInstanceIdentifier = the identifier. Two of them were
     silent-by-construction for the entire deployment and nothing noticed,
     because a green alarm looks the same whether it is watching or blind.
+
+    A BRAND NEW INSTANCE IS NOT A BLIND ALARM. EC2 does not publish
+    StatusCheckFailed for the first few minutes of an instance's life, so this
+    check failed the apply that CREATED the instance -- three times, on
+    2026-08-15, once per stack. The apply itself had already succeeded each
+    time, which made the red run purely misleading: it reported a
+    misconfiguration that did not exist and said nothing about the one it is
+    built to catch.
+
+    "No datapoints yet" and "no datapoints ever" are different claims. Below
+    MIN_METRIC_AGE the finding is reported and not failed; above it, an empty
+    series still means the dimension is wrong.
     """
     ok, data = aws(ctx, "cloudwatch", "describe-alarms", "--alarm-name-prefix", ctx.name)
     if not ok:
@@ -487,7 +503,29 @@ def check_alarms_watch_real_metrics(ctx: Context) -> Result:
             return Result("alarms_watch_real_metrics", PLANNED, "alarms not created yet")
         return Result("alarms_watch_real_metrics", FAIL, "no alarms exist")
 
-    blind = []
+    # Instances younger than this are exempt: EC2 has not had time to publish.
+    # Measured from the 2026-08-15 applies, where the check ran roughly 90s
+    # after launch and StatusCheckFailed first appeared some minutes later.
+    young = set()
+    ok_i, inst = aws(ctx, "ec2", "describe-instances", "--filters",
+                     "Name=tag:Project,Values=deltabt",
+                     f"Name=tag:Environment,Values={ctx.environment}",
+                     "Name=instance-state-name,Values=pending,running")
+    if ok_i:
+        import datetime
+        now = datetime.datetime.now(datetime.timezone.utc)
+        for r in inst.get("Reservations", []):
+            for i in r.get("Instances", []):
+                launched = i.get("LaunchTime")
+                if not launched:
+                    continue
+                if isinstance(launched, str):
+                    launched = datetime.datetime.fromisoformat(
+                        launched.replace("Z", "+00:00"))
+                if (now - launched).total_seconds() < MIN_METRIC_AGE:
+                    young.add(i["InstanceId"])
+
+    blind, warming = [], []
     for alarm in alarms:
         namespace = alarm.get("Namespace")
         # AWS-published namespaces always emit for a live resource, so "no
@@ -508,12 +546,21 @@ def check_alarms_watch_real_metrics(ctx: Context) -> Result:
         if not found:
             blind.append(f"{alarm['AlarmName']} (could not query)")
         elif not stats.get("Datapoints"):
-            blind.append(f"{alarm['AlarmName']} -> {namespace}/{alarm['MetricName']} "
-                         f"{dims} has NO datapoints")
+            on_young = any(d.get("Name") == "InstanceId" and d.get("Value") in young
+                           for d in alarm.get("Dimensions", []))
+            target = warming if on_young else blind
+            target.append(f"{alarm['AlarmName']} -> {namespace}/{alarm['MetricName']} "
+                          f"{dims} has NO datapoints")
     if blind:
         return Result("alarms_watch_real_metrics", FAIL,
                       "alarms pointed at dimensions with no data: " + "; ".join(blind))
     watched = sum(1 for a in alarms if a.get("Namespace") in ("AWS/RDS", "AWS/EC2"))
+    if warming:
+        return Result("alarms_watch_real_metrics", PASS,
+                      f"{watched} AWS-namespace alarms checked; "
+                      f"{len(warming)} on an instance younger than "
+                      f"{MIN_METRIC_AGE // 60} minutes, still warming: "
+                      + "; ".join(warming))
     return Result("alarms_watch_real_metrics", PASS,
                   f"all {watched} AWS-namespace alarms resolve to metrics with data")
 
