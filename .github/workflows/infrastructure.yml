@@ -34,6 +34,15 @@ on:
     branches: [master]
     paths: ["infra/**", ".github/workflows/infrastructure.yml", "deploy/aws/**"]
   workflow_dispatch:
+    inputs:
+      allow_replace:
+        description: >-
+          Permit this apply to REPLACE a protected resource (an EC2 host, its
+          EIP, a log group). Off for every push; only a deliberate dispatch can
+          turn it on, and the plan still has to be approved afterwards.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -159,6 +168,16 @@ jobs:
         working-directory: infra/terraform
         # This runs BEFORE any human sees the plan summary, so a destructive
         # plan cannot be approved by someone skim-reading a green check.
+        #
+        # ALLOW_REPLACE IS REACHABLE ONLY FROM A MANUAL DISPATCH. A push can
+        # never set it, so no merge can replace a running host by accident --
+        # replacing one takes a person choosing to, on a specific run, and the
+        # apply is still gated on the protected `paper` environment afterwards.
+        # Before this input existed the guard was unsatisfiable: a legitimate
+        # replacement could only ship by editing the guard, which is precisely
+        # how a safety check becomes something people route around.
+        env:
+          ALLOW_REPLACE: ${{ (github.event_name == 'workflow_dispatch' && inputs.allow_replace) && '1' || '' }}
         run: |
           terraform show -json tfplan > tfplan.json
           python3 ../../scripts/tf_guard.py tfplan.json

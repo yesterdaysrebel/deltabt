@@ -72,7 +72,19 @@ resource "aws_instance" "bot" {
 
   # An accidental `terraform destroy` during a 30-day run ends the run. The
   # database is separately protected; this protects the bot.
-  disable_api_termination = true
+  #
+  # IT ALSO BLOCKS REPLACEMENT, WHICH IS WHY IT IS A VARIABLE NOW.
+  # The AWS provider does not clear termination protection before destroying an
+  # instance -- it fails, and `force_destroy` is the documented escape hatch.
+  # Anything that lands in user-data (run.sh, deploy.sh, the symbol list)
+  # forces a replacement, so with this hard-coded true those changes could
+  # never be applied at all.
+  #
+  # It cannot be done in ONE apply either: Terraform does not update attributes
+  # on a resource it is replacing, so the destroy still fails. Hence a variable
+  # and two applies -- this one flips the live attribute and changes nothing
+  # else; the next one carries the user-data change.
+  disable_api_termination = !var.allow_instance_replacement
 
   tags = { Name = local.name }
 }

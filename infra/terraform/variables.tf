@@ -55,6 +55,26 @@ variable "instance_type" {
   default     = "t4g.small"
 }
 
+variable "allow_instance_replacement" {
+  description = <<-EOT
+    Clears EC2 termination protection so a later apply MAY replace a bot host.
+
+    TRUE DURING A ROLLOUT ONLY. Set back to false once the replacement has
+    happened; leaving it true means a stray plan can terminate a running
+    experiment, which is the thing the protection exists to prevent.
+
+    Sequence, and it genuinely needs two applies:
+      1. set true, apply -- updates the live attribute, replaces nothing
+      2. apply the user-data change -- the replacement now succeeds
+      3. set false again
+
+    Terraform does not update attributes on a resource it is replacing, so
+    doing 1 and 2 together leaves the destroy still blocked.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "root_volume_gb" {
   description = "Root EBS size. Image ~1.2 GB plus capped logs."
   type        = number
