@@ -38,8 +38,14 @@ class RiskConfig:
     minimum_rr: float = 2.0
     max_open_positions: int = 1
     max_daily_loss_pct: float = 0.02       # 2% of starting-of-day equity
-    max_drawdown_pct: float = 0.10         # 10% from peak equity
+    #: 10% from peak equity. 1.0 disables it: equity would have to reach zero.
+    #: There is no "off" sentinel because the natural bound already is one.
+    max_drawdown_pct: float = 0.10
     max_trades_per_day: int = 6
+    #: A DAILY circuit breaker -- the streak resets on the UTC day roll. 0
+    #: disables the gate entirely; see the guard in RiskEngine.evaluate, which
+    #: must skip the check rather than compare against it, because
+    #: `losses >= 0` is true for a fresh state and would reject everything.
     max_consecutive_losses: int = 3
     max_position_notional: float = 50_000.0
     max_total_notional: float = 50_000.0
@@ -68,6 +74,15 @@ class RiskConfig:
             v = getattr(self, name)
             if not 0 < v <= 1:
                 raise ValueError(f"{name} must be in (0, 1], got {v}")
+        # 0 means "no streak limit". Negative is a typo, not a stronger 0, and
+        # the engine's guard would treat it identically -- so it is refused
+        # here rather than silently accepted as another way to spell disabled.
+        if self.max_consecutive_losses < 0:
+            raise ValueError(
+                f"max_consecutive_losses must be >= 0 (0 disables the gate), "
+                f"got {self.max_consecutive_losses}")
+        if self.max_trades_per_day < 1:
+            raise ValueError("max_trades_per_day must be >= 1")
 
 
 @dataclass(frozen=True)
@@ -117,6 +132,7 @@ class Settings:
             ("DELTABOT_MIN_RR", "minimum_rr", float),
             ("DELTABOT_MAX_OPEN", "max_open_positions", int),
             ("DELTABOT_MAX_DAILY_LOSS", "max_daily_loss_pct", float),
+            ("DELTABOT_MAX_DRAWDOWN", "max_drawdown_pct", float),
             ("DELTABOT_MAX_TRADES_PER_DAY", "max_trades_per_day", int),
             ("DELTABOT_MAX_CONSEC_LOSSES", "max_consecutive_losses", int),
         ):

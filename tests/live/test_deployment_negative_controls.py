@@ -194,43 +194,73 @@ class TestBrokenImageRollsBack:
 # ===========================================================================
 
 class TestDuplicateInstance:
+    """Two bots per DATABASE is the fatal case, not two bots in total.
+
+    The check was "exactly one instance anywhere" until two experiments began
+    running side by side on separate databases. The advisory lock, the
+    single-RUNNING-experiment index and the one-open-position-per-symbol index
+    are all per-database, so the collision the old rule prevented does not
+    exist between stacks -- but it is completely unchanged WITHIN one.
+    """
+
     def _stub_aws(self, monkeypatch, module, instances):
-        reservations = {"Reservations": [{"Instances": [
-            {"InstanceId": i, "State": {"Name": "running"}} for i in instances]}]}
+        """instances: list of (id, stack) or bare ids meaning untagged."""
+        def inst(spec):
+            if isinstance(spec, tuple):
+                iid, stack = spec
+                tags = [{"Key": "Stack", "Value": stack}]
+            else:
+                iid, tags = spec, []
+            return {"InstanceId": iid, "State": {"Name": "running"}, "Tags": tags}
+
+        reservations = {"Reservations": [{"Instances": [inst(i) for i in instances]}]}
         monkeypatch.setattr(module, "aws",
                             lambda ctx, *a, **k: (True, reservations))
 
-    def test_two_instances_fail_the_preflight_check(self, monkeypatch):
+    def _ctx(self, preflight, **kw):
+        return preflight.Context(region="ap-south-1", environment="paper",
+                                 expected_account="1", state_bucket="b",
+                                 ecr_repository="deltabt", **kw)
+
+    def test_two_instances_in_the_same_stack_fail(self, monkeypatch):
         preflight = load("aws_preflight")
-        ctx = preflight.Context(region="ap-south-1", environment="paper",
-                                expected_account="1", state_bucket="b",
-                                ecr_repository="deltabt")
-        self._stub_aws(monkeypatch, preflight, ["i-aaa", "i-bbb"])
-        result = preflight.check_exactly_one_instance(ctx)
+        self._stub_aws(monkeypatch, preflight, [("i-aaa", "v1"), ("i-bbb", "v1")])
+        result = preflight.check_one_instance_per_stack(self._ctx(preflight))
         assert result.status == preflight.FAIL
-        assert "2 running bot instances" in result.detail
         assert "i-aaa" in result.detail and "i-bbb" in result.detail
+
+    def test_two_untagged_instances_fail(self, monkeypatch):
+        """A host that lost its tags must not read as 'a different stack'."""
+        preflight = load("aws_preflight")
+        self._stub_aws(monkeypatch, preflight, ["i-aaa", "i-bbb"])
+        result = preflight.check_one_instance_per_stack(self._ctx(preflight))
+        assert result.status == preflight.FAIL
+
+    def test_one_instance_per_stack_passes(self, monkeypatch):
+        preflight = load("aws_preflight")
+        self._stub_aws(monkeypatch, preflight, [("i-aaa", "v1"), ("i-bbb", "v2")])
+        result = preflight.check_one_instance_per_stack(self._ctx(preflight))
+        assert result.status == preflight.PASS
+        assert "v1=i-aaa" in result.detail and "v2=i-bbb" in result.detail
 
     def test_one_instance_passes(self, monkeypatch):
         preflight = load("aws_preflight")
-        ctx = preflight.Context(region="ap-south-1", environment="paper",
-                                expected_account="1", state_bucket="b",
-                                ecr_repository="deltabt")
-        self._stub_aws(monkeypatch, preflight, ["i-aaa"])
-        assert preflight.check_exactly_one_instance(ctx).status == preflight.PASS
+        self._stub_aws(monkeypatch, preflight, [("i-aaa", "v1")])
+        assert preflight.check_one_instance_per_stack(
+            self._ctx(preflight)).status == preflight.PASS
 
     def test_zero_instances_fail_unless_a_plan_creates_one(self, monkeypatch):
         """'Missing' is never read as 'safe to create' on its own."""
         preflight = load("aws_preflight")
-        base = dict(region="ap-south-1", environment="paper",
-                    expected_account="1", state_bucket="b", ecr_repository="deltabt")
         self._stub_aws(monkeypatch, preflight, [])
 
-        without_plan = preflight.Context(**base)
-        assert preflight.check_exactly_one_instance(without_plan).status == preflight.FAIL
+        assert preflight.check_one_instance_per_stack(
+            self._ctx(preflight)).status == preflight.FAIL
 
-        with_plan = preflight.Context(**base, plan=plan_of(("aws_instance", ["create"])))
-        assert preflight.check_exactly_one_instance(with_plan).status == preflight.PLANNED
+        with_plan = self._ctx(preflight,
+                              plan=plan_of(("aws_instance", ["create"])))
+        assert preflight.check_one_instance_per_stack(
+            with_plan).status == preflight.PLANNED
 
     def test_the_unmanaged_checker_also_catches_duplicates(self):
         source = (SCRIPTS / "aws_unmanaged_check.py").read_text()
@@ -610,7 +640,13 @@ class TestBootstrapNeverAdoptsSilently:
                 f"monitor role grants a non-read action: {a}"
         # SendCommand is the one exception, and it is scoped to the monitor
         # document -- never AWS-RunShellScript, never the deploy document.
-        assert "aws_ssm_document.monitor.arn" in code
+        #
+        # Matched on the reference rather than one exact expression: the
+        # documents became per-stack (`for d in aws_ssm_document.monitor`)
+        # when a second experiment started running alongside the first, and
+        # pinning the old `.arn` spelling would have failed on a change that
+        # does not weaken anything.
+        assert "aws_ssm_document.monitor" in code
         assert "AWS-RunShellScript" not in code
         assert "aws_ssm_document.deploy" not in code
 
@@ -694,7 +730,8 @@ def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
     ])
 
 
-def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=()):
+def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=(),
+                extra_argv=()):
     """Drive main() against canned AWS responses; return (exit code, markdown)."""
     mod = _report()
     mod.problems.clear()
@@ -720,7 +757,8 @@ def _run_report(monkeypatch, capsys, probe_text, errors=(), beats=(), gaps=()):
     monkeypatch.setattr(mod, "aws", fake_aws)
     monkeypatch.setattr(mod.time, "sleep", lambda _s: None, raising=False)
     monkeypatch.setattr(sys, "argv", ["daily_report.py", "--instance-id", "i-1",
-                                      "--document", "d", "--day", "2026-08-13"])
+                                      "--document", "d", "--day", "2026-08-13",
+                                      *extra_argv])
     code = mod.main()
     return code, capsys.readouterr().out
 
@@ -785,6 +823,153 @@ class TestZeroEvaluationsMeansDifferentThingsAtDifferentAges:
         code, out = _run_report(monkeypatch, capsys, _probe(), beats=HEALTHY_BEATS)
         assert code == 0
         assert "no evaluations" not in out
+
+
+class TestTheWhyNoTradesSectionAnswersItsOwnHeading:
+    """A heading with nothing under it is worse than no heading at all.
+
+    The first run of H-WPR-1-PAPER-AWS-V1-20260814-2 printed
+    "## Why there were no trades" followed by a blank line: the young-run
+    explanation had been routed into notes/problems, which render at the FOOT
+    of the report. The reader saw a section that declined to answer itself and
+    the answer twenty lines away. An empty section reads as "we don't know",
+    and this report exists precisely so that a quiet day is never unexplained.
+    """
+
+    @staticmethod
+    def _section(out):
+        """The body between the heading and the next one, whitespace stripped."""
+        head = "## Why there were no trades"
+        assert head in out, "the section must render when no orders were placed"
+        rest = out.split(head, 1)[1]
+        return rest.split("\n## ", 1)[0].strip()
+
+    def test_a_young_run_explains_itself_in_the_section(self, monkeypatch, capsys):
+        began = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(minutes=6))
+        probe = _probe(evaluations_24h=0, outcomes_24h={},
+                       orders_run=0, fills_run=0, paper_orders=0, paper_fills=0,
+                       experiments=[{"experiment_id": "E", "status": "RUNNING",
+                                     "started_at": began.strftime("%Y-%m-%dT%H:%M:%S"),
+                                     "planned_days": 30}])
+        code, out = _run_report(monkeypatch, capsys, probe, beats=HEALTHY_BEATS)
+        assert code == 0
+        body = self._section(out)
+        assert body, "THE BUG: the heading printed with an empty body"
+        assert "has not evaluated a bar yet" in body
+        # The note still fires -- explanation and escalation are separate jobs.
+        assert "no evaluations yet" in out
+
+    def test_a_dead_loop_says_so_in_the_section_too(self, monkeypatch, capsys):
+        began = (datetime.datetime.now(datetime.timezone.utc)
+                 - datetime.timedelta(minutes=600))
+        probe = _probe(evaluations_24h=0, outcomes_24h={},
+                       orders_run=0, fills_run=0, paper_orders=0, paper_fills=0,
+                       experiments=[{"experiment_id": "E", "status": "RUNNING",
+                                     "started_at": began.strftime("%Y-%m-%dT%H:%M:%S"),
+                                     "planned_days": 30}])
+        code, out = _run_report(monkeypatch, capsys, probe, beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "No evaluations at all in 24h" in self._section(out)
+
+    def test_evaluations_with_no_gate_hit_name_the_outcome_mix(self, monkeypatch, capsys):
+        """The old fallback said 'no rejection reasons recorded' and stopped."""
+        probe = _probe(evaluations_24h=412,
+                       outcomes_24h={"NO_SETUP": 400, "SETUP_INCOMPLETE": 12},
+                       rejections_24h={},
+                       orders_run=0, fills_run=0, paper_orders=0, paper_fills=0)
+        _, out = _run_report(monkeypatch, capsys, probe, beats=HEALTHY_BEATS)
+        body = self._section(out)
+        assert "412 evaluation(s)" in body
+        assert "`NO_SETUP` 400" in body
+        assert "`SETUP_INCOMPLETE` 12" in body
+
+    def test_the_section_is_never_empty_on_any_quiet_path(self, monkeypatch, capsys):
+        """The general guard, so a future branch cannot reintroduce the blank."""
+        quiet = dict(orders_run=0, fills_run=0, paper_orders=0, paper_fills=0)
+        cases = [
+            dict(evaluations_24h=0, outcomes_24h={}),
+            dict(evaluations_24h=90, outcomes_24h={"NO_SETUP": 90}),
+            dict(evaluations_24h=90, outcomes_24h={"SETUP": 90},
+                 rejections_24h={"COOLDOWN": 90}),
+            dict(evaluations_24h=5, outcomes_24h={}, rejections_24h={}),
+        ]
+        for case in cases:
+            probe = _probe(**{**quiet, **case})
+            _, out = _run_report(monkeypatch, capsys, probe, beats=HEALTHY_BEATS)
+            assert self._section(out), f"empty section for {case!r}"
+
+
+class TestTheReportChecksTheRunItWasPointedAt:
+    """With two experiments live, "an experiment is running" stopped being
+    enough to identify which one this is.
+
+    The strategy hash was a module constant pinned to V1. Run against the V2
+    host it would have declared a hash change on every single report, and the
+    only way to silence it would have been to remove the check.
+    """
+
+    V2_STRATEGY = "632efcaff62c4d7c"
+    LOOSE_RISK = "0000feed0000beef"
+
+    def _v2_probe(self, **kw):
+        text = _probe(experiments=[{
+            "experiment_id": "H-WPR-1-PAPER-AWS-V2", "status": "RUNNING",
+            "started_at": "2026-08-13T19:41:15", "planned_days": 30,
+            "strategy_hash": self.V2_STRATEGY, "risk_hash": self.LOOSE_RISK}],
+            **kw)
+        return text.replace('"strategy_config_hash": "d7837e445bc74781"',
+                            f'"strategy_config_hash": "{self.V2_STRATEGY}"')
+
+    def test_the_fixture_really_switches_hashes(self):
+        """Without this, a silently failing .replace() would make every test
+        below pass by testing V1 twice."""
+        assert '"strategy_config_hash": "d7837e445bc74781"' in _probe()
+        assert self.V2_STRATEGY in self._v2_probe()
+        assert "d7837e445bc74781" not in self._v2_probe()
+
+    def test_pointing_the_report_at_v2_accepts_v2s_hashes(self, monkeypatch, capsys):
+        code, out = _run_report(
+            monkeypatch, capsys, self._v2_probe(), beats=HEALTHY_BEATS,
+            extra_argv=("--expect-strategy-hash", self.V2_STRATEGY,
+                        "--expect-risk-hash", self.LOOSE_RISK))
+        assert code == 0, out
+        assert "STRATEGY HASH CHANGED" not in out
+        assert "RISK HASH" not in out
+
+    def test_the_v1_default_would_have_failed_on_the_v2_host(self, monkeypatch, capsys):
+        """Why the constant had to become an argument."""
+        code, out = _run_report(monkeypatch, capsys, self._v2_probe(),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "STRATEGY HASH CHANGED" in out
+
+    def test_a_wrong_strategy_hash_still_needs_a_human(self, monkeypatch, capsys):
+        """The check must not have been weakened into a no-op."""
+        code, out = _run_report(
+            monkeypatch, capsys, self._v2_probe(), beats=HEALTHY_BEATS,
+            extra_argv=("--expect-strategy-hash", "deadbeefdeadbeef",
+                        "--expect-risk-hash", self.LOOSE_RISK))
+        assert code == 1
+        assert "STRATEGY HASH CHANGED" in out
+        assert self.V2_STRATEGY in out and "deadbeefdeadbeef" in out
+
+    def test_a_wrong_risk_hash_is_caught(self, monkeypatch, capsys):
+        """The original audit finding: risk could change with nothing showing."""
+        code, out = _run_report(
+            monkeypatch, capsys, self._v2_probe(), beats=HEALTHY_BEATS,
+            extra_argv=("--expect-strategy-hash", self.V2_STRATEGY,
+                        "--expect-risk-hash", "1111222233334444"))
+        assert code == 1
+        assert "RISK HASH IS NOT THE EXPECTED ONE" in out
+        assert "H-WPR-1-PAPER-AWS-V2" in out
+
+    def test_an_experiment_with_no_risk_hash_is_not_flagged(self, monkeypatch, capsys):
+        """Older rows predate the probe returning it; absence is not a mismatch."""
+        code, out = _run_report(monkeypatch, capsys, _probe(),
+                                beats=HEALTHY_BEATS)
+        assert code == 0
+        assert "RISK HASH" not in out
 
 
 class TestTheReportVerdictReactsToErrors:

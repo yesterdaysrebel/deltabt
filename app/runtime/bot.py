@@ -55,7 +55,7 @@ from app.forwardtest.identity import (
 from app.market_data.backfill import Backfiller
 from app.market_data.candle_builder import CandleBuilder
 from app.market_data.delta_ws import DeltaMarketFeed
-from app.market_data.market_state import HaltDetector, MarketState
+from app.market_data.market_state import HaltDetector, MarketState, halt_min_run
 from app.market_data.normalize import (
     NormalizeError,
     normalize_candle,
@@ -133,7 +133,8 @@ class TradingBot:
         self.clock = MarketClock()
         self.symbols = tuple(settings.symbols)
         self.builder = CandleBuilder(self.symbols)
-        self.halts = {s: HaltDetector(s) for s in self.symbols}
+        self.halts = {s: HaltDetector(s, min_run=halt_min_run(s))
+                      for s in self.symbols}
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
                                   slippage_bps=settings.risk.slippage_bps)
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)

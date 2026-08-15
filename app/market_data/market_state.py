@@ -29,6 +29,29 @@ from deltabt.data.quality import synthetic_mask
 
 log = logging.getLogger(__name__)
 
+#: Symbols whose flat runs are THIN LIQUIDITY, NOT MAINTENANCE, and the shorter
+#: threshold each needs to be suppressed anyway.
+#:
+#: The 20-bar default is calibrated on a real maintenance window: 148 flat bars
+#: on 2026-04-12. It assumes flat bars arrive in long runs. On a thinly traded
+#: symbol they do not -- they arrive constantly, in short bursts, because
+#: minutes with no trade are forward-filled as o=h=l=c/volume=0 whatever the
+#: reason. Measured over 24h on 2026-08-14, BANKUSD was 39.2% flat bars across
+#: 322 runs with a maximum run of 10, so the default NEVER fires and 86% of its
+#: 5m bars carry at least one fabricated minute into Supertrend, ADX and %R.
+#: Nothing downstream can tell the difference; the bars look like real prices.
+#:
+#: 5 is below that observed maximum, so the detector suppresses entries during
+#: the flat stretches instead of trading indicators computed from them. It also
+#: means BANKUSD will spend a lot of time HALTED, which is the honest outcome:
+#: the instrument is not continuously priced.
+HALT_MIN_RUN_OVERRIDES: dict[str, int] = {"BANKUSD": 5}
+
+
+def halt_min_run(symbol: str) -> int:
+    """Flat-bar run length that counts as a halt for this symbol."""
+    return HALT_MIN_RUN_OVERRIDES.get(symbol.upper(), HALT_MIN_RUN_BARS)
+
 
 class MarketState(str, Enum):
     #: Normal trading. Signals permitted.

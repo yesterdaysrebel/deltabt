@@ -138,22 +138,33 @@ def main() -> int:
     def record(check: str, ok: bool, detail: str) -> None:
         results.append((check, PASS if ok else FAIL, detail))
 
-    # --- 1. exactly one instance -------------------------------------------
+    # --- 1. one instance per stack ------------------------------------------
+    # Not "one instance" -- two experiments run side by side on separate
+    # databases, and the advisory lock, the single-RUNNING-experiment index and
+    # the one-open-position-per-symbol index are all per-database. Two bots in
+    # ONE stack is still the fatal case.
     ok, data = aws("ec2", "describe-instances", "--filters",
                    "Name=tag:Project,Values=deltabt",
                    f"Name=tag:Environment,Values={args.environment}",
                    "Name=instance-state-name,Values=pending,running",
                    region=args.region)
     if not ok:
-        record("exactly_one_instance", False, f"could not enumerate: {data.get('error')}")
+        record("one_instance_per_stack", False, f"could not enumerate: {data.get('error')}")
     else:
-        ids = [i["InstanceId"] for r in data.get("Reservations", [])
-               for i in r.get("Instances", [])]
-        record("exactly_one_instance", len(ids) == 1,
-               f"{len(ids)} running: {', '.join(ids) or 'none'}"
-               + ("" if len(ids) == 1 else
-                  ". Exactly one bot may run; the advisory lock refuses a second, "
-                  "so a duplicate shows up as a crash loop rather than as bad data."))
+        by_stack: dict[str, list[str]] = {}
+        for r in data.get("Reservations", []):
+            for i in r.get("Instances", []):
+                tags = {t["Key"]: t["Value"] for t in i.get("Tags", [])}
+                by_stack.setdefault(tags.get("Stack", "<untagged>"), []).append(
+                    i["InstanceId"])
+        dupes = {s: v for s, v in by_stack.items() if len(v) > 1}
+        record("one_instance_per_stack", bool(by_stack) and not dupes,
+               ", ".join(f"{s}={'+'.join(v)}" for s, v in sorted(by_stack.items()))
+               or "none running"
+               + ("" if not dupes else
+                  ". Two bots in one stack share a database; the advisory lock "
+                  "refuses the second, so a duplicate shows up as a crash loop "
+                  "rather than as bad data."))
 
     # --- host probe --------------------------------------------------------
     ok, output = on_host(args.instance_id, args.region, HOST_PROBE)

@@ -31,6 +31,12 @@ import subprocess
 import sys
 import time
 
+#: DEFAULT ONLY. Both of these are overridable per run, because two experiments
+#: now run concurrently from one image -- V1 at d7837e445bc74781 and V2 at
+#: 632efcaff62c4d7c -- and the risk hash moves for both whenever the limits are
+#: relaxed. Pinning them as constants would mean the report either checked the
+#: wrong run or checked nothing. The value of the check is unchanged: within
+#: ONE experiment these must never move.
 FROZEN_STRATEGY_HASH = "d7837e445bc74781"
 #: The COMPOSITE hash also covers risk, execution and the git SHA, so it moves
 #: on every deploy and cannot be pinned here. The bot already refuses to trade
@@ -253,11 +259,25 @@ def main() -> int:
     ap.add_argument("--region", default="ap-south-1")
     ap.add_argument("--environment", default="paper")
     ap.add_argument("--log-group", default=None)
+    ap.add_argument("--stack", default=None,
+                    help="which concurrent run this is (v1, v2). Selects the "
+                         "log group when --log-group is not given.")
     ap.add_argument("--day", default=None, help="UTC date to report on; default yesterday")
+    ap.add_argument("--expect-strategy-hash", default=None,
+                    help=f"strategy config hash this run must be on "
+                         f"(default {FROZEN_STRATEGY_HASH}, which is V1)")
+    ap.add_argument("--expect-risk-hash", default=None,
+                    help=f"risk hash the RUNNING experiment must carry "
+                         f"(default {FROZEN_RISK_HASH})")
     args = ap.parse_args()
 
     name = f"deltabt-{args.environment}"
-    log_group = args.log_group or f"/deltabt/{args.environment}/bot"
+    # The log group gained a stack segment when a second experiment started
+    # running alongside the first. Falling back to the old path would make the
+    # report silently find no heartbeats and declare the bot silent.
+    log_group = args.log_group or (
+        f"/deltabt/{args.environment}/{args.stack}/bot" if args.stack
+        else f"/deltabt/{args.environment}/bot")
     now = datetime.datetime.now(datetime.timezone.utc)
     day = args.day or (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -294,11 +314,26 @@ def main() -> int:
         problems.append(f"readyz not ready: "
                         f"{[c['name'] for c in readyz.get('checks', []) if not c['ok']]}")
 
+    want_strategy = args.expect_strategy_hash or FROZEN_STRATEGY_HASH
     got_strategy = status.get("strategy_config_hash")
-    if got_strategy and got_strategy != FROZEN_STRATEGY_HASH:
-        problems.append(f"STRATEGY HASH CHANGED: {got_strategy} != {FROZEN_STRATEGY_HASH}")
+    if got_strategy and got_strategy != want_strategy:
+        problems.append(f"STRATEGY HASH CHANGED: {got_strategy} != {want_strategy}")
 
     experiments = db.get("experiments") or []
+    # The risk hash was the original audit finding: risk_per_trade could change
+    # between restarts with nothing in the data reflecting it. The runtime
+    # refuses to CONTINUE an experiment across such a change, but only the
+    # report can say the running experiment is the one that was intended.
+    want_risk = args.expect_risk_hash or FROZEN_RISK_HASH
+    for e in experiments:
+        if str(e.get("status")).upper() != "RUNNING":
+            continue
+        got_risk = e.get("risk_hash")
+        if got_risk and got_risk != want_risk:
+            problems.append(
+                f"RISK HASH IS NOT THE EXPECTED ONE: {got_risk} != {want_risk} "
+                f"(experiment {e.get('experiment_id')})")
+
     running = [e for e in experiments if str(e.get("status")).upper() == "RUNNING"]
     if len(running) != 1:
         problems.append(f"expected exactly 1 RUNNING experiment, found {len(running)}")
@@ -424,19 +459,28 @@ def main() -> int:
                         f"configuration allows max_open_positions=1")
 
     # --- 3. WHY no trades? --------------------------------------------------
+    # THE SECTION MUST ANSWER ITS OWN HEADING.
+    #
+    # This used to print the heading first and then, on the zero-evaluations
+    # path, route the actual explanation into notes/problems -- which render at
+    # the FOOT of the report. The reader got a "Why there were no trades"
+    # heading with nothing under it and the answer twenty lines away, which is
+    # worse than not having the section: an empty section reads as "we don't
+    # know", and this report is supposed to be the thing that always knows.
+    #
+    # So the body is composed FIRST and the heading is printed only with it.
+    # notes/problems still get their entry, because escalation is a separate
+    # concern from explanation and the daily digest is read on its own.
     if not orders:
-        print("## Why there were no trades\n")
+        body = ""
         rejections = db.get("rejections_24h") or {}
         if rejections:
-            print("| Rejection reason | Count |")
-            print("|---|---|")
-            for k, v in rejections.items():
-                print(f"| {k} | {v} |")
-            print()
+            rows = "\n".join(f"| {k} | {v} |" for k, v in rejections.items())
+            body = f"| Rejection reason | Count |\n|---|---|\n{rows}\n"
         elif outcomes.get("NO_SETUP") and len(outcomes) == 1:
-            print("Every evaluation returned `NO_SETUP`: the entry conditions were "
-                  "never all true at the same bar close. No risk gate was reached, "
-                  "so nothing was rejected — the setup simply did not occur.\n")
+            body = ("Every evaluation returned `NO_SETUP`: the entry conditions were "
+                    "never all true at the same bar close. No risk gate was reached, "
+                    "so nothing was rejected — the setup simply did not occur.\n")
         elif evals == 0:
             # "Zero evaluations" stopped meaning "the loop is dead" the moment
             # this count became experiment-scoped. A run that started twenty
@@ -448,15 +492,31 @@ def main() -> int:
             # finish first, so an hour is comfortably long enough that silence
             # is real. Below it the fact is still reported, just not escalated.
             if run_age_seconds is not None and run_age_seconds < MIN_RUN_AGE_FOR_SILENCE:
+                mins = int(run_age_seconds // 60)
+                body = (f"The experiment has not evaluated a bar yet. It is {mins} "
+                        f"minute(s) old, and a 5m bar closes every 300s after the "
+                        f"backfill and indicator warm-up finish, so there has not "
+                        f"been time for one. Not escalated below "
+                        f"{int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes.\n")
                 notes.append(
-                    f"no evaluations yet: the experiment is "
-                    f"{int(run_age_seconds // 60)} minutes old (not escalated "
-                    f"below {int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes)")
+                    f"no evaluations yet: the experiment is {mins} minutes old "
+                    f"(not escalated below "
+                    f"{int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes)")
             else:
+                body = ("**No evaluations at all in 24h.** The strategy loop did not "
+                        "reach a single bar close, which is not a market outcome — "
+                        "at four symbols on a 5m timeframe this should be in the "
+                        "hundreds. Escalated.\n")
                 problems.append(
                     "no evaluations at all in 24h — the loop may not be running")
         else:
-            print("No rejection reasons recorded and no orders placed.\n")
+            # Evaluations happened, none reached a risk gate, and the outcome mix
+            # was not purely NO_SETUP. Name the mix rather than saying nothing.
+            mix = ", ".join(f"`{k}` {v}" for k, v in sorted(outcomes.items()))
+            body = (f"{evals} evaluation(s), no order placed and no risk-gate "
+                    f"rejection recorded. Outcome mix: {mix or 'none recorded'}.\n")
+        print("## Why there were no trades\n")
+        print(body)
 
     # --- 4. sample size -----------------------------------------------------
     print("## Sample size\n")

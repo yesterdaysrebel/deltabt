@@ -23,10 +23,11 @@ import sys
 from datetime import datetime, timezone
 
 from app.config.settings import Settings
-from app.config.strategy import FROZEN
+from app.config.variants import resolve_strategy
 from app.forwardtest.identity import build_identity
 from app.forwardtest.preflight import run_preflight
 from app.market_data.backfill import Backfiller
+from app.market_data.market_state import halt_min_run
 from app.monitoring.logging import configure
 from app.persistence.repository import PostgresRepository
 
@@ -77,7 +78,7 @@ async def _preflight(settings: Settings, *, check_feed: bool = True):
             pass
 
     report = await run_preflight(
-        settings, FROZEN, repo=repo, costs=costs, clock=clock,
+        settings, resolve_strategy(), repo=repo, costs=costs, clock=clock,
         backfiller=Backfiller(), dsn=settings.database_url,
         check_feed=check_feed)
     return report, repo
@@ -105,9 +106,14 @@ async def cmd_start(args) -> int:
         return 1
 
     exp_id = args.experiment_id or default_experiment_id()
+    # The halt thresholds go into the EXECUTION hash, so shortening one for a
+    # thinly traded symbol is a recorded configuration change rather than an
+    # invisible edit. Only the symbols in this run are included: an override
+    # for a symbol nobody trades must not move the hash.
     ident = build_identity(
-        exp_id, FROZEN, settings.risk,
-        {**EXEC_PARAMS, "slippage_bps": settings.risk.slippage_bps},
+        exp_id, resolve_strategy(), settings.risk,
+        {**EXEC_PARAMS, "slippage_bps": settings.risk.slippage_bps,
+         "halt_min_run": {s: halt_min_run(s) for s in sorted(settings.symbols)}},
         settings.symbols)
     created = await repo.create_experiment(ident, planned_days=args.days)
     if not created:

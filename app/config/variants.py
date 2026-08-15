@@ -54,6 +54,8 @@ HOW TO SWITCH
 
 from __future__ import annotations
 
+import os
+
 from app.config.strategy import FROZEN, StrategyConfig
 
 #: BACKUP. Williams %R on BOTH timeframes, one signal per FALSE->TRUE
@@ -127,3 +129,35 @@ V2_LEVEL = StrategyConfig(fire_once=False)
 TRAILING_SUPERTREND = None
 
 ALL = {"V2": V2, "V1": V1, "V2_LEVEL": V2_LEVEL}
+
+#: Environment variable selecting which entry of ALL runs. Unset means V1,
+#: which is what FROZEN is, so nothing changes for a host that does not set it.
+VARIANT_ENV = "DELTABOT_VARIANT"
+
+
+def resolve_strategy(env: dict | None = None) -> StrategyConfig:
+    """The strategy this process should run.
+
+    ONE IMAGE, TWO EXPERIMENTS. Running V1 and V2 concurrently means the same
+    container image has to be able to be either, and the alternative -- two
+    images built from two branches -- gives up the single git SHA that ties a
+    database row to the code that produced it.
+
+    FAIL CLOSED ON AN UNKNOWN NAME. A typo in DELTABOT_VARIANT must not quietly
+    fall back to V1: the process would come up healthy, bind to the V2
+    experiment, and record V1's signals under V2's identity. That is worse than
+    not starting, because it is not visible anywhere until the data is
+    analysed. The composite hash check would NOT catch it either -- the
+    experiment is created by the same process, from the same wrong config, so
+    the two agree with each other and disagree only with the intent.
+    """
+    env = os.environ if env is None else env
+    name = (env.get(VARIANT_ENV) or "").strip()
+    if not name:
+        return FROZEN
+    try:
+        return ALL[name.upper()]
+    except KeyError:
+        raise ValueError(
+            f"{VARIANT_ENV}={name!r} is not a known variant; "
+            f"expected one of {', '.join(sorted(ALL))}") from None

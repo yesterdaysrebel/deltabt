@@ -342,4 +342,10 @@ def test_ec2_alarms_use_the_instance_id():
              if "InstanceId =" in l and not l.lstrip().startswith("#")]
     assert lines, "no InstanceId dimensions found to check"
     for line in lines:
-        assert "aws_instance.bot.id" in line, line.strip()
+        # Matched on the attribute rather than the whole expression: the
+        # instances became keyed by stack (aws_instance.bot["v1"]) when a
+        # second experiment started running alongside the first, and pinning
+        # the unkeyed spelling would fail on a change that cannot introduce
+        # the bug this test exists to catch.
+        assert re.search(r"aws_instance\.bot(\[[^\]]+\])?\.id\b", line), line.strip()
+        assert ".identifier" not in line, line.strip()

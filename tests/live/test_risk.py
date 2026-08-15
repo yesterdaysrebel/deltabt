@@ -175,6 +175,74 @@ class TestLimits:
         assert not d.approved
         assert d.limit_name == "max_consecutive_losses"
 
+    def test_a_zero_streak_limit_disables_the_gate(self):
+        """0 means "no limit", and the guard is what makes that true.
+
+        `consecutive_losses >= 0` holds for a FRESH state, so comparing against
+        a limit of 0 without guarding would reject every signal the bot ever
+        evaluated -- a permanent silent halt reached from the opposite side of
+        the same bug fixed on 2026-08-14.
+        """
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        eng = engine(max_consecutive_losses=0)
+        assert approve(eng=eng, state=s).approved, (
+            "a fresh state with the gate disabled must still be allowed to trade")
+        s.consecutive_losses = 25
+        d = approve(eng=eng, state=s)
+        assert d.approved, "0 disables the gate at any streak length"
+
+    def test_the_default_streak_limit_still_trips(self):
+        """The negative control for the guard: 3 must still mean 3."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.consecutive_losses = 3
+        assert not approve(state=s).approved
+
+    def test_a_full_drawdown_limit_never_trips(self):
+        """1.0 is how the drawdown halt is switched off in paper.
+
+        There is no sentinel: equity would have to reach zero, and at zero
+        there is no sizing left to approve anyway.
+        """
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.peak_equity, s.equity = 20_000.0, 10_400.0     # 48% drawdown
+        s.day_start_equity = 10_400.0
+        d = approve(eng=engine(max_drawdown_pct=1.0), state=s)
+        assert d.approved, "48% drawdown must pass when the gate is disabled"
+
+    def test_the_default_drawdown_limit_still_trips(self):
+        """Negative control: disabling it must be opt-in, not accidental."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.peak_equity, s.equity = 20_000.0, 10_400.0
+        s.day_start_equity = 10_400.0
+        d = approve(state=s)
+        assert not d.approved and d.limit_name == "max_drawdown_pct"
+
+    def test_six_slots_allow_six_symbols_but_never_two_in_one(self):
+        """Raising max_open_positions must not weaken the per-symbol rule.
+
+        They are separate checks, and the per-symbol one is the application
+        half of ux_positions_open_symbol -- the database would reject a second
+        open row for a symbol regardless, so an engine that approved it would
+        produce an order that could never be recorded.
+        """
+        eng = engine(max_open_positions=6)
+        five = [FakePos(s) for s in
+                ("ETHUSD", "SOLUSD", "XRPUSD", "BEATUSD", "BANKUSD")]
+        assert approve(eng=eng, positions=five).approved, (
+            "a sixth symbol must be allowed when six slots are configured")
+
+        assert not approve(eng=eng, exp=setup(symbol="SOLUSD"),
+                           positions=five).approved, (
+            "a SECOND position in a symbol already held must still be refused")
+
+        six = five + [FakePos("AKEUSD")]
+        d = approve(eng=eng, positions=six)
+        assert not d.approved and d.limit_name == "max_open_positions"
+
     def test_the_streak_clears_on_the_next_utc_day(self):
         """Otherwise the brake never releases.
 

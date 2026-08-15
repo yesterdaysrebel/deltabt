@@ -312,20 +312,44 @@ def _bot_instances(ctx: Context) -> tuple[bool, list[dict]]:
     return True, [i for r in data.get("Reservations", []) for i in r.get("Instances", [])]
 
 
-def check_exactly_one_instance(ctx: Context) -> Result:
+def check_one_instance_per_stack(ctx: Context) -> Result:
+    """ONE BOT PER STACK -- which is not the same as one bot in total.
+
+    This check used to require exactly one instance anywhere, on the grounds
+    that two bots would interleave one paper account. That reasoning is
+    specific to a SHARED DATABASE: the advisory lock, the single-RUNNING-
+    experiment index and the one-open-position-per-symbol index are all
+    per-database, so two bots on two databases collide on none of them.
+
+    Two bots on the SAME database is still exactly as fatal as it was, and an
+    untagged instance is treated as the same stack as any other untagged one
+    precisely so that a host which lost its tags cannot slip through as "a
+    different stack".
+    """
     ok, instances = _bot_instances(ctx)
     if not ok:
-        return Result("exactly_one_instance", FAIL, "could not enumerate instances")
-    if len(instances) == 1:
-        return Result("exactly_one_instance", PASS, instances[0]["InstanceId"])
-    if len(instances) == 0:
-        return absent(ctx, "aws_instance", "exactly_one_instance")
-    ids = ", ".join(i["InstanceId"] for i in instances)
-    return Result("exactly_one_instance", FAIL,
-                  f"{len(instances)} running bot instances: {ids}. Exactly one may "
-                  f"run; two would interleave one paper account. The PostgreSQL "
-                  f"advisory lock refuses the second, so the visible symptom is a "
-                  f"crash loop -- resolve this by hand before deploying.")
+        return Result("one_instance_per_stack", FAIL, "could not enumerate instances")
+    if not instances:
+        return absent(ctx, "aws_instance", "one_instance_per_stack")
+
+    by_stack: dict[str, list[str]] = {}
+    for i in instances:
+        tags = {t["Key"]: t["Value"] for t in i.get("Tags", [])}
+        by_stack.setdefault(tags.get("Stack", "<untagged>"), []).append(i["InstanceId"])
+
+    duplicated = {s: ids for s, ids in by_stack.items() if len(ids) > 1}
+    if duplicated:
+        detail = "; ".join(f"{s}: {', '.join(ids)}" for s, ids in duplicated.items())
+        return Result("one_instance_per_stack", FAIL,
+                      f"more than one running bot in the same stack ({detail}). "
+                      f"Two bots against one database interleave a single paper "
+                      f"account. The PostgreSQL advisory lock refuses the second, "
+                      f"so the visible symptom is a crash loop -- resolve this by "
+                      f"hand before deploying.")
+
+    summary = ", ".join(f"{s}={ids[0]}" for s, ids in sorted(by_stack.items()))
+    return Result("one_instance_per_stack", PASS,
+                  f"{len(by_stack)} stack(s): {summary}")
 
 
 def check_no_public_ingress(ctx: Context) -> Result:
@@ -503,7 +527,7 @@ INFRASTRUCTURE_CHECKS = [
 ]
 
 APPLICATION_CHECKS = INFRASTRUCTURE_CHECKS + [
-    check_ecr, check_rds, check_exactly_one_instance, check_no_public_ingress,
+    check_ecr, check_rds, check_one_instance_per_stack, check_no_public_ingress,
     check_ssm, check_secret, check_alarms, check_alarms_watch_real_metrics,
 ]
 

@@ -10,7 +10,9 @@ import pytest
 
 from app.market_data.candle_builder import SymbolCandleBuilder
 from app.market_data.delta_ws import DeltaMarketFeed, StaleFeedError
-from app.market_data.market_state import HaltDetector, MarketState
+from app.market_data.market_state import (HaltDetector, MarketState,
+                                          halt_min_run)
+from deltabt.config import HALT_MIN_RUN_BARS
 from app.market_data.normalize import Candle
 
 
@@ -26,6 +28,51 @@ def flat_bar(start, px=100.0):
 # =====================================================================
 # HALT DETECTION -- section 12
 # =====================================================================
+
+
+class TestPerSymbolHaltThreshold:
+    """A threshold calibrated on maintenance does not fit thin liquidity.
+
+    20 comes from a real maintenance window: 148 consecutive flat bars on
+    2026-04-12. It assumes flat bars arrive in long runs. On a thinly traded
+    symbol they arrive constantly in short bursts instead, because a minute
+    with no trade is forward-filled whatever the reason. BANKUSD measured 39.2%
+    flat bars over 24h across 322 runs with a maximum run of 10, so the default
+    never fires and the indicator stack silently reads fabricated prices.
+    """
+
+    def test_the_default_is_unchanged_for_normal_symbols(self):
+        for s in ("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BEATUSD", "AKEUSD"):
+            assert halt_min_run(s) == HALT_MIN_RUN_BARS
+
+    def test_bankusd_gets_the_shorter_threshold(self):
+        assert halt_min_run("BANKUSD") == 5
+        assert halt_min_run("bankusd") == 5, "lookup must not be case sensitive"
+
+    def test_a_run_that_the_default_ignores_halts_bankusd(self):
+        """The measured case: runs of up to 10, never reaching 20."""
+        default = HaltDetector("BTCUSD", min_run=halt_min_run("BTCUSD"))
+        thin = HaltDetector("BANKUSD", min_run=halt_min_run("BANKUSD"))
+        for d in (default, thin):
+            d.observe(bar(0))
+            for i in range(1, 11):
+                d.observe(flat_bar(i * 60))
+        assert default.state is MarketState.LIVE, (
+            "10 flat bars is below the 20-bar default, as designed")
+        assert default.can_trade
+        assert thin.state is MarketState.HALTED
+        assert not thin.can_trade, (
+            "THE POINT: BANKUSD must stop evaluating on the same run that "
+            "BTCUSD correctly trades through")
+
+    def test_the_shorter_threshold_still_tolerates_a_brief_gap(self):
+        """4 flat bars must not halt it, or it would never trade at all."""
+        d = HaltDetector("BANKUSD", min_run=halt_min_run("BANKUSD"))
+        d.observe(bar(0))
+        for i in range(1, 5):
+            d.observe(flat_bar(i * 60))
+        assert d.state is MarketState.LIVE
+        assert d.can_trade
 
 
 class TestHaltDetection:

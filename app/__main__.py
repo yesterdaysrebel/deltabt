@@ -19,7 +19,7 @@ import uvicorn
 
 from app.api.app import create_app
 from app.config.settings import Settings
-from app.config.strategy import FROZEN
+from app.config.variants import resolve_strategy
 from app.market_data.backfill import Backfiller
 from app.monitoring.logging import configure
 from app.notifications.base import LogNotifier
@@ -46,15 +46,16 @@ def load_costs(symbols, slippage_bps: float) -> dict[str, SymbolCosts]:
 async def main() -> int:
     settings = Settings.from_env()
     configure(settings.log_level)
+    strategy = resolve_strategy()
     log.info("starting", extra={"symbols": list(settings.symbols),
-                                "strategy": FROZEN.version,
-                                "config_hash": FROZEN.config_hash})
+                                "strategy": strategy.version,
+                                "config_hash": strategy.config_hash})
 
     bot = TradingBot(
         settings,
         PostgresRepository(settings.database_url),
         load_costs(settings.symbols, settings.risk.slippage_bps),
-        strategy=FROZEN,
+        strategy=strategy,
         notifier=LogNotifier(),
         backfiller=Backfiller(),
         lock=SingleInstanceLock(settings.database_url),

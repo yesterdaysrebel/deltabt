@@ -253,7 +253,13 @@ class RiskEngine:
                 observed=state.trades_today)
         ok("max_trades_per_day")
 
-        if state.consecutive_losses >= cfg.max_consecutive_losses:
+        # `> 0` GUARDS THE COMPARISON, IT IS NOT A STYLE CHOICE.
+        # 0 means the gate is disabled, but `consecutive_losses >= 0` is true
+        # for a brand new state, so comparing anyway would reject every signal
+        # forever -- the same class of permanent silent halt as the streak that
+        # never reset, arrived at from the opposite direction.
+        if (cfg.max_consecutive_losses > 0
+                and state.consecutive_losses >= cfg.max_consecutive_losses):
             return reject(
                 f"{state.consecutive_losses} consecutive losses reaches the "
                 f"limit of {cfg.max_consecutive_losses}",

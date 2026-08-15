@@ -664,7 +664,7 @@ python3 scripts/aws_preflight.py --phase application \
 | `terraform_state_accessible` | the state object is readable |
 | `ecr_repository` | exists, tags **IMMUTABLE** |
 | `rds_private` | exists, not publicly accessible, encrypted, backups on, deletion protection on |
-| `exactly_one_instance` | exactly one, never two |
+| `one_instance_per_stack` | exactly one bot per stack; two in one stack share a database and interleave one paper account |
 | `zero_public_ingress` | no `0.0.0.0/0` **and no `::/0`** on any ingress rule |
 | `ssm_available` | at least one instance Online. There is no SSH fallback, so this blocks every deploy |
 | `database_secret` | RDS manages the master password in Secrets Manager and it is readable |
@@ -715,7 +715,7 @@ has watched fail is not a guard.
 | **A.** good image → deploy → ready | the normal path | **requires an AWS account** |
 | **B.** broken image → `/readyz` fails → rollback | `deploy.sh` restarts the previous tag within 15 min | contract verified in CI; the live path requires an account |
 | **C.** database unavailable → not ready | `evaluate_readiness` fails on `database_connected`; `/healthz` probes an actual **write**, because a readable database can be read-only | **verified in CI** |
-| **D.** second EC2 instance → preflight fails | `check_exactly_one_instance`, plus the advisory lock as the authoritative guarantee | **verified in CI** against the real check |
+| **D.** second EC2 instance *in the same stack* → preflight fails | `check_one_instance_per_stack`, plus the advisory lock as the authoritative guarantee. A second instance in a DIFFERENT stack is legitimate: it has its own database, so it shares neither the lock nor the experiment slot | **verified in CI** against the real check |
 | **E.** mutable image tag → CI fails | ECR `IMMUTABLE`; no `:latest` anywhere; the verifier compares the running tag to the intended SHA | **verified in CI** |
 | **F.** public ingress → CI fails | no `0.0.0.0/0` or `::/0` on any ingress; no key pair exists; egress still allowed | **verified in CI** |
 | **G.** static AWS key → CI fails | `AWS_ACCESS_KEY_ID`/`SECRET`/`SESSION_TOKEN` scanned across Terraform, shell and YAML | **verified in CI** |

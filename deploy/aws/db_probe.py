@@ -96,8 +96,13 @@ async def collect(con) -> dict:
         "select count(*) from paper_fills "
         "where ($1::timestamptz is null or created_at >= $1)", since)
 
+    # strategy_hash and risk_hash come along so the report can verify the
+    # RUNNING experiment is the one that was intended, not merely that some
+    # experiment is running. With two experiments live at once, "a run exists"
+    # stopped being enough to identify which run this is.
     out["experiments"] = [dict(r) for r in await con.fetch(
-        "select experiment_id, status, started_at, planned_days from forward_test")]
+        "select experiment_id, status, started_at, planned_days, "
+        "strategy_hash, risk_hash, git_sha from forward_test")]
 
     return out
 
