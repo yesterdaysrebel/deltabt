@@ -55,6 +55,7 @@ HOW TO SWITCH
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 
 from app.config.strategy import FROZEN, StrategyConfig
 
@@ -128,7 +129,44 @@ V2_LEVEL = StrategyConfig(fire_once=False)
 #: and recovery for a rule measured at -0.18R.
 TRAILING_SUPERTREND = None
 
-ALL = {"V2": V2, "V1": V1, "V2_LEVEL": V2_LEVEL}
+#: V1's RULES WITH A WIDER STOP CAP. Added 2026-08-15, measured live.
+#:
+#: In the first six hours of the six-symbol run, AKEUSD and BEATUSD produced 15
+#: setups between them and ALL 15 were refused for stop width. Not most --
+#: every one. The established symbols sat at 0.18-0.38% and these at 5-21%,
+#: so AKEUSD's TIGHTEST stop was 14x wider than ETHUSD's widest. It is genuine
+#: volatility rather than bad data: BEATUSD's seven refusals are all shorts
+#: with entry falling 0.4534 -> 0.3923, a 13% decline in progress.
+#:
+#: THE CAP WAS REFUSING THE ONLY SETUPS WHOSE ECONOMICS WORK. Round-trip cost
+#: is a fixed fraction of notional, so cost per R falls as R widens:
+#:
+#:     ETHUSD     26 bps    0.60 R   trading
+#:     SOLUSD     27 bps    0.59 R   trading
+#:     BTCUSD     77 bps    0.20 R   trading
+#:     BANKUSD   176 bps    0.09 R   trading -- and the only winner so far
+#:     AKEUSD    506 bps    0.03 R   REFUSED
+#:     BEATUSD  2095 bps    0.01 R   REFUSED
+#:
+#: The panel's conclusion was that cost, not signal, is the binding constraint,
+#: and that 0.15R needs a median R near 80 bps. The two refused symbols are the
+#: only ones in the universe that clear it.
+#:
+#: WHY 10% AND NOT HIGHER. Only STOP_LOSS and TAKE_PROFIT close a position --
+#: ExitReason.TIME_EXIT exists and is never emitted, and there is no reversal
+#: exit -- so a position resolves only by reaching one of its two prices. At a
+#: 20.95% stop the 2R target is a 41.9% move, which would leave the position
+#: open indefinitely paying funding every four hours. 10% admits 8 of the 15
+#: (AKEUSD 6/8, BEATUSD 2/7) with targets of 10-20%, and still refuses the ones
+#: that cannot resolve. 25% would admit all 15 and that is the problem, not the
+#: point.
+#:
+#: This is a SEPARATE VARIANT because max_stop_pct is a strategy parameter, not
+#: a risk one: changing it in place would move V1 off d7837e445bc74781 and end
+#: its comparability with TRAIN/VALID/TEST and with every earlier run.
+V3_WIDE_STOP = replace(V1, name="H-WPR-1-VariantA-WideStop", max_stop_pct=0.10)
+
+ALL = {"V2": V2, "V1": V1, "V2_LEVEL": V2_LEVEL, "V3": V3_WIDE_STOP}
 
 #: Environment variable selecting which entry of ALL runs. Unset means V1,
 #: which is what FROZEN is, so nothing changes for a host that does not set it.

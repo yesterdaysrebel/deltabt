@@ -62,6 +62,12 @@ jobs:
             document_var: SSM_MONITOR_DOCUMENT_V2
             strategy_hash: "632efcaff62c4d7c"
             log_group: /deltabt/paper/v2/bot
+          - stack: v3
+            variant: V3
+            instance_var: BOT_INSTANCE_ID_V3
+            document_var: SSM_MONITOR_DOCUMENT_V3
+            strategy_hash: "11461f2a11a96f8a"
+            log_group: /deltabt/paper/v3/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.

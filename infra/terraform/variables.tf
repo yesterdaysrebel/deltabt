@@ -72,7 +72,7 @@ variable "allow_instance_replacement" {
     doing 1 and 2 together leaves the destroy still blocked.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "root_volume_gb" {
@@ -161,6 +161,11 @@ variable "stacks" {
   default = {
     v1 = { variant = "V1", db_name = "" } # "" means the RDS default database
     v2 = { variant = "V2", db_name = "deltabt_v2" }
+    # V1's rules with max_stop_pct at 10% instead of 5%. Added 2026-08-15
+    # because AKEUSD and BEATUSD had 15 setups refused for stop width out of
+    # 15 -- see V3_WIDE_STOP in app/config/variants.py for the measurement and
+    # for why 10% rather than 25%.
+    v3 = { variant = "V3", db_name = "deltabt_v3" }
   }
 }
 

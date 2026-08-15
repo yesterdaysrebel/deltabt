@@ -59,7 +59,7 @@ MIN_RUN_AGE_FOR_SILENCE = 3600.0
 #: local.stacks / local.legacy_stack in infra/terraform/ec2.tf; duplicated
 #: rather than imported because this script runs on a CI runner with no
 #: Terraform state to read.
-KNOWN_STACKS = ("v1", "v2")
+KNOWN_STACKS = ("v1", "v2", "v3")
 LEGACY_STACK = "v1"
 
 #: Mirrors app.config.settings.MAX_WS_SILENCE -- the silence after which the

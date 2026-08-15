@@ -1,7 +1,7 @@
 """What this process is configured to BE, before it is anything else.
 
-Two experiments now run concurrently from one image: V1 on one host, V2 on
-another. That makes two questions load-bearing that used to have a single
+Three experiments now run concurrently from one image, one per host: V1, V2
+and V3. That makes two questions load-bearing that used to have a single
 compile-time answer -- which strategy am I, and which risk limits am I under --
 and both are answered from the environment. A wrong answer here does not crash
 anything; it produces a healthy bot recording the wrong strategy's signals
@@ -45,6 +45,29 @@ class TestVariantSelection:
             assert resolve_strategy({VARIANT_ENV: name.lower()}).config_hash \
                 == cfg.config_hash, f"{name} must resolve case-insensitively"
 
+    def test_v3_is_v1s_rules_with_only_the_stop_cap_moved(self):
+        """A third variant, not an edit to V1.
+
+        max_stop_pct is a STRATEGY parameter (app/config/strategy.py), so
+        raising it in place would move V1 off d7837e445bc74781 and end its
+        comparability with TRAIN/VALID/TEST and every earlier run. Measured
+        live on 2026-08-15: AKEUSD and BEATUSD had 15 of 15 setups refused for
+        stop width, at 5-21% against a 5% cap.
+        """
+        v1 = resolve_strategy({VARIANT_ENV: "V1"})
+        v3 = resolve_strategy({VARIANT_ENV: "V3"})
+        assert v3.max_stop_pct == 0.10 and v1.max_stop_pct == 0.05
+        assert v3.config_hash != v1.config_hash
+        # Everything that defines the RULES is identical.
+        for f in ("confirm_wpr", "fire_once", "target_r", "adx", "williams_r",
+                  "supertrend"):
+            assert getattr(v3, f) == getattr(v1, f), f
+
+    def test_adding_v3_did_not_move_v1_or_v2(self):
+        """The whole reason it is a separate variant."""
+        assert resolve_strategy({VARIANT_ENV: "V1"}).config_hash == "d7837e445bc74781"
+        assert resolve_strategy({VARIANT_ENV: "V2"}).config_hash == "632efcaff62c4d7c"
+
     def test_v1_and_v2_are_actually_different_identities(self):
         """If these ever collide the two runs are indistinguishable in the DB."""
         v1 = resolve_strategy({VARIANT_ENV: "V1"})
@@ -61,7 +84,7 @@ class TestVariantSelection:
         process from the same wrong config, so the two agree with each other
         and disagree only with the intent.
         """
-        for bad in ("V3", "V1_", "VariantA", "NONE", "0", "V2LEVEL"):
+        for bad in ("V4", "V1_", "VariantA", "NONE", "0", "V2LEVEL"):
             with pytest.raises(ValueError) as e:
                 resolve_strategy({VARIANT_ENV: bad})
             assert "not a known variant" in str(e.value)
