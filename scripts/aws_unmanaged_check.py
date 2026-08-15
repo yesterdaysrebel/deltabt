@@ -65,6 +65,27 @@ def managed_ids(state_path: str) -> set[str]:
     return ids
 
 
+def group_by_stack(instances: list[dict]) -> dict[str, list[str]]:
+    """Instance ids grouped by their Stack tag.
+
+    An untagged host groups with every other untagged host, deliberately: a
+    machine that lost its tags must not pass as "a different stack" and slip
+    past the duplicate check.
+
+    THIS LOGIC EXISTS IN FOUR PLACES and they are separate on purpose --
+    aws_preflight.py, verify_deployment.py, scripts/daily_report.py and here
+    are standalone tools, invoked by path on CI runners and on hosts, with no
+    shared package between them. That duplication is also why the move from
+    "one instance" to "one instance per stack" had to be made four times, and
+    was missed here until a plan refused with two legitimate hosts running.
+    """
+    out: dict[str, list[str]] = {}
+    for i in instances:
+        tags = {t["Key"]: t["Value"] for t in i.get("Tags", [])}
+        out.setdefault(tags.get("Stack", "<untagged>"), []).append(i["InstanceId"])
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("state_json", help="output of `terraform show -json`")
@@ -100,16 +121,27 @@ def main() -> int:
                 f"    DELIBERATELY -- after confirming it is not the bot currently\n"
                 f"    holding the database advisory lock.")
 
+    # ONE BOT PER STACK, NOT ONE BOT IN TOTAL.
+    #
+    # Two experiments now run side by side, each on its own host and its own
+    # DATABASE. The collision this check exists for is per-database: the
+    # advisory lock, the single-RUNNING-experiment index and
+    # ux_positions_open_symbol are all scoped to one. Two bots in one stack is
+    # exactly as wrong as it ever was; two stacks is the intended shape.
+    #
+    # An untagged host counts as one stack with every other untagged host, so
+    # a machine that lost its tags cannot pass as "a different stack".
     running = [i for i in instances if i["State"]["Name"] in ("pending", "running")]
-    if len(running) > 1:
-        listed = ", ".join(i["InstanceId"] for i in running)
-        problems.append(
-            f"{len(running)} bot instances are running for environment "
-            f"'{args.environment}': {listed}\n"
-            f"    Exactly one bot may run. Two processes would interleave one paper\n"
-            f"    account; the PostgreSQL advisory lock will refuse the second, so\n"
-            f"    the visible symptom is a crash loop rather than corrupt data --\n"
-            f"    but the situation is still wrong and must be resolved by hand.")
+    for stack, ids in sorted(group_by_stack(running).items()):
+        if len(ids) > 1:
+            problems.append(
+                f"{len(ids)} bot instances are running in stack '{stack}' for "
+                f"environment '{args.environment}': {', '.join(ids)}\n"
+                f"    Exactly one bot may run per stack. Two share a database and\n"
+                f"    would interleave one paper account; the PostgreSQL advisory\n"
+                f"    lock will refuse the second, so the visible symptom is a\n"
+                f"    crash loop rather than corrupt data -- but the situation is\n"
+                f"    still wrong and must be resolved by hand.")
 
     # --- RDS ---------------------------------------------------------------
     for db in aws("rds", "describe-db-instances", *region).get("DBInstances", []):

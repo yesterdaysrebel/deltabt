@@ -263,8 +263,29 @@ class TestDuplicateInstance:
             with_plan).status == preflight.PLANNED
 
     def test_the_unmanaged_checker_also_catches_duplicates(self):
+        """Behaviour, not a grep for a source string.
+
+        This asserted `"len(running) > 1" in source`, which stayed true while
+        the meaning changed underneath it -- and the checker went on refusing
+        every plan with two legitimate hosts running until a real apply failed.
+        """
+        check = load("aws_unmanaged_check")
+
+        def inst(iid, stack):
+            return {"InstanceId": iid,
+                    "Tags": ([{"Key": "Stack", "Value": stack}] if stack else [])}
+
+        one_each = check.group_by_stack([inst("i-a", "v1"), inst("i-b", "v2")])
+        assert {k: len(v) for k, v in one_each.items()} == {"v1": 1, "v2": 1}
+
+        dupes = check.group_by_stack([inst("i-a", "v1"), inst("i-b", "v1")])
+        assert dupes["v1"] == ["i-a", "i-b"], "two in one stack must group together"
+
+        untagged = check.group_by_stack([inst("i-a", None), inst("i-b", None)])
+        assert untagged["<untagged>"] == ["i-a", "i-b"], (
+            "a host that lost its tags must not pass as a different stack")
+
         source = (SCRIPTS / "aws_unmanaged_check.py").read_text()
-        assert "len(running) > 1" in source
         assert "terraform import aws_instance.bot" in source
 
     def test_a_preflight_check_that_raises_is_a_failure_not_a_skip(self):
