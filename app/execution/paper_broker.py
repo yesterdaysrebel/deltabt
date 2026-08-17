@@ -231,7 +231,8 @@ class PaperBroker:
     def __init__(self, costs: dict[str, SymbolCosts], *, starting_equity: float,
                  slippage_bps: float = 2.0, entry_ttl_seconds: int = 90,
                  max_entry_deviation: float = 0.25,
-                 min_fill_rr: float = 1.7) -> None:
+                 min_fill_rr: float = 1.7,
+                 max_hold_seconds: int = 0) -> None:
         self.costs = costs
         self.equity = starting_equity
         self.slippage_bps = slippage_bps
@@ -271,6 +272,8 @@ class PaperBroker:
         #: strategy sets target = entry + 2R, so it passes at exactly the
         #: boundary every time and only binds if the two configs disagree.
         self.min_fill_rr = min_fill_rr
+        #: 0 disables. See RiskConfig.max_hold_seconds for why this exists.
+        self.max_hold_seconds = max_hold_seconds
         self.orders: dict[str, PaperOrder] = {}
         self.positions: dict[str, PaperPosition] = {}
         #: intent_id -> order_uid, so a replayed intent cannot double-fill.
@@ -754,8 +757,28 @@ class PaperBroker:
             elif hit_target:
                 self._close(pos, pos.target_price, ExitReason.TAKE_PROFIT,
                             tick.ts, tick.ts_us, maker=True)
+            elif self._timed_out(pos, tick.ts):
+                # LAST, so a position that reaches its stop or target on the
+                # same tick books that instead. The time stop is what happens
+                # when NEITHER was reached, and ranking it above them would
+                # rewrite a real exit as an administrative one.
+                px = self._slip(tick.ltp, -pos.side)
+                self._close(pos, px, ExitReason.TIME_EXIT, tick.ts,
+                            tick.ts_us, maker=False)
 
         return self.events[before:]
+
+    def _timed_out(self, pos, now: int) -> bool:
+        """Has this position been held longer than the limit?
+
+        EXCHANGE time, never wall time: the same rule as every other market
+        decision. A restart must not reset the clock either, which is why the
+        age is measured from the position's recorded opened_at rather than from
+        anything held in memory -- a recovered position keeps its true age.
+        """
+        if not self.max_hold_seconds or not pos.opened_at:
+            return False
+        return (now - pos.opened_at) >= self.max_hold_seconds
 
     # -- replay / bar path -------------------------------------------------
 
@@ -818,6 +841,9 @@ class PaperBroker:
             elif hit_target:
                 self._close(pos, pos.target_price, ExitReason.TAKE_PROFIT,
                             bar.start, None, maker=True)
+            elif self._timed_out(pos, bar.start):
+                self._close(pos, self._slip(bar.close, -pos.side),
+                            ExitReason.TIME_EXIT, bar.start, None, maker=False)
 
         return self.events[before:]
 

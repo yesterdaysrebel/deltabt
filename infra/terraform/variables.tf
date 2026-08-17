@@ -70,9 +70,13 @@ variable "allow_instance_replacement" {
 
     Terraform does not update attributes on a resource it is replacing, so
     doing 1 and 2 together leaves the destroy still blocked.
+
+    TRUE on 2026-08-17 so the time stop can reach the containers: it arrives
+    through /opt/deltabt/env, which is written by user-data, and any user-data
+    change replaces the host. Set back to false once all three are rolled.
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "root_volume_gb" {

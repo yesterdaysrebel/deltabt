@@ -465,3 +465,75 @@ class TestSessions:
 
     def test_malformed_window_is_treated_as_closed_not_open(self):
         assert _in_session(NOW, ("garbage",)) is False
+
+
+class TestTheTimeStop:
+    """Nothing but stop or target closed a position before this.
+
+    ExitReason.TIME_EXIT was declared and never emitted, so a target that could
+    not be reached held its symbol's slot forever -- and one open position per
+    symbol is enforced both in the engine and by ux_positions_open_symbol.
+    Measured 2026-08-17: a BTCUSD short opened on 2026-08-14 was 66.9 hours old
+    and had refused 75 BTCUSD setups in a single day. The run had stopped
+    measuring the strategy and started measuring the strategy with a symbol
+    switched off.
+    """
+
+    DAY = 86_400
+
+    @staticmethod
+    def _broker(max_hold):
+        from app.execution.paper_broker import PaperBroker
+        return PaperBroker(COSTS, starting_equity=10_000.0,
+                           max_hold_seconds=max_hold)
+
+    @staticmethod
+    def _pos(opened_at):
+        from app.execution.paper_broker import PaperPosition
+        return PaperPosition(
+            position_uid="p1", signal_key="s1", symbol="BTCUSD", side=1,
+            quantity=10, entry_price=63_000.0, stop_price=62_500.0,
+            target_price=64_000.0, risk_per_unit=500.0, initial_risk=50.0,
+            notional=630.0, equity_before=10_000.0, opened_at=opened_at,
+            strategy_version="v")
+
+    def test_a_position_older_than_the_limit_times_out(self):
+        b = self._broker(self.DAY)
+        p = self._pos(NOW - self.DAY - 1)
+        assert b._timed_out(p, NOW)
+
+    def test_a_younger_position_does_not(self):
+        b = self._broker(self.DAY)
+        assert not b._timed_out(self._pos(NOW - self.DAY + 60), NOW)
+
+    def test_exactly_at_the_limit_times_out(self):
+        """>= not >, so a 24h limit means 24h is the most it is ever held."""
+        b = self._broker(self.DAY)
+        assert b._timed_out(self._pos(NOW - self.DAY), NOW)
+
+    def test_zero_disables_it(self):
+        """The default. Every run before 2026-08-17 had no time stop at all."""
+        b = self._broker(0)
+        assert not b._timed_out(self._pos(NOW - 10 * self.DAY), NOW)
+
+    def test_the_age_survives_a_restart(self):
+        """Measured from the RECORDED opened_at, so a recovered position keeps
+        its true age rather than restarting the clock."""
+        b = self._broker(self.DAY)
+        recovered = self._pos(NOW - 67 * 3600)   # the real BTCUSD case
+        assert b._timed_out(recovered, NOW)
+
+    def test_it_is_ranked_below_stop_and_target(self):
+        """A position that reaches its stop on the same tick must book a
+        STOP_LOSS. Ranking the time stop first would rewrite a real exit as an
+        administrative one."""
+        src = (ROOT_SRC := __import__("pathlib").Path(
+            "app/execution/paper_broker.py").read_text())
+        for path in ("hit_stop", "hit_target", "_timed_out"):
+            assert path in src
+        # In both exit paths the time check is the final elif.
+        for block in src.split("if hit_stop:")[1:]:
+            head = block.split("return")[0]
+            assert head.index("hit_target") < head.index("_timed_out"), (
+                "the time stop must be checked after stop and target")
+

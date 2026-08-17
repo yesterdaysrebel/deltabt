@@ -137,7 +137,8 @@ class TradingBot:
         self.halts = {s: HaltDetector(s, min_run=halt_min_run(s))
                       for s in self.symbols}
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
-                                  slippage_bps=settings.risk.slippage_bps)
+                                  slippage_bps=settings.risk.slippage_bps,
+                                  max_hold_seconds=settings.risk.max_hold_seconds)
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)
 

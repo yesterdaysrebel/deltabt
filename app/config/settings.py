@@ -47,6 +47,23 @@ class RiskConfig:
     #: must skip the check rather than compare against it, because
     #: `losses >= 0` is true for a fresh state and would reject everything.
     max_consecutive_losses: int = 3
+    #: Close a position that has been open this long, at market, whatever it
+    #: is doing. 0 disables it.
+    #:
+    #: NOTHING BUT STOP OR TARGET CLOSED A POSITION BEFORE THIS.
+    #: ExitReason.TIME_EXIT was declared and never emitted, so a target that
+    #: could not be reached held its symbol's slot forever -- and one open
+    #: position per symbol is enforced in the engine AND by
+    #: ux_positions_open_symbol. Measured on 2026-08-17: a BTCUSD short opened
+    #: 2026-08-14 was 66.9 hours old and had refused 75 BTCUSD setups in a
+    #: single day. The run was no longer measuring the strategy; it was
+    #: measuring the strategy with a symbol switched off.
+    #:
+    #: It lives in RISK rather than in StrategyConfig deliberately. It is not a
+    #: signal rule -- it is a policy about carrying inventory -- and putting it
+    #: here leaves the strategy hash alone, so the rules under test stay
+    #: identifiable as d7837e445bc74781.
+    max_hold_seconds: int = 0
     max_position_notional: float = 50_000.0
     max_total_notional: float = 50_000.0
     max_leverage: float = 3.0
@@ -83,6 +100,10 @@ class RiskConfig:
                 f"got {self.max_consecutive_losses}")
         if self.max_trades_per_day < 1:
             raise ValueError("max_trades_per_day must be >= 1")
+        if self.max_hold_seconds < 0:
+            raise ValueError(
+                f"max_hold_seconds must be >= 0 (0 disables the time stop), "
+                f"got {self.max_hold_seconds}")
 
 
 @dataclass(frozen=True)
@@ -135,6 +156,7 @@ class Settings:
             ("DELTABOT_MAX_DRAWDOWN", "max_drawdown_pct", float),
             ("DELTABOT_MAX_TRADES_PER_DAY", "max_trades_per_day", int),
             ("DELTABOT_MAX_CONSEC_LOSSES", "max_consecutive_losses", int),
+            ("DELTABOT_MAX_HOLD", "max_hold_seconds", int),
         ):
             if env.get(key):
                 risk_overrides[field_name] = cast(env[key])
