@@ -72,3 +72,8 @@ tfplan
 tfplan.json
 bootstrap.tfplan
 bootstrap.tfplan.json
+
+# Per-trade event dumps from the research track. Same rationale as
+# trades_*.csv above: regenerable from the experiment code, and large enough
+# (4.3 MB for H-Structure-1) to dwarf every tracked file in the repo.
+out/**/*_events.csv

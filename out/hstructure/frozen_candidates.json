@@ -1,0 +1,19 @@
+{
+  "frozen": {
+    "PRIMARY": "C|N8|60m|oneshot",
+    "BEST_A": "A|N8|15m|oneshot",
+    "BEST_B": "B|N8|60m|oneshot",
+    "BEST_C": "C|N8|60m|oneshot",
+    "BEST_D": "D|N8|15m|oneshot",
+    "REF_A": "A|N5|15m|oneshot",
+    "REF_B": "B|N5|15m|oneshot",
+    "REF_C": "C|N5|15m|oneshot",
+    "REF_D": "D|N5|15m|oneshot"
+  },
+  "rule": "eligible = trades>=200 and effective_n>=30; PRIMARY = max TRAIN gross_r; BEST_<fam> = max TRAIN gross_r within family; REF_<fam> = N5/15m/oneshot, declared a priori",
+  "train": [
+    1735689600,
+    1766195028
+  ],
+  "valid_not_inspected": true
+}

@@ -1,0 +1,34 @@
+================================================================================================
+H-STRUCTURE-1  ANTI-LOOKAHEAD AUDIT  (§13)
+================================================================================================
+
+1. STATIC SOURCE SCAN (signal code only; the simulator is frozen H-WPR-1)
+  [PASS] no negative shift (future value)
+  [PASS] no centred rolling window
+  [PASS] no backward fill
+  [PASS] no reversed traversal
+  [PASS] no centred rolling
+  [PASS] swing flags are consumed at k + N, never at k
+
+2. STRUCTURE TRUNCATION TEST
+   rebuild the structure on data cut off at bar K; state at K must be identical
+  [PASS] all 48 truncation points reproduce structure state exactly
+
+3. PIPELINE TRUNCATION TEST (trades from truncated data == trades from full data)
+  [PASS] C/oneshot tf=15 N=5: 131 entries identical under truncation
+  [PASS] A/level tf=5 N=3: 885 entries identical under truncation
+  [PASS] D/oneshot tf=60 N=2: 82 entries identical under truncation
+
+4. PER-TRADE TIMESTAMP ORDERING
+   entry_time >= swing confirmation instant, for EVERY trade
+  [PASS] entry_time >= confirmation instant on all 36,732 trades  violations=0
+
+5. BOTH DIRECTIONS REACH THE SIMULATOR (regression guard)
+  [PASS] family A (long): 322 long / 0 short
+  [PASS] family B (short): 0 long / 362 short
+  [PASS] family C (both): 156 long / 138 short
+  [PASS] family D (both): 139 long / 118 short
+
+================================================================================================
+LOOK-AHEAD STATUS: PASS
+================================================================================================

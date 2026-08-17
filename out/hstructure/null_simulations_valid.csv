@@ -1,0 +1,5 @@
+family,split,signal_trades,signal_gross,null_dir_gross,null_dir_sd,z_vs_dir,null_rnd_gross,null_rnd_sd,z_vs_rnd
+A,valid,498,-0.0,0.057,0.056,-1.02,0.0455,0.086,-0.53
+B,valid,452,0.0619,0.084,0.0469,-0.47,0.0318,0.0876,0.34
+C,valid,434,0.0507,0.0543,0.0517,-0.07,0.0448,0.0762,0.08
+D,valid,356,0.0534,0.019,0.0634,0.54,0.0375,0.097,0.16
