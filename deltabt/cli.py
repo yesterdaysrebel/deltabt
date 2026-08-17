@@ -1,6 +1,7 @@
 """Command-line entry point.
 
     python -m deltabt.cli screen
+    python -m deltabt.cli fetch --symbols BTCUSD --days 30
     python -m deltabt.cli backtest --mode parity --symbols BTCUSD
     python -m deltabt.cli wpr-curve --symbols BTCUSD
     python -m deltabt.cli sweep
@@ -18,7 +19,7 @@ from dataclasses import replace
 
 import pandas as pd
 
-from deltabt.config import OUT_DIR, StrategyParams, WprLatch
+from deltabt.config import OUT_DIR, RESOLUTION_1M, StrategyParams, WprLatch
 from deltabt.data.store import DEFAULT_HISTORY_START, CandleStore, ProductCatalog
 from deltabt.metrics import format_summary
 from deltabt.runner import (
@@ -86,6 +87,59 @@ def cmd_screen(args) -> int:
     passing = df.loc[df["passes"], "symbol"].tolist()
     print(f"\npassing: {passing or '(none)'}")
     print(f"written to {OUT_DIR / 'screen.csv'}")
+    return 0
+
+
+def cmd_fetch(args) -> int:
+    """Populate the candle cache so the research modules can run offline.
+
+    The research package reads with ``CandleStore.read``, which never fetches:
+    an empty cache makes an experiment exit rather than silently study a short
+    window. `data/` is gitignored, so a clean checkout has no candles at all
+    and this is what fills it.
+
+    The product catalog is refreshed too. Candles alone are not enough to run a
+    research module offline -- ``SymbolCosts.from_spec(catalog.get(sym))`` needs
+    `meta/products.json`, which a clean checkout also lacks.
+    """
+    store, catalog = CandleStore(), ProductCatalog()
+    start, end = _window(args)
+    symbols = args.symbols or DEFAULT_SYMBOLS
+    print(f"fetching {len(symbols)} symbols "
+          f"{pd.Timestamp(start, unit='s').date()}..{pd.Timestamp(end, unit='s').date()}\n")
+    if not args.offline:
+        catalog.all()
+
+    rows = []
+    for sym in symbols:
+        try:
+            series = store.load_all_series(
+                sym, RESOLUTION_1M, start, end, refresh=not args.offline,
+            )
+        except Exception as exc:
+            print(f"  {sym}: SKIPPED ({exc})")
+            continue
+        ltp = series["ltp"]
+        # An empty result is a failure, not a cached symbol: without this the
+        # `not rows` guard below only catches symbols that RAISED, so an
+        # inverted or pre-listing window reports success and exits 0.
+        if ltp.empty:
+            print(f"  {sym}: SKIPPED (no candles in the requested window)")
+            continue
+        row = {"symbol": sym}
+        for name, df in series.items():
+            row[f"{name}_bars"] = len(df)
+        row["first"] = pd.Timestamp(int(ltp["time"].iloc[0]), unit="s").date()
+        row["last"] = pd.Timestamp(int(ltp["time"].iloc[-1]), unit="s").date()
+        rows.append(row)
+        print(f"  {sym}: {len(ltp):,} 1m bars  {row['first']} -> {row['last']}")
+
+    if not rows:
+        print("\nno symbols cached")
+        return 1
+    with pd.option_context("display.width", 160):
+        print(f"\n{pd.DataFrame(rows).to_string(index=False)}")
+    print(f"\ncached under {store.cache_dir}")
     return 0
 
 
@@ -342,6 +396,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--max-synthetic", type=float, default=0.05,
                     help="max fraction of forward-filled bars allowed")
     sp.set_defaults(func=cmd_screen)
+
+    sp = sub.add_parser("fetch", help="populate the candle cache for a symbol set")
+    common(sp)
+    sp.set_defaults(func=cmd_fetch)
 
     sp = sub.add_parser("backtest", help="run one configuration")
     common(sp)
