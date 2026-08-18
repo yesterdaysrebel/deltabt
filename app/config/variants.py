@@ -168,6 +168,12 @@ V3_WIDE_STOP = replace(V1, name="H-WPR-1-VariantA-WideStop", max_stop_pct=0.10)
 
 ALL = {"V2": V2, "V1": V1, "V2_LEVEL": V2_LEVEL, "V3": V3_WIDE_STOP}
 
+#: Accepted spellings for the frozen 1m arm, H-WPR-1-FROZEN-1M. It reproduces
+#: deltabt/research/hwpr.py: 1m decides, 5m is a confirmed regime filter, the
+#: structural stop comes from the 1m Supertrend and 1m leg extreme, and the cap
+#: is the research's own 5% rather than V3's 10%.
+_FROZEN_1M_NAMES = frozenset({"FROZEN_1M", "FROZEN1M"})
+
 #: Environment variable selecting which entry of ALL runs. Unset means V1,
 #: which is what FROZEN is, so nothing changes for a host that does not set it.
 VARIANT_ENV = "DELTABOT_VARIANT"
@@ -193,9 +199,23 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
     name = (env.get(VARIANT_ENV) or "").strip()
     if not name:
         return FROZEN
+
+    # The frozen 1m arm is resolved here rather than placed in ALL, for two
+    # reasons. It is not a StrategyConfig -- StrategyConfig.validate() rejects
+    # any timeframe pair but 5m/1m, and that file is frozen -- so it cannot sit
+    # in a dict typed by the others. And importing it pulls in
+    # deltabt.research.hwpr and numba, which every V1/V2/V3 process would
+    # otherwise pay for at startup without ever using.
+    #
+    # ALL is deliberately left untouched: V1, V2, V2_LEVEL and V3 keep the
+    # registry they had, and their hashes cannot move because of this.
+    if name.upper() in _FROZEN_1M_NAMES:
+        from app.strategy.frozen_hwpr import FROZEN_1M
+        return FROZEN_1M
+
     try:
         return ALL[name.upper()]
     except KeyError:
         raise ValueError(
-            f"{VARIANT_ENV}={name!r} is not a known variant; "
-            f"expected one of {', '.join(sorted(ALL))}") from None
+            f"{VARIANT_ENV}={name!r} is not a known variant; expected one of "
+            f"{', '.join(sorted(set(ALL) | _FROZEN_1M_NAMES))}") from None

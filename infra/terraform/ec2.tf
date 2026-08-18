@@ -129,6 +129,7 @@ resource "aws_instance" "bot" {
     max_open_positions           = var.max_open_positions
     max_drawdown_pct             = var.max_drawdown_pct
     max_consecutive_losses       = var.max_consecutive_losses
+    max_hold_seconds             = var.max_hold_seconds
     run_sh_b64                   = filebase64("${path.root}/../../deploy/aws/run.sh")
     deploy_sh_b64                = filebase64("${path.root}/../../deploy/aws/deploy.sh")
     cw_agent_b64                 = filebase64("${path.root}/../../deploy/aws/cloudwatch-agent.json")

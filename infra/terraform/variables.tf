@@ -200,6 +200,31 @@ variable "max_consecutive_losses" {
   default     = 0
 }
 
+variable "max_hold_seconds" {
+  description = <<-EOT
+    Close a position that has been open this long, at market, whatever it is
+    doing. 0 disables it, and 0 IS THE CURRENT CONFIGURED VALUE -- this
+    variable exists so the value can reach the container at all, which it
+    previously could not.
+
+    b63e365 shipped the code for a 24-hour time stop and called itself "Apply
+    1 of 2". Apply 2 never landed: DELTABOT_MAX_HOLD existed only in the
+    settings override table, and appeared in neither user_data.sh.tftpl nor
+    the -e list in run.sh, so max_hold_seconds was 0 in every container
+    regardless of intent.
+
+    DEFAULTED TO 0 DELIBERATELY. Repairing delivery and changing behaviour are
+    separate acts. max_hold_seconds is part of RiskConfig and therefore part of
+    the risk hash -- 58a7a452914bf93f at 0, c6ceced8b00f612d at 86400 -- so a
+    non-zero value makes a running bot raise ConfigurationDrift and refuse to
+    continue its experiment. That is the fail-closed behaviour working, not a
+    fault. Setting this to 86400 is a deliberate decision that STARTS A NEW
+    EXPERIMENT; it cannot be applied to one already running.
+  EOT
+  type        = number
+  default     = 0
+}
+
 # --- access ----------------------------------------------------------------
 
 variable "admin_cidrs" {

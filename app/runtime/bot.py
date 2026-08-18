@@ -80,6 +80,7 @@ from app.persistence.models import (
 from app.persistence.repository import Repository
 from app.risk.engine import RiskEngine, RiskState
 from app.strategy.explanation import Outcome
+from app.strategy.frozen_hwpr import FrozenHwprConfig, evaluate_frozen
 from app.strategy.rules import evaluate, warmup_bars
 from deltabt.costs import SymbolCosts
 
@@ -120,6 +121,10 @@ class TradingBot:
         self.repo = repo
         self.costs = costs
         self.strategy = strategy
+        #: Which evaluator and which bar boundary this process uses. Decided
+        #: once from the resolved config rather than re-tested per bar, so the
+        #: two arms cannot interleave.
+        self.frozen_arm = isinstance(strategy, FrozenHwprConfig)
         self.notifier = notifier or NullNotifier()
         self.backfiller = backfiller
         self.lock = lock
@@ -334,7 +339,10 @@ class TradingBot:
         """Backfill, prime halt state, and confirm indicators can warm."""
         if self.backfiller is None:
             self.backfiller = Backfiller()
-        need = warmup_bars(self.strategy)
+        # The frozen arm decides on 1m and needs its whole window before the
+        # 5m regime inside build_conditions has converged; V3 needs 5m bars.
+        need = (self.strategy.window_bars if self.frozen_arm
+                else warmup_bars(self.strategy))
         for sym in self.symbols:
             bars = await self.backfiller.warm_up(sym, self.settings.backfill_days)
             self.builder[sym].ingest_backfill(bars)
@@ -345,9 +353,11 @@ class TradingBot:
             log.info("warmed", extra={"symbol": sym, "bars_1m": len(df),
                                       "bars_5m": len(five),
                                       "state": self.halts[sym].state.value})
-            if len(five) < need:
+            have = len(df) if self.frozen_arm else len(five)
+            unit = "1m" if self.frozen_arm else "5m"
+            if have < need:
                 self.recovery_error = (
-                    f"{sym}: only {len(five)} closed 5m bars after backfill, "
+                    f"{sym}: only {have} closed {unit} bars after backfill, "
                     f"need {need} for indicator warm-up")
                 return
 
@@ -432,6 +442,12 @@ class TradingBot:
 
         await self._repair_gaps(bar.symbol)
 
+        # THE FROZEN 1m ARM DECIDES HERE AND RETURNS. V3's block below is not
+        # reached, not modified, and not made conditional on anything.
+        if self.frozen_arm:
+            await self.on_closed_1m_frozen(bar.symbol)
+            return
+
         b = self.builder[bar.symbol]
         five, missing = b.closed_5m_for(bar.start)
         if five is None:
@@ -486,6 +502,21 @@ class TradingBot:
                 # Fully repaired: it no longer counts against /healthz.
                 b.gaps.remove(gap)
 
+    async def on_closed_1m_frozen(self, symbol: str) -> None:
+        """Evaluate the frozen H-WPR-1 arm on one closed 1m bar.
+
+        The 1m bar IS the decision bar here -- 5m enters only inside
+        `evaluate_frozen`, as a confirmed regime filter derived by the frozen
+        research module itself. Nothing about the rule set is recomputed in this
+        layer; it consumes the evaluator's Explanation and hands it to the same
+        risk and execution pipeline V3 uses.
+        """
+        self.metrics.candles_5m += 0     # 5m is not a decision boundary here
+        one_minute = self.builder[symbol].frame(limit=self.strategy.window_bars)
+        exp = evaluate_frozen(one_minute, self.strategy, symbol=symbol,
+                              max_stop_pct=self.strategy.max_stop_pct)
+        await self._process_explanation(symbol, exp, 60)
+
     async def on_closed_5m(self, symbol: str, five) -> None:
         """Evaluate the strategy on one closed primary bar."""
         self.metrics.candles_5m += 1
@@ -494,6 +525,19 @@ class TradingBot:
         confirmation = b.frame(limit=self.strategy.window_bars)
 
         exp = evaluate(primary, confirmation, self.strategy, symbol=symbol)
+        await self._process_explanation(symbol, exp, 300)
+
+    async def _process_explanation(self, symbol: str, exp, bar_seconds: int) -> None:
+        """Everything after an evaluation, for any evaluator.
+
+        EXTRACTED, NOT REWRITTEN. This is `on_closed_5m`'s own tail moved
+        verbatim so the 1m frozen arm cannot drift from it. The only
+        generalisation is `bar_seconds`, which was the literal 300: it is the
+        length of the bar the decision was made from, so a 1m evaluation stamps
+        its decision 60 seconds after the bar opened rather than 300.
+
+        V3 reaches this by the identical path it always did.
+        """
         can_trade = self.halts[symbol].can_trade
         if not can_trade and exp.outcome is Outcome.DETECTED:
             exp.outcome = Outcome.SUPPRESSED
@@ -507,7 +551,8 @@ class TradingBot:
         decision = None
         # The exchange instant this decision belongs to: the close of the bar it
         # was made from. Not the wall clock -- see app/clock.py.
-        market_now = exp.bar_open + 300 if exp.bar_open else self.clock.now()
+        market_now = (exp.bar_open + bar_seconds if exp.bar_open
+                      else self.clock.now())
         self.clock.observe(market_now)
         if exp.outcome is Outcome.DETECTED:
             self.metrics.signals_detected += 1
