@@ -1,0 +1,45 @@
+{
+  "experiment_id": "H-EMA-3",
+  "preregistration_sha256": "00ffd0bcf97834dc0ae0bc7eaf6e5b977e3defe9423279d2832525bc3a46288d",
+  "supersedes": "H-EMA-2",
+  "estimator": "paired mirror-direction barrier test",
+  "barrier_multiples": [
+    0.5,
+    1.0,
+    2.0,
+    4.0
+  ],
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "supplementary_valid_only": [
+    "BEATUSD"
+  ],
+  "study_start": 1735689600,
+  "data_end": 1786531980,
+  "train": [
+    1735689600,
+    1766195028
+  ],
+  "valid": [
+    1766195028,
+    1776363504
+  ],
+  "test": "LOCKED",
+  "stop_rule": "Supertrend(10,2.0) leg-extreme on execution timeframe",
+  "dedup_key": [
+    "symbol",
+    "exec_tf",
+    "bar_index",
+    "side"
+  ],
+  "cluster": "symbol-day",
+  "truncate_at_split_boundary": true,
+  "cap_primary": "no cap",
+  "cap_secondary": 0.05,
+  "round_trip_bps": 15.8,
+  "mechanisms_inherited_from": "out/hema2/candidates.json"
+}
