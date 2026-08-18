@@ -1,0 +1,108 @@
+{
+  "experiment_id": "H-COST-1",
+  "frozen": true,
+  "preregistration_sha256": "71d69f6f0ea9b350680c50d375f326fad8e1358928762d0f70344455d98f863d",
+  "signal": {
+    "source": "out/hema3",
+    "hema3_prereg_sha256": "00ffd0bcf97834dc0ae0bc7eaf6e5b977e3defe9423279d2832525bc3a46288d",
+    "definition": "pooled deduplicated H-EMA-3 bet population, conflicting bars DROPPED",
+    "conflict_rule": "LONG-only->LONG; SHORT-only->SHORT; BOTH->DROP; NONE->no trade"
+  },
+  "stop_widths_primary": [
+    0.0025,
+    0.005,
+    0.0075,
+    0.01,
+    0.015,
+    0.02,
+    0.03,
+    0.05
+  ],
+  "stop_widths_diagnostic": [
+    0.075,
+    0.1
+  ],
+  "max_stop_pct_primary": 0.05,
+  "exec_timeframes": [
+    5,
+    15,
+    60
+  ],
+  "volatility_regimes": {
+    "measure": "ATR(14)/close on exec TF",
+    "thresholds": "TRAIN percentiles P33/P67, frozen",
+    "buckets": [
+      "LOW",
+      "NORMAL",
+      "HIGH"
+    ]
+  },
+  "stage_a": {
+    "axes": [
+      "timeframe",
+      "stop_width",
+      "volatility"
+    ],
+    "k": 0.5,
+    "cost": "baseline"
+  },
+  "stage_b": {
+    "k": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "cost_scenarios": [
+      "A_baseline",
+      "B_low_slip",
+      "C_high_slip",
+      "D_fee_sens"
+    ],
+    "applied_to": "all Stage A cells with n>=500, not selected on performance"
+  },
+  "cost_scenarios": {
+    "A_baseline": {
+      "slippage_bps": 2.0,
+      "exit": "taker"
+    },
+    "B_low_slip": {
+      "slippage_bps": 1.0,
+      "exit": "taker"
+    },
+    "C_high_slip": {
+      "slippage_bps": 5.0,
+      "exit": "taker"
+    },
+    "D_fee_sens": {
+      "slippage_bps": 2.0,
+      "exit": "maker"
+    }
+  },
+  "control": "H-EMA-3 paired mirror-direction, same synthetic stop",
+  "gates": {
+    "GREEN": "excess>0 and net>0 under baseline, n>=500",
+    "YELLOW": "excess>0 but net flips under B or C",
+    "RED": "no excess or net<=0 under baseline"
+  },
+  "min_n": 500,
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "supplementary": [
+    "BEATUSD"
+  ],
+  "train": [
+    1735689600,
+    1766195028
+  ],
+  "valid": [
+    1766195028,
+    1776363504
+  ],
+  "test": "LOCKED",
+  "prediction": "no primary configuration economically viable within 5%; break-even ~8.73% stop width"
+}
