@@ -1,0 +1,171 @@
+{
+  "experiment_id": "H-REL-1",
+  "phase": "MARKET PHENOMENON DISCOVERY",
+  "protocol_sha256": "74fcb799b80a094611500e94eadf167f616b3019fb0d16b625dabef241638a0f",
+  "preregistration_sha256": "0711bb59aa7e07779080e6c618a16b1ece0aa206ecc8e23c65ca8ec8d10fd586",
+  "module_sha256": "c51b0f968f7a8620b626af1c2e87d995e45e09b04319d50bd9b17c359fc98675",
+  "inherited": {
+    "causal_quantile": {
+      "source": "deltabt/research/hcompress.py",
+      "sha256": "6337af158596c400f94a5530934deadd1aae8b0a76492bf5d48b717afeac55ce",
+      "function": "_rolling_quantile_causal",
+      "window": 960,
+      "property": "window ends at t-1 and excludes t"
+    },
+    "stage_a_machinery": {
+      "source": "deltabt/research/hstructure2.py",
+      "sha256": "95c87041b842cfaa663d41719c895515824e0d0994f6c451d423e40166d3ac9c",
+      "note": "imported unchanged"
+    }
+  },
+  "frozen": {
+    "leader": "BTCUSD",
+    "followers": [
+      "ETHUSD",
+      "SOLUSD",
+      "XRPUSD"
+    ],
+    "shock_percentile": 0.95,
+    "tf_min": 15,
+    "under_response": "sign(r_lead) * (r_lead - r_foll) > 0, a sign test against zero -- no gap threshold",
+    "events": [
+      "LAG_UP",
+      "LAG_DOWN"
+    ],
+    "families": {
+      "R1-LAG": [
+        "LAG_UP",
+        "LAG_DOWN"
+      ]
+    },
+    "trigger": "oneshot per follower",
+    "horizons_min": [
+      5,
+      15,
+      30,
+      60,
+      240,
+      1440
+    ],
+    "primary_horizon_min": 60,
+    "cluster_unit": "calendar UTC day, pooled across symbols",
+    "inference_primary": "cluster",
+    "mde_k": 2.8,
+    "control_seed": 20260818,
+    "a5_symbols_required": 2,
+    "a5_note": "2 of 3 -- the leader is excluded, so 3-of-4 is unreachable and would fail automatically. Declared before TRAIN; A1-A4 and A6 unchanged."
+  },
+  "splits": {
+    "train": [
+      1735689600,
+      1766195028
+    ],
+    "valid": [
+      1766195028,
+      1776363504
+    ],
+    "test": "LOCKED - 2026-04-16 onward, never computed"
+  },
+  "leader_shocks": 2916,
+  "per_symbol": {
+    "ETHUSD": {
+      "LAG_UP": 483,
+      "LAG_DOWN": 423
+    },
+    "SOLUSD": {
+      "LAG_UP": 419,
+      "LAG_DOWN": 373
+    },
+    "XRPUSD": {
+      "LAG_UP": 580,
+      "LAG_DOWN": 565
+    }
+  },
+  "census": {
+    "+5m": {
+      "train": {
+        "n": 1527,
+        "n_clusters": 249,
+        "long": 835,
+        "short": 692
+      },
+      "valid": {
+        "n": 656,
+        "n_clusters": 95,
+        "long": 289,
+        "short": 367
+      }
+    },
+    "+15m": {
+      "train": {
+        "n": 1527,
+        "n_clusters": 249,
+        "long": 835,
+        "short": 692
+      },
+      "valid": {
+        "n": 656,
+        "n_clusters": 95,
+        "long": 289,
+        "short": 367
+      }
+    },
+    "+30m": {
+      "train": {
+        "n": 1527,
+        "n_clusters": 249,
+        "long": 835,
+        "short": 692
+      },
+      "valid": {
+        "n": 656,
+        "n_clusters": 95,
+        "long": 289,
+        "short": 367
+      }
+    },
+    "+60m": {
+      "train": {
+        "n": 1527,
+        "n_clusters": 249,
+        "long": 835,
+        "short": 692
+      },
+      "valid": {
+        "n": 656,
+        "n_clusters": 95,
+        "long": 289,
+        "short": 367
+      }
+    },
+    "+240m": {
+      "train": {
+        "n": 1527,
+        "n_clusters": 249,
+        "long": 835,
+        "short": 692
+      },
+      "valid": {
+        "n": 656,
+        "n_clusters": 95,
+        "long": 289,
+        "short": 367
+      }
+    },
+    "+1440m": {
+      "train": {
+        "n": 1520,
+        "n_clusters": 248,
+        "long": 831,
+        "short": 689
+      },
+      "valid": {
+        "n": 652,
+        "n_clusters": 94,
+        "long": 287,
+        "short": 365
+      }
+    }
+  },
+  "census_is_counts_only": true
+}

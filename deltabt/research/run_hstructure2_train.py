@@ -79,8 +79,15 @@ def analyse(ev: pd.DataFrame, family: str, split: tuple[int, int]) -> dict:
     return out
 
 
-def gate(a: dict) -> dict:
-    """The pre-declared Stage-A gate, at the pre-declared primary horizon."""
+def gate(a: dict, *, symbols_required: int = 3) -> dict:
+    """The pre-declared Stage-A gate, at the pre-declared primary horizon.
+
+    ``symbols_required`` exists for H-REL-1 only, whose event universe has three
+    symbols rather than four because the leader is excluded and cannot lag
+    itself. 3-of-4 would be unreachable there and would fail automatically --
+    a bug, not a gate. The default is unchanged, so H-STRUCTURE-2 and H-VOL-1
+    are judged exactly as before.
+    """
     p = a["horizons"][f"+{PRIMARY}m"]["pooled"]
     eff, mde = p["effect"], p["mde"]
     ctl = a["control"]
@@ -109,7 +116,8 @@ def gate(a: dict) -> dict:
                         and np.sign(h1) == np.sign(h2_))),
         "A5_cross_sectional": dict(
             per_symbol={k: v["effect"] for k, v in a["per_symbol"].items()},
-            agreeing=agree, required=3, passed=bool(agree >= 3)),
+            agreeing=agree, required=symbols_required,
+            passed=bool(agree >= symbols_required)),
     }
     g["all_passed"] = all(v["passed"] for k, v in g.items() if k.startswith("A"))
     if not g["A2_power"]["passed"]:

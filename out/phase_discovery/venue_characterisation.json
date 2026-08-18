@@ -1,0 +1,242 @@
+{
+  "round_trip_cost_bps": 15.8,
+  "window": "TRAIN only, 2025-01-01 -> 2025-12-20",
+  "per_symbol": [
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 5,
+      "n": 508324,
+      "median_abs_bps": 5.882324658117444,
+      "mean_abs_bps": 8.994984938143629,
+      "p90_abs_bps": 19.98923961241783
+    },
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 15,
+      "n": 508314,
+      "median_abs_bps": 10.199748886592918,
+      "mean_abs_bps": 15.409221736894981,
+      "p90_abs_bps": 33.75333794982616
+    },
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 30,
+      "n": 508299,
+      "median_abs_bps": 14.200396352834765,
+      "mean_abs_bps": 21.639894850528744,
+      "p90_abs_bps": 47.48107323081153
+    },
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 60,
+      "n": 508269,
+      "median_abs_bps": 19.73943939992062,
+      "mean_abs_bps": 30.4010206909833,
+      "p90_abs_bps": 67.45836276997296
+    },
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 240,
+      "n": 508089,
+      "median_abs_bps": 39.97129657634546,
+      "mean_abs_bps": 62.307843215878854,
+      "p90_abs_bps": 144.344904816855
+    },
+    {
+      "symbol": "BTCUSD",
+      "horizon_min": 1440,
+      "n": 506890,
+      "median_abs_bps": 115.08295781536226,
+      "mean_abs_bps": 160.84275098571004,
+      "p90_abs_bps": 357.25083023429255
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 5,
+      "n": 508333,
+      "median_abs_bps": 10.038304054946767,
+      "mean_abs_bps": 14.734828352675283,
+      "p90_abs_bps": 31.94707953801723
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 15,
+      "n": 508323,
+      "median_abs_bps": 17.174282425591603,
+      "mean_abs_bps": 25.293715349104094,
+      "p90_abs_bps": 55.041733645451174
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 30,
+      "n": 508308,
+      "median_abs_bps": 23.894031752925706,
+      "mean_abs_bps": 35.632733078584195,
+      "p90_abs_bps": 78.18276918393107
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 60,
+      "n": 508278,
+      "median_abs_bps": 33.33081923364845,
+      "mean_abs_bps": 50.28985027656496,
+      "p90_abs_bps": 111.0156230470013
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 240,
+      "n": 508098,
+      "median_abs_bps": 70.2738131316738,
+      "mean_abs_bps": 105.81679367249113,
+      "p90_abs_bps": 240.00596191047
+    },
+    {
+      "symbol": "ETHUSD",
+      "horizon_min": 1440,
+      "n": 506899,
+      "median_abs_bps": 203.07916221317558,
+      "mean_abs_bps": 281.2677781781939,
+      "p90_abs_bps": 624.9309142813956
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 5,
+      "n": 508399,
+      "median_abs_bps": 12.66558523214778,
+      "mean_abs_bps": 18.089654408672452,
+      "p90_abs_bps": 38.91115596464668
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 15,
+      "n": 508389,
+      "median_abs_bps": 21.891149658253006,
+      "mean_abs_bps": 31.089525051811087,
+      "p90_abs_bps": 66.31787523223731
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 30,
+      "n": 508374,
+      "median_abs_bps": 30.57278378615247,
+      "mean_abs_bps": 43.79080456740711,
+      "p90_abs_bps": 94.50109916621697
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 60,
+      "n": 508344,
+      "median_abs_bps": 43.09671144098415,
+      "mean_abs_bps": 61.86640783411727,
+      "p90_abs_bps": 133.9467082734418
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 240,
+      "n": 508164,
+      "median_abs_bps": 90.8385467592454,
+      "mean_abs_bps": 127.6433712133453,
+      "p90_abs_bps": 280.96871358432463
+    },
+    {
+      "symbol": "SOLUSD",
+      "horizon_min": 1440,
+      "n": 506964,
+      "median_abs_bps": 263.9564151844964,
+      "mean_abs_bps": 336.3832537374784,
+      "p90_abs_bps": 708.4789310980291
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 5,
+      "n": 508409,
+      "median_abs_bps": 11.419994779431342,
+      "mean_abs_bps": 17.119132293656932,
+      "p90_abs_bps": 36.98785913325287
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 15,
+      "n": 508399,
+      "median_abs_bps": 19.777203745559024,
+      "mean_abs_bps": 29.36652273985592,
+      "p90_abs_bps": 62.87274295292988
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 30,
+      "n": 508384,
+      "median_abs_bps": 27.538417992957754,
+      "mean_abs_bps": 41.094126173835804,
+      "p90_abs_bps": 88.09462868008788
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 60,
+      "n": 508354,
+      "median_abs_bps": 38.414360109564896,
+      "mean_abs_bps": 57.586249665525884,
+      "p90_abs_bps": 124.37053072498108
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 240,
+      "n": 508174,
+      "median_abs_bps": 76.4864938259624,
+      "mean_abs_bps": 114.97641692490373,
+      "p90_abs_bps": 251.81872967376307
+    },
+    {
+      "symbol": "XRPUSD",
+      "horizon_min": 1440,
+      "n": 506974,
+      "median_abs_bps": 209.3660026425781,
+      "mean_abs_bps": 298.65460363155864,
+      "p90_abs_bps": 658.2228980149715
+    }
+  ],
+  "pooled": [
+    {
+      "horizon_min": 5,
+      "median_abs_bps": 10.001552181160832,
+      "p90_abs_bps": 31.958833562083655,
+      "cost_pct_of_median_move": 157.9754793437089,
+      "cost_pct_of_p90_move": 49.438600345994196
+    },
+    {
+      "horizon_min": 15,
+      "median_abs_bps": 17.260596178999137,
+      "p90_abs_bps": 54.496422445111136,
+      "cost_pct_of_median_move": 91.53797375332704,
+      "cost_pct_of_p90_move": 28.992728863832813
+    },
+    {
+      "horizon_min": 30,
+      "median_abs_bps": 24.051407471217672,
+      "p90_abs_bps": 77.06489256526186,
+      "cost_pct_of_median_move": 65.69262118613169,
+      "cost_pct_of_p90_move": 20.50220207161112
+    },
+    {
+      "horizon_min": 60,
+      "median_abs_bps": 33.64533254602953,
+      "p90_abs_bps": 109.1978062038493,
+      "cost_pct_of_median_move": 46.96045128513539,
+      "cost_pct_of_p90_move": 14.469155149971355
+    },
+    {
+      "horizon_min": 240,
+      "median_abs_bps": 69.39253757330677,
+      "p90_abs_bps": 229.28457749635317,
+      "cost_pct_of_median_move": 22.76901890683673,
+      "cost_pct_of_p90_move": 6.8909998973879105
+    },
+    {
+      "horizon_min": 1440,
+      "median_abs_bps": 197.87113446390308,
+      "p90_abs_bps": 587.2208934071722,
+      "cost_pct_of_median_move": 7.984994902266727,
+      "cost_pct_of_p90_move": 2.690639958044623
+    }
+  ]
+}
