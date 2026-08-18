@@ -1,0 +1,80 @@
+{
+  "_note": "STATIC MIRROR, NOT A SOURCE OF TRUTH. app/forwardtest/identity.py computes this at runtime and the database holds the authoritative record. Nothing reads this file, so it cannot cause configuration drift. It exists for auditability.",
+  "frozen": true,
+  "strategy_name": "H-WPR-1-VariantA-WideStop",
+  "strategy_module": "app/strategy/rules.py",
+  "strategy_config_module": "app/config/variants.py",
+  "strategy_variant": "V3_WIDE_STOP",
+  "strategy_version": "H-WPR-1-VariantA-WideStop@11461f2a11a96f8a",
+  "app_version": "1.0.0-paper",
+  "symbols": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "timeframes": {
+    "primary": "5m",
+    "confirmation": "1m"
+  },
+  "parameters": {
+    "name": "H-WPR-1-VariantA-WideStop",
+    "primary_timeframe": "5m",
+    "confirmation_timeframe": "1m",
+    "supertrend": {
+      "atr_period": 10,
+      "multiplier": 2.0
+    },
+    "adx": {
+      "period": 28,
+      "di_period": 14,
+      "minimum": 25.0
+    },
+    "williams_r": {
+      "period": 140,
+      "rule": "variant_a"
+    },
+    "confirm_supertrend": true,
+    "confirm_adx_di": true,
+    "confirm_wpr": false,
+    "fire_once": false,
+    "target_r": 2.0,
+    "max_stop_pct": 0.1,
+    "window_bars": 1500
+  },
+  "position_sizing": {
+    "source": "app/risk/engine.py  (EXTERNAL to the strategy)",
+    "rule": "risk_amount = equity * risk_per_trade; quantity rounds DOWN to whole contracts",
+    "risk_per_trade": 0.005,
+    "starting_equity": 10000.0,
+    "refuses_when": "position rounds to zero contracts"
+  },
+  "execution": {
+    "assumption": "TAKER \u2014 matches how the strategy was evaluated in research",
+    "broker": "app/execution/paper_broker.py",
+    "entry_ttl_seconds": 90,
+    "max_entry_deviation": 0.25,
+    "min_fill_rr": 1.7,
+    "slippage_bps": 2.0,
+    "halt_min_run": {
+      "BTCUSD": 20,
+      "ETHUSD": 20,
+      "SOLUSD": 20,
+      "XRPUSD": 20
+    }
+  },
+  "entry_logic_hash": "6dd3270d4594b954bede2ee6cbd413d53b1256e25ec9b7c6e4c6ca5aa5d323be",
+  "exit_logic_hash": "947bd7f3356fa246709c5cb5ac498192cf7d30a843d3465564e0a781b5c72744",
+  "risk_logic_hash": "d84f43cf96d7fa5f1367438e3635aee8b1359b8b806670ad922fea98c1ad6c3d",
+  "strategy_config_hash": "11461f2a11a96f8a",
+  "risk_hash": "58a7a452914bf93f",
+  "execution_hash": "d00c6f3b9411c7d2",
+  "config_hash": "2b4b19598a47d1e9",
+  "deployed_expectation": {
+    "strategy_hash": "11461f2a11a96f8a",
+    "source": ".github/workflows/monitor.yml --expect-strategy-hash",
+    "matches": true
+  },
+  "live_orders_possible": false,
+  "safety_boundary": "app/safety.py, enforced by tests/live/test_no_live_trading.py"
+}
