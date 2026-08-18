@@ -1,0 +1,173 @@
+{
+  "costs": {
+    "taker_bps": 5.8999999999999995,
+    "maker_bps": 2.36,
+    "slippage_bps": 2.0,
+    "rt_taker": 15.799999999999999,
+    "rt_maker": 4.72,
+    "rt_mixed": 10.26
+  },
+  "train_days": 353.07208333333335,
+  "symbols": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "funding": {
+    "BTCUSD": {
+      "n": 8460,
+      "mean_bps": 0.2907050353427895,
+      "mean_abs_bps": 1.0644376235224586,
+      "interval_s": 28800
+    },
+    "ETHUSD": {
+      "n": 8460,
+      "mean_bps": 0.49123055709219865,
+      "mean_abs_bps": 1.0647914682033097,
+      "interval_s": 28800
+    },
+    "SOLUSD": {
+      "n": 8460,
+      "mean_bps": 0.33015667092198586,
+      "mean_abs_bps": 1.0299885312056738,
+      "interval_s": 28800
+    },
+    "XRPUSD": {
+      "n": 8460,
+      "mean_bps": -0.2059757561465721,
+      "mean_abs_bps": 1.269976727068558,
+      "interval_s": 28800
+    }
+  },
+  "path_a": [
+    {
+      "horizon": "+1h",
+      "horizon_min": 60,
+      "median_move_bps": 33.64533254602953,
+      "sd_move_bps": 78.15099664345823,
+      "funding_settlements": 0.125,
+      "funding_biased_bps": 0.028316140850325064,
+      "funding_balanced_bps": 0.0,
+      "cost_balanced_bps": 15.799999999999999,
+      "cost_biased_bps": 15.828316140850324,
+      "cost_pct_of_move": 46.96045128513539,
+      "cost_biased_pct_of_move": 47.04461196570404,
+      "n_independent_obs": 33892,
+      "mde_bps": 1.1886225174237728,
+      "mde_over_cost": 0.07522927325466917,
+      "detectable": true
+    },
+    {
+      "horizon": "+4h",
+      "horizon_min": 240,
+      "median_move_bps": 69.39253757330677,
+      "sd_move_bps": 154.76288188127612,
+      "funding_settlements": 0.5,
+      "funding_biased_bps": 0.11326456340130026,
+      "funding_balanced_bps": 0.0,
+      "cost_balanced_bps": 15.799999999999999,
+      "cost_biased_bps": 15.913264563401299,
+      "cost_pct_of_move": 22.76901890683673,
+      "cost_biased_pct_of_move": 22.932241880606274,
+      "n_independent_obs": 8472,
+      "mde_bps": 4.707950262207544,
+      "mde_over_cost": 0.29797153558275596,
+      "detectable": true
+    },
+    {
+      "horizon": "+12h",
+      "horizon_min": 720,
+      "median_move_bps": 134.42285276438398,
+      "sd_move_bps": 270.5163816648262,
+      "funding_settlements": 1.5,
+      "funding_biased_bps": 0.33979369020390077,
+      "funding_balanced_bps": 0.0,
+      "cost_balanced_bps": 15.799999999999999,
+      "cost_biased_bps": 16.1397936902039,
+      "cost_pct_of_move": 11.753953792138454,
+      "cost_biased_pct_of_move": 12.006733496791417,
+      "n_independent_obs": 2824,
+      "mde_bps": 14.253425659911818,
+      "mde_over_cost": 0.9021155480956847,
+      "detectable": true
+    },
+    {
+      "horizon": "+1d",
+      "horizon_min": 1440,
+      "median_move_bps": 197.87113446390308,
+      "sd_move_bps": 376.00515806906793,
+      "funding_settlements": 3.0,
+      "funding_biased_bps": 0.6795873804078015,
+      "funding_balanced_bps": 0.0,
+      "cost_balanced_bps": 15.799999999999999,
+      "cost_biased_bps": 16.4795873804078,
+      "cost_pct_of_move": 7.984994902266727,
+      "cost_biased_pct_of_move": 8.328444381266795,
+      "n_independent_obs": 1412,
+      "mde_bps": 28.01782934134748,
+      "mde_over_cost": 1.773280338059967,
+      "detectable": false
+    },
+    {
+      "horizon": "+3d",
+      "horizon_min": 4320,
+      "median_move_bps": 370.1854966005109,
+      "sd_move_bps": 625.2234064439253,
+      "funding_settlements": 9.0,
+      "funding_biased_bps": 2.0387621412234047,
+      "funding_balanced_bps": 0.0,
+      "cost_balanced_bps": 15.799999999999999,
+      "cost_biased_bps": 17.838762141223405,
+      "cost_pct_of_move": 4.268130476502897,
+      "cost_biased_pct_of_move": 4.818871161901373,
+      "n_independent_obs": 468,
+      "mde_bps": 80.92269412244536,
+      "mde_over_cost": 5.121689501420593,
+      "detectable": false
+    }
+  ],
+  "path_b": {
+    "per_symbol": {
+      "BTCUSD": {
+        "touch_rate_bid": 0.9215860625422956,
+        "touch_rate_ask": 0.9210903196361404,
+        "fill_conditional_ret_bid_bps": -0.4297766533258957,
+        "fill_conditional_ret_ask_bps": 0.43904018963011066,
+        "unconditional_ret_bps": 0.001673285132932623
+      },
+      "ETHUSD": {
+        "touch_rate_bid": 0.9097606509067804,
+        "touch_rate_ask": 0.9103350729929162,
+        "fill_conditional_ret_bid_bps": -0.8436229213477721,
+        "fill_conditional_ret_ask_bps": 0.8586088174986073,
+        "unconditional_ret_bps": 0.006232164363126678
+      },
+      "SOLUSD": {
+        "touch_rate_bid": 0.8444521373792051,
+        "touch_rate_ask": 0.8491550993994922,
+        "fill_conditional_ret_bid_bps": -1.8769850430534345,
+        "fill_conditional_ret_ask_bps": 1.8329357109597417,
+        "unconditional_ret_bps": -0.0002976487133486055
+      },
+      "XRPUSD": {
+        "touch_rate_bid": 0.8461978745626095,
+        "touch_rate_ask": 0.8488177918345912,
+        "fill_conditional_ret_bid_bps": -1.7354003210272855,
+        "fill_conditional_ret_ask_bps": 1.768301021937877,
+        "unconditional_ret_bps": 0.01489554005851929
+      }
+    },
+    "pooled": {
+      "touch_rate_bid": 0.8804991813477226,
+      "touch_rate_ask": 0.882349570965785,
+      "fill_conditional_ret_bid_bps": -1.2214462346885968,
+      "fill_conditional_ret_ask_bps": 1.2247214350065843,
+      "unconditional_ret_bps": 0.005625835210307496,
+      "adverse_selection_bps_per_leg": 1.2270720698989044,
+      "fee_saving_maker_both_legs_bps": 11.079999999999998,
+      "fee_saving_maker_entry_only_bps": 5.539999999999999,
+      "net_if_adverse_selection_applies_both_legs": 8.62585586020219
+    }
+  }
+}
