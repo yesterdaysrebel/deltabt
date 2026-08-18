@@ -1,0 +1,348 @@
+{
+  "preregistration_sha256": "c079c7a5244ba5a2665fcd6ad4d35f7f0fbcac06e1e6fb32ebaee78c4a5358c8",
+  "kill_threshold_bps": 5.54,
+  "primary_markout_min": 1,
+  "targets": {
+    "orders": 600,
+    "fills": 400,
+    "met": false
+  },
+  "feed": {
+    "files": [
+      "feed_1787037882.jsonl.gz"
+    ],
+    "snapshots": {
+      "BTCUSD": 6293,
+      "ETHUSD": 6292,
+      "SOLUSD": 6269,
+      "XRPUSD": 6260
+    },
+    "trades": {
+      "BTCUSD": 11949,
+      "ETHUSD": 7561,
+      "SOLUSD": 1451,
+      "XRPUSD": 618
+    },
+    "gaps": 0,
+    "session": {
+      "type": "session",
+      "started": 1787037882,
+      "symbols": [
+        "BTCUSD",
+        "ETHUSD",
+        "SOLUSD",
+        "XRPUSD"
+      ],
+      "channels": [
+        "l2_orderbook",
+        "all_trades"
+      ],
+      "keep_levels": 25,
+      "ws_url": "wss://socket.india.delta.exchange"
+    }
+  },
+  "orders_generated": 840,
+  "results": {
+    "conservative": {
+      "stats": {
+        "orders": 840,
+        "touched": 711,
+        "touch_rate": 0.8464285714285714,
+        "fills": 192,
+        "fill_rate": 0.22857142857142856,
+        "partial": 0,
+        "partial_rate": 0.0,
+        "median_time_to_fill_s": 22.690816521644592,
+        "p90_time_to_fill_s": 51.48019075393677,
+        "median_queue_ahead": 4851.5,
+        "median_spread_bps": 0.5270995033003669
+      },
+      "adverse": {
+        "+1m": {
+          "n": 190,
+          "mean": 0.22117128898031682,
+          "se": 0.2306327438706032,
+          "t": 0.9589760988335865,
+          "ci_low": -0.23086888900606542,
+          "ci_high": 0.6732114669666991,
+          "mde": 0.6457716828376889,
+          "se_iid": 0.24671510695049648,
+          "n_clusters": 73
+        },
+        "+5m": {
+          "n": 187,
+          "mean": 0.6458040309873301,
+          "se": 0.4861833780229348,
+          "t": 1.3283136778832152,
+          "ci_low": -0.3071153899376221,
+          "ci_high": 1.5987234519122824,
+          "mde": 1.3613134584642175,
+          "se_iid": 0.5645961974929223,
+          "n_clusters": 70
+        },
+        "+15m": {
+          "n": 175,
+          "mean": -1.1377952981212067,
+          "se": 0.8844667062103039,
+          "t": -1.2864195906212752,
+          "ci_low": -2.871350042293402,
+          "ci_high": 0.5957594460509887,
+          "mde": 2.4765067773888507,
+          "se_iid": 0.9020230065459847,
+          "n_clusters": 65
+        }
+      },
+      "per_symbol": {
+        "BTCUSD": {
+          "orders": 210,
+          "touched": 202,
+          "touch_rate": 0.9619047619047619,
+          "fills": 52,
+          "fill_rate": 0.24761904761904763,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 21.808172941207886,
+          "p90_time_to_fill_s": 49.49300034046173,
+          "median_queue_ahead": 5221.0,
+          "median_spread_bps": 0.15571169979020244,
+          "adverse_primary": {
+            "n": 51,
+            "mean": 0.7607031827391172,
+            "se": 0.31357594512296744,
+            "t": 2.425897759602736,
+            "ci_low": 0.14609433029810104,
+            "ci_high": 1.3753120351801333,
+            "mde": 0.8780126463443088,
+            "se_iid": 0.34051583139812736,
+            "n_clusters": 19
+          }
+        },
+        "ETHUSD": {
+          "orders": 210,
+          "touched": 202,
+          "touch_rate": 0.9619047619047619,
+          "fills": 66,
+          "fill_rate": 0.3142857142857143,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 20.752468705177307,
+          "p90_time_to_fill_s": 52.11203634738922,
+          "median_queue_ahead": 5412.0,
+          "median_spread_bps": 0.5266761468368307,
+          "adverse_primary": {
+            "n": 65,
+            "mean": 0.09506514502902264,
+            "se": 0.4427838190950836,
+            "t": 0.2146987783413294,
+            "ci_low": -0.7727911403973412,
+            "ci_high": 0.9629214304553865,
+            "mde": 1.2397946934662338,
+            "se_iid": 0.4050209790477255,
+            "n_clusters": 18
+          }
+        },
+        "SOLUSD": {
+          "orders": 210,
+          "touched": 173,
+          "touch_rate": 0.8238095238095238,
+          "fills": 53,
+          "fill_rate": 0.2523809523809524,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 24.826064825057983,
+          "p90_time_to_fill_s": 52.87388291358948,
+          "median_queue_ahead": 224.0,
+          "median_spread_bps": 1.4463502665880834,
+          "adverse_primary": {
+            "n": 53,
+            "mean": 0.2946882939077814,
+            "se": 0.44222418940269187,
+            "t": 0.66637759980026,
+            "ci_low": -0.5720711173214946,
+            "ci_high": 1.1614477051370575,
+            "mde": 1.238227730327537,
+            "se_iid": 0.5498048641315684,
+            "n_clusters": 21
+          }
+        },
+        "XRPUSD": {
+          "orders": 210,
+          "touched": 134,
+          "touch_rate": 0.638095238095238,
+          "fills": 21,
+          "fill_rate": 0.1,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 15.052645444869995,
+          "p90_time_to_fill_s": 51.23235034942627,
+          "median_queue_ahead": 11186.0,
+          "median_spread_bps": 3.0085744371455343,
+          "adverse_primary": {
+            "n": 21,
+            "mean": -0.8843348294016035,
+            "se": 0.625735143730558,
+            "t": -1.41327339252404,
+            "ci_low": -2.1107757111134973,
+            "ci_high": 0.34210605231029023,
+            "mde": 1.7520584024455623,
+            "se_iid": 0.8901082071564623,
+            "n_clusters": 15
+          }
+        }
+      }
+    },
+    "optimistic": {
+      "stats": {
+        "orders": 840,
+        "touched": 711,
+        "touch_rate": 0.8464285714285714,
+        "fills": 192,
+        "fill_rate": 0.22857142857142856,
+        "partial": 0,
+        "partial_rate": 0.0,
+        "median_time_to_fill_s": 22.690816521644592,
+        "p90_time_to_fill_s": 51.48019075393677,
+        "median_queue_ahead": 1644.5,
+        "median_spread_bps": 0.5270995033003669
+      },
+      "adverse": {
+        "+1m": {
+          "n": 190,
+          "mean": 0.22117128898031682,
+          "se": 0.2306327438706032,
+          "t": 0.9589760988335865,
+          "ci_low": -0.23086888900606542,
+          "ci_high": 0.6732114669666991,
+          "mde": 0.6457716828376889,
+          "se_iid": 0.24671510695049648,
+          "n_clusters": 73
+        },
+        "+5m": {
+          "n": 187,
+          "mean": 0.6458040309873301,
+          "se": 0.4861833780229348,
+          "t": 1.3283136778832152,
+          "ci_low": -0.3071153899376221,
+          "ci_high": 1.5987234519122824,
+          "mde": 1.3613134584642175,
+          "se_iid": 0.5645961974929223,
+          "n_clusters": 70
+        },
+        "+15m": {
+          "n": 175,
+          "mean": -1.1377952981212067,
+          "se": 0.8844667062103039,
+          "t": -1.2864195906212752,
+          "ci_low": -2.871350042293402,
+          "ci_high": 0.5957594460509887,
+          "mde": 2.4765067773888507,
+          "se_iid": 0.9020230065459847,
+          "n_clusters": 65
+        }
+      },
+      "per_symbol": {
+        "BTCUSD": {
+          "orders": 210,
+          "touched": 202,
+          "touch_rate": 0.9619047619047619,
+          "fills": 52,
+          "fill_rate": 0.24761904761904763,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 21.808172941207886,
+          "p90_time_to_fill_s": 49.49300034046173,
+          "median_queue_ahead": 1123.5,
+          "median_spread_bps": 0.15571169979020244,
+          "adverse_primary": {
+            "n": 51,
+            "mean": 0.7607031827391172,
+            "se": 0.31357594512296744,
+            "t": 2.425897759602736,
+            "ci_low": 0.14609433029810104,
+            "ci_high": 1.3753120351801333,
+            "mde": 0.8780126463443088,
+            "se_iid": 0.34051583139812736,
+            "n_clusters": 19
+          }
+        },
+        "ETHUSD": {
+          "orders": 210,
+          "touched": 202,
+          "touch_rate": 0.9619047619047619,
+          "fills": 66,
+          "fill_rate": 0.3142857142857143,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 20.752468705177307,
+          "p90_time_to_fill_s": 52.11203634738922,
+          "median_queue_ahead": 4685.0,
+          "median_spread_bps": 0.5266761468368307,
+          "adverse_primary": {
+            "n": 65,
+            "mean": 0.09506514502902264,
+            "se": 0.4427838190950836,
+            "t": 0.2146987783413294,
+            "ci_low": -0.7727911403973412,
+            "ci_high": 0.9629214304553865,
+            "mde": 1.2397946934662338,
+            "se_iid": 0.4050209790477255,
+            "n_clusters": 18
+          }
+        },
+        "SOLUSD": {
+          "orders": 210,
+          "touched": 173,
+          "touch_rate": 0.8238095238095238,
+          "fills": 53,
+          "fill_rate": 0.2523809523809524,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 24.826064825057983,
+          "p90_time_to_fill_s": 52.87388291358948,
+          "median_queue_ahead": 189.0,
+          "median_spread_bps": 1.4463502665880834,
+          "adverse_primary": {
+            "n": 53,
+            "mean": 0.2946882939077814,
+            "se": 0.44222418940269187,
+            "t": 0.66637759980026,
+            "ci_low": -0.5720711173214946,
+            "ci_high": 1.1614477051370575,
+            "mde": 1.238227730327537,
+            "se_iid": 0.5498048641315684,
+            "n_clusters": 21
+          }
+        },
+        "XRPUSD": {
+          "orders": 210,
+          "touched": 134,
+          "touch_rate": 0.638095238095238,
+          "fills": 21,
+          "fill_rate": 0.1,
+          "partial": 0,
+          "partial_rate": 0.0,
+          "median_time_to_fill_s": 15.052645444869995,
+          "p90_time_to_fill_s": 51.23235034942627,
+          "median_queue_ahead": 10473.0,
+          "median_spread_bps": 3.0085744371455343,
+          "adverse_primary": {
+            "n": 21,
+            "mean": -0.8843348294016035,
+            "se": 0.625735143730558,
+            "t": -1.41327339252404,
+            "ci_low": -2.1107757111134973,
+            "ci_high": 0.34210605231029023,
+            "mde": 1.7520584024455623,
+            "se_iid": 0.8901082071564623,
+            "n_clusters": 15
+          }
+        }
+      }
+    }
+  },
+  "verdicts": {
+    "conservative": "PASS",
+    "optimistic": "PASS",
+    "final": "INCONCLUSIVE"
+  }
+}

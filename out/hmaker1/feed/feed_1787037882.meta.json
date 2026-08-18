@@ -1,0 +1,19 @@
+{
+  "started": 1787037882,
+  "ended": 1787044183,
+  "minutes": 105.0,
+  "symbols": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "counts": {
+    "l2": 25114,
+    "trades": 21583,
+    "other": 1
+  },
+  "reconnects": 0,
+  "gaps_over_5s": [],
+  "file": "feed_1787037882.jsonl.gz"
+}
