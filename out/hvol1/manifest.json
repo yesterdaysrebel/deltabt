@@ -1,0 +1,199 @@
+{
+  "experiment_id": "H-VOL-1",
+  "phase": "MARKET PHENOMENON DISCOVERY",
+  "protocol_sha256": "74fcb799b80a094611500e94eadf167f616b3019fb0d16b625dabef241638a0f",
+  "preregistration_sha256": "624d0b2848bbc58555f347d4f1e33027dbc46f9590846b7cfad6f3be851b36a5",
+  "module_sha256": "7b51ffde351659050ad9e4fbedb17969aaa9669f076175d10e53e03232e8b562",
+  "inherited": {
+    "compression_state": {
+      "source": "deltabt/research/hcompress.py",
+      "sha256": "6337af158596c400f94a5530934deadd1aae8b0a76492bf5d48b717afeac55ce",
+      "functions": [
+        "_rolling_quantile_causal",
+        "_compression_zones"
+      ],
+      "provenance": "H-Compress-1 frozen pre-registration",
+      "constants": {
+        "tf_min": 15,
+        "atr_period": 14,
+        "pct_lookback": 960,
+        "percentile": 0.2,
+        "min_duration": 4,
+        "range_max": 1.5
+      },
+      "dropped": [
+        "retest entry",
+        "3-bar order lifetime",
+        "volume multiple",
+        "body-size filter"
+      ]
+    },
+    "stage_a_machinery": {
+      "source": "deltabt/research/hstructure2.py",
+      "sha256": "95c87041b842cfaa663d41719c895515824e0d0994f6c451d423e40166d3ac9c",
+      "note": "imported unchanged; H-VOL-1 defines events and nothing else"
+    }
+  },
+  "frozen": {
+    "events": [
+      "EXP_UP",
+      "EXP_DOWN"
+    ],
+    "families": {
+      "V1-EXP": [
+        "EXP_UP",
+        "EXP_DOWN"
+      ]
+    },
+    "horizons_min": [
+      5,
+      15,
+      30,
+      60,
+      240,
+      1440
+    ],
+    "primary_horizon_min": 60,
+    "trigger": "oneshot",
+    "cluster_unit": "calendar UTC day, pooled across symbols",
+    "inference_primary": "cluster",
+    "mde_k": 2.8,
+    "control": "within-symbol direction permutation",
+    "control_seed": 20260818,
+    "control_permutations": 1000
+  },
+  "splits": {
+    "train": [
+      1735689600,
+      1766195028
+    ],
+    "valid": [
+      1766195028,
+      1776363504
+    ],
+    "test": "LOCKED - 2026-04-16 onward, never computed"
+  },
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "per_symbol": {
+    "BTCUSD": {
+      "bars_1m": 847204,
+      "events": {
+        "EXP_UP": 62,
+        "EXP_DOWN": 78
+      }
+    },
+    "ETHUSD": {
+      "bars_1m": 847218,
+      "events": {
+        "EXP_UP": 68,
+        "EXP_DOWN": 86
+      }
+    },
+    "SOLUSD": {
+      "bars_1m": 847348,
+      "events": {
+        "EXP_UP": 73,
+        "EXP_DOWN": 66
+      }
+    },
+    "XRPUSD": {
+      "bars_1m": 847359,
+      "events": {
+        "EXP_UP": 71,
+        "EXP_DOWN": 78
+      }
+    }
+  },
+  "census": {
+    "+5m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 140,
+        "n_clusters": 54,
+        "long": 62,
+        "short": 78
+      }
+    },
+    "+15m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 140,
+        "n_clusters": 54,
+        "long": 62,
+        "short": 78
+      }
+    },
+    "+30m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 140,
+        "n_clusters": 54,
+        "long": 62,
+        "short": 78
+      }
+    },
+    "+60m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 140,
+        "n_clusters": 54,
+        "long": 62,
+        "short": 78
+      }
+    },
+    "+240m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 140,
+        "n_clusters": 54,
+        "long": 62,
+        "short": 78
+      }
+    },
+    "+1440m": {
+      "train": {
+        "n": 317,
+        "n_clusters": 160,
+        "long": 153,
+        "short": 164
+      },
+      "valid": {
+        "n": 139,
+        "n_clusters": 53,
+        "long": 61,
+        "short": 78
+      }
+    }
+  },
+  "census_is_counts_only": true
+}
