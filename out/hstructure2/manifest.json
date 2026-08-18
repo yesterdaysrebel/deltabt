@@ -1,0 +1,273 @@
+{
+  "experiment_id": "H-STRUCTURE-2",
+  "phase": "MARKET PHENOMENON DISCOVERY",
+  "protocol_sha256": "74fcb799b80a094611500e94eadf167f616b3019fb0d16b625dabef241638a0f",
+  "preregistration_sha256": "7338dddb3159fc0a1443ac8f12ab6cf0c366b42be2d6eb670d4749bd7b41689d",
+  "module_sha256": "95c87041b842cfaa663d41719c895515824e0d0994f6c451d423e40166d3ac9c",
+  "reused_swing_detector": {
+    "path": "out/hstructure/code/hstructure.py",
+    "sha256": "5e6308bec53b359fc68a9ead86dbb71f5a85b81a10491359c2e6fe18f351bea3",
+    "provenance": "H-Structure-1, anti-lookahead audited"
+  },
+  "frozen": {
+    "structure_tf_min": 15,
+    "swing_n": 3,
+    "trigger": "oneshot",
+    "events": [
+      "CONT_LONG",
+      "CONT_SHORT",
+      "FAIL_LONG",
+      "FAIL_SHORT"
+    ],
+    "families": {
+      "S2-CONT": [
+        "CONT_LONG",
+        "CONT_SHORT"
+      ],
+      "S2-FAIL": [
+        "FAIL_LONG",
+        "FAIL_SHORT"
+      ]
+    },
+    "horizons_min": [
+      5,
+      15,
+      30,
+      60,
+      240,
+      1440
+    ],
+    "primary_horizon_min": 60,
+    "cluster_unit": "calendar UTC day, pooled across symbols",
+    "inference_primary": "cluster",
+    "mde_k": 2.8,
+    "control": "within-symbol direction permutation",
+    "control_seed": 20260818,
+    "control_permutations": 1000
+  },
+  "splits": {
+    "study": 1735689600,
+    "data_end": 1786531980,
+    "train": [
+      1735689600,
+      1766195028
+    ],
+    "valid": [
+      1766195028,
+      1776363504
+    ],
+    "test": "LOCKED - 2026-04-16 onward, never computed"
+  },
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "per_symbol": {
+    "BTCUSD": {
+      "bars_1m": 847204,
+      "first": "2025-01-01 00:00:00",
+      "last": "2026-08-12 10:52:00",
+      "events": {
+        "CONT_LONG": 815,
+        "CONT_SHORT": 750,
+        "FAIL_LONG": 704,
+        "FAIL_SHORT": 705
+      }
+    },
+    "ETHUSD": {
+      "bars_1m": 847218,
+      "first": "2025-01-01 00:00:00",
+      "last": "2026-08-12 10:53:00",
+      "events": {
+        "CONT_LONG": 729,
+        "CONT_SHORT": 660,
+        "FAIL_LONG": 663,
+        "FAIL_SHORT": 715
+      }
+    },
+    "SOLUSD": {
+      "bars_1m": 847348,
+      "first": "2025-01-01 00:00:00",
+      "last": "2026-08-12 10:53:00",
+      "events": {
+        "CONT_LONG": 793,
+        "CONT_SHORT": 768,
+        "FAIL_LONG": 658,
+        "FAIL_SHORT": 698
+      }
+    },
+    "XRPUSD": {
+      "bars_1m": 847359,
+      "first": "2025-01-01 00:00:00",
+      "last": "2026-08-12 10:53:00",
+      "events": {
+        "CONT_LONG": 701,
+        "CONT_SHORT": 781,
+        "FAIL_LONG": 704,
+        "FAIL_SHORT": 686
+      }
+    }
+  },
+  "census": {
+    "+5m": {
+      "S2-CONT|train": {
+        "n": 3811,
+        "n_clusters": 353,
+        "long": 1995,
+        "short": 1816
+      },
+      "S2-CONT|valid": {
+        "n": 1156,
+        "n_clusters": 118,
+        "long": 567,
+        "short": 589
+      },
+      "S2-FAIL|train": {
+        "n": 3346,
+        "n_clusters": 353,
+        "long": 1652,
+        "short": 1694
+      },
+      "S2-FAIL|valid": {
+        "n": 1057,
+        "n_clusters": 118,
+        "long": 513,
+        "short": 544
+      }
+    },
+    "+15m": {
+      "S2-CONT|train": {
+        "n": 3811,
+        "n_clusters": 353,
+        "long": 1995,
+        "short": 1816
+      },
+      "S2-CONT|valid": {
+        "n": 1156,
+        "n_clusters": 118,
+        "long": 567,
+        "short": 589
+      },
+      "S2-FAIL|train": {
+        "n": 3346,
+        "n_clusters": 353,
+        "long": 1652,
+        "short": 1694
+      },
+      "S2-FAIL|valid": {
+        "n": 1057,
+        "n_clusters": 118,
+        "long": 513,
+        "short": 544
+      }
+    },
+    "+30m": {
+      "S2-CONT|train": {
+        "n": 3811,
+        "n_clusters": 353,
+        "long": 1995,
+        "short": 1816
+      },
+      "S2-CONT|valid": {
+        "n": 1156,
+        "n_clusters": 118,
+        "long": 567,
+        "short": 589
+      },
+      "S2-FAIL|train": {
+        "n": 3346,
+        "n_clusters": 353,
+        "long": 1652,
+        "short": 1694
+      },
+      "S2-FAIL|valid": {
+        "n": 1057,
+        "n_clusters": 118,
+        "long": 513,
+        "short": 544
+      }
+    },
+    "+60m": {
+      "S2-CONT|train": {
+        "n": 3811,
+        "n_clusters": 353,
+        "long": 1995,
+        "short": 1816
+      },
+      "S2-CONT|valid": {
+        "n": 1156,
+        "n_clusters": 118,
+        "long": 567,
+        "short": 589
+      },
+      "S2-FAIL|train": {
+        "n": 3346,
+        "n_clusters": 353,
+        "long": 1652,
+        "short": 1694
+      },
+      "S2-FAIL|valid": {
+        "n": 1057,
+        "n_clusters": 118,
+        "long": 513,
+        "short": 544
+      }
+    },
+    "+240m": {
+      "S2-CONT|train": {
+        "n": 3811,
+        "n_clusters": 353,
+        "long": 1995,
+        "short": 1816
+      },
+      "S2-CONT|valid": {
+        "n": 1156,
+        "n_clusters": 118,
+        "long": 567,
+        "short": 589
+      },
+      "S2-FAIL|train": {
+        "n": 3345,
+        "n_clusters": 353,
+        "long": 1652,
+        "short": 1693
+      },
+      "S2-FAIL|valid": {
+        "n": 1057,
+        "n_clusters": 118,
+        "long": 513,
+        "short": 544
+      }
+    },
+    "+1440m": {
+      "S2-CONT|train": {
+        "n": 3800,
+        "n_clusters": 353,
+        "long": 1985,
+        "short": 1815
+      },
+      "S2-CONT|valid": {
+        "n": 1149,
+        "n_clusters": 117,
+        "long": 564,
+        "short": 585
+      },
+      "S2-FAIL|train": {
+        "n": 3337,
+        "n_clusters": 352,
+        "long": 1645,
+        "short": 1692
+      },
+      "S2-FAIL|valid": {
+        "n": 1051,
+        "n_clusters": 117,
+        "long": 510,
+        "short": 541
+      }
+    }
+  },
+  "census_is_counts_only": true,
+  "census_may_not_change_parameters": "per pre-registration \u00a72.2: the census reads no forward return and may not change N, the timeframe or the trigger"
+}

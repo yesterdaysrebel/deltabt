@@ -1,0 +1,25 @@
+{
+  "phase": "MARKET PHENOMENON DISCOVERY",
+  "frozen_at": "2026-08-18",
+  "protocol_file": "out/phase_discovery/research_protocol.md",
+  "protocol_sha256": "74fcb799b80a094611500e94eadf167f616b3019fb0d16b625dabef241638a0f",
+  "hypothesis_budget": ["H-STRUCTURE-2", "H-VOL-1", "H-REL-1"],
+  "budget_is_hard_maximum": true,
+  "inference": {
+    "primary": "cluster (non-overlapping 50-bet episodes)",
+    "secondary_diagnostic": "moving-block bootstrap",
+    "diagnostic": "iid",
+    "ratified_in": "out/hnull1/inference_promotion.json"
+  },
+  "production_mde": {"mde_gross_R": 0.03462, "sample_size_bets": 2400, "scaling": "1/sqrt(n)"},
+  "stage_a_horizons": ["+5m", "+15m", "+30m", "+1h", "+4h", "+1d"],
+  "universe": ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD"],
+  "verdict_vocabulary": [
+    "NO INFORMATION",
+    "INSUFFICIENT POWER",
+    "INFORMATION - NOT REPLICATED",
+    "INFORMATION BUT NOT ECONOMIC",
+    "ECONOMIC EDGE"
+  ],
+  "test_segment": "LOCKED - 2026-04-16 onward, never computed"
+}
