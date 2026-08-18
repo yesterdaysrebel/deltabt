@@ -1,0 +1,35 @@
+{
+  "record": "post-hoc ratification of the H-NULL-1 inference hierarchy",
+  "supersedes": null,
+  "note": "inference_frozen.json is NOT modified. It records what was frozen BEFORE the calibration run, including its promotion_rule refusing promotion. This file records what the operator decided AFTER seeing the calibration, and why. Both must be read together; the audit trail is the pair, not either file alone.",
+
+  "frozen_before_the_run": {
+    "primary": "moving-block bootstrap",
+    "secondary": "cluster (non-overlapping 50-bet episodes)",
+    "diagnostic": "iid",
+    "promotion_rule": "cluster is NOT promoted to primary"
+  },
+
+  "what_the_calibration_showed": {
+    "moving_block": "FAILED its own pre-declared gate: 9.5% rejection rate (95% CI [0.0821,0.1079]) under N5 constant LONG and N6 constant SHORT, entirely outside the pre-declared [0.02,0.08]",
+    "cluster": "PASSED: 6.7% (95% CI [0.056,0.078]) under the same nulls, and PASSED at every persistence level from 0.00 to 0.90 with an INCONCLUSIVE only at persistence 1.00",
+    "iid": "FAILED in BOTH directions: 0.8% at persistence 0.00 and 20.2% at persistence 1.00"
+  },
+
+  "why_this_is_not_tuning": "The selection criterion -- 'PASS iff the entire 95% CI of the rejection rate lies inside [0.02,0.08]' -- was itself pre-declared and hashed into the pre-registration before any replication ran. No block length was tuned, no cluster definition was changed, no interval was widened, no seed was re-drawn. What changed is which of three ALREADY-FROZEN candidates is named primary, decided by an already-frozen rule. That is the rule doing its job. It is nonetheless a post-hoc change to a frozen hierarchy, which is why it required ratification rather than being applied silently.",
+
+  "ratified_hierarchy": {
+    "primary": "cluster (non-overlapping 50-bet episodes)",
+    "secondary_diagnostic": "moving-block bootstrap",
+    "diagnostic": "iid"
+  },
+  "ratified_by": "operator, research-phase protocol section 18",
+  "ratification_text": "cluster inference = PRIMARY; iid = diagnostic; moving-block = secondary diagnostic. Do not modify these because a future result looks inconvenient.",
+
+  "binding_consequences": [
+    "Every subsequent experiment reports the cluster statistic as its headline; iid and moving-block appear as diagnostics only.",
+    "Production MDE is 0.03462 R at 2400 bets under cluster inference, scaling as 1/sqrt(n).",
+    "An observed effect below the MDE is classified INSUFFICIENT POWER, never NO EDGE.",
+    "This hierarchy may be changed only on discovery of an actual implementation defect, which must be documented and the affected frozen experiments rerun."
+  ]
+}

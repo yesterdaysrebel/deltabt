@@ -1,0 +1,40 @@
+{
+  "frozen_before_2000_replication_run": true,
+  "module_sha256": "1164b949df0fe7d2b04d062d54a13d659e07ac47bf9544206631e4e7115a6810",
+  "primary": "moving-block bootstrap",
+  "secondary": "cluster estimator (non-overlapping 50-bet episodes)",
+  "diagnostic": "iid",
+  "promotion_rule": "cluster is NOT promoted to primary. Selecting an inference method on the strength of the calibration run it is being judged by would be exactly the tuning this experiment forbids.",
+  "block_length_rule": "b = the FIRST lag at which |acf| falls below the white-noise band 2/sqrt(n).",
+  "block_rule_sha256": "3e0ef683a34ba44d2de5b28183e3044f59600aaaac538ac238818379e3954e4d",
+  "moving_block_sha256": "00ebb1d44d1790a2c470bf0bf0c03271e9dc6f32a02273dfd6eaaa3e27410317",
+  "cluster_sha256": "fbb367008576fd20d9066cdd8242b709314b3102f3f7efaf22d21b0f2f66ab29",
+  "alpha": 0.05,
+  "acceptable_interval": [
+    0.02,
+    0.08
+  ],
+  "verdict_rule": {
+    "PASS": "entire 95% CI inside [0.02,0.08]",
+    "FAIL": "entire 95% CI outside",
+    "INCONCLUSIVE": "CI overlaps a boundary"
+  },
+  "replications": 2000,
+  "n_boot": 200,
+  "persistence_sweep": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    1.0
+  ],
+  "persistence_model": "two-state Markov chain on direction, P(stay)=persistence",
+  "forbidden": [
+    "tuning block length",
+    "changing cluster definition",
+    "widening the interval",
+    "optimising toward 5%",
+    "changing seeds to improve the rate"
+  ]
+}

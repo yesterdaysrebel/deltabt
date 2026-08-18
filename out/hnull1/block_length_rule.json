@@ -1,0 +1,38 @@
+{
+  "rule": "b = 1 + largest lag with |acf| > 2/sqrt(n), capped at 5% of n",
+  "inputs": "autocorrelation of the zero-signal paired statistic; no rejection rate consulted",
+  "per_replication_b": [
+    287,
+    250,
+    257,
+    265,
+    294,
+    287,
+    270,
+    290
+  ],
+  "dependence_horizons": [
+    286,
+    249,
+    256,
+    264,
+    293,
+    286,
+    269,
+    289
+  ],
+  "acf_head_example": [
+    -0.0101,
+    -0.0253,
+    -0.0197,
+    0.0049,
+    -0.0069,
+    0.0091,
+    -0.0086,
+    -0.0101,
+    -0.0084,
+    -0.0123
+  ],
+  "frozen_block_length": 278,
+  "reason": "bets overlap in time because holding periods exceed the entry spacing, so the paired statistic is serially dependent; the dependence horizon is the largest lag whose autocorrelation exceeds the white-noise band, and the block must span it"
+}

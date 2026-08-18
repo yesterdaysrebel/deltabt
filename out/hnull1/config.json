@@ -1,0 +1,18 @@
+{
+  "experiment_id": "H-NULL-1",
+  "preregistration_sha256": "5190a0746393138ec4d82cf45a84151269ba236e89f327f7e12d5216ef84d390",
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "reuses": [
+    "hwpr._simulate",
+    "research/stops.py",
+    "costs.SymbolCosts",
+    "stats.py",
+    "hema3 estimator (as the HISTORICAL estimator under test)",
+    "hcost1 symmetric-stop machinery"
+  ]
+}

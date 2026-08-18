@@ -1,0 +1,87 @@
+{
+  "experiment_id": "H-NULL-1",
+  "frozen": true,
+  "preregistration_sha256": "5190a0746393138ec4d82cf45a84151269ba236e89f327f7e12d5216ef84d390",
+  "kind": "research infrastructure validation; NOT a strategy search",
+  "nulls": {
+    "N1": "random direction",
+    "N2": "random entry timing",
+    "N3": "random direction + timing",
+    "N4": "symmetric-stop null",
+    "N5": "wider-stop side diagnostic",
+    "N6": "narrower-stop side diagnostic"
+  },
+  "geometry_multipliers": [
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      1.5
+    ],
+    [
+      1.0,
+      2.0
+    ],
+    [
+      1.0,
+      3.0
+    ],
+    [
+      1.0,
+      4.0
+    ]
+  ],
+  "base_stop_width": 0.004,
+  "barriers": [
+    0.5,
+    1.0
+  ],
+  "execution_conventions": [
+    "frozen(same-bar->STOP, MARK)",
+    "same-bar->TARGET",
+    "same-bar EXCLUDE",
+    "LTP(no MARK)"
+  ],
+  "planted_edge": {
+    "p_correct": 0.6,
+    "independent_of_stop_geometry": true
+  },
+  "seeds": [
+    11,
+    23,
+    37,
+    53,
+    71
+  ],
+  "gate2": "Equal-R comparison invariant: safe estimator REFUSES unequal-R input",
+  "adversarial_regression": {
+    "process": "driftless random walk",
+    "stops": [
+      0.004,
+      0.001
+    ],
+    "direction_rule": "wider-stop side",
+    "historical_artifact": {
+      "excess_R": 0.0188,
+      "t": 5.02
+    },
+    "required": "safe estimator classifies INVALID or returns null-consistent"
+  },
+  "diagnostic_matrix": {
+    "symmetric/independent": "SAFE",
+    "symmetric/correlated": "SAFE",
+    "asymmetric/independent": "SAFE",
+    "asymmetric/correlated": "POTENTIALLY INVALID"
+  },
+  "train": [
+    1735689600,
+    1766195028
+  ],
+  "valid": [
+    1766195028,
+    1776363504
+  ],
+  "test": "LOCKED"
+}

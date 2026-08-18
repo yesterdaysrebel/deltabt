@@ -1,0 +1,57 @@
+{
+  "question": "what causes the -0.00353R canonical-null offset?",
+  "answer": "nothing -- it was direction-draw sampling noise misread against an iid standard error",
+  "decomposition": {
+    "data generation": {
+      "contribution": 0.0,
+      "evidence": "log-space driftless walk; exact path reflection (negate log path, swap intrabar wings) gives LONG-on-P minus SHORT-on-P' = 0.000000 with sd 0.000000 under log barriers"
+    },
+    "entry mechanics": {
+      "contribution": 0.0,
+      "evidence": "covered by the exact reflection test"
+    },
+    "stop/target mechanics": {
+      "contribution": 0.00145,
+      "evidence": "the LINEAR percentage barrier construction is directionally asymmetric: |log(1-w)| > log(1+w), so a long's stop is farther and its target nearer than a short's. Reflection residual +0.001455 +/- 0.000483 under linear barriers, exactly 0.000000 under log barriers. Real, but it CANCELS in the paired statistic",
+      "cancels_in_paired": true
+    },
+    "position chaining": {
+      "contribution": 0.0,
+      "evidence": "not used by this estimator"
+    },
+    "estimator": {
+      "contribution": 0.0,
+      "evidence": "stat(-sides) == -stat(+sides) as an exact algebraic identity (sum 0.00e+00); antithetic average over both direction draws is 0.000e+00 for every path, max |value| 0.000e+00. E[stat] = 0 with certainty, not merely in large samples"
+    },
+    "bootstrap / test statistic": {
+      "contribution": "THE DEFECT",
+      "evidence": "iid standard error on temporally dependent, overlapping bets. Type-I error 6.7% for random direction and 22.5% for constant-direction N5/N6 against nominal 5%"
+    }
+  },
+  "offset_resolution": {
+    "three_disjoint_direction_seed_families": {
+      "0..59": -0.00318,
+      "10000+": -0.00053,
+      "77000+": -0.00206
+    },
+    "interpretation": "the 'offset' moves by 6x across independent direction draws while the framework bias is provably zero, so it is noise in the direction draw, not a systematic effect",
+    "conclusion": "NO unexplained systematic directional offset remains"
+  },
+  "gates_now_satisfied": [
+    "canonical null has no unexplained systematic offset (proved)",
+    "direction reversal works (exact identity)",
+    "path reflection works (exact under log barriers)",
+    "unequal-R comparisons structurally rejected",
+    "planted edge recovered"
+  ],
+  "gates_outstanding": [
+    "Type-I error calibration with a dependence-aware estimator",
+    "persistent-direction null handled correctly",
+    "scale invariance",
+    "execution matrix",
+    "geometry matrix",
+    "toy paths",
+    "TRAIN",
+    "blind VALID"
+  ]
+}

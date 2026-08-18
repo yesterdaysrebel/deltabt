@@ -1,0 +1,138 @@
+{
+  "scale_invariance": {
+    "rows": [
+      {
+        "price_scale": 100.0,
+        "mean": 0.0009953235591506568,
+        "sd": 0.009325713549340378
+      },
+      {
+        "price_scale": 1000.0,
+        "mean": 0.0009953235591506568,
+        "sd": 0.009325713549340378
+      },
+      {
+        "price_scale": 10000.0,
+        "mean": 0.0009953235591506568,
+        "sd": 0.009325713549340378
+      },
+      {
+        "price_scale": 100000.0,
+        "mean": 0.0009953235591506568,
+        "sd": 0.009325713549340378
+      }
+    ],
+    "spread": 0.0,
+    "verdict": "PASS"
+  },
+  "geometry_matrix": {
+    "rows": [
+      {
+        "multiplier": 1.0,
+        "direction": "independent",
+        "historical_excess": -0.0032056451612903227,
+        "historical_t": -0.5789860934487552,
+        "safe_status": "MEASURED"
+      },
+      {
+        "multiplier": 1.0,
+        "direction": "correlated with R",
+        "historical_excess": -0.005745967741935484,
+        "historical_t": -1.0378363084554136,
+        "safe_status": "MEASURED"
+      },
+      {
+        "multiplier": 1.5,
+        "direction": "independent",
+        "historical_excess": -0.003931451612903226,
+        "historical_t": -0.7088986042227587,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 1.5,
+        "direction": "correlated with R",
+        "historical_excess": -0.00405241935483871,
+        "historical_t": -0.7307117942523731,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 2.0,
+        "direction": "independent",
+        "historical_excess": -0.004838709677419355,
+        "historical_t": -0.8681218353303723,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 2.0,
+        "direction": "correlated with R",
+        "historical_excess": 0.0022983870967741935,
+        "historical_t": 0.41234816768810695,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 3.0,
+        "direction": "independent",
+        "historical_excess": -0.0035685483870967743,
+        "historical_t": -0.6723962104693689,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 3.0,
+        "direction": "correlated with R",
+        "historical_excess": 0.009858870967741936,
+        "historical_t": 1.857861663780283,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 4.0,
+        "direction": "independent",
+        "historical_excess": -0.0015120967741935483,
+        "historical_t": -0.2934981014771346,
+        "safe_status": "INVALID_COMPARISON"
+      },
+      {
+        "multiplier": 4.0,
+        "direction": "correlated with R",
+        "historical_excess": 0.014213709677419355,
+        "historical_t": 2.7597197554037014,
+        "safe_status": "INVALID_COMPARISON"
+      }
+    ],
+    "unequal_R_leaks": 0,
+    "symmetric_allowed": 2,
+    "verdict": "PASS"
+  },
+  "execution_matrix": {
+    "rows": [
+      {
+        "convention": "frozen: same-bar->STOP, MARK",
+        "excess": -0.0034475806451612903,
+        "t": -0.6225358943987614,
+        "se": 0.005537962832634618
+      },
+      {
+        "convention": "same-bar->TARGET, MARK",
+        "excess": -0.0034475806451612903,
+        "t": -0.6225358943987614,
+        "se": 0.005537962832634618
+      },
+      {
+        "convention": "same-bar EXCLUDED, MARK",
+        "excess": -0.0034475806451612903,
+        "t": -0.6225358943987614,
+        "se": 0.005537962832634618
+      },
+      {
+        "convention": "frozen same-bar, LTP (no MARK)",
+        "excess": -0.0035685483870967743,
+        "t": -0.6452272166906506,
+        "se": 0.005530684842154895
+      }
+    ],
+    "deltas": {
+      "same-bar->TARGET, MARK": 0.0,
+      "same-bar EXCLUDED, MARK": 0.0,
+      "frozen same-bar, LTP (no MARK)": -0.000121
+    }
+  }
+}

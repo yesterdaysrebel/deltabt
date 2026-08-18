@@ -1,0 +1,94 @@
+{
+  "planted_edge": [
+    {
+      "p_correct": 0.5,
+      "method": "iid",
+      "effect": -0.0006489583333333333,
+      "se": 0.012598217654329355,
+      "t": -0.051937771400712165,
+      "power": 0.03666666666666667,
+      "mde": 0.03527500943212219
+    },
+    {
+      "p_correct": 0.5,
+      "method": "block",
+      "effect": -0.0006489583333333333,
+      "se": 0.012590761672953137,
+      "t": -0.05150628553684607,
+      "power": 0.03666666666666667,
+      "mde": 0.03525413268426878
+    },
+    {
+      "p_correct": 0.5,
+      "method": "cluster",
+      "effect": -0.0006489583333333333,
+      "se": 0.01248740101539119,
+      "t": -0.042398466981993684,
+      "power": 0.06,
+      "mde": 0.03496472284309533
+    },
+    {
+      "p_correct": 0.55,
+      "method": "iid",
+      "effect": 0.050128125,
+      "se": 0.012556792730442445,
+      "t": 3.992892861541514,
+      "power": 0.9866666666666667,
+      "mde": 0.03515901964523884
+    },
+    {
+      "p_correct": 0.55,
+      "method": "block",
+      "effect": 0.050128125,
+      "se": 0.012548401622257167,
+      "t": 3.997272400107424,
+      "power": 0.9866666666666667,
+      "mde": 0.035135524542320065
+    },
+    {
+      "p_correct": 0.55,
+      "method": "cluster",
+      "effect": 0.050128125,
+      "se": 0.012417091892483257,
+      "t": 4.092022687386478,
+      "power": 0.9733333333333334,
+      "mde": 0.03476785729895312
+    },
+    {
+      "p_correct": 0.6,
+      "method": "iid",
+      "effect": 0.10124895833333333,
+      "se": 0.012427733737274457,
+      "t": 8.148977258852737,
+      "power": 1.0,
+      "mde": 0.03479765446436848
+    },
+    {
+      "p_correct": 0.6,
+      "method": "block",
+      "effect": 0.10124895833333333,
+      "se": 0.01241999488473637,
+      "t": 8.156726044740447,
+      "power": 1.0,
+      "mde": 0.03477598567726183
+    },
+    {
+      "p_correct": 0.6,
+      "method": "cluster",
+      "effect": 0.10124895833333333,
+      "se": 0.012364282941512782,
+      "t": 8.28668175864928,
+      "power": 1.0,
+      "mde": 0.03461999223623578
+    }
+  ],
+  "production_mde": {
+    "mde_gross_R": 0.03462,
+    "confidence": 0.95,
+    "alpha": 0.05,
+    "sample_size_bets": 2400,
+    "dependence_method": "cluster",
+    "cluster_definition": "non-overlapping 50-bet episodes",
+    "note": "MDE is per the inference method that PASSED the pre-declared Type-I gate at every persistence level. Future strategy reports must quote it: an effect smaller than the MDE is 'insufficient power to distinguish from the null', never 'no edge'."
+  }
+}

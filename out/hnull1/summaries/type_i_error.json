@@ -1,0 +1,130 @@
+{
+  "alpha": 0.05,
+  "replications": 200,
+  "n_boot": 400,
+  "acceptable_interval": [
+    0.0198,
+    0.0802
+  ],
+  "tolerance_justification": "95% binomial interval for 200 replications at alpha=0.05: a valid procedure lands inside it",
+  "block_lengths": {
+    "N1 random direction": {
+      "median_b": 1,
+      "min_b": 1,
+      "max_b": 3
+    },
+    "N4 symmetric stop": {
+      "median_b": 1,
+      "min_b": 1,
+      "max_b": 3
+    },
+    "N5 constant LONG": {
+      "median_b": 4,
+      "min_b": 3,
+      "max_b": 7
+    },
+    "N6 constant SHORT": {
+      "median_b": 4,
+      "min_b": 3,
+      "max_b": 7
+    }
+  },
+  "results": [
+    {
+      "null": "N1 random direction",
+      "replications": 200,
+      "mean_effect": 0.0007875000000000001,
+      "median_block": 1,
+      "iid_rejections": 10,
+      "iid_rate": 0.05,
+      "iid_ci": [
+        0.0198,
+        0.0802
+      ],
+      "block_rejections": 11,
+      "block_rate": 0.055,
+      "block_ci": [
+        0.0234,
+        0.0866
+      ],
+      "cluster_rejections": 12,
+      "cluster_rate": 0.06,
+      "cluster_ci": [
+        0.0271,
+        0.0929
+      ]
+    },
+    {
+      "null": "N4 symmetric stop",
+      "replications": 200,
+      "mean_effect": 0.0007875000000000001,
+      "median_block": 1,
+      "iid_rejections": 10,
+      "iid_rate": 0.05,
+      "iid_ci": [
+        0.0198,
+        0.0802
+      ],
+      "block_rejections": 11,
+      "block_rate": 0.055,
+      "block_ci": [
+        0.0234,
+        0.0866
+      ],
+      "cluster_rejections": 12,
+      "cluster_rate": 0.06,
+      "cluster_ci": [
+        0.0271,
+        0.0929
+      ]
+    },
+    {
+      "null": "N5 constant LONG",
+      "replications": 200,
+      "mean_effect": 0.00085,
+      "median_block": 4,
+      "iid_rejections": 45,
+      "iid_rate": 0.225,
+      "iid_ci": [
+        0.1671,
+        0.2829
+      ],
+      "block_rejections": 19,
+      "block_rate": 0.095,
+      "block_ci": [
+        0.0544,
+        0.1356
+      ],
+      "cluster_rejections": 14,
+      "cluster_rate": 0.07,
+      "cluster_ci": [
+        0.0346,
+        0.1054
+      ]
+    },
+    {
+      "null": "N6 constant SHORT",
+      "replications": 200,
+      "mean_effect": -0.00085,
+      "median_block": 4,
+      "iid_rejections": 45,
+      "iid_rate": 0.225,
+      "iid_ci": [
+        0.1671,
+        0.2829
+      ],
+      "block_rejections": 19,
+      "block_rate": 0.095,
+      "block_ci": [
+        0.0544,
+        0.1356
+      ],
+      "cluster_rejections": 14,
+      "cluster_rate": 0.07,
+      "cluster_ci": [
+        0.0346,
+        0.1054
+      ]
+    }
+  ]
+}

@@ -1,0 +1,356 @@
+{
+  "config": {
+    "frozen_before_2000_replication_run": true,
+    "module_sha256": "1164b949df0fe7d2b04d062d54a13d659e07ac47bf9544206631e4e7115a6810",
+    "primary": "moving-block bootstrap",
+    "secondary": "cluster estimator (non-overlapping 50-bet episodes)",
+    "diagnostic": "iid",
+    "promotion_rule": "cluster is NOT promoted to primary. Selecting an inference method on the strength of the calibration run it is being judged by would be exactly the tuning this experiment forbids.",
+    "block_length_rule": "b = the FIRST lag at which |acf| falls below the white-noise band 2/sqrt(n).",
+    "block_rule_sha256": "3e0ef683a34ba44d2de5b28183e3044f59600aaaac538ac238818379e3954e4d",
+    "moving_block_sha256": "00ebb1d44d1790a2c470bf0bf0c03271e9dc6f32a02273dfd6eaaa3e27410317",
+    "cluster_sha256": "fbb367008576fd20d9066cdd8242b709314b3102f3f7efaf22d21b0f2f66ab29",
+    "alpha": 0.05,
+    "acceptable_interval": [
+      0.02,
+      0.08
+    ],
+    "verdict_rule": {
+      "PASS": "entire 95% CI inside [0.02,0.08]",
+      "FAIL": "entire 95% CI outside",
+      "INCONCLUSIVE": "CI overlaps a boundary"
+    },
+    "replications": 2000,
+    "n_boot": 200,
+    "persistence_sweep": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      1.0
+    ],
+    "persistence_model": "two-state Markov chain on direction, P(stay)=persistence",
+    "forbidden": [
+      "tuning block length",
+      "changing cluster definition",
+      "widening the interval",
+      "optimising toward 5%",
+      "changing seeds to improve the rate"
+    ]
+  },
+  "main": [
+    {
+      "null": "N1 random direction",
+      "n": 2000,
+      "mean_effect": 2.02083333333333e-05,
+      "median_effect": 0.00010416666666666667,
+      "median_block": 1,
+      "iid_rejections": 89,
+      "iid_rate": 0.0445,
+      "iid_ci": [
+        0.0355,
+        0.0535
+      ],
+      "iid_verdict": "PASS",
+      "iid_mean_se": 0.00840084220610652,
+      "block_rejections": 88,
+      "block_rate": 0.044,
+      "block_ci": [
+        0.035,
+        0.053
+      ],
+      "block_verdict": "PASS",
+      "block_mean_se": 0.00839517428936592,
+      "cluster_rejections": 113,
+      "cluster_rate": 0.0565,
+      "cluster_ci": [
+        0.0464,
+        0.0666
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.00825755470405058
+    },
+    {
+      "null": "N4 symmetric stop",
+      "n": 2000,
+      "mean_effect": 2.02083333333333e-05,
+      "median_effect": 0.00010416666666666667,
+      "median_block": 1,
+      "iid_rejections": 89,
+      "iid_rate": 0.0445,
+      "iid_ci": [
+        0.0355,
+        0.0535
+      ],
+      "iid_verdict": "PASS",
+      "iid_mean_se": 0.00840084220610652,
+      "block_rejections": 88,
+      "block_rate": 0.044,
+      "block_ci": [
+        0.035,
+        0.053
+      ],
+      "block_verdict": "PASS",
+      "block_mean_se": 0.00839517428936592,
+      "cluster_rejections": 113,
+      "cluster_rate": 0.0565,
+      "cluster_ci": [
+        0.0464,
+        0.0666
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.00825755470405058
+    },
+    {
+      "null": "N5 constant LONG",
+      "n": 2000,
+      "mean_effect": -0.00017666666666666663,
+      "median_effect": 0.0,
+      "median_block": 4,
+      "iid_rejections": 388,
+      "iid_rate": 0.194,
+      "iid_ci": [
+        0.1767,
+        0.2113
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.008398604193371061,
+      "block_rejections": 190,
+      "block_rate": 0.095,
+      "block_ci": [
+        0.0821,
+        0.1079
+      ],
+      "block_verdict": "FAIL",
+      "block_mean_se": 0.011003132562923311,
+      "cluster_rejections": 134,
+      "cluster_rate": 0.067,
+      "cluster_ci": [
+        0.056,
+        0.078
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.012185986186068936
+    },
+    {
+      "null": "N6 constant SHORT",
+      "n": 2000,
+      "mean_effect": 0.00017666666666666663,
+      "median_effect": 0.0,
+      "median_block": 4,
+      "iid_rejections": 388,
+      "iid_rate": 0.194,
+      "iid_ci": [
+        0.1767,
+        0.2113
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.008398604193371061,
+      "block_rejections": 190,
+      "block_rate": 0.095,
+      "block_ci": [
+        0.0821,
+        0.1079
+      ],
+      "block_verdict": "FAIL",
+      "block_mean_se": 0.011003132562923311,
+      "cluster_rejections": 134,
+      "cluster_rate": 0.067,
+      "cluster_ci": [
+        0.056,
+        0.078
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.012185986186068936
+    }
+  ],
+  "persistence_sweep": [
+    {
+      "null": "persistence 0.00",
+      "n": 1000,
+      "mean_effect": -0.00025520833333333325,
+      "median_effect": -0.0003125,
+      "median_block": 4,
+      "iid_rejections": 8,
+      "iid_rate": 0.008,
+      "iid_ci": [
+        0.0025,
+        0.0135
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.008402548374544882,
+      "block_rejections": 33,
+      "block_rate": 0.033,
+      "block_ci": [
+        0.0219,
+        0.0441
+      ],
+      "block_verdict": "PASS",
+      "block_mean_se": 0.006366273049879454,
+      "cluster_rejections": 64,
+      "cluster_rate": 0.064,
+      "cluster_ci": [
+        0.0488,
+        0.0792
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.005776357326478747
+    },
+    {
+      "null": "persistence 0.25",
+      "n": 1000,
+      "mean_effect": 0.00014145833333333342,
+      "median_effect": 0.0,
+      "median_block": 2,
+      "iid_rejections": 17,
+      "iid_rate": 0.017,
+      "iid_ci": [
+        0.009,
+        0.025
+      ],
+      "iid_verdict": "INCONCLUSIVE",
+      "iid_mean_se": 0.008402178928145553,
+      "block_rejections": 30,
+      "block_rate": 0.03,
+      "block_ci": [
+        0.0194,
+        0.0406
+      ],
+      "block_verdict": "INCONCLUSIVE",
+      "block_mean_se": 0.007542643976806851,
+      "cluster_rejections": 62,
+      "cluster_rate": 0.062,
+      "cluster_ci": [
+        0.0471,
+        0.0769
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.006918007145370065
+    },
+    {
+      "null": "persistence 0.50",
+      "n": 1000,
+      "mean_effect": 0.00031020833333333334,
+      "median_effect": 0.0004166666666666667,
+      "median_block": 1,
+      "iid_rejections": 47,
+      "iid_rate": 0.047,
+      "iid_ci": [
+        0.0339,
+        0.0601
+      ],
+      "iid_verdict": "PASS",
+      "iid_mean_se": 0.00840175216547029,
+      "block_rejections": 46,
+      "block_rate": 0.046,
+      "block_ci": [
+        0.033,
+        0.059
+      ],
+      "block_verdict": "PASS",
+      "block_mean_se": 0.008398182932761724,
+      "cluster_rejections": 52,
+      "cluster_rate": 0.052,
+      "cluster_ci": [
+        0.0382,
+        0.0658
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.008300275870624957
+    },
+    {
+      "null": "persistence 0.75",
+      "n": 1000,
+      "mean_effect": -0.00024104166666666667,
+      "median_effect": -0.000625,
+      "median_block": 2,
+      "iid_rejections": 104,
+      "iid_rate": 0.104,
+      "iid_ci": [
+        0.0851,
+        0.1229
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.00840081478028804,
+      "block_rejections": 79,
+      "block_rate": 0.079,
+      "block_ci": [
+        0.0623,
+        0.0957
+      ],
+      "block_verdict": "INCONCLUSIVE",
+      "block_mean_se": 0.00929690423990075,
+      "cluster_rejections": 62,
+      "cluster_rate": 0.062,
+      "cluster_ci": [
+        0.0471,
+        0.0769
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.009970444751455261
+    },
+    {
+      "null": "persistence 0.90",
+      "n": 1000,
+      "mean_effect": -0.00019020833333333338,
+      "median_effect": -0.00010416666666666667,
+      "median_block": 3,
+      "iid_rejections": 142,
+      "iid_rate": 0.142,
+      "iid_ci": [
+        0.1204,
+        0.1636
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.008400393396707192,
+      "block_rejections": 76,
+      "block_rate": 0.076,
+      "block_ci": [
+        0.0596,
+        0.0924
+      ],
+      "block_verdict": "INCONCLUSIVE",
+      "block_mean_se": 0.010243033942867989,
+      "cluster_rejections": 49,
+      "cluster_rate": 0.049,
+      "cluster_ci": [
+        0.0356,
+        0.0624
+      ],
+      "cluster_verdict": "PASS",
+      "cluster_mean_se": 0.01118726335431683
+    },
+    {
+      "null": "persistence 1.00",
+      "n": 1000,
+      "mean_effect": 0.0004822916666666667,
+      "median_effect": 0.0008333333333333334,
+      "median_block": 4,
+      "iid_rejections": 202,
+      "iid_rate": 0.202,
+      "iid_ci": [
+        0.1771,
+        0.2269
+      ],
+      "iid_verdict": "FAIL",
+      "iid_mean_se": 0.008399350742507796,
+      "block_rejections": 98,
+      "block_rate": 0.098,
+      "block_ci": [
+        0.0796,
+        0.1164
+      ],
+      "block_verdict": "INCONCLUSIVE",
+      "block_mean_se": 0.010988522006585616,
+      "cluster_rejections": 67,
+      "cluster_rate": 0.067,
+      "cluster_ci": [
+        0.0515,
+        0.0825
+      ],
+      "cluster_verdict": "INCONCLUSIVE",
+      "cluster_mean_se": 0.012187959193380426
+    }
+  ]
+}
