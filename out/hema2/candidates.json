@@ -1,0 +1,1650 @@
+{
+  "experiment_id": "H-EMA-2",
+  "frozen": true,
+  "preregistration_sha256": "3fceea5e2a552be6a2505c8078ec7bc90036c2641ecb2dc29f2d3849b5996c2b",
+  "n_arms": 135,
+  "ema_pairs": [
+    [
+      5,
+      20
+    ],
+    [
+      9,
+      21
+    ],
+    [
+      12,
+      26
+    ],
+    [
+      20,
+      50
+    ],
+    [
+      50,
+      200
+    ]
+  ],
+  "exec_timeframes_minutes": [
+    5,
+    15,
+    60
+  ],
+  "mechanisms": {
+    "M1": "crossover event",
+    "M2": "crossover + slow-EMA 5-bar ATR-normalised displacement",
+    "M3": "crossover + ATR rising AND ATR/mean(ATR[t-20:t]) > threshold",
+    "M4": "crossover then pullback to within d*ATR of fast EMA, then resumption close",
+    "M5": "crossover gated by higher-timeframe EMA20/50 regime (last closed bar)"
+  },
+  "slope_thresholds": [
+    0.0,
+    0.25,
+    0.5
+  ],
+  "vol_thresholds": [
+    1.2,
+    1.5
+  ],
+  "pullback_distances": [
+    0.25,
+    0.5
+  ],
+  "regime_map": {
+    "5m": "1h",
+    "15m": "4h",
+    "1h": "1D"
+  },
+  "regime_pair": [
+    20,
+    50
+  ],
+  "control_seeds": [
+    11,
+    23,
+    37,
+    53,
+    71
+  ],
+  "controls": {
+    "C_b": "stop-width-decile-matched, direction randomised (PRIMARY)",
+    "C_a": "timestamp-matched, direction randomised (diagnostic)"
+  },
+  "arms": [
+    {
+      "arm_id": "M1|5m|5/20",
+      "mechanism": "M1",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|5m|5/20|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|5/20|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|5/20|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|5m|5/20|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|5m|5/20|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|5m|5/20|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|5m|5/20|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|5m|5/20",
+      "mechanism": "M5",
+      "exec_tf": 5,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "regime_tf": 60,
+        "regime_tf_name": "1h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|5m|9/21",
+      "mechanism": "M1",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|5m|9/21|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|9/21|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|9/21|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|5m|9/21|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|5m|9/21|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|5m|9/21|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|5m|9/21|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|5m|9/21",
+      "mechanism": "M5",
+      "exec_tf": 5,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "regime_tf": 60,
+        "regime_tf_name": "1h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|5m|12/26",
+      "mechanism": "M1",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|5m|12/26|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|12/26|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|12/26|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|5m|12/26|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|5m|12/26|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|5m|12/26|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|5m|12/26|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|5m|12/26",
+      "mechanism": "M5",
+      "exec_tf": 5,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "regime_tf": 60,
+        "regime_tf_name": "1h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|5m|20/50",
+      "mechanism": "M1",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|5m|20/50|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|20/50|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|20/50|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|5m|20/50|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|5m|20/50|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|5m|20/50|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|5m|20/50|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|5m|20/50",
+      "mechanism": "M5",
+      "exec_tf": 5,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "regime_tf": 60,
+        "regime_tf_name": "1h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|5m|50/200",
+      "mechanism": "M1",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|5m|50/200|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|50/200|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|5m|50/200|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|5m|50/200|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|5m|50/200|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|5m|50/200|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|5m|50/200|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|5m|50/200",
+      "mechanism": "M5",
+      "exec_tf": 5,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "regime_tf": 60,
+        "regime_tf_name": "1h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|15m|5/20",
+      "mechanism": "M1",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|15m|5/20|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|5/20|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|5/20|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|15m|5/20|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|15m|5/20|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|15m|5/20|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|15m|5/20|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|15m|5/20",
+      "mechanism": "M5",
+      "exec_tf": 15,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "regime_tf": 240,
+        "regime_tf_name": "4h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|15m|9/21",
+      "mechanism": "M1",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|15m|9/21|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|9/21|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|9/21|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|15m|9/21|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|15m|9/21|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|15m|9/21|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|15m|9/21|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|15m|9/21",
+      "mechanism": "M5",
+      "exec_tf": 15,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "regime_tf": 240,
+        "regime_tf_name": "4h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|15m|12/26",
+      "mechanism": "M1",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|15m|12/26|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|12/26|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|12/26|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|15m|12/26|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|15m|12/26|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|15m|12/26|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|15m|12/26|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|15m|12/26",
+      "mechanism": "M5",
+      "exec_tf": 15,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "regime_tf": 240,
+        "regime_tf_name": "4h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|15m|20/50",
+      "mechanism": "M1",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|15m|20/50|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|20/50|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|20/50|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|15m|20/50|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|15m|20/50|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|15m|20/50|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|15m|20/50|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|15m|20/50",
+      "mechanism": "M5",
+      "exec_tf": 15,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "regime_tf": 240,
+        "regime_tf_name": "4h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|15m|50/200",
+      "mechanism": "M1",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|15m|50/200|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|50/200|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|15m|50/200|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|15m|50/200|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|15m|50/200|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|15m|50/200|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|15m|50/200|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|15m|50/200",
+      "mechanism": "M5",
+      "exec_tf": 15,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "regime_tf": 240,
+        "regime_tf_name": "4h",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|1h|5/20",
+      "mechanism": "M1",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|1h|5/20|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|5/20|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|5/20|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|1h|5/20|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|1h|5/20|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|1h|5/20|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|1h|5/20|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|1h|5/20",
+      "mechanism": "M5",
+      "exec_tf": 60,
+      "fast": 5,
+      "slow": 20,
+      "params": {
+        "regime_tf": 1440,
+        "regime_tf_name": "1D",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|1h|9/21",
+      "mechanism": "M1",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|1h|9/21|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|9/21|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|9/21|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|1h|9/21|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|1h|9/21|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|1h|9/21|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|1h|9/21|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|1h|9/21",
+      "mechanism": "M5",
+      "exec_tf": 60,
+      "fast": 9,
+      "slow": 21,
+      "params": {
+        "regime_tf": 1440,
+        "regime_tf_name": "1D",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|1h|12/26",
+      "mechanism": "M1",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|1h|12/26|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|12/26|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|12/26|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|1h|12/26|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|1h|12/26|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|1h|12/26|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|1h|12/26|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|1h|12/26",
+      "mechanism": "M5",
+      "exec_tf": 60,
+      "fast": 12,
+      "slow": 26,
+      "params": {
+        "regime_tf": 1440,
+        "regime_tf_name": "1D",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|1h|20/50",
+      "mechanism": "M1",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|1h|20/50|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|20/50|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|20/50|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|1h|20/50|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|1h|20/50|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|1h|20/50|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|1h|20/50|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|1h|20/50",
+      "mechanism": "M5",
+      "exec_tf": 60,
+      "fast": 20,
+      "slow": 50,
+      "params": {
+        "regime_tf": 1440,
+        "regime_tf_name": "1D",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    },
+    {
+      "arm_id": "M1|1h|50/200",
+      "mechanism": "M1",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {}
+    },
+    {
+      "arm_id": "M2|1h|50/200|s0.00",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.0,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|50/200|s0.25",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.25,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M2|1h|50/200|s0.50",
+      "mechanism": "M2",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "slope_threshold": 0.5,
+        "slope_lookback": 5,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M3|1h|50/200|v1.2",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.2,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M3|1h|50/200|v1.5",
+      "mechanism": "M3",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "atr_ratio_threshold": 1.5,
+        "atr_period": 14,
+        "baseline_window": 20
+      }
+    },
+    {
+      "arm_id": "M4|1h|50/200|d0.25",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.25,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M4|1h|50/200|d0.5",
+      "mechanism": "M4",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "pullback_atr": 0.5,
+        "arm_expiry_bars": 10,
+        "atr_period": 14
+      }
+    },
+    {
+      "arm_id": "M5|1h|50/200",
+      "mechanism": "M5",
+      "exec_tf": 60,
+      "fast": 50,
+      "slow": 200,
+      "params": {
+        "regime_tf": 1440,
+        "regime_tf_name": "1D",
+        "regime_fast": 20,
+        "regime_slow": 50
+      }
+    }
+  ]
+}

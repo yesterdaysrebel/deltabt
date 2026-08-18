@@ -1,0 +1,42 @@
+{
+  "experiment_id": "H-EMA-2",
+  "universe": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "supplementary_valid_only": [
+    "BEATUSD"
+  ],
+  "excluded": {
+    "AKEUSD": "listed 2026-07-22, TEST-window only",
+    "BANKUSD": "listed 2026-07-22, TEST-window only"
+  },
+  "study_start": 1735689600,
+  "data_end": 1786531980,
+  "train": [
+    1735689600,
+    1766195028
+  ],
+  "valid": [
+    1766195028,
+    1776363504
+  ],
+  "test": "LOCKED - not computed",
+  "simulator": "deltabt.research.hwpr._simulate (unmodified)",
+  "stop_injection": "deltabt.research.stops.injection_arrays (unmodified)",
+  "stop_rule": "Supertrend(10,2.0) leg-extreme on the execution timeframe",
+  "supertrend_period": 10,
+  "supertrend_multiplier": 2.0,
+  "target_r": 2.0,
+  "max_stop_pct": 0.05,
+  "atr_period": 14,
+  "ema_seed": "SMA of first `length` finite values, then alpha=2/(length+1)",
+  "fill_resolution": "1m",
+  "slippage_bps": 2.0,
+  "gst_multiplier": 1.18,
+  "research_equity": 1e+18,
+  "research_risk": 1e-09,
+  "min_trades_for_promising": 200
+}
