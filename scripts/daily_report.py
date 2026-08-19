@@ -315,7 +315,25 @@ def main() -> int:
     status = as_json(sec.get("STATUS", ""))
     healthz = as_json(sec.get("HEALTHZ", ""))
     readyz = as_json(sec.get("READYZ", ""))
-    db = as_json((sec.get("PERSISTENCE", "") or "").splitlines()[-1] if sec.get("PERSISTENCE") else "")
+    _persist_raw = (sec.get("PERSISTENCE", "") or "")
+    _persist_last = _persist_raw.splitlines()[-1] if _persist_raw.strip() else ""
+    db = as_json(_persist_last)
+    # DID THE PROBE ACTUALLY ARRIVE?
+    #
+    # SSM caps StandardOutputContent at 24,000 bytes and appends
+    # "--output truncated--". The PERSISTENCE JSON is emitted LAST by the
+    # monitor document, so it is the first thing lost when the rest of the
+    # output grows -- and json.loads then fails, as_json returns {}, and every
+    # database figure below reads as though the database said zero.
+    #
+    # On 2026-08-19 that produced "expected exactly 1 RUNNING experiment,
+    # found 0" and "no evaluations at all in 24h" for V3, whose experiment was
+    # RUNNING and which had written 1,384 signals in that window. The report
+    # was not describing the bot; it was describing its own truncated input.
+    #
+    # A missing probe is now its own finding. It is NOT rendered as zeros.
+    db_ok = bool(db)
+    db_truncated = bool(_persist_last) and not db_ok
 
     # --- 1. is it alive and is it still the same experiment? ---------------
     print("## Is it running, and is it still the same experiment?\n")
@@ -369,7 +387,17 @@ def main() -> int:
                 f"(experiment {e.get('experiment_id')})")
 
     running = [e for e in experiments if str(e.get("status")).upper() == "RUNNING"]
-    if len(running) != 1:
+    if db_truncated:
+        problems.append(
+            "DATABASE PROBE UNREADABLE -- the monitor output hit the SSM "
+            "24,000-byte cap and the PERSISTENCE JSON was truncated. Every "
+            "database figure in this report is UNAVAILABLE, not zero. This "
+            "says nothing about whether the bot is healthy.")
+    elif not db_ok:
+        problems.append(
+            "DATABASE PROBE MISSING -- no PERSISTENCE section was returned. "
+            "Database figures are unavailable, not zero.")
+    elif len(running) != 1:
         problems.append(f"expected exactly 1 RUNNING experiment, found {len(running)}")
     run_age_seconds = None
     if running:
@@ -388,8 +416,12 @@ def main() -> int:
     # --- 2. what did it do? -------------------------------------------------
     print("## What it did\n")
     outcomes = db.get("outcomes_24h") or {}
-    evals = db.get("evaluations_24h", 0)
-    print(f"Evaluations in the last 24h: **{evals}**\n")
+    evals = db.get("evaluations_24h") if db_ok else None
+    if evals is None:
+        print("Evaluations in the last 24h: **unavailable** — the database probe "
+              "did not parse; see NEEDS ATTENTION.\n")
+    else:
+        print(f"Evaluations in the last 24h: **{evals}**\n")
 
     # WHY THIS LINE EXISTS. On 2026-08-19 the V3 report said "0 evaluations in
     # 24h" and listed three open positions, one entered 32 minutes earlier. Both
@@ -547,6 +579,9 @@ def main() -> int:
             body = ("Every evaluation returned `NO_SETUP`: the entry conditions were "
                     "never all true at the same bar close. No risk gate was reached, "
                     "so nothing was rejected — the setup simply did not occur.\n")
+        elif evals is None:
+            body = ("Evaluation count unavailable -- the database probe did not "
+                    "parse. Nothing here describes the strategy loop.\n")
         elif evals == 0:
             # "Zero evaluations" stopped meaning "the loop is dead" the moment
             # this count became experiment-scoped. A run that started twenty
