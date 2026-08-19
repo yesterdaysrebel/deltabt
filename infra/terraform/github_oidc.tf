@@ -113,8 +113,23 @@ locals {
 
   repo_forms = compact(["${var.github_org}/${var.github_repo}", local.repo_immutable])
 
+  #: BOTH ENVIRONMENTS, BECAUSE THEY GRANT DIFFERENT THINGS.
+  #:
+  #: `paper` gates the Terraform apply and keeps its required reviewer: that
+  #: apply can destroy instances and has no rollback. `paper-deploy` gates only
+  #: the image roll, which fails safe on its own -- drift refuses the bind,
+  #: deploy.sh rolls back when /readyz does not pass -- so it has no reviewer.
+  #:
+  #: The split was made on 2026-08-19 and this list was NOT updated with it.
+  #: GitHub's OIDC subject for a job with `environment:` is
+  #: repo:<org>/<repo>:environment:<name>, so every roll failed at
+  #: AssumeRoleWithWebIdentity -- not on anything to do with the deploy. It
+  #: went unnoticed because paths-ignore meant no deploy ran for three
+  #: commits. The `build` job kept working throughout: it declares no
+  #: environment, so it matched on the ref subject instead.
   github_subjects = flatten([for r in local.repo_forms : [
     "repo:${r}:ref:refs/heads/master",
     "repo:${r}:environment:paper",
+    "repo:${r}:environment:paper-deploy",
   ]])
 }
