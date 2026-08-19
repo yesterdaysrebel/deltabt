@@ -20,6 +20,29 @@ name: deploy
 on:
   push:
     branches: [master]
+    # DEPLOYS ARE NOT FREE, AND THIS IS NOT TIDINESS.
+    #
+    # The experiment identity includes git_sha, so bind_experiment() refuses to
+    # start when the container's SHA differs from the one the RUNNING forward
+    # test recorded -- /readyz never passes, the host rolls back, and the job
+    # fails. The only way to make a deploy succeed is to stop the experiment,
+    # deploy, and start a NEW experiment id, which ends the run.
+    #
+    # So an unfiltered `push: master` means committing a research CSV can only
+    # be resolved by destroying three 30-day forward tests. That happened on
+    # 2026-08-18: fb69f7e added out/hstructure/market_structure_events.csv --
+    # 9,787 lines, zero code -- and all three roll jobs failed on drift, with
+    # V3's experiment left stopped as collateral.
+    #
+    # A commit touching BOTH ignored and non-ignored paths still deploys;
+    # paths-ignore skips only when every changed file matches. Code changes are
+    # therefore unaffected, which is the point.
+    paths-ignore:
+      - 'out/**'
+      - 'reports/**'
+      - 'docs/**'
+      - '**.md'
+      - 'LICENSE'
   workflow_dispatch:
     inputs:
       image_tag:

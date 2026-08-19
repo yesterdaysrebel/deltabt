@@ -390,6 +390,21 @@ def main() -> int:
     outcomes = db.get("outcomes_24h") or {}
     evals = db.get("evaluations_24h", 0)
     print(f"Evaluations in the last 24h: **{evals}**\n")
+
+    # WHY THIS LINE EXISTS. On 2026-08-19 the V3 report said "0 evaluations in
+    # 24h" and listed three open positions, one entered 32 minutes earlier. Both
+    # numbers came from the same probe and could not both be right, and the
+    # report carried nothing to tell an operator which. The probe was already
+    # collecting these two counts and simply never printed them.
+    #
+    # Read them together with `scoped_to`: unbound signals accumulate whenever
+    # forward_test has no RUNNING row, which is exactly the state that also
+    # makes every experiment-scoped figure above read zero.
+    bound, unbound = db.get("signals_bound"), db.get("signals_unbound")
+    if bound is not None or unbound is not None:
+        scope = db.get("scoped_to") or "NONE -- running unbound"
+        print(f"Signals recorded all-run: **{bound or 0}** bound · "
+              f"**{unbound or 0}** unbound · scoped to `{scope}`\n")
     if outcomes:
         print("| Outcome | Count |")
         print("|---|---|")
