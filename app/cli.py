@@ -29,6 +29,10 @@ from app.forwardtest.preflight import run_preflight
 from app.market_data.backfill import Backfiller
 from app.monitoring.logging import configure
 from app.persistence.repository import PostgresRepository
+from app.risk.engine import RiskState
+# The one place the ledger's storage key is defined; imported rather than
+# restated so the two cannot drift apart.
+from app.runtime.bot import STATE_KEY
 
 EXEC_PARAMS = {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25,
                "min_fill_rr": 1.7}
@@ -116,6 +120,40 @@ async def cmd_start(args) -> int:
                          settings.symbols),
         settings.symbols)
     created = await repo.create_experiment(ident, planned_days=args.days)
+    if created:
+        # A NEW EXPERIMENT STARTS FROM A FRESH LEDGER.
+        #
+        # risk_state lives in strategy_state, keyed by nothing but "risk_state",
+        # and it OUTLIVES the experiment that produced it. Registering a new
+        # experiment in a database that has already run one therefore inherited
+        # its equity, peak, win/loss counters, consecutive-loss streak and
+        # today's trade count.
+        #
+        # Found 2026-08-19 on the ATR arm: it started with equity 10,250.77
+        # instead of 10,000, a drawdown baseline set by a strategy it had never
+        # run, a 10/9 win-loss record it had not earned, and four of the day's
+        # six-trade budget already spent. Position sizing is equity * risk, so
+        # this is not a reporting artifact -- every position would have been
+        # sized 2.5% large.
+        #
+        # The composite config hash cannot catch this. It compares strategy,
+        # risk, execution and symbols; the LEDGER is none of those, so drift
+        # detection was never looking at it.
+        #
+        # Open positions still cross the boundary and are left alone: closing
+        # them here would fabricate exits the strategy never produced, and
+        # their P&L lands in the new ledger. Scope analysis by opened_at.
+        prior = await repo.get_state(STATE_KEY)
+        await repo.set_state(
+            STATE_KEY, RiskState.fresh(settings.risk.starting_equity).to_dict())
+        if prior:
+            print(f"\nRISK LEDGER RESET for the new experiment."
+                  f"\n  was  equity {prior.get('equity')} peak {prior.get('peak_equity')} "
+                  f"wins {prior.get('wins')} losses {prior.get('losses')} "
+                  f"trades_today {prior.get('trades_today')}"
+                  f"\n  now  equity {settings.risk.starting_equity}, counters zeroed."
+                  f"\n  Open positions are NOT closed; their P&L lands here. "
+                  f"Scope analysis by opened_at.")
     if not created:
         active = await repo.active_experiment()
         print(f"\nRefused: " + (
