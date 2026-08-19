@@ -49,6 +49,11 @@ DELTABOT_VARIANT=${bot_variant}
 DELTABOT_MAX_OPEN=${max_open_positions}
 DELTABOT_MAX_DRAWDOWN=${max_drawdown_pct}
 DELTABOT_MAX_CONSEC_LOSSES=${max_consecutive_losses}
+# 0 disables the time stop and is the current value. It is written here
+# because it previously reached no host at all: the code shipped, the
+# delivery did not. Setting it non-zero moves the risk hash, so a running
+# bot will refuse to continue its experiment rather than change mid-run.
+DELTABOT_MAX_HOLD=${max_hold_seconds}
 DELTABOT_LOG_LEVEL=INFO
 ENVEOF
 chmod 0644 /opt/deltabt/env

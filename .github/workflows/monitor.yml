@@ -54,10 +54,14 @@ jobs:
           # fail every run on a missing instance id, which is a false alarm
           # about an experiment that was ended deliberately.
           - stack: v3
-            variant: V3
+            variant: V4
             instance_var: BOT_INSTANCE_ID_V3
             document_var: SSM_MONITOR_DOCUMENT_V3
-            strategy_hash: "11461f2a11a96f8a"
+            # The ATR arm, not V3's rules. The STACK keeps the name "v3"
+            # because renaming it would destroy and recreate its database and
+            # log group; the VARIANT selects the rules, and this pins which
+            # rules must actually be running.
+            strategy_hash: "8a564836b862ea74"
             log_group: /deltabt/paper/v3/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits

@@ -174,6 +174,11 @@ ALL = {"V2": V2, "V1": V1, "V2_LEVEL": V2_LEVEL, "V3": V3_WIDE_STOP}
 #: is the research's own 5% rather than V3's 10%.
 _FROZEN_1M_NAMES = frozenset({"FROZEN_1M", "FROZEN1M"})
 
+#: The ATR arm: V3's entry family with a 2 x ATR(10) stop, a 2R target
+#: derived from it, no ADX threshold, and 1m confirmation on Supertrend
+#: + Williams %R instead of ADX/DI.
+_ATR_ARM_NAMES = frozenset({"V4", "ATR", "V4_ATR"})
+
 #: Environment variable selecting which entry of ALL runs. Unset means V1,
 #: which is what FROZEN is, so nothing changes for a host that does not set it.
 VARIANT_ENV = "DELTABOT_VARIANT"
@@ -213,9 +218,17 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
         from app.strategy.frozen_hwpr import FROZEN_1M
         return FROZEN_1M
 
+    # The ATR arm, resolved here for the same reason: it is not a
+    # StrategyConfig. Adding its fields to StrategyConfig would move V1, V2,
+    # V2_LEVEL and V3's hashes -- V3 is pinned at 11461f2a11a96f8a in
+    # monitor.yml, deploy.yml and tests -- so it carries its own config object.
+    if name.upper() in _ATR_ARM_NAMES:
+        from app.strategy.atr_arm import ATR_ARM
+        return ATR_ARM
+
     try:
         return ALL[name.upper()]
     except KeyError:
         raise ValueError(
             f"{VARIANT_ENV}={name!r} is not a known variant; expected one of "
-            f"{', '.join(sorted(set(ALL) | _FROZEN_1M_NAMES))}") from None
+            f"{', '.join(sorted(set(ALL) | _FROZEN_1M_NAMES | _ATR_ARM_NAMES))}") from None

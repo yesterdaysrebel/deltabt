@@ -79,6 +79,33 @@ variable "allow_instance_replacement" {
   default     = true
 }
 
+variable "max_hold_seconds" {
+  description = <<-EOT
+    Close a position that has been open this long, at market, whatever it is
+    doing. 0 disables it, and 0 IS THE CURRENT CONFIGURED VALUE -- this
+    variable exists so the value can reach the container at all, which it
+    previously could not.
+
+    b63e365 shipped the code for a 24-hour time stop and called itself "Apply
+    1 of 2". Apply 2 never landed: DELTABOT_MAX_HOLD existed only in the
+    settings override table, and appeared in neither user_data.sh.tftpl nor
+    the -e list in run.sh, so max_hold_seconds was 0 in every container
+    regardless of intent.
+
+    NOW 86400 (24h), because the arm this stack runs is specified with a
+    24-hour time exit. It was 0 while the plumbing was staged out. max_hold_seconds is part of RiskConfig and therefore part of
+    the risk hash -- 58a7a452914bf93f at 0, c6ceced8b00f612d at 86400 -- so a
+    non-zero value makes a running bot raise ConfigurationDrift and refuse to
+    continue its experiment. That is the fail-closed behaviour working, not a
+    fault. Setting this to 86400 is a deliberate decision that STARTS A NEW
+    EXPERIMENT; it cannot be applied to one already running.
+  EOT
+  type        = number
+  default     = 86400
+}
+
+# --- access ----------------------------------------------------------------
+
 variable "ami_id" {
   description = <<-EOT
     The AMI the bots run on, PINNED.
@@ -185,7 +212,12 @@ variable "stacks" {
     # because AKEUSD and BEATUSD had 15 setups refused for stop width out of
     # 15 -- see V3_WIDE_STOP in app/config/variants.py for the measurement and
     # for why 10% rather than 25%.
-    v3 = { variant = "V3", db_name = "deltabt_v3" }
+    # Runs the ATR arm, not V3's rules: 2 x ATR(10) stop, a 2R target derived
+    # from it, no ADX threshold, and 1m confirmation on Supertrend + Williams
+    # %R instead of ADX/DI. The stack keeps the name "v3" because renaming it
+    # would destroy and recreate its database, log group and documents; the
+    # VARIANT is what selects the rules.
+    v3 = { variant = "V4", db_name = "deltabt_v3" }
   }
 }
 

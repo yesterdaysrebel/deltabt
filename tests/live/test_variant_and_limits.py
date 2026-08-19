@@ -84,7 +84,11 @@ class TestVariantSelection:
         process from the same wrong config, so the two agree with each other
         and disagree only with the intent.
         """
-        for bad in ("V4", "V1_", "VariantA", "NONE", "0", "V2LEVEL"):
+        # "V4" was in this list until 2026-08-19, when it became the ATR arm.
+        # Replaced with "V5" rather than dropped, so the list keeps a
+        # plausible-looking version name -- the typo class this guards against
+        # is a near-miss, not a nonsense string.
+        for bad in ("V5", "V1_", "VariantA", "NONE", "0", "V2LEVEL"):
             with pytest.raises(ValueError) as e:
                 resolve_strategy({VARIANT_ENV: bad})
             assert "not a known variant" in str(e.value)

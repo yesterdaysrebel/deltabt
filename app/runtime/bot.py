@@ -80,6 +80,8 @@ from app.persistence.models import (
 from app.persistence.repository import Repository
 from app.risk.engine import RiskEngine, RiskState
 from app.strategy.explanation import Outcome
+from app.strategy.atr_arm import AtrArmConfig, evaluate_atr
+from app.strategy.atr_arm import warmup_bars as atr_warmup_bars
 from app.strategy.frozen_hwpr import FrozenHwprConfig, evaluate_frozen
 from app.strategy.rules import evaluate, warmup_bars
 from deltabt.costs import SymbolCosts
@@ -125,6 +127,9 @@ class TradingBot:
         #: once from the resolved config rather than re-tested per bar, so the
         #: two arms cannot interleave.
         self.frozen_arm = isinstance(strategy, FrozenHwprConfig)
+        #: The ATR arm is 5m-primary like V3, so it shares the 5m boundary and
+        #: differs only in which evaluator runs on it.
+        self.atr_arm = isinstance(strategy, AtrArmConfig)
         self.notifier = notifier or NullNotifier()
         self.backfiller = backfiller
         self.lock = lock
@@ -342,6 +347,7 @@ class TradingBot:
         # The frozen arm decides on 1m and needs its whole window before the
         # 5m regime inside build_conditions has converged; V3 needs 5m bars.
         need = (self.strategy.window_bars if self.frozen_arm
+                else atr_warmup_bars(self.strategy) if self.atr_arm
                 else warmup_bars(self.strategy))
         for sym in self.symbols:
             bars = await self.backfiller.warm_up(sym, self.settings.backfill_days)
@@ -524,7 +530,10 @@ class TradingBot:
         primary = b.frame_5m(limit=self.strategy.window_bars)
         confirmation = b.frame(limit=self.strategy.window_bars)
 
-        exp = evaluate(primary, confirmation, self.strategy, symbol=symbol)
+        if self.atr_arm:
+            exp = evaluate_atr(primary, confirmation, self.strategy, symbol=symbol)
+        else:
+            exp = evaluate(primary, confirmation, self.strategy, symbol=symbol)
         await self._process_explanation(symbol, exp, 300)
 
     async def _process_explanation(self, symbol: str, exp, bar_seconds: int) -> None:
