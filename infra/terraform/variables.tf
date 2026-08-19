@@ -51,30 +51,54 @@ variable "instance_type" {
     t4g.micro (1 GB) also runs it but leaves little room for the numba cache
     and a docker build.
 
-    m6g.medium SINCE 2026-08-19, AND THE FAMILY IS THE POINT, NOT THE SIZE.
-    AWS ran out of t4g in ap-south-1a for over three and a half hours while
-    the bot was down. t4g.small failed continuously from 06:34, and t4g.MEDIUM
-    failed exactly the same way -- so it was never a sizing problem, it was
-    the whole t4g pool in that AZ. m6g.medium launched on the first attempt.
+    BACK TO t4g.small ON 2026-08-19, after a detour. AWS ran out of the whole
+    t4g pool in ap-south-1a for over three hours that morning -- t4g.small and
+    t4g.MEDIUM failed identically, so it was never about sizing -- and
+    m6g.medium was taken purely because it had capacity. That was a workaround
+    for an outage, not a decision about what this workload needs, and it cost
+    roughly $10/month more for headroom nothing uses.
 
-    Same architecture (Graviton, arm64), same AZ, 1 vCPU / 4 GB against
-    t4g.small's 2 / 2. Roughly $10/month more. The container measures ~450 MB
-    RSS steady and under 5% CPU, so neither shape is close to constrained;
-    m6g gives up burst credits it never needed and gains headroom it does not
-    need either. It was chosen for availability alone.
+    The durable fix was a public subnet in a second AZ, not a bigger instance:
+    see bot_subnet_index. With somewhere to fall back to, the cheap shape is
+    the right default again.
 
     IT IS PINNED HERE RATHER THAN PASSED AS -var ON PURPOSE. A command-line
-    override would leave the committed default at t4g.small, and the next
-    apply from CI would "correct" it -- replacing the instance and ending the
-    experiment as a side effect of a routine plan.
-
-    THE REAL FIX IS NOT THIS LINE. One public subnet in one AZ is why a
-    routine capacity blip became a four-hour outage with no fallback. Until
-    there is a public subnet in a second AZ, the next t4g-style shortage will
-    do this again.
+    override leaves the committed default disagreeing with reality, and the
+    next apply from CI would "correct" it -- replacing the instance and ending
+    the experiment as a side effect of a routine plan.
   EOT
   type        = string
-  default     = "m6g.medium"
+  default     = "t4g.small"
+}
+
+variable "bot_subnet_index" {
+  description = <<-EOT
+    Which public subnet -- and therefore which availability zone -- the bot
+    runs in. 0 is the first AZ, 1 the second.
+
+    THIS IS THE CAPACITY ESCAPE HATCH. On 2026-08-19 AWS had no t4g capacity in
+    the first AZ for over three hours and the bot stayed down, because one
+    public subnet existed and a host cannot run in a private one without a NAT.
+    Every RunInstances error said the same thing: capacity is available in
+    another zone.
+
+    Changing this REPLACES the instance, so it needs allow_instance_replacement
+    true for that apply. It does not move the database: RDS is single-AZ with
+    its own subnet group, and the bot reaches it across the VPC either way.
+
+    NOW 1 (the second AZ). t4g.small was still unavailable in the first AZ five
+    hours after the outage began -- StartInstances itself returned
+    InsufficientInstanceCapacity -- and the same shape launched in the second
+    in 14 seconds. Committed rather than passed as -var so a CI apply cannot
+    quietly move the bot back into the zone that has no capacity.
+  EOT
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.bot_subnet_index >= 0 && var.bot_subnet_index <= 1
+    error_message = "bot_subnet_index must be 0 or 1; only two public subnets exist."
+  }
 }
 
 variable "allow_instance_replacement" {

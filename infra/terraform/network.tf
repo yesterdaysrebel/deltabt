@@ -28,12 +28,31 @@ resource "aws_internet_gateway" "main" {
   tags   = { Name = local.name }
 }
 
+# ONE PUBLIC SUBNET PER AZ, AND THE SECOND ONE IS NOT DECORATION.
+#
+# There was one, in local.azs[0]. On 2026-08-19 AWS ran out of t4g capacity in
+# that AZ for over three hours; the bot was down the whole time and there was
+# nowhere else to put it, because a host needs a public subnet and only one
+# existed. The private subnets have no NAT, so they are not an option.
+#
+# Both are free. Only the instance costs anything, and only one instance runs.
+# This does not give automatic failover -- aws_instance takes a single
+# subnet_id -- but it turns "wait for AWS" into a one-variable move: see
+# bot_subnet_index.
 resource "aws_subnet" "public" {
+  count                   = 2
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.42.1.0/24"
-  availability_zone       = local.azs[0]
+  cidr_block              = "10.42.${count.index + 1}.0/24"
+  availability_zone       = local.azs[count.index]
   map_public_ip_on_launch = true
-  tags                    = { Name = "${local.name}-public" }
+  tags                    = { Name = "${local.name}-public-${count.index}" }
+}
+
+# Without this the rename from a single resource to a counted one reads as
+# destroy-and-create of the subnet the bot is sitting in.
+moved {
+  from = aws_subnet.public
+  to   = aws_subnet.public[0]
 }
 
 # RDS requires a subnet group spanning at least two availability zones even
@@ -59,8 +78,14 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+moved {
+  from = aws_route_table_association.public
+  to   = aws_route_table_association.public[0]
 }
 
 # The private subnets deliberately get no route table of their own: they fall

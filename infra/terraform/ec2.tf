@@ -92,7 +92,7 @@ resource "aws_instance" "bot" {
 
   ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.al2023.id
   instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public.id
+  subnet_id              = aws_subnet.public[var.bot_subnet_index].id
   vpc_security_group_ids = [aws_security_group.bot.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
