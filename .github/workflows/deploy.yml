@@ -146,7 +146,12 @@ jobs:
         include:
           # v1 and v2 decommissioned 2026-08-19 -- see monitor.yml.
           - stack: v3
-            variant: V3
+            # Label only -- this job rolls an image tag and does not choose the
+            # rules. The variant reaches the bot through DELTABOT_VARIANT in
+            # /opt/deltabt/env, written by user-data. Kept accurate so the job
+            # name does not claim the host is running V3 when it runs the ATR
+            # arm.
+            variant: V4
             instance_var: BOT_INSTANCE_ID_V3
             document_var: SSM_DEPLOY_DOCUMENT_V3
     steps:

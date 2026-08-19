@@ -56,7 +56,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TF_VERSION: "1.10.5"
+  TF_VERSION: "1.11.11"   # OpenTofu -- see the note on setup-opentofu below
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
 jobs:
@@ -95,9 +95,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-plan-${{ github.run_id }}
 
-      - uses: hashicorp/setup-terraform@v3
+      # OpenTofu, not Terraform. The remote state was written by OpenTofu
+      # 1.11.11 on 2026-08-19, which records provider addresses under
+      # registry.opentofu.org. Terraform 1.10.5 cannot read that state --
+      # `terraform show -json` fails with 'unsupported attribute "vpc"' --
+      # so CI follows the state rather than the state being rewritten to
+      # follow CI. OpenTofu is a drop-in fork; the commands are identical.
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          tofu_version: ${{ env.TF_VERSION }}
           # The wrapper shims `terraform` and writes its own `exitcode` step
           # output. The apply gate reads -detailed-exitcode, so two writers of
           # the same key is exactly the ambiguity to remove: the first run with
@@ -108,17 +114,17 @@ jobs:
       - name: init
         working-directory: infra/terraform
         run: |
-          terraform init -input=false \
+          tofu init -input=false \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: fmt
         working-directory: infra/terraform
-        run: terraform fmt -check -recursive
+        run: tofu fmt -check -recursive
 
       - name: validate
         working-directory: infra/terraform
-        run: terraform validate
+        run: tofu validate
 
       - name: AWS preflight -- trust anchors and backend
         # Fails closed. "Resource missing" is never read as "safe to create"
@@ -136,7 +142,7 @@ jobs:
         # names and error mid-apply; this says what to import, and it also
         # catches a second running instance, which Terraform cannot see at all.
         run: |
-          terraform show -json > state.json
+          tofu show -json > state.json
           python3 ../../scripts/aws_unmanaged_check.py state.json \
             --environment paper --region "$AWS_REGION"
 
@@ -147,7 +153,7 @@ jobs:
         # the apply job skip entirely when there is nothing to do.
         run: |
           set +e
-          terraform plan -input=false -lock-timeout=5m -detailed-exitcode -out=tfplan \
+          tofu plan -input=false -lock-timeout=5m -detailed-exitcode -out=tfplan \
             -var="github_org=${{ github.repository_owner }}" \
             -var="github_repo=${{ github.event.repository.name }}" \
             -var="github_owner_id=${{ github.repository_owner_id }}" \
@@ -179,7 +185,7 @@ jobs:
         env:
           ALLOW_REPLACE: ${{ (github.event_name == 'workflow_dispatch' && inputs.allow_replace) && '1' || '' }}
         run: |
-          terraform show -json tfplan > tfplan.json
+          tofu show -json tfplan > tfplan.json
           python3 ../../scripts/tf_guard.py tfplan.json
 
       - name: cost guard -- refuses NAT gateways, load balancers, EKS, autoscalers
@@ -197,7 +203,7 @@ jobs:
 
       - name: human-readable plan
         working-directory: infra/terraform
-        run: terraform show -no-color tfplan | tee plan.txt
+        run: tofu show -no-color tfplan | tee plan.txt
 
       - name: post the plan on the pull request
         if: github.event_name == 'pull_request'
@@ -241,9 +247,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-apply-${{ github.run_id }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          tofu_version: ${{ env.TF_VERSION }}
           # The wrapper shims `terraform` and writes its own `exitcode` step
           # output. The apply gate reads -detailed-exitcode, so two writers of
           # the same key is exactly the ambiguity to remove: the first run with
@@ -259,7 +265,7 @@ jobs:
       - name: init
         working-directory: infra/terraform
         run: |
-          terraform init -input=false \
+          tofu init -input=false \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
 
@@ -267,7 +273,7 @@ jobs:
         working-directory: infra/terraform
         # Applying the SAVED plan file, never `apply -auto-approve` against a
         # re-planned world. What was reviewed is what is applied.
-        run: terraform apply -input=false -lock-timeout=5m tfplan
+        run: tofu apply -input=false -lock-timeout=5m tfplan
 
       - name: AWS preflight -- the applied stack
         # Re-run after apply, in the strict phase, with no plan to excuse an
@@ -284,7 +290,7 @@ jobs:
           {
             echo "### Infrastructure"
             echo '```'
-            terraform output
+            tofu output
             echo '```'
             echo
             echo "Successful infrastructure deployment does not create an"

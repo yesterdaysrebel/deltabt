@@ -117,26 +117,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      # OpenTofu, not Terraform. The remote state was written by OpenTofu
+      # 1.11.11 on 2026-08-19, which records provider addresses under
+      # registry.opentofu.org. Terraform 1.10.5 cannot read that state --
+      # `terraform show -json` fails with 'unsupported attribute "vpc"' --
+      # so CI follows the state rather than the state being rewritten to
+      # follow CI. OpenTofu is a drop-in fork; the commands are identical.
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: "1.10.5"
+          tofu_version: "1.10.5"
           terraform_wrapper: false
 
       - name: fmt
-        run: terraform fmt -check -recursive infra/
+        run: tofu fmt -check -recursive infra/
 
       - name: validate the main stack
         # -backend=false: validation needs no credentials and no state.
         run: |
           cd infra/terraform
-          terraform init -backend=false -input=false
-          terraform validate
+          tofu init -backend=false -input=false
+          tofu validate
 
       - name: validate the bootstrap stack
         run: |
           cd infra/terraform/bootstrap
-          terraform init -backend=false -input=false
-          terraform validate
+          tofu init -backend=false -input=false
+          tofu validate
 
       - name: the guard that refuses destructive plans works
         run: |
