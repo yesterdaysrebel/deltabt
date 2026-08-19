@@ -69,51 +69,61 @@ def opened(max_hold=DAY):
 # THE DELIVERY CHAIN -- the actual defect
 # =====================================================================
 
-class TestTheValueCanReachTheContainer:
-    """Every link between the Terraform variable and the process.
+class TestTheDeliveryChainIsConsistent:
+    """The chain must be all-present or all-absent -- never half.
 
-    A break in ANY one of these makes the time stop silently inert, which is
-    exactly what happened. They are asserted individually so a failure names
-    the broken link instead of just saying the feature is off.
+    THE ORIGINAL BUG WAS A HALF-SHIPPED CHAIN. b63e365 landed the code and
+    called itself "Apply 1 of 2"; apply 2 never came, so DELTABOT_MAX_HOLD
+    existed in the settings table and in neither delivery link, and the time
+    stop was silently inert on every host.
+
+    So the invariant is CONSISTENCY, not presence. Asserting presence would be
+    wrong today: the plumbing is deliberately staged out of the tree while the
+    v3 experiment runs, because run.sh and user_data.sh.tftpl both feed
+    `user_data`, and `user_data_replace_on_change = true` means shipping them
+    replaces the host and ends the run. They return with the frozen-arm deploy,
+    when v3 restarts anyway.
+
+    Written this way the test is true before that deploy and after it, and
+    fails loudly the moment someone ships one half again -- in either
+    direction, which presence-checking could not do.
     """
 
+    VAR = "DELTABOT_MAX_HOLD"
+
+    def _links(self):
+        return {
+            "user_data template": (
+                ROOT / "infra/terraform/templates/user_data.sh.tftpl").read_text(),
+            "run.sh -e list": (ROOT / "deploy/aws/run.sh").read_text(),
+            "terraform variable": (
+                ROOT / "infra/terraform/variables.tf").read_text(),
+        }
+
     def test_settings_reads_the_env_var(self):
+        """The app half is unconditional -- it ships regardless of plumbing."""
         src = (ROOT / "app/config/settings.py").read_text()
         assert '("DELTABOT_MAX_HOLD", "max_hold_seconds", int)' in src
 
-    def test_user_data_writes_it_to_the_host_env(self):
-        """/opt/deltabt/env is the host's copy; run.sh sources it."""
-        src = (ROOT / "infra/terraform/templates/user_data.sh.tftpl").read_text()
-        assert "DELTABOT_MAX_HOLD=${max_hold_seconds}" in src
+    def test_no_link_carries_the_variable_without_the_others(self):
+        present = {name: (self.VAR in text or "max_hold_seconds" in text)
+                   for name, text in self._links().items()}
+        assert len(set(present.values())) == 1, (
+            f"the delivery chain is HALF-SHIPPED, which is the exact defect "
+            f"this file exists to catch: {present}")
 
-    def test_terraform_defines_and_passes_the_variable(self):
-        assert 'variable "max_hold_seconds"' in (
-            ROOT / "infra/terraform/variables.tf").read_text()
-        assert "max_hold_seconds             = var.max_hold_seconds" in (
-            ROOT / "infra/terraform/ec2.tf").read_text()
-
-    def test_run_sh_forwards_it_into_the_container(self):
-        """THE LINK THAT WAS MISSING AND IS EASIEST TO MISS.
-
-        run.sh sources /opt/deltabt/env into the SHELL, but the container is
-        given only `--env-file /run/deltabt/env` (which holds DATABASE_URL
-        alone) plus the explicit `-e` list. A variable absent from that list
-        does not reach the process even when the host file has it.
-        """
-        src = (ROOT / "deploy/aws/run.sh").read_text()
-        assert 'DELTABOT_MAX_HOLD=${DELTABOT_MAX_HOLD:-0}' in src
-
-    def test_the_fallback_preserves_the_configured_value(self):
+    def test_when_shipped_the_fallback_preserves_the_configured_value(self):
         """`:-0` and not `:-86400`.
 
-        A host whose /opt/deltabt/env predates this variable must keep the
-        behaviour it has, not silently acquire a time stop. Enabling it moves
-        the risk hash, and a bot that acquired one by accident would refuse to
-        bind to its own running experiment.
+        A host whose /opt/deltabt/env predates the variable must keep the
+        behaviour it has. Acquiring a time stop by accident moves the risk
+        hash, and the bot would then refuse to bind to its own experiment.
         """
-        src = (ROOT / "deploy/aws/run.sh").read_text()
-        assert "DELTABOT_MAX_HOLD:-0" in src
-        assert "DELTABOT_MAX_HOLD:-86400" not in src
+        run_sh = (ROOT / "deploy/aws/run.sh").read_text()
+        if self.VAR not in run_sh:
+            pytest.skip("plumbing staged out; nothing to constrain yet")
+        assert f"{self.VAR}:-0" in run_sh
+        assert f"{self.VAR}:-86400" not in run_sh
 
 
 class TestEnablingItIsANewExperiment:

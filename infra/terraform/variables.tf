@@ -79,6 +79,24 @@ variable "allow_instance_replacement" {
   default     = true
 }
 
+variable "ami_id" {
+  description = <<-EOT
+    The AMI the bots run on, PINNED.
+
+    data.aws_ami.al2023 uses most_recent = true, so the moment Amazon
+    publishes a new al2023-*-arm64 image the lookup moves and `ami` forces
+    replacement of every instance. On 2026-08-19 that was already true --
+    a plan with NO configuration change wanted to replace all three running
+    bots (ami-00b0a08d4568c22e8 -> ami-066a2d1dff4d3bfa5), which would have
+    ended three 30-day forward tests as a side effect of an unrelated apply.
+
+    Empty string falls back to the most_recent lookup. Bump this deliberately
+    when you intend to re-bootstrap, never by accident.
+  EOT
+  type        = string
+  default     = "ami-00b0a08d4568c22e8"
+}
+
 variable "root_volume_gb" {
   description = "Root EBS size. Image ~1.2 GB plus capped logs."
   type        = number
@@ -163,8 +181,6 @@ variable "stacks" {
     db_name = string
   }))
   default = {
-    v1 = { variant = "V1", db_name = "" } # "" means the RDS default database
-    v2 = { variant = "V2", db_name = "deltabt_v2" }
     # V1's rules with max_stop_pct at 10% instead of 5%. Added 2026-08-15
     # because AKEUSD and BEATUSD had 15 setups refused for stop width out of
     # 15 -- see V3_WIDE_STOP in app/config/variants.py for the measurement and
@@ -199,33 +215,6 @@ variable "max_consecutive_losses" {
   type        = number
   default     = 0
 }
-
-variable "max_hold_seconds" {
-  description = <<-EOT
-    Close a position that has been open this long, at market, whatever it is
-    doing. 0 disables it, and 0 IS THE CURRENT CONFIGURED VALUE -- this
-    variable exists so the value can reach the container at all, which it
-    previously could not.
-
-    b63e365 shipped the code for a 24-hour time stop and called itself "Apply
-    1 of 2". Apply 2 never landed: DELTABOT_MAX_HOLD existed only in the
-    settings override table, and appeared in neither user_data.sh.tftpl nor
-    the -e list in run.sh, so max_hold_seconds was 0 in every container
-    regardless of intent.
-
-    DEFAULTED TO 0 DELIBERATELY. Repairing delivery and changing behaviour are
-    separate acts. max_hold_seconds is part of RiskConfig and therefore part of
-    the risk hash -- 58a7a452914bf93f at 0, c6ceced8b00f612d at 86400 -- so a
-    non-zero value makes a running bot raise ConfigurationDrift and refuse to
-    continue its experiment. That is the fail-closed behaviour working, not a
-    fault. Setting this to 86400 is a deliberate decision that STARTS A NEW
-    EXPERIMENT; it cannot be applied to one already running.
-  EOT
-  type        = number
-  default     = 0
-}
-
-# --- access ----------------------------------------------------------------
 
 variable "admin_cidrs" {
   description = <<-EOT

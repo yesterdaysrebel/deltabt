@@ -90,7 +90,7 @@ resource "aws_ssm_parameter" "image_tag_previous" {
 resource "aws_instance" "bot" {
   for_each = local.stacks
 
-  ami                    = data.aws_ami.al2023.id
+  ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.al2023.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.bot.id]
@@ -129,7 +129,6 @@ resource "aws_instance" "bot" {
     max_open_positions           = var.max_open_positions
     max_drawdown_pct             = var.max_drawdown_pct
     max_consecutive_losses       = var.max_consecutive_losses
-    max_hold_seconds             = var.max_hold_seconds
     run_sh_b64                   = filebase64("${path.root}/../../deploy/aws/run.sh")
     deploy_sh_b64                = filebase64("${path.root}/../../deploy/aws/deploy.sh")
     cw_agent_b64                 = filebase64("${path.root}/../../deploy/aws/cloudwatch-agent.json")

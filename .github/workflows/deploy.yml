@@ -144,14 +144,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - stack: v1
-            variant: V1
-            instance_var: BOT_INSTANCE_ID_V1
-            document_var: SSM_DEPLOY_DOCUMENT_V1
-          - stack: v2
-            variant: V2
-            instance_var: BOT_INSTANCE_ID_V2
-            document_var: SSM_DEPLOY_DOCUMENT_V2
+          # v1 and v2 decommissioned 2026-08-19 -- see monitor.yml.
           - stack: v3
             variant: V3
             instance_var: BOT_INSTANCE_ID_V3

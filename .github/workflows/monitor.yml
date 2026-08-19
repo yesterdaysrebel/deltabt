@@ -46,22 +46,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - stack: v1
-            variant: V1
-            instance_var: BOT_INSTANCE_ID_V1
-            document_var: SSM_MONITOR_DOCUMENT_V1
-            strategy_hash: d7837e445bc74781
-            # NOT /deltabt/paper/v1/bot. The original stack kept its original
-            # log group name, because renaming a log group deletes it and with
-            # it the run's operational history. Passed explicitly so the two
-            # naming schemes cannot be confused for one rule.
-            log_group: /deltabt/paper/bot
-          - stack: v2
-            variant: V2
-            instance_var: BOT_INSTANCE_ID_V2
-            document_var: SSM_MONITOR_DOCUMENT_V2
-            strategy_hash: "632efcaff62c4d7c"
-            log_group: /deltabt/paper/v2/bot
+          # v1 and v2 were decommissioned 2026-08-19. Their experiments were
+          # stopped with a reason first, then the stacks were destroyed --
+          # instances, EIPs, SSM documents and log groups. Their DATA survives:
+          # the per-stack databases are not Terraform-managed and the RDS
+          # instance carries prevent_destroy. Leaving them in this matrix would
+          # fail every run on a missing instance id, which is a false alarm
+          # about an experiment that was ended deliberately.
           - stack: v3
             variant: V3
             instance_var: BOT_INSTANCE_ID_V3
