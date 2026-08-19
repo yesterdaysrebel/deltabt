@@ -126,7 +126,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: "1.10.5"
-          terraform_wrapper: false
+          tofu_wrapper: false
 
       - name: fmt
         run: tofu fmt -check -recursive infra/

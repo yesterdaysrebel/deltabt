@@ -104,12 +104,21 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: ${{ env.TF_VERSION }}
-          # The wrapper shims `terraform` and writes its own `exitcode` step
+          # The wrapper shims the binary and writes its own `exitcode` step
           # output. The apply gate reads -detailed-exitcode, so two writers of
           # the same key is exactly the ambiguity to remove: the first run with
           # a real 41-resource plan produced a correct plan and then skipped
           # apply, because the gate never saw a 2.
-          terraform_wrapper: false
+          #
+          # THE KEY IS `tofu_wrapper`, NOT `terraform_wrapper`. Converting this
+          # file from hashicorp/setup-terraform to opentofu/setup-opentofu on
+          # 2026-08-19 kept the old spelling, and an unknown input to a GitHub
+          # action is a WARNING, not an error -- so the setting was silently
+          # dropped, the wrapper stayed on, and the bug above came straight
+          # back. A two-line plan with real changes reported exitcode 0 and
+          # apply skipped itself. See the cross-check in the plan step, which
+          # exists because this failure mode is invisible.
+          tofu_wrapper: false
 
       - name: init
         working-directory: infra/terraform
@@ -161,13 +170,38 @@ jobs:
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="alarm_email=${{ vars.ALARM_EMAIL }}"
           code=$?
-          echo "terraform plan -detailed-exitcode returned: $code"
+          echo "tofu plan -detailed-exitcode returned: $code"
           echo "  0 = no changes, 1 = error, 2 = changes present"
-          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" -eq 1 ]; then
-            echo "::error::terraform plan failed"
+            echo "::error::tofu plan failed"
             exit 1
           fi
+
+          # CROSS-CHECK THE EXIT CODE AGAINST THE PLAN ITSELF.
+          #
+          # The exit code is a single integer arriving through a shim that has
+          # already swallowed it once: on 2026-08-19 `terraform_wrapper: false`
+          # was carried through the OpenTofu conversion unrenamed, GitHub
+          # treated the unknown input as a warning, the wrapper stayed on, and
+          # a plan reading "0 to add, 2 to change" reported exitcode 0. The
+          # apply skipped itself and the run went GREEN. Nothing failed; the
+          # change simply never happened.
+          #
+          # The plan file cannot lie about its own contents, so it is the
+          # authority and the exit code is checked against it. Disagreement is
+          # a hard failure: it means the toolchain is not reporting what it
+          # did, and no gate downstream of that is trustworthy.
+          n=$(tofu show -json tfplan \
+              | python3 -c 'import json,sys; print(sum(1 for r in json.load(sys.stdin).get("resource_changes",[]) if r["change"]["actions"]!=["no-op"]))')
+          echo "plan file contains $n changing resource(s)"
+
+          want=0; [ "$n" -gt 0 ] && want=2
+          if [ "$code" -ne "$want" ]; then
+            echo "::error::tofu reported exitcode $code but the plan file holds $n changing resource(s) (expected exitcode $want). The exit code is being swallowed -- check that tofu_wrapper is false and that setup-opentofu did not warn about an unknown input."
+            exit 1
+          fi
+
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
           exit 0
 
       - name: refuse a plan that destroys or replaces protected resources
@@ -250,12 +284,21 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: ${{ env.TF_VERSION }}
-          # The wrapper shims `terraform` and writes its own `exitcode` step
+          # The wrapper shims the binary and writes its own `exitcode` step
           # output. The apply gate reads -detailed-exitcode, so two writers of
           # the same key is exactly the ambiguity to remove: the first run with
           # a real 41-resource plan produced a correct plan and then skipped
           # apply, because the gate never saw a 2.
-          terraform_wrapper: false
+          #
+          # THE KEY IS `tofu_wrapper`, NOT `terraform_wrapper`. Converting this
+          # file from hashicorp/setup-terraform to opentofu/setup-opentofu on
+          # 2026-08-19 kept the old spelling, and an unknown input to a GitHub
+          # action is a WARNING, not an error -- so the setting was silently
+          # dropped, the wrapper stayed on, and the bug above came straight
+          # back. A two-line plan with real changes reported exitcode 0 and
+          # apply skipped itself. See the cross-check in the plan step, which
+          # exists because this failure mode is invisible.
+          tofu_wrapper: false
 
       - uses: actions/download-artifact@v4
         with:
