@@ -428,12 +428,38 @@ def check_secret(ctx: Context) -> Result:
 
 
 def check_alarms(ctx: Context) -> Result:
-    required = {
-        f"{ctx.name}-bot-silent",
-        f"{ctx.name}-critical-events",
-        f"{ctx.name}-instance-status",
-        f"{ctx.name}-db-no-connections",
-    }
+    """PER-STACK ALARMS, DISCOVERED FROM THE RUNNING STACKS.
+
+    The names were once unprefixed -- deltabt-paper-bot-silent -- from when a
+    single bot was the whole deployment. Alarms became per-stack when a second
+    concurrent experiment was added, and this check kept asking for the old
+    names. It went unnoticed until v1 and v2 were decommissioned on
+    2026-08-19: v1's alarms WERE the unprefixed ones, so destroying that stack
+    took them with it and every apply began failing its own post-apply
+    verification, naming three alarms that were correctly gone.
+
+    So the stacks are derived from the instance tags, exactly as
+    check_one_instance_per_stack does, rather than restated here. A hardcoded
+    stack list is the thing that just broke.
+    """
+    ok, instances = _bot_instances(ctx)
+    if not ok:
+        return Result("cloudwatch_alarms", FAIL, "could not enumerate instances")
+    if not instances:
+        return absent(ctx, "aws_instance", "cloudwatch_alarms")
+
+    stacks = sorted({
+        tags.get("Stack") for i in instances
+        if (tags := {t["Key"]: t["Value"] for t in i.get("Tags", [])}).get("Stack")
+    })
+
+    # The database is shared across stacks, so its alarm is not per-stack.
+    required = {f"{ctx.name}-db-no-connections"}
+    silence = {f"{ctx.name}-{s}-bot-silent" for s in stacks}
+    required |= silence
+    required |= {f"{ctx.name}-{s}-{k}" for s in stacks
+                 for k in ("critical-events", "instance-status")}
+
     ok, data = aws(ctx, "cloudwatch", "describe-alarms",
                    "--alarm-name-prefix", ctx.name)
     if not ok:
@@ -449,14 +475,16 @@ def check_alarms(ctx: Context) -> Result:
     # only works if missing data counts as breaching -- otherwise a bot that
     # never starts leaves the alarm permanently green.
     for alarm in data.get("MetricAlarms", []):
-        if alarm["AlarmName"] == f"{ctx.name}-bot-silent":
+        if alarm["AlarmName"] in silence:
             if alarm.get("TreatMissingData") != "breaching":
                 return Result("cloudwatch_alarms", FAIL,
-                              "bot-silent has TreatMissingData="
+                              f"{alarm['AlarmName']} has TreatMissingData="
                               f"{alarm.get('TreatMissingData')}; it must be "
                               "'breaching' or a bot that never logs stays green")
     return Result("cloudwatch_alarms", PASS,
-                  f"{len(present)} alarms, silence alarm breaches on missing data")
+                  f"{len(required)} required alarms present across "
+                  f"{len(stacks)} stack(s) ({', '.join(stacks)}); "
+                  f"silence alarms breach on missing data")
 
 
 def _ago(seconds: int) -> str:
