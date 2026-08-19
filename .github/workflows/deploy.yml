@@ -152,7 +152,21 @@ jobs:
     # build must not have FAILED.
     if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
     runs-on: ubuntu-latest
-    environment: paper   # protected: a human approves before the running bot changes
+    # `paper-deploy`, NOT `paper`. Branch-restricted to master, but no required
+    # reviewer -- and the distinction is the point.
+    #
+    # `paper` still gates the Terraform apply, which can destroy instances and
+    # has no rollback. On 2026-08-19 a plan with NO configuration change wanted
+    # to replace all three bots because Amazon published a new AMI; unattended,
+    # that ends three experiments and nobody sees it coming. That gate stays.
+    #
+    # A bad DEPLOY already fails safe without a human: bind_experiment raises
+    # ConfigurationDrift and refuses to run, deploy.sh rolls back when /readyz
+    # does not pass, paths-ignore keeps infra and CI edits from triggering this
+    # at all, and the AST scan blocks any order-placement code from shipping.
+    # Worst case is a red build and a self-healing rollback -- noise, not
+    # damage. An approval that only ever rubber-stamps is not a control.
+    environment: paper-deploy
     # ONE JOB PER HOST, AND fail-fast IS OFF.
     #
     # The two hosts run different experiments against different databases. If

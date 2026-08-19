@@ -93,12 +93,14 @@ variable "allow_instance_replacement" {
     Terraform does not update attributes on a resource it is replacing, so
     doing 1 and 2 together leaves the destroy still blocked.
 
-    TRUE on 2026-08-17 so the time stop can reach the containers: it arrives
-    through /opt/deltabt/env, which is written by user-data, and any user-data
-    change replaces the host. Set back to false once all three are rolled.
+    BACK TO FALSE on 2026-08-19. It was flipped true on 2026-08-17 to let a
+    user-data change reach the hosts, and then left true through a rollout
+    that failed -- so instance termination stayed enabled for two days,
+    including through a four-hour outage where a stray apply could have
+    destroyed the surviving bot. Flip it deliberately, roll, flip it back.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "max_hold_seconds" {
@@ -114,13 +116,15 @@ variable "max_hold_seconds" {
     the -e list in run.sh, so max_hold_seconds was 0 in every container
     regardless of intent.
 
-    NOW 86400 (24h), because the arm this stack runs is specified with a
-    24-hour time exit. It was 0 while the plumbing was staged out. max_hold_seconds is part of RiskConfig and therefore part of
-    the risk hash -- 58a7a452914bf93f at 0, c6ceced8b00f612d at 86400 -- so a
-    non-zero value makes a running bot raise ConfigurationDrift and refuse to
-    continue its experiment. That is the fail-closed behaviour working, not a
-    fault. Setting this to 86400 is a deliberate decision that STARTS A NEW
-    EXPERIMENT; it cannot be applied to one already running.
+    NOW 86400 (24h), because the ATR arm this stack runs is specified with a
+    24-hour time exit. It was 0 while the plumbing was staged out.
+
+    IT IS PART OF RiskConfig, SO IT IS PART OF THE RISK HASH. The experiment
+    running here records 89f939adcd0a8567, which is that config WITH the 24h
+    hold; the same config at 0 hashes differently. So changing this value makes
+    a running bot raise ConfigurationDrift and refuse to continue -- the
+    fail-closed behaviour working, not a fault. Changing it STARTS A NEW
+    EXPERIMENT and cannot be applied to one already running.
   EOT
   type        = number
   default     = 86400
