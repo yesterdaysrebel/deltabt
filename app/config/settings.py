@@ -41,7 +41,32 @@ class RiskConfig:
     #: 10% from peak equity. 1.0 disables it: equity would have to reach zero.
     #: There is no "off" sentinel because the natural bound already is one.
     max_drawdown_pct: float = 0.10
-    max_trades_per_day: int = 6
+    #: RAISED FROM 6 TO 20 ON 2026-08-19, BECAUSE 6 WAS SIZED FOR A DIFFERENT
+    #: HOLD TIME. V3 held positions for hours, so six entries filled a day. The
+    #: ATR arm's stops are narrow enough that trades resolve in 5 to 58 minutes:
+    #: it spent all six between 11:36 and 15:22 and then sat refusing every
+    #: setup for the remaining twenty hours, 31 refusals and counting.
+    #:
+    #: THE COST WAS SELECTION, NOT THROUGHPUT. Thirty trades at 6/day still
+    #: reaches the stopping rule in five days. But a cap that binds by mid-
+    #: morning means the sample is whatever fires EARLIEST in the UTC day, not
+    #: a fair draw from the signal population -- and that bias is invisible in
+    #: the results it produces.
+    #:
+    #: 20 does not make the gate vestigial. The 15-minute post-trade and
+    #: 60-minute post-loss cooldowns are global across all symbols, so the
+    #: practical ceiling is lower than 20 on most days, and max_daily_loss_pct
+    #: (2% NET of the day's wins) is the backstop that actually stops a bad
+    #: day -- roughly four net-R down at 0.5% risk per trade.
+    #:
+    #: It lives here and not in Terraform, unlike its siblings max_open,
+    #: max_drawdown and max_consecutive_losses. Those reach the container
+    #: through /opt/deltabt/env, which user-data writes -- so adding one more
+    #: means a user_data change, which means REPLACING the instance, in a
+    #: region that ran out of capacity for three hours the same morning. An
+    #: image-only change carries none of that risk. DELTABOT_MAX_TRADES_PER_DAY
+    #: is still read if something ever sets it.
+    max_trades_per_day: int = 20
     #: A DAILY circuit breaker -- the streak resets on the UTC day roll. 0
     #: disables the gate entirely; see the guard in RiskEngine.evaluate, which
     #: must skip the check rather than compare against it, because

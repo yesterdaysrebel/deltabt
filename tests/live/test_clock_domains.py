@@ -191,7 +191,7 @@ class TestSkewCannotChangeDecisions:
         bot = make_bot({})
         await bot.start()
         bot.state.roll_day(MKT)
-        bot.state.trades_today = 6
+        bot.state.trades_today = bot.risk.cfg.max_trades_per_day
         blocked, _ = await _evaluate_at(bot, "BTCUSD", MKT + 300, 1,
                                         63_000.0, 62_500.0, 64_000.0)
         assert blocked.limit_name == "max_trades_per_day"

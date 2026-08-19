@@ -135,6 +135,10 @@ class RiskDecision:
     intent: ApprovedOrderIntent | None = None
 
 
+#: See the minimum_rr check in RiskEngine.evaluate for why this exists.
+_RR_TOLERANCE = 1e-9
+
+
 def _in_session(now: int, sessions: tuple[str, ...]) -> bool:
     if not sessions:
         return True
@@ -299,7 +303,25 @@ class RiskEngine:
         ok("stop_distance_positive")
 
         rr = abs(target - entry) / rpu
-        if rr < cfg.minimum_rr:
+        # THE TOLERANCE IS NOT DEFENSIVE PADDING; IT IS THE BOUNDARY ITSELF.
+        #
+        # A strategy that sets target = entry +/- target_r * rpu and a limit of
+        # minimum_rr == target_r put every single setup EXACTLY on this
+        # comparison. Recomputing rr from the prices re-derives a quantity that
+        # is algebraically 2.0, but the subtraction (target - entry) cancels
+        # most of the significant digits -- BTCUSD subtracts ~601 from ~65367 --
+        # so the result lands either side of 2.0 by ~1e-14 depending on the
+        # price. Half the setups pass and half are refused, at random.
+        #
+        # Measured on the ATR arm 2026-08-19: 7 of 64 refusals were this, with
+        # rr values like 1.9999999999850013. Those are not marginal setups
+        # being filtered; they are identical setups being coin-flipped, which
+        # puts unattributable variance straight into the forward test.
+        #
+        # 1e-9 is ~5 orders of magnitude above the observed noise and ~5 below
+        # any RR difference that means anything (0.001R is 5e-4). An absolute
+        # tolerance is right because rr is O(1) by construction.
+        if rr < cfg.minimum_rr - _RR_TOLERANCE:
             return reject(
                 f"reward/risk {rr:.2f} is below minimum_rr {cfg.minimum_rr:.2f}",
                 name="minimum_rr", limit=cfg.minimum_rr, observed=rr)

@@ -7,6 +7,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 
 from app.api.app import create_app, to_ist, to_utc
+from app.config.settings import RiskConfig
 from tests.live.test_recovery import make_bot, open_a_position
 
 pytestmark = pytest.mark.asyncio
@@ -79,7 +80,7 @@ class TestEndpoints:
         r = c.get("/api/risk").json()
         assert r["risk_per_trade_pct"] == pytest.approx(0.5)
         assert r["minimum_rr"] == 2.0
-        assert r["max_trades_per_day"] == 6
+        assert r["max_trades_per_day"] == RiskConfig().max_trades_per_day
         assert "daily_loss_remaining" in r
 
     async def test_positions_and_trades_reflect_an_open_position(self, bot):

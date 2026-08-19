@@ -130,6 +130,47 @@ class TestLimits:
         d = approve(exp=setup(entry=63_000.0, stop=62_500.0, target=64_000.0))
         assert d.approved
 
+    # A STRATEGY THAT TARGETS EXACTLY minimum_rr PUTS EVERY SETUP ON THE
+    # BOUNDARY, AND FLOATING POINT DECIDES.
+    #
+    # The ATR arm sets target = entry +/- 2.0 * risk_per_unit against a
+    # minimum_rr of 2.0. The engine recomputes rr = |target - entry| / rpu,
+    # and that subtraction cancels most of the significant digits, so the
+    # result lands either side of 2.0 by ~1e-14 depending on the price.
+    #
+    # Observed live on 2026-08-19: 7 of 64 refusals were this, e.g. BTCUSD at
+    # rr=1.9999999999850013. Identical setups being coin-flipped, which puts
+    # unattributable variance into the forward test -- so these are regression
+    # tests for a measurement property, not for a crash.
+    @pytest.mark.parametrize("entry,rpu", [
+        (65_367.0, 300.878),      # the BTCUSD case from the live log
+        (1_940.1, 8.24898),       # ETHUSD
+        (78.67, 0.371625),        # SOLUSD
+        (0.201, 0.00509656),      # BEATUSD -- small prices, largest relative
+        (118_234.5, 447.31),
+        (3.14159, 0.0271828),
+    ])
+    @pytest.mark.parametrize("direction", [1, -1])
+    def test_a_target_built_at_exactly_target_r_is_never_refused(
+            self, entry, rpu, direction):
+        stop = entry - direction * rpu
+        target = entry + direction * 2.0 * rpu      # exactly 2R, as built
+        d = approve(exp=setup(symbol="BTCUSD", direction=direction,
+                              entry=entry, stop=stop, target=target),
+                    eng=engine(max_position_notional=10_000_000.0))
+        assert d.limit_name != "minimum_rr", (
+            f"exactly-2R setup refused as sub-2R: {d.reason}")
+
+    def test_the_tolerance_is_far_below_anything_economically_real(self):
+        # 1e-9 must not let a genuinely thin target through. A target short by
+        # 0.001R -- five orders of magnitude larger than the float noise it is
+        # there to absorb -- must still be refused.
+        entry, rpu = 63_000.0, 500.0
+        d = approve(exp=setup(entry=entry, stop=entry - rpu,
+                              target=entry + (2.0 - 0.001) * rpu))
+        assert not d.approved
+        assert d.limit_name == "minimum_rr"
+
     def test_max_open_positions(self):
         d = approve(positions=[FakePos("ETHUSD")])
         assert not d.approved
@@ -162,7 +203,10 @@ class TestLimits:
     def test_max_trades_per_day(self):
         s = RiskState.fresh(10_000.0)
         s.roll_day(NOW)
-        s.trades_today = 6
+        # Read the limit rather than restate it. It was raised from 6 to 20 on
+        # 2026-08-19 and a hardcoded 6 here would have gone green while
+        # asserting nothing.
+        s.trades_today = RiskConfig().max_trades_per_day
         d = approve(state=s)
         assert not d.approved
         assert d.limit_name == "max_trades_per_day"
