@@ -125,3 +125,87 @@ inside the window by 47 minutes. The threshold was not tested from below.
 Outstanding housekeeping, unrelated to the experiment: the AWS root
 credentials (`arn:aws:iam::132203050472:root`) are still in use for
 administration and should be rotated and replaced with a role.
+
+---
+
+# Addendum — the arm was restarted the same evening
+
+`H-WPR-1-PAPER-ATR-20260819-2` was stopped at 19:41Z after 6 closed trades and
+replaced by `H-WPR-1-PAPER-ATR-20260819-3`. Everything above describes the
+STOPPED run and still stands; it is a record of six trades, not a result.
+
+## Why
+
+Two gates were measuring something other than what they were meant to.
+
+**`max_trades_per_day` was 6, sized for V3's multi-hour holds.** The ATR arm
+resolves trades in 5 to 58 minutes, so it spent all six entries between 11:36
+and 15:22 and then refused every setup for the rest of the UTC day. 31 of 64
+refusals were this gate, and 100% of refusals in the final three and a half
+hours. The cost was not throughput -- 30 trades at 6/day still meets the
+stopping rule in five days -- it was SELECTION: the sample became whatever
+fires earliest in the UTC day, and nothing in the resulting numbers would
+reveal it. Now 20, which leaves the global cooldowns and the 2% net daily loss
+limit as the gates that actually bind.
+
+**`minimum_rr` was coin-flipping exactly-2R setups.** The arm builds
+`target = entry +/- 2.0 * risk_per_unit` and the engine recomputed
+`rr = |target - entry| / rpu` against a 2.0 minimum. Algebraically exact; in
+floating point the subtraction cancels most of the significant digits and the
+answer lands either side by ~1e-14. 7 of 64 refusals were this, at values like
+`rr=1.9999999999850013`. Identical setups accepted or refused at random, which
+is unattributable variance in a forward test rather than a filter. Now compared
+against a 1e-9 tolerance. Pre-existing -- V3 had the same `target_r` against
+the same minimum.
+
+Both are `RiskConfig` fields, so the risk hash moved
+`89f939adcd0a8567 -> f9a34a4b27a35684` and the running experiment could not
+adopt them. Ending it was the only way.
+
+## An open position belongs to no experiment
+
+**ETHUSD LONG, opened 19:45:01Z, `experiment_id IS NULL`.**
+
+`bind_experiment` has three outcomes, and "no active experiment" is the one
+that returns True: it logs `running unbound. Decisions will not carry an
+experiment id` and then TRADES. So the seven minutes between the container
+restarting on the new image (19:42:18Z) and `forward-test start` binding it
+(19:49:40Z) were live trading time, and one setup fired in them.
+
+This is a systematic contamination path, not a one-off. Every deploy opens the
+same window, and the position's P&L lands in the NEXT experiment's ledger while
+its NULL experiment id excludes it from any experiment-scoped query. The ledger
+and the trade table disagree by construction -- the same shape as the three
+inherited V3 positions above, arriving by a different route.
+
+It is left open. Closing it here would fabricate an exit the strategy never
+produced, which is what the stop path already refuses to do. It is at least
+cleanly identifiable: `experiment_id IS NULL`.
+
+**Analysis of run -3 must exclude it**, by `experiment_id`, not by `opened_at`.
+Expect the ledger to show one more closed trade than the experiment-scoped
+table once it resolves, and expect ETHUSD entries to be blocked until it does.
+
+Worth fixing properly: an unbound bot in a pre-registered study should evaluate
+and record, not enter. That is a code change and therefore another restart, so
+it is noted rather than done.
+
+## State at handover
+
+```
+experiment_id    H-WPR-1-PAPER-ATR-20260819-3
+strategy_hash    8a564836b862ea74   (unchanged -- the rules did not move)
+risk_hash        f9a34a4b27a35684   (was 89f939adcd0a8567)
+config_hash      0d6e1b438c32e628
+git_sha          341456cf82490409459ac15c4713bf4827bd2540
+equity           10000.00, counters zeroed
+max_trades_per_day 20   (verified live via /api/risk)
+```
+
+Three CI defects were fixed to get this deployed, all of them silent: the
+`paper-deploy` environment was never added to the OIDC trust policy;
+`terraform_wrapper` survived the OpenTofu conversion unrenamed, so the wrapper
+swallowed `-detailed-exitcode` and a real plan reported itself as a no-op with
+a GREEN run; and the preflight still required v1's unprefixed CloudWatch
+alarms, which v1's decommissioning correctly destroyed. Each was invisible
+because something stayed green.
