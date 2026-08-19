@@ -67,6 +67,29 @@ unset DATABASE_URL DB_PASS_ENC
 # --rm plus systemd Restart=always: one owner of the lifecycle, not two.
 # Docker's own restart policy is deliberately NOT used, because then a
 # `systemctl stop` would be fought by dockerd.
+# CPU LIMIT SIZED FROM THE HOST, NOT ASSUMED.
+#
+# This was hardcoded to `--cpus 2.0`, sized for t4g.small's 2 vCPU. On
+# 2026-08-19 AWS ran out of the whole t4g family in ap-south-1a and the
+# replacement host was an m6g.medium, which has 1 vCPU. Docker refuses
+# outright -- "Range of CPUs is from 0.01 to 1.00, as there are only 1 CPUs
+# available" -- so the service crash-looped and the bot never started, turning
+# a capacity outage into a second, self-inflicted one.
+#
+# Capping at 2 keeps the previous ceiling on larger hosts. The container
+# measures under 5% CPU steady, so neither bound is close to binding; the
+# point is that a hardcoded limit must not decide whether the bot can run at
+# all on whatever shape capacity happens to allow.
+# An `if` and not `[ ... ] && ...`: this script runs `set -euo pipefail`, and a
+# trailing && whose test is false is exactly the shape that quietly aborts a
+# boot script on some shells. Not worth being clever about on a host nobody is
+# watching at 3am.
+CPU_LIMIT=$(nproc 2>/dev/null || echo 1)
+if [ "$CPU_LIMIT" -gt 2 ]; then
+  CPU_LIMIT=2
+fi
+log "container cpu limit: $CPU_LIMIT (host has $(nproc 2>/dev/null || echo '?'))"
+
 exec docker run --rm --name deltabot \
   --env-file /run/deltabt/env \
   -e "DELTABOT_SYMBOLS=$DELTABOT_SYMBOLS" \
@@ -89,6 +112,6 @@ exec docker run --rm --name deltabot \
   --read-only \
   --tmpfs /tmp:size=512m \
   --user 10001:10001 \
-  --memory 1600m --cpus 2.0 \
+  --memory 1600m --cpus "$CPU_LIMIT" \
   --stop-timeout 45 \
   "${ECR_REPOSITORY_URL}:${TAG}"

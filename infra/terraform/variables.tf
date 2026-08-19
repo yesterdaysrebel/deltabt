@@ -50,9 +50,31 @@ variable "instance_type" {
     under 5% CPU, so t4g.small (2 vCPU / 2 GB) has comfortable headroom.
     t4g.micro (1 GB) also runs it but leaves little room for the numba cache
     and a docker build.
+
+    m6g.medium SINCE 2026-08-19, AND THE FAMILY IS THE POINT, NOT THE SIZE.
+    AWS ran out of t4g in ap-south-1a for over three and a half hours while
+    the bot was down. t4g.small failed continuously from 06:34, and t4g.MEDIUM
+    failed exactly the same way -- so it was never a sizing problem, it was
+    the whole t4g pool in that AZ. m6g.medium launched on the first attempt.
+
+    Same architecture (Graviton, arm64), same AZ, 1 vCPU / 4 GB against
+    t4g.small's 2 / 2. Roughly $10/month more. The container measures ~450 MB
+    RSS steady and under 5% CPU, so neither shape is close to constrained;
+    m6g gives up burst credits it never needed and gains headroom it does not
+    need either. It was chosen for availability alone.
+
+    IT IS PINNED HERE RATHER THAN PASSED AS -var ON PURPOSE. A command-line
+    override would leave the committed default at t4g.small, and the next
+    apply from CI would "correct" it -- replacing the instance and ending the
+    experiment as a side effect of a routine plan.
+
+    THE REAL FIX IS NOT THIS LINE. One public subnet in one AZ is why a
+    routine capacity blip became a four-hour outage with no fallback. Until
+    there is a public subnet in a second AZ, the next t4g-style shortage will
+    do this again.
   EOT
   type        = string
-  default     = "t4g.small"
+  default     = "m6g.medium"
 }
 
 variable "allow_instance_replacement" {

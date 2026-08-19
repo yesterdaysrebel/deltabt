@@ -37,10 +37,30 @@ on:
     # A commit touching BOTH ignored and non-ignored paths still deploys;
     # paths-ignore skips only when every changed file matches. Code changes are
     # therefore unaffected, which is the point.
+    # THE RULE IS "IS IT IN THE IMAGE", NOT "IS IT IMPORTANT".
+    #
+    # deploy/docker/Dockerfile copies exactly deltabt/, app/, pyproject.toml
+    # and README.md. Nothing else can change what the container runs, so
+    # nothing else should rebuild and roll it.
+    #
+    # This matters more than tidiness. Rolling a new image gives the container
+    # a new git_sha, bind_experiment() compares that against the RUNNING
+    # experiment's recorded sha, and a mismatch is ConfigurationDrift --
+    # /readyz never passes, the host rolls back, and the job goes red. So an
+    # unfiltered trigger means editing a Terraform variable or a workflow file
+    # cannot be done at all while an experiment runs, which is most of the time.
+    #
+    # infra/ and deploy/aws/ reach the host through Terraform user-data, not
+    # through the image; .github/ changes CI, not the app. A commit touching
+    # BOTH an ignored path and app/ still deploys -- paths-ignore skips only
+    # when every changed file matches.
     paths-ignore:
       - 'out/**'
       - 'reports/**'
       - 'docs/**'
+      - 'infra/**'
+      - 'deploy/aws/**'
+      - '.github/**'
       - '**.md'
       - 'LICENSE'
   workflow_dispatch:
