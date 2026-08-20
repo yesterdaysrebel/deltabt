@@ -63,6 +63,13 @@ jobs:
             # rules must actually be running.
             strategy_hash: "8a564836b862ea74"
             log_group: /deltabt/paper/v3/bot
+          - stack: v4
+            variant: FLIP
+            instance_var: BOT_INSTANCE_ID_V4
+            document_var: SSM_MONITOR_DOCUMENT_V4
+            # H-FLIP-1: the reversal confluence, 1m only, fixed 1.5% stop, 2R.
+            strategy_hash: "1b721d5d11749d30"
+            log_group: /deltabt/paper/v4/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.

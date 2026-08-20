@@ -271,6 +271,37 @@ variable "stacks" {
     # would destroy and recreate its database, log group and documents; the
     # VARIANT is what selects the rules.
     v3 = { variant = "V4", db_name = "deltabt_v3" }
+
+    # The reversal confluence: %R(140) leaving its extreme AND Supertrend(10,2)
+    # flipping on the SAME 1m bar, no second timeframe anywhere, a fixed 1.5%
+    # stop and a 2R target. Added 2026-08-20.
+    #
+    # A SEPARATE STACK, NOT A SECOND CONTAINER ON v3's HOST, and the reason is
+    # in this variable's own description: one RUNNING experiment per database,
+    # one open position per symbol per database, a single "risk_state" key, and
+    # load_open_positions() with no experiment filter. Two arms sharing a
+    # database collide on all four.
+    #
+    # It is EXPECTED TO LOSE about 0.07R per trade -- measured win rate
+    # 34.6%/34.9% against the 33.3% a coin flip returns at 2R. It runs anyway
+    # because 213 configurations have now seen train and validation, the
+    # held-out set is spent, and a pre-registered live arm is the only
+    # remaining way to test the idea on data nobody has mined.
+    #
+    # IT INHERITS max_hold_seconds = 86400, WHICH THE BACKTEST DID NOT HAVE.
+    # run_reversal_confluence holds every trade to its stop or its target with
+    # no time limit, so a 24h exit is a deviation from the measured rule. It is
+    # accepted rather than fixed: max_hold reaches the container through
+    # user_data, ec2.tf sets user_data_replace_on_change, and v3 carries
+    # disable_api_termination -- so making it per-stack would render v3's
+    # user_data differently, demand a replacement Terraform is forbidden to
+    # perform, and fail the apply. Trading fidelity on a rarely-binding exit
+    # against the running experiment is not a trade worth making.
+    #
+    # It should seldom bind: the confluence ran 12.1 trades/day one position at
+    # a time, so the average hold is under two hours. Trades that DO hit it will
+    # not match the backtest and are identifiable by exit_reason TIME_EXIT.
+    v4 = { variant = "FLIP", db_name = "deltabt_v4" }
   }
 }
 

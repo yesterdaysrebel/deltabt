@@ -74,6 +74,15 @@ on:
         description: "Existing tag to roll back to. Leave empty to build this commit."
         required: false
         type: string
+      only_stack:
+        description: >-
+          Roll ONE stack instead of all of them. Blank rolls every stack.
+          A push cannot use this, so bringing a new arm up without disturbing
+          an established one means dispatching manually: a push-triggered
+          deploy rolls every stack, and any stack with a RUNNING experiment
+          refuses the new SHA on drift, rolls itself back and goes red.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -155,7 +164,11 @@ jobs:
     needs: [test, build]
     # `always()` so a manual rollback (which skips `build`) still runs, but the
     # build must not have FAILED.
-    if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
+    if: >-
+      always() && needs.build.result != 'failure' && needs.test.result == 'success'
+      && (github.event.inputs.only_stack == ''
+          || github.event.inputs.only_stack == null
+          || github.event.inputs.only_stack == matrix.stack)
     runs-on: ubuntu-latest
     # `paper-deploy`, NOT `paper`. Branch-restricted to master, but no required
     # reviewer -- and the distinction is the point.
@@ -193,6 +206,12 @@ jobs:
             variant: V4
             instance_var: BOT_INSTANCE_ID_V3
             document_var: SSM_DEPLOY_DOCUMENT_V3
+          - stack: v4
+            # The reversal confluence: %R leaving its extreme AND Supertrend
+            # flipping on the same 1m bar, fixed 1.5% stop, 2R target.
+            variant: FLIP
+            instance_var: BOT_INSTANCE_ID_V4
+            document_var: SSM_DEPLOY_DOCUMENT_V4
     steps:
       - uses: actions/checkout@v4
 
