@@ -37,7 +37,27 @@ class RiskConfig:
     risk_per_trade: float = 0.005          # 0.5%
     minimum_rr: float = 2.0
     max_open_positions: int = 1
-    max_daily_loss_pct: float = 0.02       # 2% of starting-of-day equity
+    #: DISABLED ON 2026-08-20 (1.0 = equity would have to reach zero in a day).
+    #: It was 2% of start-of-day equity.
+    #:
+    #: IT WAS CENSORING THE MEASUREMENT, WHICH IS WHY IT WENT. At 0.5% risk per
+    #: trade a 2% daily cap halts the day after roughly four net-R of loss, and
+    #: at a 33% win rate with losses near -1.16R a run of four or five is
+    #: ordinary. So the gate fired often, and each time it removed the trades
+    #: that would have FOLLOWED a bad start. The run stopped estimating the
+    #: strategy and started estimating "the strategy, given the day had not
+    #: already gone badly" -- which is not a quantity anyone wants and not one
+    #: that can confirm or contradict a backtest. Observed live: 27 refusals,
+    #: then daily_loss_remaining at 0.0 with the bot unable to trade for the
+    #: remaining 18 hours of the UTC day.
+    #:
+    #: THIS LEAVES NO CIRCUIT BREAKER OF ANY KIND. max_drawdown_pct is 1.0,
+    #: max_consecutive_losses is 0, and now this. Nothing stops losses
+    #: compounding. That is defensible for a paper run whose entire purpose is
+    #: an unbiased expectancy estimate, and indefensible for real capital: ALL
+    #: THREE MUST BE RESTORED BEFORE ANYTHING TRADES REAL MONEY. There is no
+    #: "off" sentinel here because the natural bound already is one.
+    max_daily_loss_pct: float = 1.0
     #: 10% from peak equity. 1.0 disables it: equity would have to reach zero.
     #: There is no "off" sentinel because the natural bound already is one.
     max_drawdown_pct: float = 0.10

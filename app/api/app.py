@@ -159,6 +159,10 @@ def create_app(bot) -> FastAPI:
             "daily_loss_remaining": round(
                 max(0.0, cfg.max_daily_loss_pct - s.daily_loss_pct) *
                 (s.day_start_equity or s.equity), 2),
+            # Reported so the dashboard scales its gauge against the limit that
+            # is actually configured. It used to divide by a hardcoded 2, which
+            # was right only while the limit happened to be 2%.
+            "max_daily_loss_pct": round(100 * cfg.max_daily_loss_pct, 3),
             "drawdown_pct": round(100 * s.drawdown_pct, 3),
             "trades_today": s.trades_today,
             "max_trades_per_day": cfg.max_trades_per_day,

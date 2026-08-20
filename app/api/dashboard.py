@@ -105,11 +105,18 @@ async function refresh(){
     ]);
   }
   if(r){
-    const used=Math.min(100,100*r.daily_loss_pct/2);
+    // Scale against the CONFIGURED limit, not a hardcoded 2. At 100 the gate
+    // is disabled -- equity would have to reach zero in a day -- and a bar
+    // creeping along the bottom would imply a ceiling that is not there, so
+    // say so instead of drawing one.
+    const lim=r.max_daily_loss_pct??2;
+    const off=lim>=100;
+    const used=off?0:Math.min(100,100*r.daily_loss_pct/lim);
     $('risk').innerHTML=kv([
       ['equity','$'+num(r.equity)],
       ['daily P&L','$'+num(r.daily_pnl),sign(r.daily_pnl)],
-      ['daily loss remaining','$'+num(r.daily_loss_remaining)+
+      ['daily loss remaining',off?'<span class="dim">no limit</span>':
+        '$'+num(r.daily_loss_remaining)+
         `<div class="bar"><i style="width:${used}%"></i></div>`],
       ['drawdown',num(r.drawdown_pct,2)+'%',r.drawdown_pct>5?'warn':'dim'],
       ['trades today',`${r.trades_today} / ${r.max_trades_per_day}`],

@@ -183,13 +183,28 @@ class TestLimits:
         assert "already holding" in d.reason
 
     def test_max_daily_loss(self):
+        # The limit is passed explicitly rather than taken from the default,
+        # which is 1.0 (disabled) since 2026-08-20. This tests the GATE, and a
+        # gate that only works at one particular setting is not tested by
+        # asserting against whatever the default happens to be that week.
         s = RiskState.fresh(10_000.0)
         s.roll_day(NOW)          # otherwise the first evaluation resets the day
         s.day_start_equity, s.daily_pnl, s.equity = 10_000.0, -250.0, 9_750.0
-        d = approve(state=s)
+        d = approve(eng=engine(max_daily_loss_pct=0.02), state=s)
         assert not d.approved
         assert d.limit_name == "max_daily_loss_pct"
         assert d.observed_value == pytest.approx(0.025)
+
+    def test_daily_loss_disabled_at_one_lets_a_ruinous_day_continue(self):
+        # 1.0 is the disabled setting, and disabled must mean disabled: a day
+        # already 60% down still passes the gate, because the only bound left
+        # is equity reaching zero. This is the paper-run configuration and it
+        # is the reason the drawdown limits must be restored before real money.
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.day_start_equity, s.daily_pnl, s.equity = 10_000.0, -6_000.0, 4_000.0
+        d = approve(state=s)
+        assert d.limit_name != "max_daily_loss_pct"
 
     def test_max_drawdown(self):
         s = RiskState.fresh(10_000.0)

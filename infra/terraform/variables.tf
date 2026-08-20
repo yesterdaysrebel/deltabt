@@ -144,10 +144,11 @@ variable "max_hold_seconds" {
     24-hour time exit. It was 0 while the plumbing was staged out.
 
     IT IS PART OF RiskConfig, SO IT IS PART OF THE RISK HASH. The experiment
-    running here records f9a34a4b27a35684, which is that config WITH the 24h
-    hold and max_trades_per_day at 20; it was 89f939adcd0a8567 while the cap
-    was 6. The same config at hold 0 hashes differently again. So changing
-    this value makes
+    running here records 0338a386c43d39a4: that config WITH the 24h hold,
+    max_trades_per_day at 20, and max_daily_loss_pct DISABLED at 1.0. It was
+    f9a34a4b27a35684 while the daily loss cap was 2%, and 89f939adcd0a8567
+    before that while the trade cap was 6. The same config at hold 0 hashes
+    differently again. So changing this value makes
     a running bot raise ConfigurationDrift and refuse to continue -- the
     fail-closed behaviour working, not a fault. Changing it STARTS A NEW
     EXPERIMENT and cannot be applied to one already running.
