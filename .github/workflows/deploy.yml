@@ -63,6 +63,25 @@ on:
       - '.github/**'
       - '**.md'
       - 'LICENSE'
+      # scripts/ IS NOT IN THE IMAGE. The Dockerfile copies pyproject.toml,
+      # README.md, deltabt/ and app/ -- nothing else. Editing the daily report
+      # on 2026-08-20 nonetheless rolled the bot: the deploy fired, the new
+      # SHA failed bind_experiment against the running experiment, deploy.sh
+      # rolled back, and the container restarted TWICE for a file it does not
+      # contain. Self-healing, and pure cost.
+      - 'scripts/**'
+      # Research ENTRYPOINTS. deltabt/ is copied into the image, so these do
+      # ship -- but nothing under app/ imports a run_*.py; they are offline
+      # analysis drivers invoked by hand. deltabt/research/hwpr.py is a
+      # different matter and deliberately NOT ignored: app/strategy/rules.py
+      # imports _leg_extreme from it and frozen_hwpr calls into it directly,
+      # so a change there changes what the bot computes.
+      #
+      # This does not weaken the safety boundary. test.yml triggers on every
+      # push with no path filter, so the paper-only AST scan sees these
+      # commits regardless, and deploy.yml re-runs the whole suite on the
+      # exact commit it ships.
+      - 'deltabt/research/run_*.py'
   workflow_dispatch:
     inputs:
       image_tag:
