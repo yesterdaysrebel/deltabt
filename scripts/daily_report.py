@@ -605,13 +605,22 @@ def main() -> int:
                             f"open — the stop should have triggered by -1R")
 
     if done:
+        # Qty is carried here as well as in the Open table. Without it a
+        # closed row cannot be checked against its own P&L: R is normalised by
+        # risk and P&L is in dollars, so the only way to tell a large position
+        # at a small move from a small one at a large move -- and therefore to
+        # spot a sizing fault rather than a market outcome -- is the size
+        # itself. /api/trades has always returned it; the table simply dropped
+        # it on the floor.
         print("### Closed\n")
-        print("| Symbol | Side | Entered (IST) | Closed (IST) | Held | Entry | Exit "
-              "| R | P&L | Reason |")
-        print("|---|---|---|---|---|---|---|---|---|---|")
+        print("| Symbol | Side | Qty | Entered (IST) | Closed (IST) | Held "
+              "| Entry | Exit | R | P&L | Reason |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|")
         for t in done:
             r_done = num(t.get("r"))
+            qty = num(t.get("quantity"))
             print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} "
+                  f"| {'—' if qty is None else f'{qty:,.0f}'} "
                   f"| {ist(t.get('opened_ist'))} | {ist(t.get('closed_ist'))} "
                   f"| {held(t.get('opened_ist'), t.get('closed_ist'))} "
                   f"| {fmt(t.get('entry'))} | {fmt(t.get('exit'))} "
