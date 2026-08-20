@@ -48,6 +48,16 @@ case "$ARG" in
     # rule and no public port, which is why this needs a tunnel rather than a
     # URL. Session Manager forwards it over the agent's existing channel, so
     # nothing is opened to the internet to make this work.
+    # start-session is the one mode that needs a LOCAL binary the AWS CLI does
+    # not ship: without session-manager-plugin the CLI fails with a message
+    # about an unknown plugin, which reads like a permissions problem and is
+    # not one. Say what is actually missing.
+    if ! command -v session-manager-plugin >/dev/null 2>&1; then
+      echo "session-manager-plugin is not installed; port forwarding needs it." >&2
+      echo "  https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html" >&2
+      echo "The report and status modes do NOT need it and work as-is." >&2
+      exit 1
+    fi
     echo "forwarding ${IID}:8000 -> http://localhost:8000  (ctrl-c to stop)"
     exec aws ssm start-session --region "$REGION" --target "$IID" \
       --document-name AWS-StartPortForwardingSession \
