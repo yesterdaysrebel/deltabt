@@ -22,7 +22,6 @@ import pathlib
 import re
 
 import pytest
-import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT / "deploy" / "docker" / "Dockerfile"
@@ -51,13 +50,50 @@ def copy_sources() -> set[str]:
 
 
 def trigger_paths() -> list[str]:
-    doc = yaml.safe_load(WORKFLOW.read_text())
-    push = doc[True]["push"]            # PyYAML parses the key `on` as True
-    assert "paths-ignore" not in push, (
-        "deploy.yml is back on a deny-list. It is unbounded over a repository: "
-        "every directory nobody thought of triggers a roll, and a roll against "
-        "a running experiment fails on drift and restarts the bot twice.")
-    return push["paths"]
+    """Extract the `paths:` list from deploy.yml's push trigger.
+
+    Hand-parsed rather than handed to PyYAML, which is not in the test
+    environment. Adding it would mean editing pyproject.toml -- and
+    pyproject.toml is IN the deploy allow-list, so installing a dependency to
+    test the allow-list would trigger a deploy, fail on drift against the
+    running experiment and restart the bot. Exactly the failure this file
+    exists to prevent, caused by testing for it.
+
+    The parse is deliberately strict: anything unrecognised raises instead of
+    returning a short list, because a silently-empty result would make every
+    assertion below pass vacuously.
+    """
+    lines = WORKFLOW.read_text().splitlines()
+    try:
+        i = next(n for n, l in enumerate(lines) if l.rstrip() == "  push:")
+    except StopIteration:                                   # pragma: no cover
+        raise AssertionError("deploy.yml has no `push:` trigger")
+
+    key = None
+    for n in range(i + 1, len(lines)):
+        line = lines[n]
+        if line.strip() and not line.startswith("    "):    # left the block
+            break
+        stripped = line.strip()
+        if stripped in ("paths:", "paths-ignore:"):
+            key = stripped[:-1]
+            i = n
+            break
+    assert key == "paths", (
+        "deploy.yml is back on a deny-list (or has no path filter at all). A "
+        "deny-list is unbounded over a repository: every directory nobody "
+        "thought of triggers a roll, and a roll against a running experiment "
+        "fails on drift and restarts the bot twice.")
+
+    out: list[str] = []
+    for line in lines[i + 1:]:
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        if not line.startswith("      - "):                 # dedented out
+            break
+        out.append(line.strip()[2:].strip().strip("'\""))
+    assert out, "parsed an empty `paths:` list -- every check below would pass vacuously"
+    return out
 
 
 class TestDeployTriggerCoversTheImage:
