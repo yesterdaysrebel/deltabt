@@ -103,6 +103,42 @@ jobs:
     # being shipped. Nothing reaches the host without it.
     uses: ./.github/workflows/test.yml
 
+  targets:
+    # WHICH STACKS TO ROLL, DECIDED BEFORE THE MATRIX EXISTS.
+    #
+    # only_stack cannot be applied in the deploy job's `if`: the matrix context
+    # is not available there -- available contexts for jobs.<id>.if are github,
+    # needs, vars and inputs, and nothing else. Referencing matrix.stack there
+    # does not evaluate false, it makes the whole WORKFLOW invalid, and GitHub
+    # rejects it before creating a single job. Learned by doing it.
+    #
+    # So the filter runs where the list is still data. Emitting JSON that the
+    # deploy job expands with fromJSON is the supported way to vary a matrix,
+    # and it keeps the stack table in one place.
+    name: choose stacks
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pick
+        env:
+          ONLY: ${{ github.event.inputs.only_stack }}
+        run: |
+          set -euo pipefail
+          all='[{"stack":"v3","variant":"V4","instance_var":"BOT_INSTANCE_ID_V3","document_var":"SSM_DEPLOY_DOCUMENT_V3"},{"stack":"v4","variant":"FLIP","instance_var":"BOT_INSTANCE_ID_V4","document_var":"SSM_DEPLOY_DOCUMENT_V4"}]'
+          if [ -n "${ONLY:-}" ]; then
+            picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
+            if [ "$picked" = "[]" ]; then
+              echo "::error::only_stack='$ONLY' matches no stack; nothing would roll"
+              exit 1
+            fi
+          else
+            picked=$(printf '%s' "$all" | jq -c '.')
+          fi
+          echo "rolling: $picked"
+          echo "matrix=$picked" >> "$GITHUB_OUTPUT"
+
   build:
     name: build and push
     needs: test
@@ -161,14 +197,10 @@ jobs:
 
   deploy:
     name: "roll ${{ matrix.stack }} (${{ matrix.variant }})"
-    needs: [test, build]
+    needs: [test, build, targets]
     # `always()` so a manual rollback (which skips `build`) still runs, but the
     # build must not have FAILED.
-    if: >-
-      always() && needs.build.result != 'failure' && needs.test.result == 'success'
-      && (github.event.inputs.only_stack == ''
-          || github.event.inputs.only_stack == null
-          || github.event.inputs.only_stack == matrix.stack)
+    if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
     runs-on: ubuntu-latest
     # `paper-deploy`, NOT `paper`. Branch-restricted to master, but no required
     # reviewer -- and the distinction is the point.
@@ -195,23 +227,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include:
-          # v1 and v2 decommissioned 2026-08-19 -- see monitor.yml.
-          - stack: v3
-            # Label only -- this job rolls an image tag and does not choose the
-            # rules. The variant reaches the bot through DELTABOT_VARIANT in
-            # /opt/deltabt/env, written by user-data. Kept accurate so the job
-            # name does not claim the host is running V3 when it runs the ATR
-            # arm.
-            variant: V4
-            instance_var: BOT_INSTANCE_ID_V3
-            document_var: SSM_DEPLOY_DOCUMENT_V3
-          - stack: v4
-            # The reversal confluence: %R leaving its extreme AND Supertrend
-            # flipping on the same 1m bar, fixed 1.5% stop, 2R target.
-            variant: FLIP
-            instance_var: BOT_INSTANCE_ID_V4
-            document_var: SSM_DEPLOY_DOCUMENT_V4
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
