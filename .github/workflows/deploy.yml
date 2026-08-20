@@ -20,68 +20,54 @@ name: deploy
 on:
   push:
     branches: [master]
-    # DEPLOYS ARE NOT FREE, AND THIS IS NOT TIDINESS.
+    # DEPLOYS ARE NOT FREE, AND THIS FILTER IS NOT TIDINESS.
     #
     # The experiment identity includes git_sha, so bind_experiment() refuses to
     # start when the container's SHA differs from the one the RUNNING forward
-    # test recorded -- /readyz never passes, the host rolls back, and the job
-    # fails. The only way to make a deploy succeed is to stop the experiment,
-    # deploy, and start a NEW experiment id, which ends the run.
+    # test recorded. /readyz never passes, deploy.sh rolls the host back, and
+    # the job goes red. The only way to make a deploy SUCCEED is to stop the
+    # experiment, deploy, and start a new experiment id -- which ends the run
+    # and resets the sample to zero.
     #
-    # So an unfiltered `push: master` means committing a research CSV can only
-    # be resolved by destroying three 30-day forward tests. That happened on
-    # 2026-08-18: fb69f7e added out/hstructure/market_structure_events.csv --
-    # 9,787 lines, zero code -- and all three roll jobs failed on drift, with
-    # V3's experiment left stopped as collateral.
+    # So a commit that reaches this workflow without changing the image costs
+    # two container restarts, two warm-up gaps in a live experiment, and a red
+    # run, to ship nothing. 2026-08-18: fb69f7e added a 9,787-line research CSV
+    # and all three roll jobs failed on drift, leaving V3's experiment stopped
+    # as collateral. 2026-08-20: scripts/ and then tests/ did the same thing
+    # twice in one day.
     #
-    # A commit touching BOTH ignored and non-ignored paths still deploys;
-    # paths-ignore skips only when every changed file matches. Code changes are
-    # therefore unaffected, which is the point.
-    # THE RULE IS "IS IT IN THE IMAGE", NOT "IS IT IMPORTANT".
+    # A commit touching BOTH a matching and a non-matching path still deploys,
+    # which is correct -- if any of the image changed, the image changed.
     #
-    # deploy/docker/Dockerfile copies exactly deltabt/, app/, pyproject.toml
-    # and README.md. Nothing else can change what the container runs, so
-    # nothing else should rebuild and roll it.
+    # AN ALLOW-LIST, BECAUSE THE DENY-LIST KEPT BEING WRONG.
     #
-    # This matters more than tidiness. Rolling a new image gives the container
-    # a new git_sha, bind_experiment() compares that against the RUNNING
-    # experiment's recorded sha, and a mismatch is ConfigurationDrift --
-    # /readyz never passes, the host rolls back, and the job goes red. So an
-    # unfiltered trigger means editing a Terraform variable or a workflow file
-    # cannot be done at all while an experiment runs, which is most of the time.
+    # The rule has always been "is it in the image", but it was expressed as a
+    # list of things that are NOT, which is unbounded: every directory nobody
+    # thought of defaults to triggering a roll. On 2026-08-20 that cost two
+    # red deploys and four container restarts in a live experiment -- first
+    # scripts/, then tests/, neither of which the Dockerfile copies. Each fix
+    # patched one hole in a surface with no edge.
     #
-    # infra/ and deploy/aws/ reach the host through Terraform user-data, not
-    # through the image; .github/ changes CI, not the app. A commit touching
-    # BOTH an ignored path and app/ still deploys -- paths-ignore skips only
-    # when every changed file matches.
-    paths-ignore:
-      - 'out/**'
-      - 'reports/**'
-      - 'docs/**'
-      - 'infra/**'
-      - 'deploy/aws/**'
-      - '.github/**'
-      - '**.md'
-      - 'LICENSE'
-      # scripts/ IS NOT IN THE IMAGE. The Dockerfile copies pyproject.toml,
-      # README.md, deltabt/ and app/ -- nothing else. Editing the daily report
-      # on 2026-08-20 nonetheless rolled the bot: the deploy fired, the new
-      # SHA failed bind_experiment against the running experiment, deploy.sh
-      # rolled back, and the container restarted TWICE for a file it does not
-      # contain. Self-healing, and pure cost.
-      - 'scripts/**'
-      # Research ENTRYPOINTS. deltabt/ is copied into the image, so these do
-      # ship -- but nothing under app/ imports a run_*.py; they are offline
-      # analysis drivers invoked by hand. deltabt/research/hwpr.py is a
-      # different matter and deliberately NOT ignored: app/strategy/rules.py
-      # imports _leg_extreme from it and frozen_hwpr calls into it directly,
-      # so a change there changes what the bot computes.
-      #
-      # This does not weaken the safety boundary. test.yml triggers on every
-      # push with no path filter, so the paper-only AST scan sees these
-      # commits regardless, and deploy.yml re-runs the whole suite on the
-      # exact commit it ships.
-      - 'deltabt/research/run_*.py'
+    # Inverted, the list has an edge, and it is the Dockerfile. deploy/docker/
+    # is included because changing HOW the image is built changes the image as
+    # surely as changing what goes into it.
+    #
+    # README.md is copied into the image and deliberately left out: it changes
+    # nothing the container does, and rolling a live experiment to ship a
+    # paragraph is the behaviour this whole block exists to prevent.
+    #
+    # tests/test_paths_match_dockerfile.py fails if a COPY line appears here
+    # without a matching entry, so the next person to add one to the image is
+    # told rather than left to discover it as a stale git_sha weeks later.
+    paths:
+      - 'app/**'
+      - 'deltabt/**'
+      # Offline analysis drivers. They ship, since deltabt/ is copied whole,
+      # but nothing under app/ imports a run_*.py. Five were added in a single
+      # day of research and each one rolled the bot.
+      - '!deltabt/research/run_*.py'
+      - 'deploy/docker/**'
+      - 'pyproject.toml'
   workflow_dispatch:
     inputs:
       image_tag:
