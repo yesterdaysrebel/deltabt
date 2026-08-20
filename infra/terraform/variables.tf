@@ -244,6 +244,21 @@ variable "stacks" {
     instance, its own database on the shared RDS instance, its own log group,
     deploy document, monitor document and alarms.
 
+    TERRAFORM DOES NOT CREATE THESE DATABASES. It builds the RDS instance;
+    there is no sub-resource for a database inside one. So a new entry here
+    names a database that exists in this map and nowhere on the server, and the
+    bot dies at first start on InvalidCatalogNameError -- which is exactly how
+    v4 failed its first roll on 2026-08-20.
+
+    Create it before the first deploy, from the stack's own host so the
+    credentials never leave it:
+
+        deploy/aws/create_stack_database.py
+
+    Schema is NOT part of that. Repository.connect calls migrate(), which
+    applies schema.sql as CREATE TABLE IF NOT EXISTS on every start, so the
+    tables are the bot's business and a second copy outside would drift.
+
     A SEPARATE DATABASE PER STACK IS LOAD-BEARING, NOT TIDINESS. Four
     invariants make two experiments in one database impossible:
     ux_forward_test_running allows one RUNNING experiment; ux_positions_open
