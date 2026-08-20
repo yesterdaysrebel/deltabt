@@ -81,6 +81,8 @@ from app.persistence.repository import Repository
 from app.risk.engine import RiskEngine, RiskState
 from app.strategy.explanation import Outcome
 from app.strategy.atr_arm import AtrArmConfig, evaluate_atr
+from app.strategy.flip_arm import FlipArmConfig, evaluate_flip
+from app.strategy.flip_arm import warmup_bars as flip_warmup_bars
 from app.strategy.atr_arm import warmup_bars as atr_warmup_bars
 from app.strategy.frozen_hwpr import FrozenHwprConfig, evaluate_frozen
 from app.strategy.rules import evaluate, warmup_bars
@@ -130,6 +132,12 @@ class TradingBot:
         #: The ATR arm is 5m-primary like V3, so it shares the 5m boundary and
         #: differs only in which evaluator runs on it.
         self.atr_arm = isinstance(strategy, AtrArmConfig)
+        #: The flip arm decides on 1m with NO second timeframe at all, so it
+        #: shares the frozen arm's bar boundary and nothing else. Kept as its
+        #: own flag rather than folded into frozen_arm: they run different
+        #: evaluators, and one boolean covering two rule sets is how an arm
+        #: ends up silently evaluating the other one.
+        self.flip_arm = isinstance(strategy, FlipArmConfig)
         self.notifier = notifier or NullNotifier()
         self.backfiller = backfiller
         self.lock = lock
@@ -347,6 +355,7 @@ class TradingBot:
         # The frozen arm decides on 1m and needs its whole window before the
         # 5m regime inside build_conditions has converged; V3 needs 5m bars.
         need = (self.strategy.window_bars if self.frozen_arm
+                else flip_warmup_bars(self.strategy) if self.flip_arm
                 else atr_warmup_bars(self.strategy) if self.atr_arm
                 else warmup_bars(self.strategy))
         for sym in self.symbols:
@@ -359,8 +368,8 @@ class TradingBot:
             log.info("warmed", extra={"symbol": sym, "bars_1m": len(df),
                                       "bars_5m": len(five),
                                       "state": self.halts[sym].state.value})
-            have = len(df) if self.frozen_arm else len(five)
-            unit = "1m" if self.frozen_arm else "5m"
+            have = len(df) if (self.frozen_arm or self.flip_arm) else len(five)
+            unit = "1m" if (self.frozen_arm or self.flip_arm) else "5m"
             if have < need:
                 self.recovery_error = (
                     f"{sym}: only {have} closed {unit} bars after backfill, "
@@ -454,6 +463,12 @@ class TradingBot:
             await self.on_closed_1m_frozen(bar.symbol)
             return
 
+        # THE FLIP ARM ALSO DECIDES ON THE 1m CLOSE, and likewise returns
+        # before V3's 5m block is reached.
+        if self.flip_arm:
+            await self.on_closed_1m_flip(bar.symbol)
+            return
+
         b = self.builder[bar.symbol]
         five, missing = b.closed_5m_for(bar.start)
         if five is None:
@@ -521,6 +536,18 @@ class TradingBot:
         one_minute = self.builder[symbol].frame(limit=self.strategy.window_bars)
         exp = evaluate_frozen(one_minute, self.strategy, symbol=symbol,
                               max_stop_pct=self.strategy.max_stop_pct)
+        await self._process_explanation(symbol, exp, 60)
+
+    async def on_closed_1m_flip(self, symbol: str) -> None:
+        """Evaluate the flip arm on one closed 1m bar.
+
+        There is no 5m series here at all -- not as a decision boundary and
+        not as a regime filter -- so nothing about a 5m bar is fetched or
+        counted. The Explanation goes to the same risk and execution pipeline
+        every other arm uses.
+        """
+        one_minute = self.builder[symbol].frame(limit=self.strategy.window_bars)
+        exp = evaluate_flip(one_minute, self.strategy, symbol=symbol)
         await self._process_explanation(symbol, exp, 60)
 
     async def on_closed_5m(self, symbol: str, five) -> None:

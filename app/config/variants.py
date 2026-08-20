@@ -179,6 +179,19 @@ _FROZEN_1M_NAMES = frozenset({"FROZEN_1M", "FROZEN1M"})
 #: + Williams %R instead of ADX/DI.
 _ATR_ARM_NAMES = frozenset({"V4", "ATR", "V4_ATR"})
 
+#: The reversal confluence, 1m only. Not added to ALL for the same reason the
+#: other arms are not: ALL feeds the registry whose hashes V1/V2/V2_LEVEL/V3
+#: are pinned against, and a new entry there would move them.
+#:
+#: DELIBERATELY CLAIMS NO "Vn" NAME. The ATR arm took V4 on 2026-08-19, which
+#: is already confusing enough -- the stack called "v3" runs the variant called
+#: "V4" -- and it forced the negative tests in test_atr_arm and
+#: test_variant_and_limits to give up V4 and adopt V5 as their
+#: plausible-looking typo. Claiming V5 here would have broken both of them and
+#: pushed the same problem onto V6. The sequence is a legacy of the original
+#: registry; new arms get names that say what they are.
+_FLIP_ARM_NAMES = frozenset({"FLIP", "H_FLIP_1", "H-FLIP-1"})
+
 #: Environment variable selecting which entry of ALL runs. Unset means V1,
 #: which is what FROZEN is, so nothing changes for a host that does not set it.
 VARIANT_ENV = "DELTABOT_VARIANT"
@@ -226,9 +239,13 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
         from app.strategy.atr_arm import ATR_ARM
         return ATR_ARM
 
+    if name.upper() in _FLIP_ARM_NAMES:
+        from app.strategy.flip_arm import FLIP_ARM
+        return FLIP_ARM
+
     try:
         return ALL[name.upper()]
     except KeyError:
         raise ValueError(
             f"{VARIANT_ENV}={name!r} is not a known variant; expected one of "
-            f"{', '.join(sorted(set(ALL) | _FROZEN_1M_NAMES | _ATR_ARM_NAMES))}") from None
+            f"{', '.join(sorted(set(ALL) | _FROZEN_1M_NAMES | _ATR_ARM_NAMES | _FLIP_ARM_NAMES))}") from None
