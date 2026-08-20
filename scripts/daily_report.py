@@ -277,6 +277,72 @@ def parse_ist(stamp: object) -> datetime.datetime | None:
         return None
 
 
+#: Circuit-breaker profiles for the counterfactual below. NONE of these is what
+#: the paper run enforces -- every breaker is disabled there on purpose, so the
+#: expectancy estimate is not censored by a gate that stops trading after a bad
+#: start and thereby deletes the trades that would have followed it.
+#:
+#: "production" is the classic profile. Measured against this run's history it
+#: fires on ROUTINE behaviour rather than on anomalies: at a 33% win rate a
+#: streak of three losses has probability 0.67^3 = 30%, so a limit of 3 is not
+#: a circuit breaker, it is a description of an ordinary afternoon. "relaxed"
+#: is where the arithmetic puts a breaker that catches something unusual --
+#: a streak of eight is expected about once in 72 trades at the same win rate.
+GATE_PROFILES = {
+    "production": dict(consec=3, daily=0.02, drawdown=0.10),
+    "relaxed": dict(consec=8, daily=0.05, drawdown=0.10),
+}
+
+
+def gated_replay(trades: list[dict], day_start: float, profile: dict) -> dict:
+    """Which of the day's trades a breaker would have refused, and what was in them.
+
+    FIRST-ORDER, AND THE LIMIT IS THE POINT OF SAYING SO. Refusing an entry
+    also frees a position slot and leaves a cooldown unstarted, so the real
+    counterfactual would have taken DIFFERENT later signals rather than fewer
+    of the same ones. Answering that needs the strategy re-run against tick
+    data, not a trade list replayed. What this measures exactly is the question
+    worth asking daily: of the trades that did happen, which would a breaker
+    have stopped, and what was inside them.
+    """
+    eq = day_start
+    daily = 0.0
+    peak = day_start
+    consec = 0
+    halted = None
+    taken = blocked = 0
+    taken_pnl = blocked_pnl = 0.0
+    for t in trades:
+        pnl = num(t.get("pnl"))
+        if pnl is None:
+            continue
+        why = halted
+        if not why:
+            if profile["daily"] and daily < 0 and day_start > 0 and \
+                    (-daily / day_start) >= profile["daily"]:
+                why = f"daily loss >= {profile['daily']:.0%}"
+            elif profile["drawdown"] and peak > 0 and \
+                    (peak - eq) / peak >= profile["drawdown"]:
+                why = f"drawdown >= {profile['drawdown']:.0%}"
+            elif profile["consec"] and consec >= profile["consec"]:
+                why = f"{consec} consecutive losses"
+            if why:
+                halted = why
+        if why:
+            blocked += 1
+            blocked_pnl += pnl
+            continue
+        taken += 1
+        taken_pnl += pnl
+        eq += pnl
+        daily += pnl
+        peak = max(peak, eq)
+        consec = consec + 1 if pnl < 0 else 0
+    return dict(taken=taken, blocked=blocked, taken_pnl=taken_pnl,
+                blocked_pnl=blocked_pnl, halted=halted,
+                halted_after=taken if halted else None)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--instance-id", required=True)
@@ -684,6 +750,64 @@ def main() -> int:
             problems.append(
                 f"drawdown {100*dd:.2f}% -- the max_drawdown_pct halt is "
                 f"DISABLED for this run, so nothing stops it compounding")
+
+    # ---- what the circuit breakers would have done --------------------
+    #
+    # The paper run has every breaker disabled so the measurement is not
+    # censored. That leaves an obvious question unanswered every day -- what
+    # would production have done -- and answering it from the same trade
+    # stream costs nothing and needs no second bot.
+    if done:
+        seq = sorted(done, key=lambda t: str(t.get("closed_ist") or ""))
+        pnls = [num(t.get("pnl")) for t in seq]
+        actual = sum(p for p in pnls if p is not None)
+        day_start = None
+        if rs:
+            e, d = num(rs.get("equity")), num(rs.get("daily_pnl"))
+            if e is not None and d is not None:
+                day_start = e - d
+        if day_start:
+            print("## What the circuit breakers would have done\n")
+            print("Every breaker is DISABLED in this run, deliberately: one that "
+                  "halts after a bad start deletes the trades that would have "
+                  "followed it, and the expectancy estimate is then conditional "
+                  "on the day not already having gone wrong. This is the same "
+                  "trade stream replayed against profiles that are not "
+                  "enforced.\n")
+            # THE REPLAY STARTS AT THE LEDGER, NOT AT MIDNIGHT, and on a day
+            # the experiment was registered those are different instants. The
+            # ledger is reset on registration, so losses taken earlier that UTC
+            # day under the previous experiment are not in `daily_pnl` and not
+            # in this table -- a breaker that would have fired at 02:12Z on the
+            # old ledger shows here as never having fired. Say so rather than
+            # quietly understating, because a restart day is exactly when
+            # someone reads this table to decide whether the gates matter.
+            if began is not None and began.date().isoformat() == day:
+                print(f"> This experiment was registered at "
+                      f"{began.strftime('%H:%M')}Z on the reported day, and the "
+                      f"risk ledger was reset with it. The replay below starts "
+                      f"there, NOT at 00:00Z -- anything traded earlier in the "
+                      f"UTC day belonged to the previous experiment and is "
+                      f"outside it.\n")
+            print("| Profile | Streak | Daily | Drawdown | Taken | Refused "
+                  "| Day P&L | vs actual | First halt |")
+            print("|---|---|---|---|---|---|---|---|---|")
+            print(f"| _as run_ | off | off | off | {len(seq)} | 0 "
+                  f"| {actual:+.2f} | — | — |")
+            for name, prof in GATE_PROFILES.items():
+                g = gated_replay(seq, day_start, prof)
+                delta = g["taken_pnl"] - actual
+                halt = (f"{g['halted']} after {g['halted_after']}"
+                        if g["halted"] else "never fired")
+                print(f"| {name} | {prof['consec']} | {prof['daily']:.0%} "
+                      f"| {prof['drawdown']:.0%} | {g['taken']} | {g['blocked']} "
+                      f"| {g['taken_pnl']:+.2f} | {delta:+.2f} | {halt} |")
+            print()
+            print("First-order only: refusing an entry also frees a position "
+                  "slot and leaves a cooldown unstarted, so the true "
+                  "counterfactual would have taken DIFFERENT later signals, not "
+                  "merely fewer of the same. What is exact is which trades that "
+                  "did happen a breaker would have refused.\n")
 
     by_sym = db.get("by_symbol") or []
     if by_sym:
