@@ -25,7 +25,9 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime
+import gzip
 import json
 import subprocess
 import sys
@@ -181,6 +183,30 @@ def container_started(sec: dict[str, str]) -> datetime.datetime | None:
             if field.startswith("started="):
                 return parse_ts(field.split("=", 1)[1])
     return None
+
+
+def gunzip_section(sec: dict[str, str], name: str) -> str:
+    """Return section `name`, transparently un-gzipping a `name_GZ` variant.
+
+    The monitor document compresses the two sections that grow with the trade
+    count, because together they crossed SSM's 24,000-byte output cap on
+    2026-08-20 and took every database figure in the report with them. The
+    plain name is still accepted: the document and this script deploy through
+    different pipelines -- Terraform and a git push -- so there is always a
+    window where one is new and the other is not, and a report that fails
+    during that window would be a second outage caused by fixing the first.
+    """
+    raw = (sec.get(name + "_GZ", "") or "").strip()
+    if raw:
+        blob = "".join(raw.split())
+        try:
+            return gzip.decompress(base64.b64decode(blob)).decode("utf-8", "replace")
+        except Exception:
+            # Truncated or malformed: fall through and let the caller's own
+            # unavailable-vs-zero handling report it, rather than raising here
+            # and losing the whole report over one section.
+            return ""
+    return sec.get(name, "") or ""
 
 
 def sections(text: str) -> dict[str, str]:
@@ -381,7 +407,7 @@ def main() -> int:
     status = as_json(sec.get("STATUS", ""))
     healthz = as_json(sec.get("HEALTHZ", ""))
     readyz = as_json(sec.get("READYZ", ""))
-    _persist_raw = (sec.get("PERSISTENCE", "") or "")
+    _persist_raw = gunzip_section(sec, "PERSISTENCE")
     _persist_last = _persist_raw.splitlines()[-1] if _persist_raw.strip() else ""
     db = as_json(_persist_last)
     # DID THE PROBE ACTUALLY ARRIVE?
@@ -526,7 +552,7 @@ def main() -> int:
     # The panel's central objection was that a 21.6 bps median 1R leaves
     # round-trip costs eating 0.36-0.71R of a 2R target, so a report that
     # prints P&L without printing R-in-bps omits the number under test.
-    trades = as_json_list(sec.get("TRADES", ""))
+    trades = as_json_list(gunzip_section(sec, "TRADES"))
     positions = as_json_list(sec.get("POSITIONS", ""))
     open_now = [t for t in positions if str(t.get("status", "")).upper() == "OPEN"]
     done = [t for t in trades if str(t.get("status", "")).upper() != "OPEN"]

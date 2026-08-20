@@ -66,17 +66,39 @@ resource "aws_ssm_document" "monitor" {
           "echo '===POSITIONS==='",
           "curl -sS --max-time 10 http://127.0.0.1:8000/api/positions",
           "echo",
-          "echo '===TRADES==='",
-          "curl -sS --max-time 10 http://127.0.0.1:8000/api/trades",
+          # THE TWO FAT SECTIONS ARE COMPRESSED, AND THE CAP IS WHY.
+          #
+          # SSM returns at most 24,000 bytes of StandardOutputContent and
+          # silently truncates the rest. Measured on 2026-08-20 with 14 closed
+          # trades: PERSISTENCE 13,175 bytes, TRADES 4,626, everything else
+          # 8,668 -- 26,469 total against a 24,000 cap. PERSISTENCE was last,
+          # so PERSISTENCE was what vanished, and every database figure in the
+          # report went unavailable.
+          #
+          # Both grow with the trade count, so trimming rows only moves the
+          # date this recurs. gzip does not: JSON of this shape compresses
+          # roughly sixfold, taking the total to about 12,000 and leaving room
+          # for a 30-day run to accumulate.
+          #
+          # The section names carry _GZ so an old document and a new report --
+          # or the reverse, since these deploy independently -- disagree
+          # loudly about the name rather than quietly about the encoding.
+          "echo '===TRADES_GZ==='",
+          "curl -sS --max-time 10 http://127.0.0.1:8000/api/trades | gzip -9 | base64 -w0",
+          "echo",
+          # PERSISTENCE MOVED AHEAD OF THE NARRATIVE SECTIONS. Compression
+          # alone should keep everything inside the cap, but ordering decides
+          # what survives if that is ever wrong again, and the database probe
+          # is the section the report cannot substitute for.
+          "echo '===PERSISTENCE_GZ==='",
+          # Read-only SQL, base64 so no quoting survives a trip through YAML.
+          "echo '${base64encode(file("${path.root}/../../deploy/aws/db_probe.py"))}' | base64 -d > /tmp/db_probe.py",
+          "docker exec -i deltabot python - < /tmp/db_probe.py 2>&1 | tail -5 | gzip -9 | base64 -w0",
           "echo",
           "echo '===EXPERIMENT==='",
           "docker exec deltabot python -m app forward-test status 2>&1 | head -40",
           "echo '===DAILYREPORT==='",
           "docker exec deltabot python -m app forward-test report --day '{{ Day }}' 2>&1 | head -80",
-          "echo '===PERSISTENCE==='",
-          # Read-only SQL, base64 so no quoting survives a trip through YAML.
-          "echo '${base64encode(file("${path.root}/../../deploy/aws/db_probe.py"))}' | base64 -d > /tmp/db_probe.py",
-          "docker exec -i deltabot python - < /tmp/db_probe.py 2>&1 | tail -5",
           "echo '===END==='",
         ]
       }
