@@ -183,3 +183,27 @@ n = 31 and is **not** evidence for or against the entry family on its own. The
 family's verdict rests on the offline registry and on v4. Neither arm's numbers
 should later be cited as a forward-test result; both are terminated samples of
 a size this document already stated could not resolve the question.
+
+---
+
+## CORRECTION — the dates in the frozen section are wrong
+
+**Both documents were written on 2026-08-23, not 2026-08-21.** The date was
+taken from the last trade in the sample (v3's final close, 2026-08-21 10:01
+UTC) rather than from the clock. Confirmed against the RDS snapshot taken the
+same session, `deltabt-paper-final-v3-v4-20260823t185433z`, created
+2026-08-23T18:54:39Z.
+
+Affected text in the frozen section, which is deliberately **not** edited so
+the SHA-256 keeps verifying:
+
+- "Frozen 2026-08-21, at n = 31 closed trades" — the freeze was 2026-08-23.
+- "**2026-09-04** (14 days from freezing)" — 14 days from the true freeze date
+  is 2026-09-06. Moot, since the experiment was stopped before either
+  condition fired.
+- The DEVIATION section's "recorded 2026-08-21, same day as the freeze" — also
+  2026-08-23. It was still the same day as the freeze, so that claim holds.
+
+The hash covers the *rules*, and the rules are unchanged. Nothing about the
+decision procedure or its outcome depends on this. It is recorded because an
+uncorrected date in a pre-registration is how a timeline stops being auditable.

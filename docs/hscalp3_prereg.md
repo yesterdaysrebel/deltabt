@@ -233,3 +233,22 @@ Twelve tests, twelve nulls. The one mechanism with a positive gross does not
 survive the horizon extension that the cost arithmetic required, and its
 horizon dependence is unstable across windows. There is no remaining
 pre-registered hypothesis in this program.
+
+---
+
+## CORRECTION — the frozen date is wrong
+
+**This was frozen on 2026-08-23, not 2026-08-21.** The date was taken from the
+last trade in the live sample rather than from the clock; confirmed against the
+RDS snapshot `deltabt-paper-final-v3-v4-20260823t185433z`, created
+2026-08-23T18:54:39Z.
+
+The frozen section is deliberately not edited, so its SHA-256
+`a0f176beb8c5e40d4faad07404070b50c8743c104494277262a16e6c1f09fbcb` keeps
+verifying. What the hash guarantees is unaffected: the hypothesis, the grid,
+the selection rule and the classification thresholds were all fixed before the
+run, and the run confirmed it by rejecting a cell whose validation column
+looked like a discovery.
+
+`data_end 2026-08-12` is unchanged and correct — the candle store genuinely
+ends there, which is why the sweep saw no data after that date.
