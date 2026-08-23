@@ -109,12 +109,21 @@ class ScalpResult:
         return pd.DataFrame([t.__dict__ for t in self.trades])
 
 
-def build_bars(ltp_1m: pd.DataFrame, mark_1m: pd.DataFrame, start: int) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Resample to 15m and align mark to the LTP index."""
-    ltp = resample_ohlcv(ltp_1m[ltp_1m.time >= start], 15).reset_index(drop=True)
+def build_bars(ltp_1m: pd.DataFrame, mark_1m: pd.DataFrame, start: int,
+               minutes: int = 15) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Resample to ``minutes`` and align mark to the LTP index.
+
+    THE DEFAULT IS 15 AND MUST STAY 15. H-Scalp-1 and H-Scalp-2 are both
+    recorded in the registry against 15m bars, and their numbers have to remain
+    reproducible from this code. The parameter exists so H-Scalp-3 can ask the
+    same question at a longer horizon WITHOUT a second copy of the simulator
+    drifting away from this one; callers that do not pass it get exactly the
+    behaviour the recorded experiments were run under.
+    """
+    ltp = resample_ohlcv(ltp_1m[ltp_1m.time >= start], minutes).reset_index(drop=True)
     if mark_1m is None or mark_1m.empty:
         return ltp, ltp.copy()
-    mk = resample_ohlcv(mark_1m[mark_1m.time >= start], 15)
+    mk = resample_ohlcv(mark_1m[mark_1m.time >= start], minutes)
     mk = mk.set_index("time").reindex(ltp["time"].to_numpy()).reset_index()
     for c in ("high", "low", "close", "open"):
         mk[c] = mk[c].fillna(ltp[c])
