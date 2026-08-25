@@ -334,9 +334,28 @@ variable "stacks" {
     # is re-adding its line here; the database it names already exists, so it
     # would not hit the InvalidCatalogNameError that broke v4's first roll.
 
-    # The %R candidate, added 2026-08-25. Williams %R(140) rising above -80 on
-    # a 240-MINUTE bar, no Supertrend, no ADX, no confirmation timeframe, a
-    # 2 x ATR(10) stop and a 2R target.
+    # The %R candidate, added 2026-08-25. On a 240-MINUTE bar: Williams %R(140)
+    # TURNING UP goes long, TURNING DOWN goes short. No Supertrend, no ADX, no
+    # confirmation timeframe, a 2 x ATR(10) stop and a 2R target.
+    #
+    # THIS IS NOT AN OVERSOLD REVERSAL, though the levels make it look like
+    # one. The rule is `wpr_rule = "variant_a"`:
+    #
+    #     long  :  %R > -80  AND  %R > %R[1]
+    #     short :  %R < -20  AND  %R < %R[1]
+    #
+    # The bands OVERLAP across [-80, -20], which is 67% of bars, and inside it
+    # both level tests pass so only the DIRECTION of %R decides. Measured on
+    # BTCUSD, 78% of longs and 85% of shorts fire inside that overlap, at a
+    # median %R of -46.7 and -60.1. The levels only veto the outer tails: long
+    # is blocked below -80, short above -20.
+    #
+    # So it is a momentum-direction rule that EXCLUDES the extremes, and with
+    # no trend filter it takes both sides freely -- on 2026-08-11 it fired
+    # long, short, long, short on four consecutive bars. The earlier wording
+    # here, "rising above -80", is literally true and reads as a cross up
+    # through -80 out of oversold. That is the `cross_levels` variant, which
+    # this is not.
     #
     # SELECTED BY MEASUREMENT, AND THE MEASUREMENT IS WEAK. Of seven cells
     # tracked across four out-of-sample blocks it is one of only two holding a
