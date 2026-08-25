@@ -172,3 +172,81 @@ experiment with a reason and starting a **new** id, not patching underneath a
 running one.
 
 <!-- FROZEN ABOVE THIS LINE -->
+
+---
+
+# Addendum, 2026-08-25 — recorded AFTER registration
+
+**Everything above this line stays frozen.** Nothing here changes the stopping
+point, the decision rule, or the metric. Both items correct the *description*
+of what is running and sharpen the *prior* it is read against. Recording them
+below the line rather than editing above it is the point of the line.
+
+## 1. The rule description above is misleading
+
+The table says "Williams %R(140) rising above −80". That is literally true and
+reads as a cross UP through −80 out of oversold. It is not that. The spec sets
+`wpr_rule = "variant_a"`:
+
+    long  :  %R > -80  AND  %R > %R[1]
+    short :  %R < -20  AND  %R < %R[1]
+
+The two bands **overlap across [−80, −20]**, which is 67% of bars. Inside the
+overlap both level tests pass and only the DIRECTION of %R decides, so the
+operative rule is **"%R turns up → long, %R turns down → short"**. The levels
+veto only the outer tails: long is blocked below −80 (14.5% of bars), short
+above −20 (18.4%).
+
+Measured on BTCUSD's 3,530 cached 240m bars:
+
+| | n | median %R at entry | inside the −80/−20 overlap |
+|---|---|---|---|
+| LONG | 796 | −46.7 | 78.0% |
+| SHORT | 726 | −60.1 | 85.1% |
+
+It is a momentum-direction rule that EXCLUDES the extremes, with no trend
+filter, so it takes both sides freely. On 2026-08-11 it fired long, short,
+long, short on four consecutive bars.
+
+This changes nothing about what is deployed — the hash `110eede40f13` is the
+same object that was backtested. It changes what a reader thinks the run is
+testing, which matters when the result is read in September.
+
+## 2. The 4/4 gross sign was not evidence
+
+The prior above says this cell was selected partly because its gross stayed
+positive in all four out-of-sample blocks, and that "2 of 7 tracked cells did
+that, and chance alone predicts 0.88 (p = 0.215)".
+
+Those seven cells were themselves chosen by in-sample rank, so the count was
+measured on a set already filtered by the effect it was meant to detect.
+Tracking **all 72** family x timeframe cells through the same four blocks:
+
+    cells tracked                    : 72
+    cells positive in all 4 blocks   :  6
+    expected by chance at p=0.5      :  4.50
+    P(>= 6 of 72 | chance)           :  0.294
+
+and the full distribution is the binomial (observed 6 / 16 / 25 / 19 / 6
+against expected 4.5 / 18 / 27 / 18 / 4.5).
+
+**Holding the gross sign through every block is what chance does with this many
+cells.** The selection criterion does not discriminate. The honest reading is
+not "weak evidence" but *no evidence* from that criterion.
+
+All six cells that hold 4/4 are net-negative in the most recent block, and four
+are net-negative in every block. Of the six, `wpr_only@240m` has the largest
+gross magnitudes and the gentlest decay — the strongest statement the data
+supports, and not a strong one.
+
+## What this does NOT do
+
+It is not grounds to stop the run. The stopping rule is frozen and stopping
+early on new information about the prior is optional stopping by another name.
+It also does not change the expected outcome, which was already UNDECIDED.
+
+What it changes is the reading on 2026-09-24: the arm was chosen on a criterion
+now measured as uninformative, so a positive result should be treated as even
+more provisional than the frozen PROMISING row already requires.
+
+Full grid: `out/sweep/README.md`, `out/sweep/walkforward_fixed.csv`.
