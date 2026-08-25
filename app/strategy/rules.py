@@ -114,6 +114,34 @@ class IndicatorSnapshot:
         }
 
 
+def _timeframe_minutes(tf: str) -> int:
+    """Minutes in a timeframe string such as ``5m`` or ``1h``.
+
+    Deliberately strict. A silently-misparsed timeframe would misalign the
+    previous-bar lookup, which is the exact defect this helper was added to
+    fix.
+    """
+    tf = tf.strip().lower()
+    if tf.endswith("m"):
+        return int(tf[:-1])
+    if tf.endswith("h"):
+        return int(tf[:-1]) * 60
+    if tf.endswith("d"):
+        return int(tf[:-1]) * 60 * 24
+    raise ValueError(f"unrecognised timeframe {tf!r}")
+
+
+def _confirm_bars_per_primary(cfg: StrategyConfig) -> int:
+    """How many confirmation bars span one primary bar."""
+    primary = _timeframe_minutes(cfg.primary_timeframe)
+    confirm = _timeframe_minutes(cfg.confirmation_timeframe)
+    if primary % confirm:
+        raise ValueError(
+            f"primary {cfg.primary_timeframe} is not a whole multiple of "
+            f"confirmation {cfg.confirmation_timeframe}")
+    return primary // confirm
+
+
 def _finite(*vals) -> bool:
     return all(v is not None and np.isfinite(v) for v in vals)
 
@@ -236,7 +264,24 @@ def evaluate(
     # cannot be stale after a redeploy, and keeps evaluate() a pure function of
     # the bars it is handed -- which two existing tests rely on.
     if cfg.fire_once and (long_ok or short_ok):
-        prev_long, prev_short = _checks(P.at(-2), C.at(-2), cfg)
+        # PAIR THE PREVIOUS PRIMARY BAR WITH ITS OWN CONFIRMATION BAR.
+        #
+        # This previously read ``C.at(-2)``, which is the confirmation bar one
+        # CONFIRMATION bar back -- one minute, not one primary bar. On the 5m/1m
+        # configuration that asked "was the setup already true?" of a pairing
+        # that was never itself an evaluation: the 5m bar from five minutes ago
+        # judged against the 1m bar from one minute ago. Measured on 600 closed
+        # BTCUSD 5m bars it changed the firing decision on 10 of them, both by
+        # suppressing entries that were genuine FALSE->TRUE edges and by
+        # admitting repeats that were not. See tests/test_rulecore_parity.py.
+        step = _confirm_bars_per_primary(cfg)
+        if C.n <= step or P.n <= 1:
+            exp.outcome = Outcome.SUPPRESSED
+            exp.rejection_reason = (
+                f"cannot evaluate the previous primary bar: need {step + 1} "
+                f"confirmation bars and 2 primary bars, have {C.n} and {P.n}")
+            return exp
+        prev_long, prev_short = _checks(P.at(-2), C.at(-1 - step), cfg)
         was_long = all(v for _, v in prev_long)
         was_short = all(v for _, v in prev_short)
         if (long_ok and was_long) or (short_ok and was_short):

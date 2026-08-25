@@ -271,6 +271,45 @@ class SymbolCandleBuilder:
 
     # -- 5m derivation -----------------------------------------------------
 
+    def closed_tf_for(self, last_1m_start: int, minutes: int) -> tuple[Candle | None, int]:
+        """The ``minutes`` bar that closes with ``last_1m_start``, if one does.
+
+        Generalisation of :meth:`closed_5m_for`. Returns ``(bar, missing)``;
+        ``bar`` is None when ``last_1m_start`` is not the final minute of a
+        bucket, and ``missing > 0`` means the strategy must not act on it.
+
+        NOTE the buffer requirement. A bucket is assembled from the retained 1m
+        bars, so ``max_bars`` has to exceed ``minutes`` by a wide margin AND
+        cover the strategy's whole warm-up: a 240m rule with a 145-bar warm-up
+        needs 34,800 minutes of history before its first legitimate signal.
+        """
+        step = minutes * MINUTE
+        if (last_1m_start + MINUTE) % step != 0:
+            return None, 0
+        bucket = (last_1m_start // step) * step
+        wanted = {bucket + i * MINUTE for i in range(minutes)}
+        members = [b for b in self.bars if b.start in wanted]
+        missing = minutes - len(members)
+        if not members:
+            return None, minutes
+        members.sort(key=lambda b: b.start)
+        bar = Candle(
+            symbol=self.symbol, start=bucket,
+            open=members[0].open,
+            high=max(b.high for b in members),
+            low=min(b.low for b in members),
+            close=members[-1].close,
+            volume=sum(b.volume for b in members),
+            source="derived",
+        )
+        if missing:
+            self.stats.incomplete_5m += 1
+        else:
+            if minutes == 5:
+                self.stats.closed_5m += 1
+                self._last_5m_start = bucket
+        return bar, missing
+
     def closed_5m_for(self, last_1m_start: int) -> tuple[Candle | None, int]:
         """The 5m bar that closes with ``last_1m_start``, if one does.
 
@@ -304,28 +343,35 @@ class SymbolCandleBuilder:
             self._last_5m_start = bucket
         return bar, missing
 
-    def frame_5m(self, limit: int | None = None) -> pd.DataFrame:
-        """Closed, COMPLETE 5m bars derived from the 1m history.
+    def frame_tf(self, minutes: int, limit: int | None = None) -> pd.DataFrame:
+        """Closed, COMPLETE bars of ``minutes`` derived from the 1m history.
 
-        Uses the backtester's own resampler so the live 5m grid and the
-        research 5m grid are the same code path. Incomplete trailing buckets
-        are dropped rather than emitted short.
+        Uses the backtester's own resampler so the live grid and the research
+        grid are the same code path. A bucket missing ANY of its minutes is
+        dropped rather than emitted short: a truncated high/low silently moves
+        both the signal and the stop, and at 240m one absent minute would
+        otherwise corrupt four hours of bar.
         """
         from deltabt.strategy import resample_ohlcv
 
         df = self.frame()
         if df.empty:
             return df
+        step = minutes * MINUTE
         counts = (
-            df.assign(_b=(df["time"] // FIVE_MIN) * FIVE_MIN)
+            df.assign(_b=(df["time"] // step) * step)
             .groupby("_b")["time"].size()
         )
-        out = resample_ohlcv(df, 5)
-        complete = counts[counts == 5].index
+        out = resample_ohlcv(df, minutes)
+        complete = counts[counts == minutes].index
         out = out[out["time"].isin(complete)].reset_index(drop=True)
         if limit is not None:
             out = out.tail(limit).reset_index(drop=True)
         return out
+
+    def frame_5m(self, limit: int | None = None) -> pd.DataFrame:
+        """Closed, COMPLETE 5m bars. Thin wrapper over :meth:`frame_tf`."""
+        return self.frame_tf(5, limit)
 
     @property
     def last_closed_5m_start(self) -> int | None:

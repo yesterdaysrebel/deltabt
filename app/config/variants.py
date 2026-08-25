@@ -243,6 +243,38 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
         from app.strategy.flip_arm import FLIP_ARM
         return FLIP_ARM
 
+    # A SPEC ARM, ADDRESSED BY CATALOG NAME. `SPEC:wpr_only@240` resolves
+    # through deltabt.catalog to the same StrategySpec the backtester ran, so
+    # the thing deployed is the thing measured -- no second implementation to
+    # keep in step, and the config hash in the audit trail is the spec's own.
+    #
+    # Resolved here rather than placed in ALL for the reason the arms above
+    # are: it is not a StrategyConfig, and StrategyConfig.validate() rejects
+    # any timeframe pair but 5m/1m.
+    if name.upper().startswith("SPEC:"):
+        from deltabt.catalog import FAMILIES, build_spec
+
+        body = name.split(":", 1)[1].strip()
+        if "@" not in body:
+            raise ValueError(
+                f"{VARIANT_ENV}={name!r} is malformed; expected "
+                f"SPEC:<family>@<primary_minutes>, e.g. SPEC:wpr_only@240")
+        family, _, minutes = body.partition("@")
+        family = family.strip()
+        if family not in FAMILIES:
+            raise ValueError(
+                f"{VARIANT_ENV}={name!r} names no catalog family. Known: "
+                f"{', '.join(sorted(FAMILIES))}")
+        try:
+            primary = int(minutes)
+        except ValueError:
+            raise ValueError(
+                f"{VARIANT_ENV}={name!r}: {minutes!r} is not a bar size in minutes"
+            ) from None
+        spec = build_spec(family, primary)
+        spec.validate()
+        return spec
+
     try:
         return ALL[name.upper()]
     except KeyError:
