@@ -276,47 +276,43 @@ variable "stacks" {
     db_name = string
   }))
   default = {
-    # V1's rules with max_stop_pct at 10% instead of 5%. Added 2026-08-15
-    # because AKEUSD and BEATUSD had 15 setups refused for stop width out of
-    # 15 -- see V3_WIDE_STOP in app/config/variants.py for the measurement and
-    # for why 10% rather than 25%.
-    # Runs the ATR arm, not V3's rules: 2 x ATR(10) stop, a 2R target derived
-    # from it, no ADX threshold, and 1m confirmation on Supertrend + Williams
-    # %R instead of ADX/DI. The stack keeps the name "v3" because renaming it
-    # would destroy and recreate its database, log group and documents; the
-    # VARIANT is what selects the rules.
-    v3 = { variant = "V4", db_name = "deltabt_v3" }
+    # v3 (the ATR arm) and v4 (the flip arm) WERE REMOVED FROM THIS MAP on
+    # 2026-08-25, not renamed and not disabled in code.
+    #
+    # Both were stopped when the research programme closed and their instances
+    # terminated; the teardown also removed their log groups, metric filters,
+    # alarms, EIPs and SSM documents, while Terraform state still carried them.
+    # An apply would therefore have RECREATED two arms nobody asked to restart
+    # -- and a subsequent walk-forward found neither holds a stable sign out of
+    # sample. Leaving them here would have cost ~$24/month to run strategies
+    # already measured as null.
+    #
+    # Their DATABASES on the shared RDS instance are untouched: deltabt_v3 and
+    # deltabt_v4 still hold every trade both arms took. Restoring either stack
+    # is re-adding its line here; the database it names already exists, so it
+    # would not hit the InvalidCatalogNameError that broke v4's first roll.
 
-    # The reversal confluence: %R(140) leaving its extreme AND Supertrend(10,2)
-    # flipping on the SAME 1m bar, no second timeframe anywhere, a fixed 1.5%
-    # stop and a 2R target. Added 2026-08-20.
+    # The %R candidate, added 2026-08-25. Williams %R(140) rising above -80 on
+    # a 240-MINUTE bar, no Supertrend, no ADX, no confirmation timeframe, a
+    # 2 x ATR(10) stop and a 2R target.
     #
-    # A SEPARATE STACK, NOT A SECOND CONTAINER ON v3's HOST, and the reason is
-    # in this variable's own description: one RUNNING experiment per database,
-    # one open position per symbol per database, a single "risk_state" key, and
-    # load_open_positions() with no experiment filter. Two arms sharing a
-    # database collide on all four.
+    # SELECTED BY MEASUREMENT, AND THE MEASUREMENT IS WEAK. Of seven cells
+    # tracked across four out-of-sample blocks it is one of only two holding a
+    # positive GROSS sign in all four -- but 2 of 7 is roughly what chance
+    # produces (0.88 expected, p = 0.215), its gross decays -0.032 per block,
+    # and its net is negative in the two most recent. Portfolio backtest over
+    # 588 days on four symbols, live gates, six position slots: +3.23% with a
+    # 10.09% maximum drawdown and a per-trade expectancy of +0.0165R whose
+    # confidence interval spans zero.
     #
-    # It is EXPECTED TO LOSE about 0.07R per trade -- measured win rate
-    # 34.6%/34.9% against the 33.3% a coin flip returns at 2R. It runs anyway
-    # because 213 configurations have now seen train and validation, the
-    # held-out set is spent, and a pre-registered live arm is the only
-    # remaining way to test the idea on data nobody has mined.
+    # It runs to MEASURE, not to earn. At 0.87 trades/day a 30-day run is ~26
+    # trades against that interval and will return UNDECIDED, which must be
+    # written down before the first bar rather than argued about at the end.
     #
-    # IT INHERITS max_hold_seconds = 86400, WHICH THE BACKTEST DID NOT HAVE.
-    # run_reversal_confluence holds every trade to its stop or its target with
-    # no time limit, so a 24h exit is a deviation from the measured rule. It is
-    # accepted rather than fixed: max_hold reaches the container through
-    # user_data, ec2.tf sets user_data_replace_on_change, and v3 carries
-    # disable_api_termination -- so making it per-stack would render v3's
-    # user_data differently, demand a replacement Terraform is forbidden to
-    # perform, and fail the apply. Trading fidelity on a rarely-binding exit
-    # against the running experiment is not a trade worth making.
-    #
-    # It should seldom bind: the confluence ran 12.1 trades/day one position at
-    # a time, so the average hold is under two hours. Trades that DO hit it will
-    # not match the backtest and are identifiable by exit_reason TIME_EXIT.
-    v4 = { variant = "FLIP", db_name = "deltabt_v4" }
+    # THE VARIANT IS A SPEC, NOT A HAND-WRITTEN ARM. "SPEC:wpr_only@240"
+    # resolves through deltabt.catalog to the same StrategySpec the backtester
+    # ran, so the thing deployed is the thing measured.
+    v5 = { variant = "SPEC:wpr_only@240", db_name = "deltabt_v5" }
   }
 }
 
