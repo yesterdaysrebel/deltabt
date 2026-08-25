@@ -29,6 +29,7 @@ import base64
 import datetime
 import gzip
 import json
+import re
 import subprocess
 import sys
 import time
@@ -55,7 +56,39 @@ MIN_CLOSED_TRADES = 30
 #: How old a RUNNING experiment must be before "zero evaluations" is treated as
 #: a dead loop rather than a young run. Twelve 5m bars, plus room for the
 #: backfill and indicator warm-up that precede the first evaluation.
+#:
+#: A FLOOR, NOT THE ANSWER -- see silence_threshold(). On a 240m arm the first
+#: bar can be four hours away, so an hour of silence is not evidence of
+#: anything and escalating it would fire on every experiment start.
 MIN_RUN_AGE_FOR_SILENCE = 3600.0
+
+
+def primary_minutes(strategy_version: str | None) -> int:
+    """Minutes per primary bar, read off the strategy version string.
+
+    A StrategySpec names its timeframe: ``wpr_only@240m@110eede40f13``. A
+    StrategyConfig does not -- ``H-WPR-1-VariantA@d7837e445bc74781`` -- and
+    every one of those decides on 5m, which is the fallback.
+
+    DERIVED HERE RATHER THAN ADDED TO /api/status ON PURPOSE. This script
+    lives in scripts/, which the Dockerfile does not copy, so changing it
+    cannot roll the bot. Adding a field to app/api/app.py would trigger the
+    deploy workflow, restart the container under a RUNNING experiment, and
+    fail bind_experiment on a changed git SHA -- ending the run to improve a
+    sentence in its own report.
+    """
+    m = re.search(r"@(\d+)m@", strategy_version or "")
+    return int(m.group(1)) if m else 5
+
+
+def silence_threshold(strategy_version: str | None) -> float:
+    """Seconds of zero evaluations that mean something is actually wrong.
+
+    Two primary bars, floored at an hour. One bar is not enough: a run that
+    starts just after a bar close waits a full period for its first, so a
+    one-bar threshold escalates a healthy start.
+    """
+    return max(MIN_RUN_AGE_FOR_SILENCE, 2 * 60 * primary_minutes(strategy_version))
 
 #: Stack names, and which one kept the unsuffixed resource names. Mirrors
 #: local.stacks / local.legacy_stack in infra/terraform/ec2.tf; duplicated
@@ -405,6 +438,11 @@ def main() -> int:
     raw = probe(args.instance_id, args.document, day, args.region)
     sec = sections(raw)
     status = as_json(sec.get("STATUS", ""))
+    # Read once, here, so the evaluation-silence section below does not have to
+    # reach back into `status` and does not break when the probe returns
+    # nothing (primary_minutes falls back to 5, len(symbols) to 0).
+    strategy_version = status.get("strategy_version")
+    symbols = list(status.get("symbols") or [])
     healthz = as_json(sec.get("HEALTHZ", ""))
     readyz = as_json(sec.get("READYZ", ""))
     _persist_raw = gunzip_section(sec, "PERSISTENCE")
@@ -690,25 +728,33 @@ def main() -> int:
             # that would fire on EVERY experiment start -- the cry-wolf failure
             # this report already had once with feed reconnects.
             #
-            # A 5m bar closes every 300s, and warm-up needs the backfill to
-            # finish first, so an hour is comfortably long enough that silence
-            # is real. Below it the fact is still reported, just not escalated.
-            if run_age_seconds is not None and run_age_seconds < MIN_RUN_AGE_FOR_SILENCE:
+            # Warm-up and the backfill precede the first evaluation, and the
+            # bar period sets how long after that the wait legitimately runs.
+            # Below the threshold the fact is still reported, just not
+            # escalated.
+            tf = primary_minutes(strategy_version)
+            floor = silence_threshold(strategy_version)
+            if run_age_seconds is not None and run_age_seconds < floor:
                 mins = int(run_age_seconds // 60)
                 body = (f"The experiment has not evaluated a bar yet. It is {mins} "
-                        f"minute(s) old, and a 5m bar closes every 300s after the "
-                        f"backfill and indicator warm-up finish, so there has not "
-                        f"been time for one. Not escalated below "
-                        f"{int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes.\n")
+                        f"minute(s) old, and a {tf}m bar closes every "
+                        f"{tf * 60}s after the backfill and indicator warm-up "
+                        f"finish, so there has not been time for one. Not "
+                        f"escalated below {int(floor // 60)} minutes.\n")
                 notes.append(
                     f"no evaluations yet: the experiment is {mins} minutes old "
-                    f"(not escalated below "
-                    f"{int(MIN_RUN_AGE_FOR_SILENCE // 60)} minutes)")
+                    f"(not escalated below {int(floor // 60)} minutes on a "
+                    f"{tf}m arm)")
             else:
-                body = ("**No evaluations at all in 24h.** The strategy loop did not "
-                        "reach a single bar close, which is not a market outcome — "
-                        "at four symbols on a 5m timeframe this should be in the "
-                        "hundreds. Escalated.\n")
+                # WHAT "TOO FEW" MEANS DEPENDS ENTIRELY ON THE TIMEFRAME.
+                # 1,440/tf bars a day per symbol: 288 on a 5m arm, 6 on a 240m
+                # one. Calling 24 evaluations "should be in the hundreds" would
+                # be wrong by an order of magnitude on the arm now deployed.
+                per_day = (1440 // tf) * max(1, len(symbols))
+                body = (f"**No evaluations at all in 24h.** The strategy loop did "
+                        f"not reach a single bar close, which is not a market "
+                        f"outcome — at {len(symbols)} symbol(s) on a {tf}m "
+                        f"timeframe this should be about {per_day}. Escalated.\n")
                 problems.append(
                     "no evaluations at all in 24h — the loop may not be running")
         else:
