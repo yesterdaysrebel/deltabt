@@ -1,0 +1,64 @@
+# Forward recorder for the Delta India option quote surface.
+#
+# WHY THIS IS A LONG-RUNNING SERVICE AND NOT A CRON JOB
+#
+#   The data is unrecoverable. Delta publishes candle history for premium and
+#   mark, but NO history for quotes, implied vol or greeks -- those exist only
+#   in the live /v2/tickers snapshot. Whatever is not captured at the moment it
+#   is served is gone permanently, so the failure mode that matters is silent
+#   downtime, not a slow run.
+#
+#   A systemd service with Restart=always recovers from a crash in seconds. A
+#   cron entry that fails leaves no trace until somebody reads a log, and the
+#   gap it leaves can never be backfilled.
+#
+# It is read-only against public endpoints. No API keys, no signing, no order
+# path -- consistent with the rest of this repository, and the reason it needs
+# no credentials of any kind.
+#
+# Install:
+#   sudo cp deltabt-quote-recorder.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now deltabt-quote-recorder
+#   systemctl status deltabt-quote-recorder
+#   journalctl -u deltabt-quote-recorder -f
+#
+# Storage: ~1,070 contracts per snapshot, 96 snapshots/day at the 900s default
+# is ~103k rows/day, roughly 1 GB/year as Parquet. Partitioned one file per UTC
+# day under $DELTABT_DATA/quotes/.
+
+[Unit]
+Description=deltabt Delta India option quote surface recorder
+Documentation=file:///opt/deltabt/docs/options_feasibility.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deltabt
+Group=deltabt
+WorkingDirectory=/opt/deltabt
+
+# Set DELTABT_DATA to a volume with room to grow; the default writes inside
+# the checkout, which is fine for a laptop and wrong for a year of history.
+Environment=DELTABT_DATA=/var/lib/deltabt/data
+Environment=PYTHONUNBUFFERED=1
+
+ExecStart=/opt/deltabt/.venv/bin/python -m deltabt.data.quote_recorder --interval 900
+
+# SIGTERM lets the current snapshot finish and the partition close cleanly.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+Restart=always
+RestartSec=30
+
+# The recorder reads public HTTP and writes one directory. Nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/deltabt/data
+
+[Install]
+WantedBy=multi-user.target
