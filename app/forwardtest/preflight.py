@@ -111,13 +111,23 @@ async def run_preflight(settings: Settings, strategy: StrategyConfig, *,
             add(name, False, f"check raised {type(exc).__name__}: {exc}")
 
     # ---- configuration ------------------------------------------------
+    # VALIDATION AND DESCRIPTION ARE SEPARATE, BECAUSE THEY FAILED TOGETHER.
+    # Both lived in one `try`, so an AttributeError while FORMATTING the detail
+    # string was reported as the configuration being invalid. On v5's first
+    # preflight that read:
+    #
+    #   [FAIL] strategy config valid
+    #          'StrategySpec' object has no attribute 'primary_timeframe'
+    #
+    # The spec was valid. validate() had already returned. A blocking verdict
+    # that names a real attribute is about as convincing as a wrong answer
+    # gets, and it would have been debugged as a strategy problem.
     try:
         strategy.validate()
-        add("strategy config valid", True,
-            f"{strategy.version} ({strategy.primary_timeframe}/"
-            f"{strategy.confirmation_timeframe})")
     except Exception as exc:                            # noqa: BLE001
         add("strategy config valid", False, str(exc))
+    else:
+        add("strategy config valid", True, _describe(strategy))
 
     try:
         settings.risk.validate()
@@ -235,6 +245,23 @@ async def run_preflight(settings: Settings, strategy: StrategyConfig, *,
     # ---- the safety boundary -------------------------------------------
     add_safety(r)
     return r
+
+
+def _describe(strategy) -> str:
+    """Name the arm and its timeframes, in whichever vocabulary it uses.
+
+    A StrategyConfig states them as strings ("5m"/"1m"); a StrategySpec states
+    them as integer minutes and may have no confirmation timeframe at all.
+    Asked for an attribute it does not have, either one raises -- so this
+    branches on what the object IS rather than on what it is hoped to expose.
+    """
+    from deltabt.spec import StrategySpec
+    if isinstance(strategy, StrategySpec):
+        confirm = (f"{strategy.confirm_minutes}m" if strategy.confirm.enabled
+                   else "no confirmation")
+        return f"{strategy.version} ({strategy.primary_minutes}m/{confirm})"
+    return (f"{strategy.version} ({strategy.primary_timeframe}/"
+            f"{strategy.confirmation_timeframe})")
 
 
 async def _missing_tables(repo) -> list[str] | None:
