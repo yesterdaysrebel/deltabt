@@ -402,8 +402,22 @@ class TradingBot:
             log.info("warmed", extra={"symbol": sym, "bars_1m": len(df),
                                       "bars_5m": len(five),
                                       "state": self.halts[sym].state.value})
-            have = len(df) if (self.frozen_arm or self.flip_arm) else len(five)
-            unit = "1m" if (self.frozen_arm or self.flip_arm) else "5m"
+            # `need` IS A COUNT, AND ITS UNIT IS WHATEVER PRODUCED IT.
+            # warmup_1m_bars() returns MINUTES (145 primary bars x 240 =
+            # 34,800), so the spec arm has to be measured against the 1m frame.
+            # Left in the `else` branch it was compared to the 5m buffer, which
+            # asked for 34,800 FIVE-minute bars -- 120 days instead of 24. The
+            # backfill was correct and the bot refused itself anyway:
+            #
+            #   only 7775 closed 5m bars after backfill, need 34800
+            #
+            # 7,775 5m bars IS the 38,879 1m bars the line above logged, and
+            # 38,879 clears 34,800 comfortably. Nothing was missing; the two
+            # sides of the comparison were counting different things.
+            one_minute_arm = (self.spec_arm is not None
+                              or self.frozen_arm or self.flip_arm)
+            have = len(df) if one_minute_arm else len(five)
+            unit = "1m" if one_minute_arm else "5m"
             if have < need:
                 self.recovery_error = (
                     f"{sym}: only {have} closed {unit} bars after backfill, "
