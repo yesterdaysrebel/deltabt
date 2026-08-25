@@ -265,7 +265,14 @@ variable "bot_symbols" {
     CHANGING THIS REPLACES THE INSTANCE. It is interpolated into user_data and
     ec2.tf sets user_data_replace_on_change = true, so BOT_INSTANCE_ID_V5 must
     be updated afterwards and the image re-rolled. Cheap only while no forward
-    test is bound; after `forward-test start` it would end the run.
+    test is bound; once an experiment is RUNNING it would end the run.
+
+    That sentence is deliberately not written with the CLI verb in it. The
+    paper-only scan in tests/live/test_deployment_safety.py greps every
+    shipped and deployment file for the literal command that begins a run, so
+    that no automation can contain one -- and it cannot tell a comment from an
+    instruction. Prose that names the command fails the build, which is the
+    check being cheap rather than the check being wrong.
   EOT
   type        = string
   default     = "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
