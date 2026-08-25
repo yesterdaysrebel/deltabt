@@ -19,9 +19,11 @@ from app.clock import MarketClock
 from app.forwardtest.preflight import (
     PreflightReport,
     Verdict,
+    _describe,
     add_safety,
     run_preflight,
 )
+from deltabt.catalog import FAMILIES, build_spec
 from app.reports.builder import (
     MIN_TRADES_FOR_RATIOS,
     build_report,
@@ -82,6 +84,41 @@ class TestPreflightChecks:
         by = {c.name: c for c in r.checks}
         assert by["strategy config valid"].verdict is Verdict.PASS
         assert "d7837e445bc74781" in by["config hash computed"].detail
+
+    async def test_a_spec_arm_passes_and_is_described(self, mem_repo):
+        """The check that blocked v5's first preflight.
+
+            [FAIL] strategy config valid
+                   'StrategySpec' object has no attribute 'primary_timeframe'
+
+        validate() had already returned. The AttributeError came from building
+        the detail STRING, inside the same try, so a formatting bug was
+        reported as the strategy being invalid -- and it blocks the run.
+        """
+        spec = build_spec("wpr_only", 240)
+        r = await run_preflight(
+            Settings(symbols=("BTCUSD",)), spec, repo=mem_repo, costs=COSTS,
+            clock=MarketClock(MKT), dsn=None, check_feed=False)
+        c = {x.name: x for x in r.checks}["strategy config valid"]
+        assert c.verdict is Verdict.PASS, c.detail
+        assert "240m" in c.detail
+        assert "no confirmation" in c.detail, (
+            "an arm with no confirmation timeframe must say so, not name one")
+
+    async def test_every_catalog_family_can_be_described(self):
+        """A description that raises reads as an invalid strategy, so none may."""
+        for family in FAMILIES:
+            for minutes in (15, 240):
+                spec = build_spec(family, minutes)
+                detail = _describe(spec)
+                assert spec.version in detail
+                assert f"{minutes}m" in detail
+
+    async def test_a_legacy_config_is_still_described_in_its_own_words(self):
+        """The 5m/1m arms state timeframes as strings; that must keep working."""
+        assert _describe(FROZEN) == (
+            f"{FROZEN.version} ({FROZEN.primary_timeframe}/"
+            f"{FROZEN.confirmation_timeframe})")
 
     async def test_an_invalid_risk_config_blocks(self, mem_repo):
         bad = Settings(risk=RiskConfig.__new__(RiskConfig))
