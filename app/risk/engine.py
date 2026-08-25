@@ -50,6 +50,10 @@ class RiskState:
     realized_pnl: float = 0.0
     wins: int = 0
     losses: int = 0
+    #: Unix time the drawdown halt latched, or 0. See ``halt`` for why a
+    #: drawdown breach is a LATCHED state rather than a per-bar rejection.
+    halted_at: int = 0
+    halt_reason: str = ""
 
     @classmethod
     def fresh(cls, equity: float) -> "RiskState":
@@ -96,6 +100,55 @@ class RiskState:
         # gone quiet in its first week.
         self.consecutive_losses = 0
         return True
+
+    def halt(self, reason: str, now: int) -> None:
+        """Latch a trading halt. Idempotent.
+
+        WHY A DRAWDOWN BREACH HAS TO BE LATCHED AND ANNOUNCED
+            ``drawdown_pct`` is measured against ``peak_equity``, and equity
+            only moves when a position closes. So a breach reached while FLAT
+            is self-sustaining: every entry is refused, nothing can close,
+            equity never changes, and the drawdown never recovers.
+
+            Before this, that state was indistinguishable from a quiet market.
+            The gate returned an ordinary per-bar rejection and the daily
+            report said "the setup simply did not occur" -- every morning,
+            forever. It is the same failure documented for the loss streak in
+            ``roll_day``, which was fixed there and not here.
+
+            The streak was made a DAILY breaker because that is what the
+            backtests measured. A drawdown halt is different in kind: a 10%
+            account drawdown is a stop-and-reassess event, not something that
+            should quietly clear at midnight. So it stays terminal -- but it
+            is now explicit, persisted, logged at ERROR, and clearable only by
+            ``resume``.
+        """
+        if self.halted_at:
+            return
+        self.halted_at = now
+        self.halt_reason = reason
+        log.error("TRADING HALTED", extra={"reason": reason, "at": now,
+                                           "equity": self.equity,
+                                           "peak_equity": self.peak_equity})
+
+    def resume(self, now: int) -> None:
+        """Clear a latched halt and rebase the drawdown reference.
+
+        REBASING ``peak_equity`` IS THE WHOLE POINT, NOT HOUSEKEEPING.
+            The halt fires on ``(peak_equity - equity) / peak_equity``. Both
+            terms are unchanged by resuming, so clearing the flag alone would
+            re-halt on the very next evaluation and the resume would appear to
+            do nothing.
+        """
+        if not self.halted_at:
+            return
+        log.warning("TRADING RESUMED", extra={"halted_at": self.halted_at,
+                                              "reason": self.halt_reason,
+                                              "equity": self.equity,
+                                              "old_peak": self.peak_equity})
+        self.halted_at = 0
+        self.halt_reason = ""
+        self.peak_equity = self.equity
 
     def apply_close(self, pnl: float, now: int) -> None:
         self.equity += pnl
@@ -208,6 +261,14 @@ class RiskEngine:
             return reject("market is halted or reopening")
         ok("market_live")
 
+        if state.halted_at:
+            return reject(
+                f"TRADING HALTED since {datetime.fromtimestamp(state.halted_at, tz=timezone.utc).isoformat()}"
+                f": {state.halt_reason}. This does not clear on its own -- it "
+                f"needs an explicit resume.",
+                name="halted", observed=state.halted_at)
+        ok("not_halted")
+
         if self.allowed_symbols is not None and exp.symbol not in self.allowed_symbols:
             return reject(f"{exp.symbol} is not in the configured universe",
                           name="allowed_symbols")
@@ -242,6 +303,19 @@ class RiskEngine:
         ok("max_daily_loss")
 
         if state.drawdown_pct >= cfg.max_drawdown_pct:
+            # Breaching while a position is still OPEN is recoverable: the
+            # position can close green and lift the drawdown. Breaching while
+            # FLAT is not -- see RiskState.halt.
+            #
+            # `open_positions` may carry closed rows, so test `is_open` rather
+            # than list emptiness; a list of closed positions IS flat, and
+            # treating it as recoverable would leave the silent halt in place
+            # in exactly the state that cannot recover.
+            if not any(getattr(pos, "is_open", True) for pos in open_positions):
+                state.halt(
+                    f"drawdown {100*state.drawdown_pct:.2f}% reached the "
+                    f"{100*cfg.max_drawdown_pct:.2f}% limit while flat",
+                    now)
             return reject(
                 f"drawdown {100*state.drawdown_pct:.2f}% has reached the "
                 f"{100*cfg.max_drawdown_pct:.2f}% limit",

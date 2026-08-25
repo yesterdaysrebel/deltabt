@@ -151,6 +151,7 @@ def run(
     start: int,
     cost_multiplier: float = 1.0,
     slippage_multiplier: float = 1.0,
+    bar_minutes: int = 15,
 ) -> Result2:
     if exec_model not in EXEC_MODELS:
         raise ValueError(f"exec_model must be one of {EXEC_MODELS}")
@@ -159,7 +160,12 @@ def run(
     if not 0.0 < retest < 1.0:
         raise ValueError("retest fraction must lie strictly inside (0, 1)")
 
-    bars, mark = build_bars(ltp_1m, mark_1m, start)
+    # bar_minutes DEFAULTS TO 15, which is what the registry's H-Scalp-2
+    # record was produced under. H-Scalp-3 passes a longer horizon to ask
+    # whether the same mechanism survives where R is wide enough to pay for
+    # itself; VOL_LOOKBACK stays at 96 BARS rather than 24 hours so the z-score
+    # estimator keeps identical sampling properties across timeframes.
+    bars, mark = build_bars(ltp_1m, mark_1m, start, minutes=bar_minutes)
     n = len(bars)
     res = Result2(symbol=costs.symbol, k=k, retest=retest,
                   exec_model=exec_model, fill_model=fill_model)

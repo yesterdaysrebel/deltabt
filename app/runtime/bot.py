@@ -86,6 +86,8 @@ from app.strategy.flip_arm import warmup_bars as flip_warmup_bars
 from app.strategy.atr_arm import warmup_bars as atr_warmup_bars
 from app.strategy.frozen_hwpr import FrozenHwprConfig, evaluate_frozen
 from app.strategy.rules import evaluate, warmup_bars
+from app.strategy.spec_arm import evaluate_spec, warmup_1m_bars
+from deltabt.spec import StrategySpec
 from deltabt.costs import SymbolCosts
 
 log = logging.getLogger(__name__)
@@ -138,6 +140,12 @@ class TradingBot:
         #: evaluators, and one boolean covering two rule sets is how an arm
         #: ends up silently evaluating the other one.
         self.flip_arm = isinstance(strategy, FlipArmConfig)
+        #: A spec arm runs ANY deltabt.spec.StrategySpec through
+        #: deltabt.rulecore -- the same code the backtester runs -- rather than
+        #: a hand-written rule set. Its bar boundary comes from the spec, so it
+        #: is the only arm whose decision timeframe is not fixed at 1m or 5m.
+        self.spec_arm: StrategySpec | None = (
+            strategy if isinstance(strategy, StrategySpec) else None)
         self.notifier = notifier or NullNotifier()
         self.backfiller = backfiller
         self.lock = lock
@@ -151,7 +159,14 @@ class TradingBot:
         #: meant the run could not be verified by replaying its own record.
         self.clock = MarketClock()
         self.symbols = tuple(settings.symbols)
-        self.builder = CandleBuilder(self.symbols)
+        # THE BUFFER HAS TO HOLD THE WHOLE WARM-UP, IN MINUTES.
+        # The default 20,000 is ample for a 1m or 5m arm and far too small for
+        # a 240m one, which needs 34,800 minutes before its first legitimate
+        # signal. Sized off the strategy rather than left at a constant, so a
+        # spec cannot be deployed into a buffer that silently truncates it.
+        max_bars = (max(20_000, self.spec_arm.window_bars)
+                    if self.spec_arm is not None else 20_000)
+        self.builder = CandleBuilder(self.symbols, max_bars=max_bars)
         self.halts = {s: HaltDetector(s, min_run=halt_min_run(s))
                       for s in self.symbols}
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
@@ -354,12 +369,31 @@ class TradingBot:
             self.backfiller = Backfiller()
         # The frozen arm decides on 1m and needs its whole window before the
         # 5m regime inside build_conditions has converged; V3 needs 5m bars.
-        need = (self.strategy.window_bars if self.frozen_arm
+        need = (warmup_1m_bars(self.strategy) if self.spec_arm is not None
+                else self.strategy.window_bars if self.frozen_arm
                 else flip_warmup_bars(self.strategy) if self.flip_arm
                 else atr_warmup_bars(self.strategy) if self.atr_arm
                 else warmup_bars(self.strategy))
+        # THE BACKFILL HAS TO COVER THE WARM-UP, AND THE DEFAULT DOES NOT.
+        # `backfill_days` is 7, which is ample for a 1m or 5m arm and less than
+        # a third of what a 240m rule needs (145 bars x 240 minutes = 24 days).
+        # Left at the configured value, the bot would come up healthy, pass
+        # every check, and never emit a signal -- indistinguishable from a
+        # quiet market, which is the failure mode this repository keeps
+        # re-learning. Derived from the strategy instead, never reduced below
+        # the operator's setting.
+        days = self.settings.backfill_days
+        if self.spec_arm is not None:
+            days = max(days, -(-warmup_1m_bars(self.strategy) // 1440) + 2)
+            if days > self.settings.backfill_days:
+                log.warning(
+                    "backfill extended for the spec arm",
+                    extra={"configured_days": self.settings.backfill_days,
+                           "required_days": days,
+                           "warmup_minutes": warmup_1m_bars(self.strategy),
+                           "strategy": self.strategy.version})
         for sym in self.symbols:
-            bars = await self.backfiller.warm_up(sym, self.settings.backfill_days)
+            bars = await self.backfiller.warm_up(sym, days)
             self.builder[sym].ingest_backfill(bars)
             df = self.builder[sym].frame()
             self.halts[sym].prime_from_history(df)
@@ -457,6 +491,12 @@ class TradingBot:
 
         await self._repair_gaps(bar.symbol)
 
+        # A SPEC ARM DECIDES ON ITS OWN BAR BOUNDARY and returns before any
+        # hand-written arm's block is reached.
+        if self.spec_arm is not None:
+            await self.on_closed_spec_bar(bar.symbol, bar.start)
+            return
+
         # THE FROZEN 1m ARM DECIDES HERE AND RETURNS. V3's block below is not
         # reached, not modified, and not made conditional on anything.
         if self.frozen_arm:
@@ -549,6 +589,40 @@ class TradingBot:
         one_minute = self.builder[symbol].frame(limit=self.strategy.window_bars)
         exp = evaluate_flip(one_minute, self.strategy, symbol=symbol)
         await self._process_explanation(symbol, exp, 60)
+
+    async def on_closed_spec_bar(self, symbol: str, last_1m_start: int) -> None:
+        """Evaluate a StrategySpec when ITS primary bar closes.
+
+        The boundary is the spec's, not 1m or 5m: a 240m rule evaluates six
+        times a day. ``closed_tf_for`` returns None on every other minute, so
+        this is a cheap no-op for all but one minute in ``primary_minutes``.
+
+        The bar is persisted before evaluation for the same reason the 5m path
+        does it -- the audit trail must contain the bar the decision was made
+        from, even if the decision was to do nothing.
+        """
+        spec = self.spec_arm
+        minutes = spec.primary_minutes
+        b = self.builder[symbol]
+        bar, missing = b.closed_tf_for(last_1m_start, minutes)
+        if bar is None:
+            return
+        if missing:
+            # `resample_complete` tolerates a small shortfall; this counts the
+            # bar as incomplete only when the evaluator would drop it too.
+            tolerated = minutes - max(1, int(round(0.9 * minutes)))
+            if missing > tolerated:
+                self.metrics.incomplete_5m += 1
+                await self._event("candles", "INCOMPLETE_PRIMARY_BAR", symbol=symbol,
+                                  severity="WARNING",
+                                  payload={"bar": bar.start, "missing": missing,
+                                           "timeframe": f"{minutes}m",
+                                           "tolerated": tolerated})
+                return
+        await self.repo.save_candles(symbol, f"{minutes}m", [bar], source="derived")
+        one_minute = b.frame()
+        exp = evaluate_spec(one_minute, spec, symbol=symbol)
+        await self._process_explanation(symbol, exp, minutes * 60)
 
     async def on_closed_5m(self, symbol: str, five) -> None:
         """Evaluate the strategy on one closed primary bar."""

@@ -32,6 +32,9 @@ from app.persistence.repository import PostgresRepository
 from app.risk.engine import RiskState
 # The one place the ledger's storage key is defined; imported rather than
 # restated so the two cannot drift apart.
+import time
+from datetime import datetime, timezone
+
 from app.runtime.bot import STATE_KEY
 
 EXEC_PARAMS = {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25,
@@ -214,6 +217,53 @@ async def cmd_stop(args) -> int:
     return 0
 
 
+async def cmd_resume(args) -> int:
+    """Clear a latched drawdown halt.
+
+    Deliberately a separate, explicit command rather than something the bot
+    does for itself. The halt means the account fell past its drawdown limit
+    while FLAT, which is self-sustaining: every entry is refused, so nothing
+    can close, so equity never moves. If the bot could clear that on its own
+    the limit would not be a limit.
+
+    Resuming rebases the drawdown reference to current equity. Without that the
+    very next evaluation would re-halt on the same peak.
+    """
+    settings = Settings.from_env()
+    repo = PostgresRepository(settings.database_url)
+    await repo.connect()
+    stored = await repo.get_state(STATE_KEY)
+    if not stored:
+        print("no risk state persisted -- nothing to resume")
+        await repo.close()
+        return 1
+
+    state = RiskState.from_dict(stored)
+    if not state.halted_at:
+        print("not halted; nothing to do")
+        await repo.close()
+        return 0
+
+    when = datetime.fromtimestamp(state.halted_at, tz=timezone.utc).isoformat()
+    print(f"HALTED since {when}"
+          f"\n  reason   : {state.halt_reason}"
+          f"\n  equity   : {state.equity:,.2f}"
+          f"\n  peak     : {state.peak_equity:,.2f}"
+          f"\n  drawdown : {100*state.drawdown_pct:.2f}%")
+    if not getattr(args, "yes", False):
+        print("\nRefusing to resume without --yes. Find out why it halted first.")
+        await repo.close()
+        return 1
+
+    state.resume(int(time.time()))
+    await repo.set_state(STATE_KEY, state.to_dict())
+    print(f"\nRESUMED. The drawdown reference is rebased to {state.equity:,.2f}; "
+          f"the previous peak is discarded, so the next "
+          f"{100*settings.risk.max_drawdown_pct:.1f}% is measured from here.")
+    await repo.close()
+    return 0
+
+
 async def cmd_report(args) -> int:
     settings = Settings.from_env()
     repo = PostgresRepository(settings.database_url)
@@ -261,6 +311,11 @@ def build_parser() -> argparse.ArgumentParser:
     stop = fts.add_parser("stop", help="end the running experiment")
     stop.add_argument("--reason", required=True)
     stop.set_defaults(func=cmd_stop)
+
+    res = fts.add_parser("resume", help="clear a latched drawdown halt")
+    res.add_argument("--yes", action="store_true",
+                     help="confirm; without it the halt is only reported")
+    res.set_defaults(func=cmd_resume)
 
     rep = fts.add_parser("report", help="daily or final report")
     rep.add_argument("--experiment-id", default=None)
