@@ -74,6 +74,15 @@ jobs:
             #               print(build_spec('wpr_only', 240).config_hash)"
             strategy_hash: "110eede40f1336a8f8beb4105d6caa384297d81d730267e4d53f1e014893da0a"
             log_group: /deltabt/paper/v5/bot
+          - stack: v6
+            variant: SPEC:trend_wide_stop@60
+            instance_var: BOT_INSTANCE_ID_V6
+            document_var: SSM_MONITOR_DOCUMENT_V6
+            # StrategySpec.config_hash for trend_wide_stop@60m. Recompute with:
+            #   python3 -c "from deltabt.catalog import build_spec; \
+            #               print(build_spec('trend_wide_stop', 60).config_hash)"
+            strategy_hash: "fc1b4bf036c0cb381580efbf9d42ad21df7011049e0a162f8781eaa4dcc8ae94"
+            log_group: /deltabt/paper/v6/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.
