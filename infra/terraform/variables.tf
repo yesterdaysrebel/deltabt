@@ -231,9 +231,51 @@ variable "bot_image_tag" {
 }
 
 variable "bot_symbols" {
-  description = "Frozen universe. Changing it changes the experiment identity."
+  description = <<-EOT
+    Frozen universe. Changing it changes the experiment identity.
+
+    NARROWED TO THE FOUR SYMBOLS THE STRATEGY WAS MEASURED ON, 2026-08-25.
+
+    The six listed before were inherited from the frozen 1m arm. The
+    wpr_only@240m backtest that selected v5 ran on BTCUSD, ETHUSD, SOLUSD and
+    XRPUSD -- so XRPUSD was measured and not deployed, while BEATUSD, BANKUSD
+    and AKEUSD were deployed and never measured at this timeframe. Half the
+    universe was carrying no evidence at all, and the +3.23% / 10.09% drawdown
+    figure that justified the arm describes the four.
+
+    BANKUSD AND AKEUSD CANNOT BE MEASURED AT 240m, so this is not a gap
+    somebody could close by running a longer backtest. Both listed 2026-07-22.
+    Thirty-four days is ~204 primary bars against a 145-bar warm-up, which
+    leaves too few post-warm-up bars to estimate anything from.
+
+    THE THIN SYMBOLS ALSO BREAK THE BAR SET, which matters more than the
+    missing evidence. In v5's first twenty minutes live:
+
+        BANKUSD  1m gap detected  missing=16
+                 gap repair fetched 0 of 16 missing minutes
+        AKEUSD, BEATUSD                 unrepairable gaps as well
+
+    deltabt.strategy.resample_complete drops any 240m bucket missing more than
+    24 of its 240 minutes, so on these instruments the strategy silently skips
+    primary bars. app/monitoring/health.py already carries a note about the
+    same illiquidity holding candles_fresh red across all three hosts on
+    2026-08-15. Nothing in the backtest resembles this: all four symbols here
+    have 588 days of dense 1m history.
+
+    CHANGING THIS REPLACES THE INSTANCE. It is interpolated into user_data and
+    ec2.tf sets user_data_replace_on_change = true, so BOT_INSTANCE_ID_V5 must
+    be updated afterwards and the image re-rolled. Cheap only while no forward
+    test is bound; once an experiment is RUNNING it would end the run.
+
+    That sentence is deliberately not written with the CLI verb in it. The
+    paper-only scan in tests/live/test_deployment_safety.py greps every
+    shipped and deployment file for the literal command that begins a run, so
+    that no automation can contain one -- and it cannot tell a comment from an
+    instruction. Prose that names the command fails the build, which is the
+    check being cheap rather than the check being wrong.
+  EOT
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,BEATUSD,BANKUSD,AKEUSD"
+  default     = "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
