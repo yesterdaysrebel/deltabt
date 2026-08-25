@@ -126,7 +126,20 @@ jobs:
           ONLY: ${{ github.event.inputs.only_stack }}
         run: |
           set -euo pipefail
-          all='[{"stack":"v3","variant":"V4","instance_var":"BOT_INSTANCE_ID_V3","document_var":"SSM_DEPLOY_DOCUMENT_V3"},{"stack":"v4","variant":"FLIP","instance_var":"BOT_INSTANCE_ID_V4","document_var":"SSM_DEPLOY_DOCUMENT_V4"}]'
+          # THIS TABLE IS A SECOND COPY OF THE TERRAFORM STACKS MAP, AND IT
+          # DRIFTED. v3 and v4 were removed from infra/terraform/variables.tf
+          # on 2026-08-25 and their hosts terminated, but this line still named
+          # them -- so the merge that added v5 dispatched a roll at two
+          # instance ids that no longer exist, and `only_stack=v5` would have
+          # been rejected as matching no stack.
+          #
+          # Nothing here can detect that on its own: the deploy role can read
+          # one ECR repository and invoke one SSM document, so it cannot query
+          # Terraform state or describe instances to derive this list. The
+          # table stays hand-written, which means adding or removing a stack is
+          # THREE edits -- variables.tf, here, and monitor.yml -- plus the two
+          # repository variables the new entry names.
+          all='[{"stack":"v5","variant":"SPEC:wpr_only@240","instance_var":"BOT_INSTANCE_ID_V5","document_var":"SSM_DEPLOY_DOCUMENT_V5"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
