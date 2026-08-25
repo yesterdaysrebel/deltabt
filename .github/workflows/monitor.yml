@@ -53,23 +53,27 @@ jobs:
           # instance carries prevent_destroy. Leaving them in this matrix would
           # fail every run on a missing instance id, which is a false alarm
           # about an experiment that was ended deliberately.
-          - stack: v3
-            variant: V4
-            instance_var: BOT_INSTANCE_ID_V3
-            document_var: SSM_MONITOR_DOCUMENT_V3
-            # The ATR arm, not V3's rules. The STACK keeps the name "v3"
-            # because renaming it would destroy and recreate its database and
-            # log group; the VARIANT selects the rules, and this pins which
-            # rules must actually be running.
-            strategy_hash: "8a564836b862ea74"
-            log_group: /deltabt/paper/v3/bot
-          - stack: v4
-            variant: FLIP
-            instance_var: BOT_INSTANCE_ID_V4
-            document_var: SSM_MONITOR_DOCUMENT_V4
-            # H-FLIP-1: the reversal confluence, 1m only, fixed 1.5% stop, 2R.
-            strategy_hash: "1b721d5d11749d30"
-            log_group: /deltabt/paper/v4/bot
+          #
+          # v3 and v4 followed them on 2026-08-25, and left the same footprint
+          # first: this matrix kept naming two terminated instances, so the
+          # scheduled report failed EVERY NIGHT on a missing instance id. A
+          # daily failure that is always the same false alarm is worse than no
+          # report -- it trains you to ignore the one that is real.
+          - stack: v5
+            variant: SPEC:wpr_only@240
+            instance_var: BOT_INSTANCE_ID_V5
+            document_var: SSM_MONITOR_DOCUMENT_V5
+            # deltabt.spec.StrategySpec.config_hash for wpr_only@240m, which is
+            # what app/strategy/spec_arm.py puts on every Explanation and what
+            # /status reports. Full 64 characters, unlike the hand-written arms
+            # above it, because the comparison in scripts/daily_report.py is an
+            # exact string match against whatever the bot reports.
+            #
+            # Recompute with:
+            #   python3 -c "from deltabt.catalog import build_spec; \
+            #               print(build_spec('wpr_only', 240).config_hash)"
+            strategy_hash: "110eede40f1336a8f8beb4105d6caa384297d81d730267e4d53f1e014893da0a"
+            log_group: /deltabt/paper/v5/bot
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.
