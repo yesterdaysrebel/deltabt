@@ -374,6 +374,48 @@ variable "stacks" {
     # resolves through deltabt.catalog to the same StrategySpec the backtester
     # ran, so the thing deployed is the thing measured.
     v5 = { variant = "SPEC:wpr_only@240", db_name = "deltabt_v5" }
+
+    # The second concurrent arm, added 2026-08-25 alongside v5 so both run the
+    # SAME 30-day window and are comparable over identical market conditions.
+    # A staggered start is not.
+    #
+    # 60-MINUTE primary with a 12-minute confirmation: Supertrend aligned on
+    # both timeframes, +DI over -DI, ADX(28) >= 25, Williams %R(140) turning
+    # up, a 4 x ATR(10) stop and a 2R target. The wide stop is the point --
+    # it is the only cell in the grid where cost is the BINDING constraint
+    # rather than an absent signal.
+    #
+    # WHY THIS ARM AND NOT A RESTART OF v3. v3 was the hand-written ATR arm on
+    # a 5m primary. Its walk-forward is net-negative in all four out-of-sample
+    # blocks (-0.274, -0.109, -0.100, -0.293), its universe included AKEUSD
+    # and BEATUSD -- the thin symbols removed from bot_symbols above -- and it
+    # is a hand-written class, which the one-spec rule in CLAUDE.md forbids
+    # adding to. `trend_wide_stop@60m` instead: gross-positive in all four
+    # blocks, net-positive in three, on 185-216 trades per block against
+    # wpr_only@240m's ~105.
+    #
+    #     block    0       1       2       3
+    #     gross  +0.073  +0.084  +0.161  +0.002
+    #     net    +0.026  +0.038  +0.113  -0.058
+    #
+    # Cost consumes 63% of its gross. That is what distinguishes it: setting
+    # friction to zero would change the answer, which is not true of the other
+    # survivors, whose gross changes sign between adjacent blocks.
+    #
+    # IT IS NOT SPECIAL ON SIGN PERSISTENCE, and neither is v5. Six of 72
+    # cells hold a positive gross sign in all four blocks against 4.5 expected
+    # by chance (p = 0.294). See out/sweep/README.md. Its most recent block is
+    # also its worst. This runs to MEASURE, like v5.
+    #
+    # At 1.76 trades/day across four symbols a 30-day run is ~53 trades --
+    # twice v5's sample, and the reason to run it rather than a second 240m
+    # arm.
+    #
+    # NEW DATABASE, NOT deltabt_v3. That database holds every trade the ATR
+    # arm took and stays the untouched record of it. Mixing a second
+    # strategy's trades into it would muddy the one artifact of a run that
+    # never reached its own stopping point.
+    v6 = { variant = "SPEC:trend_wide_stop@60", db_name = "deltabt_v6" }
   }
 }
 
