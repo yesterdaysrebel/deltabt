@@ -139,7 +139,7 @@ jobs:
           # table stays hand-written, which means adding or removing a stack is
           # THREE edits -- variables.tf, here, and monitor.yml -- plus the two
           # repository variables the new entry names.
-          all='[{"stack":"v5","variant":"SPEC:wpr_only@240","instance_var":"BOT_INSTANCE_ID_V5","document_var":"SSM_DEPLOY_DOCUMENT_V5"}]'
+          all='[{"stack":"v5","variant":"SPEC:wpr_only@240","instance_var":"BOT_INSTANCE_ID_V5","document_var":"SSM_DEPLOY_DOCUMENT_V5"},{"stack":"v6","variant":"SPEC:trend_wide_stop@60","instance_var":"BOT_INSTANCE_ID_V6","document_var":"SSM_DEPLOY_DOCUMENT_V6"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
