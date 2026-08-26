@@ -131,9 +131,9 @@ resource "aws_instance" "bot" {
     max_daily_loss_pct           = var.max_daily_loss_pct
     max_consecutive_losses       = var.max_consecutive_losses
     max_hold_seconds             = var.max_hold_seconds
-    run_sh_b64                   = filebase64("${path.root}/../../deploy/aws/run.sh")
-    deploy_sh_b64                = filebase64("${path.root}/../../deploy/aws/deploy.sh")
-    cw_agent_b64                 = filebase64("${path.root}/../../deploy/aws/cloudwatch-agent.json")
+    run_sh_b64                   = base64gzip(file("${path.root}/../../deploy/aws/run.sh"))
+    deploy_sh_b64                = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
+    cw_agent_b64                 = base64gzip(file("${path.root}/../../deploy/aws/cloudwatch-agent.json"))
   })
 
   # Changing user-data replaces the instance. That is correct -- a host whose

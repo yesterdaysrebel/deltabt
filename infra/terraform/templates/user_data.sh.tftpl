@@ -59,15 +59,18 @@ DELTABOT_LOG_LEVEL=INFO
 ENVEOF
 chmod 0644 /opt/deltabt/env
 
-base64 -d <<'B64' > /opt/deltabt/run.sh
+# GZIPPED, NOT JUST BASE64'D: EC2 caps user_data at 16,384 bytes and these
+# files were 98% of it. Comments HERE are uncompressed and cost ~3x what the
+# same line costs inside a script. See tests/live/test_user_data_size.py.
+base64 -d <<'B64' | gunzip > /opt/deltabt/run.sh
 ${run_sh_b64}
 B64
-base64 -d <<'B64' > /opt/deltabt/deploy.sh
+base64 -d <<'B64' | gunzip > /opt/deltabt/deploy.sh
 ${deploy_sh_b64}
 B64
 chmod 0755 /opt/deltabt/run.sh /opt/deltabt/deploy.sh
 
-base64 -d <<'B64' > /opt/aws/amazon-cloudwatch-agent/etc/cw-agent.json
+base64 -d <<'B64' | gunzip > /opt/aws/amazon-cloudwatch-agent/etc/cw-agent.json
 ${cw_agent_b64}
 B64
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
