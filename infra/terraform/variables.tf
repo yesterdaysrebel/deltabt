@@ -262,6 +262,20 @@ variable "bot_symbols" {
     2026-08-15. Nothing in the backtest resembles this: all four symbols here
     have 588 days of dense 1m history.
 
+    RESTORED TO SIX ON 2026-08-26, by instruction, to reproduce experiment
+    H-WPR-1-PAPER-ATR-20260820-4 -- the run whose configuration was approved.
+    That run traded BTCUSD, ETHUSD, SOLUSD, BEATUSD, BANKUSD and AKEUSD, and
+    trading a different universe would make the new trades incomparable to the
+    94 already recorded.
+
+    THE OBJECTIONS ABOVE STILL HOLD and are not withdrawn. BEATUSD, BANKUSD and
+    AKEUSD produce candle gaps that cannot be repaired from any endpoint. What
+    changed is which run this is: on a 5m primary with a 10% stop cap those
+    symbols behave differently than on the 240m arm with a 5% cap, where v5's
+    report recorded every one of their setups refused for stop width. The
+    narrowing above was correct for v5 and is being reversed for a different
+    strategy, not overruled.
+
     CHANGING THIS REPLACES THE INSTANCE. It is interpolated into user_data and
     ec2.tf sets user_data_replace_on_change = true, so BOT_INSTANCE_ID_V5 must
     be updated afterwards and the image re-rolled. Cheap only while no forward
@@ -275,7 +289,7 @@ variable "bot_symbols" {
     check being cheap rather than the check being wrong.
   EOT
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,XRPUSD"
+  default     = "BTCUSD,ETHUSD,SOLUSD,BEATUSD,BANKUSD,AKEUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -373,49 +387,61 @@ variable "stacks" {
     # THE VARIANT IS A SPEC, NOT A HAND-WRITTEN ARM. "SPEC:wpr_only@240"
     # resolves through deltabt.catalog to the same StrategySpec the backtester
     # ran, so the thing deployed is the thing measured.
-    v5 = { variant = "SPEC:wpr_only@240", db_name = "deltabt_v5" }
+    # v5 (SPEC:wpr_only@240) and v6 (SPEC:trend_wide_stop@60) WERE REMOVED FROM
+    # THIS MAP on 2026-08-26, by instruction, after one day.
+    #
+    # v5's experiment SPEC-WPR-240-PAPER-20260825 was stopped with a reason
+    # rather than left to look like a crash. It reached 16 evaluations, 2 fills
+    # and 0 closed trades -- no result, and its frozen rule in
+    # docs/v5_stopping_rule.md had called for evaluation at 30 days. v6 never
+    # registered an experiment at all.
+    #
+    # Their DATABASES are untouched: deltabt_v5 and deltabt_v6 are not
+    # Terraform-managed and still hold every signal, order and fill, including
+    # v5's two positions left deliberately OPEN because closing them from
+    # outside would fabricate exits the strategy never produced.
+    #
+    # Their log groups, EIPs, alarms and SSM documents go with the instances.
+    # Restoring either stack is re-adding its line here; the database it names
+    # already exists.
 
-    # The second concurrent arm, added 2026-08-25 alongside v5 so both run the
-    # SAME 30-day window and are comparable over identical market conditions.
-    # A staggered start is not.
+    # THE ATR ARM, RESTORED 2026-08-26. Keeps the stack name "v3" and the
+    # database deltabt_v3 -- the one that already holds every trade the
+    # previous ATR run took, so the two runs sit in one place and are
+    # comparable. That run was stopped when the research programme closed,
+    # before reaching the n = 100 / 2026-09-04 stopping point its own frozen
+    # rule set (docs/v3_stopping_rule.md).
     #
-    # 60-MINUTE primary with a 12-minute confirmation: Supertrend aligned on
-    # both timeframes, +DI over -DI, ADX(28) >= 25, Williams %R(140) turning
-    # up, a 4 x ATR(10) stop and a 2R target. The wide stop is the point --
-    # it is the only cell in the grid where cost is the BINDING constraint
-    # rather than an absent signal.
+    # "V4" IS THE ATR ARM. The name is a registry artifact, not a typo:
+    # app/config/variants.py maps {"V4", "ATR", "V4_ATR"} to
+    # app.strategy.atr_arm.ATR_ARM, while the STACK is called v3. Renaming
+    # either would destroy and recreate a database and a log group.
     #
-    # WHY THIS ARM AND NOT A RESTART OF v3. v3 was the hand-written ATR arm on
-    # a 5m primary. Its walk-forward is net-negative in all four out-of-sample
-    # blocks (-0.274, -0.109, -0.100, -0.293), its universe included AKEUSD
-    # and BEATUSD -- the thin symbols removed from bot_symbols above -- and it
-    # is a hand-written class, which the one-spec rule in CLAUDE.md forbids
-    # adding to. `trend_wide_stop@60m` instead: gross-positive in all four
-    # blocks, net-positive in three, on 185-216 trades per block against
-    # wpr_only@240m's ~105.
+    # 5m primary, 1m confirmation, 2 x ATR(10) stop, 2R target.
     #
-    #     block    0       1       2       3
-    #     gross  +0.073  +0.084  +0.161  +0.002
-    #     net    +0.026  +0.038  +0.113  -0.058
+    # THE EVIDENCE FOR THIS ARM IS BAD AND IS RECORDED HERE RATHER THAN
+    # ARGUED AWAY. Its out-of-sample walk-forward is net-NEGATIVE in all four
+    # blocks -- -0.274, -0.109, -0.100, -0.293 -- and gross-negative in two.
+    # It is not run because the backtest supports it. It is run because it is
+    # what was asked for, as a risk-managed paper account with every circuit
+    # breaker enabled, rather than as a measurement.
     #
-    # Cost consumes 63% of its gross. That is what distinguishes it: setting
-    # friction to zero would change the answer, which is not true of the other
-    # survivors, whose gross changes sign between adjacent blocks.
+    # UNLIKE v5 AND v6 THIS HAS NO STOPPING RULE AND IS NOT AN EXPERIMENT
+    # UNDER TEST. Gates are on, so its expectancy is censored and must not
+    # later be read as an unbiased estimate of anything.
+    # NAMED FOR WHAT IT RUNS, not for its position in a sequence. The old
+    # "stack v3 runs variant V4" was a registry artifact that cost real
+    # confusion; app/config/variants.py already accepts "ATR" as a spelling of
+    # the same arm, so nothing in code had to change to fix it.
     #
-    # IT IS NOT SPECIAL ON SIGN PERSISTENCE, and neither is v5. Six of 72
-    # cells hold a positive gross sign in all four blocks against 4.5 expected
-    # by chance (p = 0.294). See out/sweep/README.md. Its most recent block is
-    # also its worst. This runs to MEASURE, like v5.
+    # Renaming was free here because the previous v3 instance and log group
+    # were destroyed in the 2026-08-25 teardown. There is nothing to rename in
+    # place -- this is a fresh create under a better name.
     #
-    # At 1.76 trades/day across four symbols a 30-day run is ~53 trades --
-    # twice v5's sample, and the reason to run it rather than a second 240m
-    # arm.
-    #
-    # NEW DATABASE, NOT deltabt_v3. That database holds every trade the ATR
-    # arm took and stays the untouched record of it. Mixing a second
-    # strategy's trades into it would muddy the one artifact of a run that
-    # never reached its own stopping point.
-    v6 = { variant = "SPEC:trend_wide_stop@60", db_name = "deltabt_v6" }
+    # deltabt_atr is a NEW database. The 94 trades from the four earlier ATR
+    # runs stay untouched in deltabt_v3 as the record of the UNGATED version,
+    # which this run is not comparable to on P&L.
+    atr = { variant = "ATR", db_name = "deltabt_atr" }
   }
 }
 
@@ -428,12 +454,40 @@ variable "max_open_positions" {
 variable "max_drawdown_pct" {
   description = <<-EOT
     Peak-to-trough halt. 1.0 disables it: equity would have to reach zero.
-    Disabled for the paper runs by explicit instruction on 2026-08-14. It is
-    the only thing that stops losses compounding and MUST be restored before
-    anything trades real capital.
+
+    RE-ENABLED 2026-08-26 at the code default of 0.10, by instruction, for the
+    v3 run. It had been disabled on 2026-08-14 for the measurement runs, on the
+    grounds that a halt CENSORS the sample rather than improving it.
+
+    That reasoning has not changed; the GOAL has. v3 is not a measurement run.
+    It is left running as a risk-managed paper account, so bounding the
+    drawdown is the point and the biased expectancy is accepted.
+
+    THIS HALT IS TERMINAL AND LATCHES. app/risk/engine.py stops trading for
+    good on breach and persists the flag; `forward-test resume --yes` is the
+    only way out, and it rebases the peak so the run does not immediately
+    re-halt. Anyone leaving this running unattended should know a 10% drawdown
+    ends it silently but for the ERROR line and the daily report.
   EOT
   type        = number
-  default     = 1.0
+  default     = 0.10
+}
+
+variable "max_daily_loss_pct" {
+  description = <<-EOT
+    Daily loss circuit breaker, as a fraction of start-of-day equity. 1.0
+    disables it.
+
+    THIS VARIABLE IS NEW, NOT A CHANGED DEFAULT. app/config/settings.py has
+    always read DELTABOT_MAX_DAILY_LOSS, but user_data.sh.tftpl never set it,
+    so the container fell back to the code default of 1.0 -- disabled -- and no
+    amount of editing Terraform could turn the gate on. "All gates up" was not
+    expressible before this.
+
+    0.02 is the value that was in force before it was disabled on 2026-08-20.
+  EOT
+  type        = number
+  default     = 0.02
 }
 
 variable "max_consecutive_losses" {
@@ -441,9 +495,13 @@ variable "max_consecutive_losses" {
     Daily circuit breaker; the streak resets on the UTC day roll. 0 disables
     the gate. Note that the risk engine must SKIP the check at 0 rather than
     compare against it, since a fresh state already satisfies `losses >= 0`.
+
+    RE-ENABLED 2026-08-26 at the code default of 3, by instruction. Unlike the
+    drawdown halt this is a DAILY breaker: it clears at the UTC day roll rather
+    than latching.
   EOT
   type        = number
-  default     = 0
+  default     = 3
 }
 
 variable "admin_cidrs" {
