@@ -55,6 +55,19 @@ umask 077
 printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC
 
+# THE LIST BELOW IS HAND-MAINTAINED, AND THAT IS HOW A GATE WENT MISSING.
+#
+# The chain from Terraform to the risk engine has THREE links, not two:
+# a variable, user_data writing it into /opt/deltabt/env, and this file
+# forwarding it into `docker run`. On 2026-08-26 max_daily_loss_pct was added
+# to the first two and not the third, so the value reached the host, sat in
+# /opt/deltabt/env looking correct, and never entered the container. The gate
+# read 1.0 -- disabled -- while every artifact above it said 0.02.
+#
+# `source /opt/deltabt/env` does NOT put a variable in the container's
+# environment. Only an explicit -e does. tests/live/test_env_forwarding.py
+# now fails if user_data writes a DELTABOT_* that this list does not carry.
+#
 # THE DEFAULTS BELOW ARE THE STRICT CONFIGURATION, DELIBERATELY.
 #
 # A host whose /opt/deltabt/env predates these variables falls back to
@@ -96,6 +109,7 @@ exec docker run --rm --name deltabot \
   -e "DELTABOT_VARIANT=${DELTABOT_VARIANT:-V1}" \
   -e "DELTABOT_MAX_OPEN=${DELTABOT_MAX_OPEN:-1}" \
   -e "DELTABOT_MAX_DRAWDOWN=${DELTABOT_MAX_DRAWDOWN:-0.10}" \
+  -e "DELTABOT_MAX_DAILY_LOSS=${DELTABOT_MAX_DAILY_LOSS:-0.02}" \
   -e "DELTABOT_MAX_CONSEC_LOSSES=${DELTABOT_MAX_CONSEC_LOSSES:-3}" \
   -e "DELTABOT_MAX_HOLD=${DELTABOT_MAX_HOLD:-0}" \
   -e "DELTABOT_LOG_LEVEL=$DELTABOT_LOG_LEVEL" \
