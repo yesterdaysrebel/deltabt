@@ -128,6 +128,7 @@ resource "aws_instance" "bot" {
     bot_variant                  = each.value.variant
     max_open_positions           = var.max_open_positions
     max_drawdown_pct             = var.max_drawdown_pct
+    max_daily_loss_pct           = var.max_daily_loss_pct
     max_consecutive_losses       = var.max_consecutive_losses
     max_hold_seconds             = var.max_hold_seconds
     run_sh_b64                   = filebase64("${path.root}/../../deploy/aws/run.sh")
