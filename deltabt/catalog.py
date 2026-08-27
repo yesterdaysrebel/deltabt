@@ -108,6 +108,42 @@ FAMILIES: dict[str, dict] = {
         confirm=_tf_rules(),
         over=dict(trigger="level", stop="atr", stop_atr_multiplier=2.0),
     ),
+    # --- does capping the ENTRY ZONE help? --------------------------------
+    #
+    # `atr_arm` is the arm running in paper now, and its long gate is
+    # `%R > -80 AND rising` -- a FLOOR with no ceiling. Anything from -80 to 0
+    # qualifies, so buying the literal high of the 140-bar range is a valid
+    # signal by construction. The live run on 2026-08-26/27 entered longs at
+    # %R of -4.3, -6.9, -8.6, -11.8 and -12.9, which is the top fifth of the
+    # range, with a 2xATR stop worth 0.2-0.5% of price. A normal pullback
+    # removes that position.
+    #
+    # This family is `atr_arm` WITH THE CEILING AND NOTHING ELSE CHANGED:
+    # same Supertrend, same DI gate, same absent ADX threshold, same edge
+    # trigger, same 2xATR stop, same confirmation shape. Only wpr_rule moves,
+    # from variant_a to cross_levels, which fires solely on the bar %R crosses
+    # UP through the level and so cannot enter at -11.8 at all.
+    #
+    # `counter_trend` already suggests the answer is no -- it is this idea
+    # measured, and its mean gross_r is +0.019 against atr_arm's +0.023 with
+    # cost_r at 0.093 for both. But it also drops DI and uses a level trigger,
+    # so it does not isolate the ceiling. This family does.
+    "atr_pullback": dict(
+        desc="atr_arm with a %R CEILING: cross out of the band, no top-of-range entries",
+        # THE CEILING GOES ON THE PRIMARY ONLY. Putting cross_levels on BOTH
+        # timeframes was the first attempt and it is not this idea: it demands
+        # that the 5m and the 1m %R cross -80 on the same bar close, a
+        # conjunction of two rare one-bar events. Measured, it produced ZERO
+        # trades at 5m and above on every symbol, and 0 at every timeframe on
+        # BTCUSD. That is a broken gate, not a negative result. The
+        # confirmation keeps atr_arm's variant_a exactly, so the ONLY thing
+        # that differs between the two families is the primary %R rule.
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="cross_levels"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
 }
 
 
