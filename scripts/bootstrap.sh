@@ -28,6 +28,33 @@ BUCKET="${TF_STATE_BUCKET:?set TF_STATE_BUCKET to a globally unique bucket name}
 ORG="${GITHUB_ORG:?set GITHUB_ORG to the GitHub organisation or user}"
 REPO="${GITHUB_REPO:-deltabt}"
 
+# THE NUMERIC IDS, AND WHY THIS SCRIPT MUST NOT SKIP THEM.
+#
+# main.tf trusts BOTH the name-based OIDC subject and GitHub's immutable
+# `org@ownerid/repo@repoid` form, but only when these ids are supplied -- they
+# default to "" and "" disables the immutable form entirely.
+#
+# This script did not pass them. Both roles in the account carried the
+# immutable subjects, so the first plan run after the state was re-imported
+# proposed REMOVING them from `deltabt-github-deploy` and `deltabt-github-plan`
+# alike. Applying that would have revoked deploy and pull-request-plan access
+# the moment GitHub next sent an immutable subject -- silently, because the
+# apply itself succeeds and the failure lands on the next workflow run as
+# `AccessDenied: Not authorized to perform sts:AssumeRoleWithWebIdentity`.
+#
+# Discovered rather than required, so an operator without `gh` still gets a
+# plan -- but a LOUD one, because an empty id here quietly narrows trust.
+OWNER_ID="${GITHUB_OWNER_ID:-$(gh api "users/$ORG" --jq .id 2>/dev/null || echo "")}"
+REPO_ID="${GITHUB_REPO_ID:-$(gh api "repos/$ORG/$REPO" --jq .id 2>/dev/null || echo "")}"
+if [ -z "$OWNER_ID" ] || [ -z "$REPO_ID" ]; then
+  echo "!!  Could not determine the numeric GitHub ids for $ORG/$REPO." >&2
+  echo "!!  The plan below will trust ONLY the name-based OIDC subject, and" >&2
+  echo "!!  will REMOVE any immutable subject already trusted in the account." >&2
+  echo "!!  Read the trust policy diff before applying, or set" >&2
+  echo "!!    GITHUB_OWNER_ID=\$(gh api users/$ORG --jq .id)" >&2
+  echo "!!    GITHUB_REPO_ID=\$(gh api repos/$ORG/$REPO --jq .id)" >&2
+fi
+
 case "$ACTION" in
   plan|apply) ;;
   *) echo "usage: $0 [plan|apply]" >&2; exit 2 ;;
@@ -79,7 +106,9 @@ terraform -chdir="$BOOTSTRAP_DIR" plan -input=false -out=bootstrap.tfplan \
   -var="github_org=$ORG" \
   -var="github_repo=$REPO" \
   -var="state_bucket_name=$BUCKET" \
-  -var="create_oidc_provider=$CREATE_OIDC"
+  -var="create_oidc_provider=$CREATE_OIDC" \
+  -var="github_owner_id=$OWNER_ID" \
+  -var="github_repo_id=$REPO_ID"
 
 terraform -chdir="$BOOTSTRAP_DIR" show -json bootstrap.tfplan > "$BOOTSTRAP_DIR/bootstrap.tfplan.json"
 
