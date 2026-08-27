@@ -108,9 +108,18 @@ def test_gates_only_ever_reduce_trades():
 
     Run at 5m, where the trade rate is high enough for the daily gates to bind
     at all -- see ``test_daily_reset_gates_are_inert_at_a_low_trade_rate``.
+
+    THREE SYMBOLS, NOT TWO. On 2026-08-27 the harness stopped using the
+    Supertrend-flip exit, which the live bot does not have, and stopped giving
+    positions 48 hours when the bot gives 24. Both changes lower the trade
+    rate: BTCUSD+ETHUSD at 5m fell to 36 trades with at most 2 entries on any
+    one day, so no daily gate could fire and this test failed on "no gate ever
+    fired" -- correctly. Adding SOLUSD restores 4 entries on the busiest day
+    and 96 gate refusals. The book was widened rather than the assertion
+    weakened: a vacuous pass here would hide a gate that never fires.
     """
     books = {}
-    for s in ["BTCUSD", "ETHUSD"]:
+    for s in ["BTCUSD", "ETHUSD", "SOLUSD"]:
         _, spec, book, *_ = _book(s, "trend_wide_stop", 5)
         books[s] = book
     params = params_for(spec, 5)
@@ -146,9 +155,12 @@ def test_daily_reset_gates_are_inert_at_a_low_trade_rate():
     Not a defect -- an arithmetic consequence worth pinning, because the gate
     looks like protection and provides none at this frequency. Measured on
     BTCUSD+ETHUSD at 60m: 22 trades over 19 days, at most 2 entries on any one
-    day, and therefore zero days on which three losses could accumulate. At 5m
-    the same pair takes 2.13 trades/day with a maximum of 5, and 5 of 31 days
-    carry three or more losses.
+    day, and therefore zero days on which three losses could accumulate.
+
+    The 5m figures that used to sit here (2.13 trades/day, maximum 5) were
+    measured before the 2026-08-27 exit-parity fix and no longer hold: the
+    same pair at 5m now peaks at 2 entries a day, which is why
+    ``test_gates_only_ever_reduce_trades`` needed a third symbol.
     """
     books = {}
     for s in ["BTCUSD", "ETHUSD"]:
@@ -220,9 +232,17 @@ def test_a_drawdown_halt_is_terminal_without_a_resume_policy():
 
 
 def test_a_resume_policy_puts_the_account_back_to_work():
-    """Modelling an operator resume must actually extend the run."""
+    """Modelling an operator resume must actually extend the run.
+
+    FIVE SYMBOLS for the reason given in ``test_gates_only_ever_reduce_trades``:
+    the 2026-08-27 exit-parity fix lowered the trade rate, and with three
+    symbols the resumed run halted exactly once, same as the terminal one, so
+    "a resumed account should be able to halt more than once" had nothing to
+    observe. Five symbols give it a second halt. The extra names add
+    opportunities; they do not change the strategy or the timeframe.
+    """
     books = {}
-    for s in ["BTCUSD", "ETHUSD", "SOLUSD"]:
+    for s in ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BEATUSD"]:
         _, spec, book, *_ = _book(s, "trend_wide_stop", 60)
         books[s] = book
     params = params_for(spec, 60)
