@@ -64,14 +64,20 @@ jobs:
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
           - stack: atr
-            variant: ATR
+            variant: SPEC:atr_banded@5
             instance_var: BOT_INSTANCE_ID_ATR
             document_var: SSM_MONITOR_DOCUMENT_ATR
-            # The ATR arm, restored 2026-08-26 under a name that says what it
-            # runs. The old "stack v3, variant V4" was a registry artifact.
-            # This hash is the same one the previous ATR run reported, so a
-            # mismatch here means the rules changed, not the naming.
-            strategy_hash: "8a564836b862ea74"
+            # 2026-08-27: the stack kept its name and its database and changed
+            # what it evaluates -- atr_arm's %R floor gained a ceiling at the
+            # band midpoint. `ATR-5M-GATED-20260826-2` was stopped deliberately.
+            #
+            # THE HASH IS 64 CHARACTERS HERE AND WAS 16 BEFORE, AND THAT IS NOT
+            # A TYPO. A spec arm reports `spec.config_hash`, which is the full
+            # sha256 of the StrategySpec (app/strategy/spec_arm.py:56); the old
+            # AtrArmConfig truncated its own to 16. Pinning the truncation
+            # against a spec arm would never match and the report would call a
+            # correct deployment drifted, every day.
+            strategy_hash: "ddd76a9fda2bcfdb5fd12cdd65dab0387443ba54709770329affb119421455ac"
             log_group: /deltabt/paper/atr/bot
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and

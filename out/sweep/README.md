@@ -1,5 +1,28 @@
 # Backtest sweep — 2026-08-25
 
+> **Every CSV in this directory dated before 2026-08-27 was run against exits
+> the live bot does not have, and is not comparable with anything generated
+> after.** Two settings in `deltabt/harness.py` did not match the deployed
+> paper trader:
+>
+> * `exit_on_trend_flip` defaulted to **True** and was never overridden, so
+>   backtested positions closed when the primary Supertrend flipped. The
+>   broker's `ExitReason` enum has no `TREND_FLIP` and never did.
+> * `HOLD_HOURS` was **48** against `max_hold_seconds = 86400` (24h) in
+>   Terraform, so a backtested position had twice as long to recover.
+>
+> The flip exit is not a rounding difference. On `atr_arm` at 5m over 7
+> symbols it took stop-losses from 66% of exits to 33% and cut the money lost
+> on stops by 45%, while making total P&L **worse** (-15,624 against -10,062;
+> paired net_r delta -0.0307R, SE 0.0145, t = -2.12, better in 1 of 7). It
+> cuts winners before target and frees the slot for another round trip.
+>
+> This was possible because `StrategySpec` carries entries, stops and targets
+> and **no exit policy at all**, so "defined once, executed by both sides"
+> never reached exits. `tests/test_exit_parity.py` compares them until the
+> spec grows one. Regenerated files carry the fix; the rest are kept as the
+> record of what was run.
+
 576 cells: 8 symbols x 12 strategy families x 6 timeframes. 492 ran; 84 were
 too short (DOGEUSD has 1,435 cached 1m bars, AKEUSD/BANKUSD ~21 days). 349
 cells cleared 30 trades and are pooled below; 218,171 trades in total.

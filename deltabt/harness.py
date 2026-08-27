@@ -28,7 +28,31 @@ TIMEFRAMES = (1, 5, 15, 30, 60, 240)
 #: ``max_hold_bars`` is scaled to this constant wall-clock span. The default
 #: 240 BARS is 4 hours at 1m and 40 days at 240m, so an unscaled grid would
 #: compare a scalp against a swing trade and call the difference "timeframe".
-HOLD_HOURS = 48
+#:
+#: THE SPAN TRACKS THE LIVE BOT, which runs max_hold_seconds = 86400
+#: (infra/terraform/variables.tf). It was 48 here against 24 there, so every
+#: recorded cell gave a position twice as long to recover as the paper trader
+#: ever will. tests/test_exit_parity.py pins the two together.
+HOLD_HOURS = 24
+
+#: Close a position when the primary Supertrend flips against it.
+#:
+#: FALSE BECAUSE THE BOT CANNOT DO IT. StrategyParams defaults this to True
+#: and the harness did not override it, so every sweep in out/sweep/ was run
+#: with an exit the live paper trader does not have -- its ExitReason enum is
+#: STOP_LOSS, TAKE_PROFIT, MANUAL_CLOSE, TIME_EXIT, SYSTEM_SAFETY,
+#: DATA_FAILURE, and there is no TREND_FLIP among them.
+#:
+#: Measured on atr_arm at 5m over 7 symbols, the difference is not cosmetic:
+#: the flip exit took stop-losses from 66% of exits to 33% and cut the money
+#: lost on stops by 45%, while making total P&L WORSE (-15,624 vs -10,062;
+#: paired net_r delta -0.0307R, SE 0.0145, t = -2.12, better in 1 of 7). It
+#: cuts winners before target (713 targets against 928) and frees the slot
+#: for another round trip.
+#:
+#: So this is not a tuning choice. It is the backtest being made to describe
+#: the thing that actually runs. tests/test_exit_parity.py pins it.
+EXIT_ON_TREND_FLIP = False
 
 
 def params_for(spec, minutes: int) -> StrategyParams:
@@ -37,6 +61,7 @@ def params_for(spec, minutes: int) -> StrategyParams:
         base_minutes=minutes,
         confirm_minutes=max(minutes * CONFIRM_RATIO, minutes + 1),
         max_hold_bars=max(20, (HOLD_HOURS * 60) // minutes),
+        exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
     )
 
@@ -109,6 +134,7 @@ def run_cell(data: dict, family: str, minutes: int, costs: SymbolCosts,
         base_minutes=minutes,
         confirm_minutes=max(minutes * CONFIRM_RATIO, minutes + 1),
         max_hold_bars=max(20, (HOLD_HOURS * 60) // minutes),
+        exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
     )
     res = run_backtest(primary, mark, data["funding"],
