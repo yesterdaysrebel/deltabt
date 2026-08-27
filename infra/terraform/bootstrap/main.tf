@@ -293,6 +293,17 @@ data "aws_iam_policy_document" "deploy" {
       "ec2:*", "rds:*", "ecr:*", "logs:*", "cloudwatch:*",
       "secretsmanager:*", "ssm:*", "iam:*", "kms:Describe*", "kms:List*",
       "sts:GetCallerIdentity", "application-autoscaling:Describe*",
+      # sns:* is what DELIVERS an alarm, and it was missing until 2026-08-27.
+      # The gap was invisible from a plan: cloudwatch:* creates the alarms, so
+      # monitoring looked fully provisioned right up to the first apply that
+      # tried to create a topic, which failed with AuthorizationError on
+      # SNS:CreateTopic after the guard and the plan had both passed.
+      #
+      # Granted as sns:* on * rather than scoped to deltabt-named topics for
+      # the same reason as everything else in this statement: an under-scoped
+      # policy fails opaquely mid-apply, and this role already holds iam:*,
+      # which subsumes any narrowing of SNS.
+      "sns:*",
     ]
     resources = ["*"]
     # Deliberately not narrowed further: Terraform must read and tag resources
