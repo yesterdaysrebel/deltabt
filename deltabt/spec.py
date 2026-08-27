@@ -38,7 +38,7 @@ from dataclasses import asdict, dataclass, field
 #: candidate %R rules in this repository differ by orders of magnitude in
 #: firing rate, so an unrecognised string must fail loudly rather than fall
 #: back to a default that quietly changes the strategy.
-WPR_RULES = ("variant_a", "cross_levels", "none")
+WPR_RULES = ("variant_a", "cross_levels", "banded", "none")
 
 #: Entry trigger vocabulary.
 #:
@@ -94,6 +94,14 @@ class TimeframeRules:
     #: Levels for the %R rules. ``variant_a`` reads ``wpr_long_level`` as the
     #: floor a rising %R must be above; ``cross_levels`` reads both as the
     #: band edges a %R must cross out of.
+    #:
+    #: ``banded`` reads them as the OUTER edges and splits at their MIDPOINT,
+    #: so a long must sit in the lower half and a short in the upper half.
+    #: With the defaults that midpoint is -50.0, which is the whole point: it
+    #: needs a third number and there is no third field, so it is derived
+    #: rather than added. Adding a field would move every spec's
+    #: ``config_hash`` and orphan the recorded sweeps -- the same trap
+    #: app/config/variants.py records V1 falling into.
     wpr_long_level: float = -80.0
     wpr_short_level: float = -20.0
 

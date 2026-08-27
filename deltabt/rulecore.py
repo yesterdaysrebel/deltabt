@@ -166,6 +166,26 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np
         ok = np.isfinite(w) & np.isfinite(wp)
         long_ok &= ok & (w > rules.wpr_long_level) & (w > wp)
         short_ok &= ok & (w < rules.wpr_short_level) & (w < wp)
+    elif rules.wpr_rule == "banded":
+        # variant_a WITH A CEILING. `variant_a` is `%R > -80 AND rising`, a
+        # floor with nothing above it, so %R = -4 qualifies: price at the high
+        # of the 140-bar window is a valid long. The live ATR arm entered
+        # longs at -4.3, -6.9, -8.6, -11.8 and -12.9 on 2026-08-26/27 with a
+        # 2xATR stop worth 0.2-0.5% of price.
+        #
+        # Here a long must still be rising, but must not yet have crossed the
+        # MIDPOINT of the band; a short mirrors it above the midpoint. The
+        # direction requirement is unchanged -- this narrows WHERE in the
+        # range an entry may happen, it does not invert the rule.
+        #
+        # Unlike `cross_levels` this is not a one-bar event, so it keeps the
+        # repeat-suppression behaviour of the chosen trigger instead of
+        # collapsing the trade count by an order of magnitude.
+        w, wp = ti.wpr, _prev(ti.wpr)
+        mid = 0.5 * (rules.wpr_long_level + rules.wpr_short_level)
+        ok = np.isfinite(w) & np.isfinite(wp)
+        long_ok &= ok & (w > rules.wpr_long_level) & (w < mid) & (w > wp)
+        short_ok &= ok & (w < rules.wpr_short_level) & (w > mid) & (w < wp)
     elif rules.wpr_rule == "cross_levels":
         # Crossed OUT of the band on this bar: long leaves oversold, short
         # leaves overbought. A one-bar event, so this is already edge-like.

@@ -144,6 +144,28 @@ FAMILIES: dict[str, dict] = {
                           wpr_rule="variant_a"),
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
     ),
+    # --- the SOFT ceiling, between atr_arm and atr_pullback ---------------
+    #
+    # `atr_pullback` answered "does a ceiling help" with the HARDEST possible
+    # ceiling: cross_levels fires only on the single bar %R crosses up through
+    # -80, which cut trades 9x (15,419 -> 1,773) and did not lower cost per R.
+    # A 9x cut is a different strategy, not the same strategy filtered, and it
+    # confounds "the ceiling helps" with "there are barely any trades left".
+    #
+    # This family is the ceiling WITHOUT that collapse: keep variant_a's
+    # `rising` requirement, keep firing on every qualifying bar, and simply
+    # refuse entries that have already run past the middle of the band. Long
+    # in (-80, -50), short in (-50, -20). It is the narrowest possible change
+    # to `atr_arm` that tests the actual complaint -- entering at the top of
+    # the range -- so a difference here is attributable to the ceiling alone.
+    "atr_banded": dict(
+        desc="atr_arm with a %R ceiling at the band midpoint: enter while the move is still early",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
 }
 
 
