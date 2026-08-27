@@ -441,7 +441,30 @@ variable "stacks" {
     # deltabt_atr is a NEW database. The 94 trades from the four earlier ATR
     # runs stay untouched in deltabt_v3 as the record of the UNGATED version,
     # which this run is not comparable to on P&L.
-    atr = { variant = "ATR", db_name = "deltabt_atr" }
+    #
+    # 2026-08-27: THE VARIANT MOVED FROM "ATR" TO THE BANDED SPEC. The stack,
+    # the database, the EIP, the log group and every alarm are reused; only
+    # what the bot evaluates changed. `ATR-5M-GATED-20260826-2` was stopped
+    # deliberately at 16 closed trades with no open positions.
+    #
+    # WHAT THE BAND DOES. atr_arm's long gate is `%R > -80 AND rising`, a floor
+    # with no ceiling, so %R = -4 -- price at the high of its 140-bar window --
+    # is a valid long. The live run entered longs at -4.3, -6.9, -8.6, -11.8
+    # and -12.9 carrying a 2xATR stop worth 0.2-0.5% of price. `banded` keeps
+    # every other condition and refuses entries past the midpoint of the band:
+    # long in (-80, -50), short in (-50, -20).
+    #
+    # THE BACKTEST DOES NOT SUPPORT THIS, AND THAT IS RECORDED RATHER THAN
+    # SOFTENED. Over 13,330 trades the band is -0.0028R against atr_arm with
+    # SE 0.0193 (t = -0.14), better in 11 of 30 cells -- indistinguishable from
+    # no effect, point estimate the wrong sign. Replayed against the 15 trades
+    # the live arm actually took it looked good (+187.41, refusing 8 of 15) but
+    # that is +0.272R with SE 0.915, t = +0.30, and it refused the day's two
+    # best trades. It is run because it was asked for, not because it measured.
+    #
+    # `SPEC:` resolves through deltabt.catalog, so the thing deployed is the
+    # thing the sweep ran -- no second implementation to keep in step.
+    atr = { variant = "SPEC:atr_banded@5", db_name = "deltabt_atr" }
   }
 }
 
