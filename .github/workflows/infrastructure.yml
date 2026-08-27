@@ -58,6 +58,18 @@ concurrency:
 env:
   TF_VERSION: "1.11.11"   # OpenTofu -- see the note on setup-opentofu below
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  # WHERE ALARMS ACTUALLY GO. Empty disables SNS, and empty is what it was:
+  # all 24 CloudWatch alarms evaluated correctly and notified nobody, because
+  # alarm_actions is `var.alarm_email != "" ? [topic] : []`. The only path from
+  # an alarm to a human ran through the daily report, and the daily report runs
+  # on GitHub's `schedule` trigger, which is best-effort -- it fired once in
+  # three days, 80 minutes late, and skipped 2026-08-27 entirely. One
+  # unreliable link, and it was the only link.
+  #
+  # Passed as TF_VAR_ rather than a default in variables.tf so the address is
+  # not committed. Terraform reads TF_VAR_* automatically; an unset repository
+  # variable yields "", which is the same as before.
+  TF_VAR_alarm_email: ${{ vars.ALARM_EMAIL }}
 
 jobs:
   safety:
