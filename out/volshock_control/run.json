@@ -1,0 +1,29 @@
+{
+  "spec": "docs/volume_shock_control_spec.md",
+  "spec_sha256": "1e14d3ab4933f634aff51bbfd2e1efa76d728e63b2ed7cb451a351bbcc4ed7a6",
+  "discovery_spec_sha256": "8f8dc68075e5275916cf8198b06eb15fbd9e46437db460113091658cb3c22594",
+  "git_sha": "0135546ece961887a993d46f636ffaa6641e71f6",
+  "parameters": {
+    "contemp_bars": 15,
+    "deciles": 10,
+    "min_shocks_per_stratum": 30,
+    "n_boot": 10000,
+    "n_perm": 10000,
+    "inherited_rvol_threshold": 5.0,
+    "inherited_lookback": 1440,
+    "inherited_cooldown_min": 60,
+    "primary_horizon": 30
+  },
+  "symbols": [
+    "BTCUSD",
+    "ETHUSD",
+    "SOLUSD",
+    "XRPUSD"
+  ],
+  "outputs": [
+    "out/volshock_control/control.csv",
+    "out/volshock_control/deciles.csv",
+    "out/volshock_control/thirds.csv"
+  ],
+  "note": "KILL TEST on the discovery window. No untouched historical window exists. A negative result is dispositive; a positive one authorises only a forward test. Not a validation."
+}
