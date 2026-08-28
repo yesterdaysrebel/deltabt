@@ -83,21 +83,22 @@ def cell_result(data: dict, family: str, minutes: int, costs: SymbolCosts,
                 cache: dict, window: tuple[int, int] | None,
                 confirm_minutes: int | None = None,
                 stop_mult: float | None = None,
-                hold_hours: int | None = None) -> dict | None:
+                hold_hours: int | None = None,
+                target_r: float | None = None) -> dict | None:
     """One symbol, one cell, optionally restricted to a time window.
 
     NOTE the parameter is ``confirm_minutes``, not ``confirm``: the local
     ``confirm`` below is the confirmation DATAFRAME, and naming the argument
     the same thing silently rebound it into the signal cache key.
     """
-    spec = build_spec(family, minutes, confirm_minutes, stop_mult)
+    spec = build_spec(family, minutes, confirm_minutes, stop_mult, target_r)
     primary, mark, tradable = _resampled(data, minutes, cache)
     confirm, _, _ = (_resampled(data, spec.confirm_minutes, cache)
                      if spec.confirm.enabled else (None, None, None))
     if len(primary) < spec.warmup_bars * 3:
         return None
 
-    key = (data["symbol"], family, minutes, confirm_minutes, stop_mult)
+    key = (data["symbol"], family, minutes, confirm_minutes, stop_mult, target_r)
     if key not in cache:
         cache[key] = rulecore.to_engine_signals(
             rulecore.compute(primary, confirm, spec))

@@ -243,7 +243,8 @@ FAMILIES: dict[str, dict] = {
 
 def build_spec(family: str, primary_minutes: int,
                confirm_minutes: int | None = None,
-               stop_atr_multiplier: float | None = None) -> StrategySpec:
+               stop_atr_multiplier: float | None = None,
+               target_r: float | None = None) -> StrategySpec:
     """Build a family's spec at ``primary_minutes``.
 
     ``confirm_minutes`` overrides the constant 5:1 ratio. It exists so the
@@ -289,5 +290,12 @@ def build_spec(family: str, primary_minutes: int,
                 f"(stop={f['over'].get('stop')!r}), so stop_atr_multiplier "
                 f"would have no effect")
         spec = replace(spec, stop_atr_multiplier=stop_atr_multiplier)
+    # The target and the hold cap interact, which is why this is overridable.
+    # A 2R target on an 8xATR stop sits 16xATR away; at a 24h cap that is
+    # usually unreachable, so the position times out and the wide stop looks
+    # worthless. Shrinking the target is the alternative to lengthening the
+    # hold, and the two must be compared rather than assumed equivalent.
+    if target_r is not None:
+        spec = replace(spec, target_r=target_r)
     spec.validate()
     return spec
