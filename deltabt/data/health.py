@@ -106,8 +106,12 @@ def options_health(root: Path | None = None) -> dict:
         "snapshots": int(df.snapshot_ts.nunique()),
         "usable_snapshots": int(len(usable_snaps)),
         "expected_snapshots": expected,
-        "usable_fraction": round(len(usable_snaps) / expected, 4),
-        "usable_days": round(span * len(usable_snaps) / expected, 3),
+        # Clamped: poll drift can yield marginally MORE snapshots than the
+        # nominal 15-minute grid, and a coverage fraction above 1.0 in a
+        # readiness gate reads as a defect even when the surplus is benign.
+        "usable_fraction": round(min(1.0, len(usable_snaps) / expected), 4),
+        "usable_days": round(span * min(1.0, len(usable_snaps) / expected), 3),
+        "usable_fraction_raw": round(len(usable_snaps) / expected, 4),
         "snapshots_per_day": round(df.snapshot_ts.nunique() / max(span, 1e-9), 1),
         "unique_contracts_per_day": round(
             float(df.groupby(days)["symbol"].nunique().mean()), 1),
@@ -230,6 +234,7 @@ def overlap_health(root: Path | None = None) -> dict:
     span = _span_days(start, end)
     n_ok = int(hedgeable_all.sum()) if hedgeable_all is not None else 0
     expected = max(1, int(span * 86400 / HEDGE_GRID_SECONDS) + 1)
+    frac = min(1.0, n_ok / expected)
     return {
         "overlap_start": str(pd.Timestamp(start, unit="s", tz="UTC")),
         "overlap_end": str(pd.Timestamp(end, unit="s", tz="UTC")),
@@ -237,8 +242,8 @@ def overlap_health(root: Path | None = None) -> dict:
         "usable_option_snapshots_in_overlap": int(len(usable)),
         "expected_grid_points": expected,
         "hedgeable_slots": n_ok,
-        "hedgeable_fraction": round(n_ok / expected, 4),
-        "hedgeable_days": round(span * n_ok / expected, 4),
+        "hedgeable_fraction": round(frac, 4),
+        "hedgeable_days": round(span * frac, 4),
         "per_symbol": per_sym,
         "options": o, "perp": p,
     }
