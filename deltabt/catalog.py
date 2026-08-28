@@ -207,11 +207,29 @@ FAMILIES: dict[str, dict] = {
 }
 
 
-def build_spec(family: str, primary_minutes: int) -> StrategySpec:
+def build_spec(family: str, primary_minutes: int,
+               confirm_minutes: int | None = None) -> StrategySpec:
+    """Build a family's spec at ``primary_minutes``.
+
+    ``confirm_minutes`` overrides the constant 5:1 ratio. It exists so the
+    confirmation timeframe can be held FIXED while the primary widens, which
+    is a different question from the one the ratio answers: the ratio asks
+    "what does this family do at scale", a fixed confirmation asks "what does
+    a 60m primary confirmed by the 5m chart I actually watch do".
+
+    The default is unchanged, so every spec built without this argument keeps
+    the hash it had.
+    """
     f = FAMILIES[family]
-    confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
-    if primary_minutes % confirm_minutes:
-        confirm_minutes = 1
+    if confirm_minutes is None:
+        confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
+        if primary_minutes % confirm_minutes:
+            confirm_minutes = 1
+    elif confirm_minutes > primary_minutes or primary_minutes % confirm_minutes:
+        raise ValueError(
+            f"confirm_minutes={confirm_minutes} must divide and not exceed "
+            f"primary_minutes={primary_minutes}; a confirmation bar that does "
+            f"not tile the primary aligns to a different instant on each bar")
     spec = StrategySpec(
         name=f"{family}@{primary_minutes}m",
         primary_minutes=primary_minutes,

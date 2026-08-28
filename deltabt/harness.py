@@ -115,8 +115,8 @@ def _resampled(data: dict, minutes: int, cache: dict) -> tuple:
 
 
 def run_cell(data: dict, family: str, minutes: int, costs: SymbolCosts,
-             cache: dict) -> dict:
-    spec = build_spec(family, minutes)
+             cache: dict, confirm_minutes: int | None = None) -> dict:
+    spec = build_spec(family, minutes, confirm_minutes)
     primary, mark, tradable = _resampled(data, minutes, cache)
     confirm, _, _ = (_resampled(data, spec.confirm_minutes, cache)
                      if spec.confirm.enabled else (None, None, None))
