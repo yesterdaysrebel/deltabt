@@ -40,6 +40,13 @@ WHAT WILL PROBABLY KILL IT, STATED BEFORE THE RUN
        0.77-0.80, which leaves ~20% residual variance, and the residual is
        large next to a spread measured in single-digit bps per interval.
     3. Only seven symbols have funding history and three of them have 21 days.
+
+LIQUIDITY IS MEASURED IN NOTIONAL, WHICH NEEDS contract_value
+    `close * volume` is CONTRACTS, not dollars. BTCUSD's contract_value is
+    0.001, so omitting it understates BTC turnover by 1000x while leaving a
+    contract_value=1 micro-cap untouched -- exactly inverting the screen it is
+    supposed to be. Caught after a first run reported a Sharpe near 4 built on
+    names with 250-400%/yr funding.
 """
 
 from __future__ import annotations
@@ -70,18 +77,34 @@ def load() -> tuple[dict, dict, dict]:
         f = pd.read_parquet(path)
         if len(f) < MIN_FUNDING_OBS:
             continue
-        candles = CACHE_DIR / sym / "mark_1m.parquet"
-        if not candles.exists():
-            candles = CACHE_DIR / sym / "ltp_1m.parquet"
-        if not candles.exists():
-            continue
-        c = pd.read_parquet(candles)
-        c["t"] = pd.to_datetime(c["time"], unit="s", utc=True)
-        c = c.set_index("t")
+        # Prefer the DAILY series. The book carries daily and rebalances
+        # weekly, so a 1m file is ~860k rows per symbol that nothing reads --
+        # and requiring 1m silently limited this to the seven symbols that
+        # happened to have it, which is the constraint the whole result was
+        # about.
+        daily = CACHE_DIR / sym / "ltp_1d.parquet"
+        if daily.exists():
+            c = pd.read_parquet(daily)
+            c["t"] = pd.to_datetime(c["time"], unit="s", utc=True)
+            c = c.set_index("t").sort_index()
+            cv = products.get(sym, {}).get("contract_value", 1.0)
+            close, vol_usd = c["close"], c["close"] * c["volume"] * cv
+        else:
+            candles = CACHE_DIR / sym / "mark_1m.parquet"
+            if not candles.exists():
+                candles = CACHE_DIR / sym / "ltp_1m.parquet"
+            if not candles.exists():
+                continue
+            c = pd.read_parquet(candles)
+            c["t"] = pd.to_datetime(c["time"], unit="s", utc=True)
+            c = c.set_index("t")
+            cv = products.get(sym, {}).get("contract_value", 1.0)
+            close = c["close"].resample("1D").last()
+            vol_usd = (c["close"] * c["volume"] * cv).resample("1D").sum()
         f["t"] = pd.to_datetime(f["time"], unit="s", utc=True)
         funding[sym] = f.set_index("t")["close"] / 100.0     # percent -> fraction
-        price[sym] = c["close"].resample("1D").last()
-        volume[sym] = (c["close"] * c["volume"]).resample("1D").sum()
+        price[sym] = close.resample("1D").last()
+        volume[sym] = vol_usd.resample("1D").sum()
         interval[sym] = products.get(sym, {}).get("funding_interval_seconds", 28800)
     return funding, price, volume, interval
 

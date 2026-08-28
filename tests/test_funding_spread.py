@@ -124,3 +124,27 @@ def test_the_signal_cannot_see_the_funding_it_collects(fs):
         "the funding signal is not shifted, so the portfolio is chosen using "
         "the same day's funding it is about to be paid")
     assert "rolling(lookback_days).mean().shift(1)" in text
+
+
+def test_notional_uses_contract_value(fs):
+    """`close * volume` is CONTRACTS. Dollars needs contract_value.
+
+    BTCUSD's contract_value is 0.001 and a micro-cap's is 1.0, so omitting it
+    understates BTC turnover by 1000x and leaves the micro-cap untouched --
+    inverting the liquidity screen rather than merely loosening it. The first
+    run of this script did exactly that and reported a Sharpe near 4 built
+    entirely on names funding at 250-400%/yr, which vanished (to -0.88) the
+    moment turnover was measured correctly.
+    """
+    text = SCRIPT.read_text()
+    assert text.count("contract_value") >= 3, (
+        "contract_value is not being applied when computing turnover, so the "
+        "--min-volume screen is measuring contracts, not dollars")
+    assert 'c["close"] * c["volume"] * cv' in text
+
+
+def test_the_liquidity_screen_is_actually_applied(fs):
+    text = SCRIPT.read_text()
+    assert "liquid = vol.rolling(7).mean().shift(1) >= min_volume" in text
+    assert ".where(liquid.loc[day])" in text, (
+        "the liquidity mask is computed but never applied to the ranking")
