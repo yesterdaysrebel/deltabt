@@ -166,6 +166,44 @@ FAMILIES: dict[str, dict] = {
                           wpr_rule="variant_a"),
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
     ),
+    # --- does the ADX STRENGTH gate help? ---------------------------------
+    #
+    # atr_arm deliberately drops V3's `adx >= 25`, keeping only DI DIRECTION,
+    # and the module docstring calls that out as widening the gate
+    # considerably. On 2026-08-28 the live banded arm closed 9 trades, 8 of
+    # them stop-outs, and a bar-by-bar replay of V3's gates over the same
+    # window fired ZERO times -- every entry sat in conditions where ADX had
+    # not confirmed on both timeframes. One day proves nothing; these families
+    # ask the same question of 21 days.
+    #
+    # THREE FAMILIES BECAUSE "ADD ADX" IS THREE DIFFERENT CHANGES. The gate
+    # can go on the primary, on both timeframes, or on the arm that is
+    # actually running. Collapsing them would attribute one result to a
+    # change nobody made.
+    "atr_adx": dict(
+        desc="atr_arm plus V3's ADX>=25 on the primary only",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
+    "atr_adx_both": dict(
+        desc="atr_arm plus ADX>=25 on BOTH timeframes -- the leg that refused today's entries",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
+    "atr_banded_adx": dict(
+        desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
 }
 
 
