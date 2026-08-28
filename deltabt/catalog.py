@@ -196,6 +196,40 @@ FAMILIES: dict[str, dict] = {
                           wpr_rule="variant_a"),
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
     ),
+    # --- the TARGET, which nothing had ever varied ------------------------
+    #
+    # gross_r = p*T - (1-p)*1 has two free terms and roughly 1,150 cells of
+    # entry-filter and timeframe work attacked only p. Holding T at 2.0 was
+    # never a finding, it was a default.
+    #
+    # In-sample over 4 majors at 15m/5m, pooled across stop widths and holds,
+    # gross_r by target: 1.0R +0.038, 2.0R +0.032, 3.0R +0.057, 4.0R +0.099 --
+    # and 4R beats 2R on BTCUSD, ETHUSD, SOLUSD and XRPUSD INDEPENDENTLY. The
+    # exit decomposition says why: at a 2R cap 31.8% of trades reach target
+    # and 62.3% stop, when gross break-even alone needs 32.9%. The cap is
+    # truncating the right tail of a trend rule.
+    #
+    # THAT IS AN IN-SAMPLE PATTERN FOUND BY SWEEPING, which is exactly how the
+    # XRPUSD@45m cell appeared before it dissolved. It is here to be walked
+    # forward, not because it is believed.
+    "atr_t3": dict(
+        desc="atr_arm with a 3R target instead of 2R",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0,
+                  target_r=3.0),
+    ),
+    "atr_t4": dict(
+        desc="atr_arm with a 4R target -- the best in-sample gross measured",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0,
+                  target_r=4.0),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
