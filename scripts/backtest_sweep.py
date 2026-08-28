@@ -65,6 +65,10 @@ def main() -> None:
     # stop_pct, so this is the only knob that moves cost directly rather than
     # by filtering signals. Skipped for fixed-percentage-stop families.
     ap.add_argument("--stop-mult", nargs="*", type=float, default=None)
+    # Max hold in hours. The default 24h is the binding constraint on any wide
+    # stop: a 2R target on an 8xATR stop is 16xATR away and a day is not long
+    # enough to get there, so without this the stop sweep measures the cap.
+    ap.add_argument("--hold-hours", nargs="*", type=int, default=None)
     ap.add_argument("--out", default=str(OUT / "backtests.csv"))
     args = ap.parse_args()
 
@@ -107,18 +111,21 @@ def main() -> None:
                                                 or minutes % confirm):
                         continue
                     for mult in (args.stop_mult or [None]):
+                      for hold in (args.hold_hours or [None]):
                         try:
                             row = run_cell(data, family, minutes, costs,
-                                           cache, confirm, mult)
+                                           cache, confirm, mult, hold)
                             row["stop_mult"] = mult
+                            row["hold_hours"] = hold
                             rows.append(row)
                         except Exception as exc:          # noqa: BLE001
-                            log.warning("%s %s @%dm/%sm x%s failed: %s", symbol,
-                                        family, minutes, confirm, mult, exc)
+                            log.warning("%s %s @%dm/%sm x%s h%s failed: %s",
+                                        symbol, family, minutes, confirm, mult,
+                                        hold, exc)
                             rows.append(dict(symbol=symbol, family=family,
                                              timeframe_min=minutes,
                                              confirm_min=confirm,
-                                             stop_mult=mult,
+                                             stop_mult=mult, hold_hours=hold,
                                              status=f"error: {exc}"))
                 done += 1
             log.info("%s @%dm  (%d/%d, %.0fs)", symbol, minutes, done, total,

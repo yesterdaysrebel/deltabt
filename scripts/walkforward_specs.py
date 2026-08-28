@@ -80,16 +80,24 @@ FIXED_CELLS = (("trend_wide_stop", 60), ("trend_wide_stop", 240),
 
 
 def cell_result(data: dict, family: str, minutes: int, costs: SymbolCosts,
-                cache: dict, window: tuple[int, int] | None) -> dict | None:
-    """One symbol, one cell, optionally restricted to a time window."""
-    spec = build_spec(family, minutes)
+                cache: dict, window: tuple[int, int] | None,
+                confirm_minutes: int | None = None,
+                stop_mult: float | None = None,
+                hold_hours: int | None = None) -> dict | None:
+    """One symbol, one cell, optionally restricted to a time window.
+
+    NOTE the parameter is ``confirm_minutes``, not ``confirm``: the local
+    ``confirm`` below is the confirmation DATAFRAME, and naming the argument
+    the same thing silently rebound it into the signal cache key.
+    """
+    spec = build_spec(family, minutes, confirm_minutes, stop_mult)
     primary, mark, tradable = _resampled(data, minutes, cache)
     confirm, _, _ = (_resampled(data, spec.confirm_minutes, cache)
                      if spec.confirm.enabled else (None, None, None))
     if len(primary) < spec.warmup_bars * 3:
         return None
 
-    key = (data["symbol"], family, minutes)
+    key = (data["symbol"], family, minutes, confirm_minutes, stop_mult)
     if key not in cache:
         cache[key] = rulecore.to_engine_signals(
             rulecore.compute(primary, confirm, spec))
@@ -103,7 +111,7 @@ def cell_result(data: dict, family: str, minutes: int, costs: SymbolCosts,
     if mask.sum() < spec.warmup_bars:
         return None
 
-    params = params_for(spec, minutes)
+    params = params_for(spec, minutes, hold_hours)
     res = run_backtest(primary[mask].reset_index(drop=True), mark,
                        data["funding"], slice_signals(sig, mask), params,
                        costs, tradable=tradable[mask])
@@ -114,6 +122,8 @@ def cell_result(data: dict, family: str, minutes: int, costs: SymbolCosts,
     # no cost saving can rescue; positive gross with negative net is friction.
     gross = float((df["r_multiple"] + df["cost_per_r"]).mean()) if len(df) else float("nan")
     return dict(symbol=data["symbol"], family=family, timeframe_min=minutes,
+                confirm_min=confirm_minutes, stop_mult=stop_mult,
+                hold_hours=hold_hours,
                 trades=m.trades, net_r=m.expectancy_r, win_rate=m.win_rate,
                 net_r_lo=m.expectancy_r_lo, gross_r=gross)
 
