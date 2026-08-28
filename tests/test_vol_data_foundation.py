@@ -649,3 +649,96 @@ def test_checkpoints_and_locks_always_follow_the_data_root():
     lines = out.stdout.split()
     assert lines[0] == "/tmp/isolation_probe/checkpoints"
     assert lines[1] == "/tmp/isolation_probe/locks"
+
+
+# ------------------------------------------- outage behaviour, deterministic
+
+class _FakeClient:
+    """Records what window was asked for, and serves bars for it."""
+
+    def __init__(self, now: int):
+        self.now = now
+        self.asked: list[tuple[int, int]] = []
+
+    def candles(self, symbol, resolution, start, end):
+        self.asked.append((start, end))
+        first = (start // 60 + 1) * 60
+        return [{"time": t, "open": 1.0, "high": 1.0, "low": 1.0,
+                 "close": 1.0, "volume": 1.0}
+                for t in range(first, end - 60, 60)]
+
+
+def test_the_candle_window_is_capped_so_an_outage_is_not_fully_backfilled():
+    """A short outage self-heals; a LONG one must leave a permanent gap.
+
+    The 90-second outage in the integration run was entirely inside the
+    15-minute window, so it was legitimately recovered in full -- that test
+    could not observe the cap it claimed to. This one does, deterministically,
+    without waiting sixteen real minutes.
+    """
+    now = 1_800_000_000
+    c = _FakeClient(now)
+    pr.candle_batch(c, ["BTCUSD"], now=now)
+    start, end = c.asked[0]
+    assert end - start == pr.CANDLE_LOOKBACK_SECONDS == 900
+    # An outage longer than the window leaves minutes no request will ever ask
+    # for again, because the next poll's window starts after them.
+    outage = 3600
+    c2 = _FakeClient(now + outage)
+    pr.candle_batch(c2, ["BTCUSD"], now=now + outage)
+    s2, _ = c2.asked[0]
+    assert s2 > end, (
+        "the post-outage window reaches back before the previous one ended; "
+        "the cap is not bounding recovery")
+    assert (s2 - end) // 60 >= 40, f"{(s2 - end) // 60} minutes permanently missing"
+
+
+def test_bars_fetched_long_after_their_open_are_labelled_recovered():
+    """fetched_ts is the provenance field. A bar recovered after an outage must
+    never be indistinguishable from one recorded live."""
+    now = 1_800_000_000
+    df = pr.candle_batch(_FakeClient(now), ["BTCUSD"], now=now)
+    age = df["fetched_ts"] - df["time"]
+    assert (df["fetched_ts"] == now).all()
+    assert (age >= 0).all(), "a bar claims to be fetched before it opened"
+    assert (age > 180).any(), "no bar in a 15m window is older than 180s"
+    assert (age <= 180).any(), "no bar in a 15m window is fresher than 180s"
+
+
+def test_a_recorded_gap_is_never_closed_by_a_later_write(tmp_path):
+    """Two batches either side of a hole must leave the hole."""
+    t0 = 1_800_000_000
+    archive.append_partition(_candle_rows(t0, 3), "perp_candles", root=tmp_path)
+    archive.append_partition(_candle_rows(t0 + 3600, 3), "perp_candles",
+                             root=tmp_path)
+    got = pd.read_parquet(archive.partition_path("perp_candles", t0, tmp_path))
+    times = np.sort(got["time"].unique())
+    assert len(times) == 6
+    assert (np.diff(times) > 60).sum() == 1
+    assert int(np.diff(times).max()) == 3600 - 120
+
+
+def test_health_sidecars_follow_the_root(tmp_path):
+    """Regression: detect_gaps and durability_report took a `root` but read
+    checkpoints and manifests from the production default, so an isolated run
+    reported on somebody else's state."""
+    archive.append_partition(_quote_rows(1_800_000_000), "perp_quotes",
+                             root=tmp_path)
+    cp = archive.read_checkpoint("perp_quotes", tmp_path / "checkpoints")
+    cp.last_timestamp = 1_800_000_000
+    archive.write_checkpoint(cp, tmp_path / "checkpoints")
+    d = health.durability_report(root=tmp_path)
+    assert d["datasets"]["perp_quotes"]["last_heartbeat"] == 1_800_000_000
+    prod = archive.read_checkpoint("perp_quotes")
+    assert prod.last_timestamp != 1_800_000_000, "test state reached production"
+    findings = health.detect_gaps(root=tmp_path)
+    assert {f["code"] for f in findings}
+
+
+def test_missing_minutes_are_reported_by_the_health_monitor(tmp_path):
+    t0 = 1_800_000_000
+    df = pd.concat([_candle_rows(t0, 3), _candle_rows(t0 + 3600, 3)],
+                   ignore_index=True)
+    archive.append_partition(df, "perp_candles", root=tmp_path)
+    codes = {f["code"] for f in health.detect_gaps(root=tmp_path)}
+    assert "perp_missing_minutes" in codes

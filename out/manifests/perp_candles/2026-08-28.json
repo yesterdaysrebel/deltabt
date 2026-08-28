@@ -3,10 +3,10 @@
   "venue": "delta_india",
   "date": "2026-08-28",
   "first_timestamp": 1787945760,
-  "last_timestamp": 1787947980,
-  "rows": 76,
+  "last_timestamp": 1787948220,
+  "rows": 84,
   "unique_contracts": 2,
-  "unique_batches": 38,
+  "unique_batches": 42,
   "schema_version": 1,
   "columns": [
     "time",
@@ -26,9 +26,9 @@
     "/workspaces/glueops/deltabt/data/perp/perp_candles_1m_2026-08-28.parquet"
   ],
   "checksums": {
-    "perp_candles_1m_2026-08-28.parquet": "e4c4bfde9ce82f3d8ade517a8becac0138816bb6fbba5cdda8f4f28f61ef8dd6"
+    "perp_candles_1m_2026-08-28.parquet": "2095cf36396057ead4f65bc67a6c705a20d39e4b6876eb78cfafe5f06f22dadd"
   },
-  "bytes": 7398,
+  "bytes": 7613,
   "collection_process_version": "2026-08-28.1",
-  "generated_at": "2026-08-28T20:15:48.146623+00:00"
+  "generated_at": "2026-08-28T20:19:05.561325+00:00"
 }

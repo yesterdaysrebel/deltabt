@@ -261,12 +261,17 @@ def durability_report(root: Path | None = None, *, now: int | None = None) -> di
 
     now = int(datetime.now(timezone.utc).timestamp()) if now is None else now
     base = Path(root or DATA_DIR)
+    # Sidecars follow the data root. Reading the production checkpoint while
+    # reporting on a temp dataset is the same isolation defect the recorder
+    # had, and it makes an isolated run look healthy on somebody else's state.
+    cp_root = base / "checkpoints" if root is not None else None
+    man_root = base / "manifests" if root is not None else archive.MANIFEST_ROOT
     out: dict = {"datasets": {}}
 
     for ds, expected_period in (("options", HEDGE_GRID_SECONDS),
                                 ("perp_quotes", 60), ("perp_candles", 60)):
         parts = bk.partitions(ds, root)
-        cp = archive.read_checkpoint(ds)
+        cp = archive.read_checkpoint(ds, cp_root)
         entry = {
             "partitions": len(parts),
             "latest_partition": parts[-1].name if parts else None,
@@ -282,9 +287,8 @@ def durability_report(root: Path | None = None, *, now: int | None = None) -> di
         }
         if parts:
             day = parts[-1].stem.split("_")[-1]
-            entry["manifest_present"] = (
-                archive.MANIFEST_ROOT / ds / f"{day}.json").exists()
-        cpp = archive.checkpoint_path(ds)
+            entry["manifest_present"] = (man_root / ds / f"{day}.json").exists()
+        cpp = archive.checkpoint_path(ds, cp_root)
         if cpp.exists():
             entry["checkpoint_age_seconds"] = int(now - cpp.stat().st_mtime)
         # The option recorder does not write a checkpoint -- it predates the
@@ -297,7 +301,7 @@ def durability_report(root: Path | None = None, *, now: int | None = None) -> di
             else WARN if age > 2 * expected_period else OK)
         out["datasets"][ds] = entry
 
-    out["integrity"] = bk.status(root)
+    out["integrity"] = bk.status(root, man_root)
     worst = [v["status"] for v in out["datasets"].values()] + [
         CRITICAL if out["integrity"]["integrity"] != "OK" else OK]
     out["status"] = (CRITICAL if CRITICAL in worst
@@ -334,8 +338,9 @@ def detect_gaps(root: Path | None = None, *, now: int | None = None) -> list[dic
             add(WARN, f"{name}_late", f"{name} recorder is {age/60:.1f} min behind")
 
     base = Path(root or DATA_DIR)
+    cp_root = base / "checkpoints" if root is not None else None
     for ds in ("options", "perp_quotes", "perp_candles"):
-        cp = archive.read_checkpoint(ds)
+        cp = archive.read_checkpoint(ds, cp_root)
         if cp.last_error:
             add(WARN, f"{ds}_api_error",
                 f"last recorded failure for {ds}: {cp.last_error}")
