@@ -1,0 +1,238 @@
+{
+  "timestamp": "2026-08-28T20:15:49.302285+00:00",
+  "git_sha": "a3f0430a5cf9327d41dacd1f71a81cfd48ba0bee",
+  "options_coverage": {
+    "rows": 423448,
+    "first_ts": 1787587402,
+    "last_ts": 1787947471,
+    "first": "2026-08-24 16:03:22+00:00",
+    "last": "2026-08-28 20:04:31+00:00",
+    "calendar_days": 4.167,
+    "snapshots": 402,
+    "usable_snapshots": 402,
+    "expected_snapshots": 401,
+    "usable_fraction": 1.0,
+    "usable_days": 4.167,
+    "usable_fraction_raw": 1.0025,
+    "snapshots_per_day": 96.5,
+    "unique_contracts_per_day": 1225.0,
+    "two_sided_pct": 99.876,
+    "complete_pct": 99.876,
+    "missing_bid_pct": 0.085,
+    "missing_ask_pct": 0.031,
+    "missing_size_pct": 0.096,
+    "stale_pct": 0.599,
+    "crossed_pct": 0.029,
+    "locked_pct": 0.002,
+    "underlyings": [
+      "BTC",
+      "ETH",
+      "XAUT"
+    ]
+  },
+  "perp_coverage": {
+    "quote_rows": 38,
+    "candle_rows": 76,
+    "per_symbol": {
+      "BTCUSD": {
+        "quote_rows": 19,
+        "distinct_minutes": 19,
+        "expected_minutes": 25,
+        "minute_completeness": 0.76,
+        "two_sided_pct": 100.0,
+        "duplicate_rows": 0
+      },
+      "ETHUSD": {
+        "quote_rows": 19,
+        "distinct_minutes": 19,
+        "expected_minutes": 25,
+        "minute_completeness": 0.76,
+        "two_sided_pct": 100.0,
+        "duplicate_rows": 0
+      }
+    },
+    "first_ts": 1787946617,
+    "last_ts": 1787948097,
+    "calendar_days": 0.017,
+    "first": "2026-08-28 19:50:17+00:00",
+    "last": "2026-08-28 20:14:57+00:00",
+    "symbols": [
+      "BTCUSD",
+      "ETHUSD"
+    ],
+    "exchange_lag_s": {
+      "median": 8.864,
+      "p95": 12.805,
+      "p99": 12.913,
+      "max": 12.913
+    },
+    "usable_days": 0.013,
+    "candles": {
+      "BTCUSD": {
+        "bars": 38,
+        "expected_bars": 38,
+        "completeness": 1.0,
+        "missing_minutes": 0,
+        "duplicate_bar_times": 0,
+        "gaps_over_1m": 0,
+        "largest_gap_min": 1.0,
+        "recorded_live_pct": 5.26
+      },
+      "ETHUSD": {
+        "bars": 38,
+        "expected_bars": 38,
+        "completeness": 1.0,
+        "missing_minutes": 0,
+        "duplicate_bar_times": 0,
+        "gaps_over_1m": 0,
+        "largest_gap_min": 1.0,
+        "recorded_live_pct": 5.26
+      }
+    }
+  },
+  "overlap": {
+    "overlap_start": "2026-08-28 19:50:17+00:00",
+    "overlap_end": "2026-08-28 20:04:31+00:00",
+    "overlap_days": 0.0099,
+    "usable_option_snapshots_in_overlap": 1,
+    "expected_grid_points": 1,
+    "hedgeable_slots": 1,
+    "hedgeable_fraction": 1.0,
+    "hedgeable_days": 0.0099,
+    "per_symbol": {
+      "BTCUSD": {
+        "hedgeable_slots": 1,
+        "fraction": 1.0,
+        "median_align_gap_s": 26.0
+      },
+      "ETHUSD": {
+        "hedgeable_slots": 1,
+        "fraction": 1.0,
+        "median_align_gap_s": 26.0
+      }
+    }
+  },
+  "schema_versions": {
+    "options": 1,
+    "perp_quotes": 1,
+    "perp_candles": 1
+  },
+  "dedup_keys": {
+    "options": [
+      "snapshot_ts",
+      "symbol"
+    ],
+    "perp_quotes": [
+      "snapshot_ts",
+      "symbol"
+    ],
+    "perp_candles": [
+      "time",
+      "symbol"
+    ]
+  },
+  "collector_version": "2026-08-28.1",
+  "health_findings": [
+    {
+      "severity": "OK",
+      "code": "healthy",
+      "message": "all recorders current, no gaps detected"
+    }
+  ],
+  "durability": {
+    "datasets": {
+      "options": {
+        "partitions": 5,
+        "latest_partition": "quotes_2026-08-28.parquet",
+        "latest_partition_bytes": 8135529,
+        "partition_age_seconds": 675,
+        "manifest_present": true,
+        "checkpoint_age_seconds": null,
+        "last_heartbeat": null,
+        "heartbeat_age_seconds": null,
+        "schema_version": 1,
+        "last_error": null,
+        "status": "OK"
+      },
+      "perp_quotes": {
+        "partitions": 1,
+        "latest_partition": "perp_quotes_2026-08-28.parquet",
+        "latest_partition_bytes": 13193,
+        "partition_age_seconds": 51,
+        "manifest_present": true,
+        "checkpoint_age_seconds": 51,
+        "last_heartbeat": 1787948097,
+        "heartbeat_age_seconds": 52,
+        "schema_version": 1,
+        "last_error": null,
+        "status": "OK"
+      },
+      "perp_candles": {
+        "partitions": 1,
+        "latest_partition": "perp_candles_1m_2026-08-28.parquet",
+        "latest_partition_bytes": 7398,
+        "partition_age_seconds": 50,
+        "manifest_present": true,
+        "checkpoint_age_seconds": 50,
+        "last_heartbeat": 1787947980,
+        "heartbeat_age_seconds": 169,
+        "schema_version": 1,
+        "last_error": null,
+        "status": "OK"
+      }
+    },
+    "integrity": {
+      "sealed_partitions_checked": 4,
+      "open_partitions": [
+        "/workspaces/glueops/deltabt/data/quotes/quotes_2026-08-28.parquet",
+        "/workspaces/glueops/deltabt/data/perp/perp_quotes_2026-08-28.parquet",
+        "/workspaces/glueops/deltabt/data/perp/perp_candles_1m_2026-08-28.parquet"
+      ],
+      "checksum_ok": 4,
+      "checksum_mismatched": [],
+      "unmanifested_partitions": [],
+      "orphan_manifests": [],
+      "integrity": "OK",
+      "backup_target_configured": false,
+      "backup_target_note": "No durable target exists. scripts/backup.sh covers the paper Postgres database only, and the sole S3 bucket in infra/terraform is the OpenTofu state bucket, which is not a market-data target. Run `python -m deltabt.data.backup --destination <path>` against a mounted volume to create one.",
+      "last_backup": null
+    },
+    "status": "OK",
+    "backup_current": false
+  },
+  "hedgeable_usable_day_count": 0.0099,
+  "day_counts": {
+    "options_calendar_days": 4.167,
+    "options_usable_days": 4.167,
+    "perp_calendar_days": 0.017,
+    "perp_usable_days": 0.013,
+    "overlap_days": 0.0099,
+    "hedgeable_overlap_days": 0.0099
+  },
+  "readiness": {
+    "status": "BLOCKED",
+    "ready": false,
+    "checks": {
+      "options_usable_days_ge_182": false,
+      "options_usable_fraction_ge_0.90": true,
+      "perp_usable_days_ge_182": false,
+      "overlap_hedgeable_days_ge_182": false,
+      "overlap_hedgeable_fraction_ge_0.90": true,
+      "quote_quality_two_sided_ge_0.60": true,
+      "no_synthetic_execution": true,
+      "no_future_reconstruction": true
+    },
+    "detail": {
+      "options_calendar_days": 4.167,
+      "options_usable_days": 4.167,
+      "options_usable_fraction": 1.0,
+      "perp_calendar_days": 0.017,
+      "perp_usable_days": 0.013,
+      "overlap_days": 0.0099,
+      "hedgeable_days": 0.0099,
+      "hedgeable_fraction": 1.0,
+      "required_days": 182
+    }
+  },
+  "note": "Infrastructure state, not research evidence. No experiment has been run."
+}

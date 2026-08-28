@@ -1,0 +1,43 @@
+{
+  "dataset": "perp_quotes",
+  "venue": "delta_india",
+  "date": "2026-08-28",
+  "first_timestamp": 1787946617,
+  "last_timestamp": 1787948097,
+  "rows": 38,
+  "unique_contracts": 2,
+  "unique_batches": 19,
+  "schema_version": 1,
+  "columns": [
+    "snapshot_ts",
+    "exchange_ts",
+    "recv_ts",
+    "symbol",
+    "underlying",
+    "best_bid",
+    "best_ask",
+    "bid_size",
+    "ask_size",
+    "mark_price",
+    "spot_price",
+    "last_price",
+    "mark_basis",
+    "funding_rate",
+    "oi_contracts",
+    "turnover_usd",
+    "volume"
+  ],
+  "dedup_key": [
+    "snapshot_ts",
+    "symbol"
+  ],
+  "file_paths": [
+    "/workspaces/glueops/deltabt/data/perp/perp_quotes_2026-08-28.parquet"
+  ],
+  "checksums": {
+    "perp_quotes_2026-08-28.parquet": "8bd4f54c5a11b217d10ed960aafc7a504932a63194edd99f6b9e1bc83fa4bb47"
+  },
+  "bytes": 13193,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-28T20:15:48.144295+00:00"
+}

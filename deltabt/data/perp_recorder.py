@@ -282,30 +282,32 @@ def run(*, interval: int = DEFAULT_INTERVAL_SECONDS,
             pass
 
     attempts = written = 0
-    while not stopping["now"]:
-        started = time.monotonic()
-        attempts += 1
-        try:
-            record_once(client, symbols=symbols, root=root)
-            written += 1
-        except Exception as exc:  # noqa: BLE001 -- a recorder that exits records nothing
-            log.warning("perp poll failed, continuing: %s: %s",
-                        type(exc).__name__, exc)
-            _, cp_root = _sidecar_roots(root)
-            for ds in ("perp_quotes", "perp_candles"):
-                cp = archive.read_checkpoint(ds, cp_root)
-                cp.last_error = f"{type(exc).__name__}: {exc}"
-                archive.write_checkpoint(cp, cp_root)
-        # ATTEMPTS, not successes. Bounding on successes means a sustained
-        # outage never terminates a bounded run -- which is right for the
-        # daemon and wrong for anything that has to finish, including the
-        # recovery test that found this.
-        if max_polls is not None and attempts >= max_polls:
-            break
-        remaining = interval - (time.monotonic() - started)
-        while remaining > 0 and not stopping["now"]:
-            time.sleep(min(1.0, remaining))
-            remaining -= 1.0
+    lock_root = Path(root) / "locks" if root is not None else None
+    with archive.single_instance("perp_recorder", lock_root):
+        while not stopping["now"]:
+            started = time.monotonic()
+            attempts += 1
+            try:
+                record_once(client, symbols=symbols, root=root)
+                written += 1
+            except Exception as exc:  # noqa: BLE001 -- a recorder that exits records nothing
+                log.warning("perp poll failed, continuing: %s: %s",
+                            type(exc).__name__, exc)
+                _, cp_root = _sidecar_roots(root)
+                for ds in ("perp_quotes", "perp_candles"):
+                    cp = archive.read_checkpoint(ds, cp_root)
+                    cp.last_error = f"{type(exc).__name__}: {exc}"
+                    archive.write_checkpoint(cp, cp_root)
+            # ATTEMPTS, not successes. Bounding on successes means a sustained
+            # outage never terminates a bounded run -- which is right for the
+            # daemon and wrong for anything that has to finish, including the
+            # recovery test that found this.
+            if max_polls is not None and attempts >= max_polls:
+                break
+            remaining = interval - (time.monotonic() - started)
+            while remaining > 0 and not stopping["now"]:
+                time.sleep(min(1.0, remaining))
+                remaining -= 1.0
     return written
 
 

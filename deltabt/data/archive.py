@@ -35,17 +35,21 @@ MISSING MEANS MISSING
 
 from __future__ import annotations
 
+import errno
+import fcntl
 import hashlib
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from deltabt.config import DATA_DIR
+from deltabt.config import ROOT as _REPO_ROOT
+from deltabt.config import DATA_DIR, OUT_DIR
 
 #: Bump when the MEANING of a column changes or a column is added/removed.
 #: Never reinterpret an existing version -- historical rows keep their schema.
@@ -79,7 +83,33 @@ TIME_COLUMN: dict[str, str] = {
 }
 
 ARCHIVE_ROOT = DATA_DIR
-MANIFEST_ROOT = DATA_DIR / "manifests"
+
+def _default_manifest_root() -> Path:
+    """Manifests live under out/, which git TRACKS, while the partitions they
+    describe live under data/, which .gitignore excludes wholesale.
+
+    That asymmetry is the point. A manifest exists to answer one question --
+    which observations existed before an experiment was frozen -- and a record
+    that lives only beside the data it describes dies with it. Manifests are a
+    few KB a day, so pushing them to the git remote gives the audit trail an
+    independent durable copy for free, even while the bulk data has none.
+
+    BUT ONLY FOR THE PRODUCTION DATASET. If DELTABT_DATA has been pointed
+    somewhere else -- a test, a scratch run, a restore rehearsal -- manifests
+    follow the data instead. Otherwise an isolated run writes into the tracked
+    tree and can overwrite the manifest describing the real partition for the
+    same day, which is exactly the silent production mutation the isolation
+    rule exists to prevent. Found by the reboot test, which did it.
+    """
+    if DATA_DIR == _REPO_ROOT / "data":
+        return OUT_DIR / "manifests"
+    return DATA_DIR / "manifests"
+
+
+MANIFEST_ROOT = _default_manifest_root()
+
+#: Checkpoints stay under data/: they are mutable process state, not an audit
+#: trail, and committing a file that changes every 60 seconds would be noise.
 CHECKPOINT_ROOT = DATA_DIR / "checkpoints"
 
 #: Bumped when a recorder's collection behaviour changes, so a manifest says
@@ -275,3 +305,53 @@ def refresh_manifests(dataset: str, *, root: Path | None = None,
     for p in sorted(globs.glob(f"{prefix}*.parquet")):
         out.append(write_manifest(dataset, p, root=manifest_root))
     return out
+
+
+# ------------------------------------------------------- single instance lock
+
+LOCK_ROOT = DATA_DIR / "locks"
+
+
+class AlreadyRunning(RuntimeError):
+    """Another instance of this recorder holds the lock."""
+
+
+@contextmanager
+def single_instance(name: str, root: Path | None = None):
+    """Refuse to start a second writer for the same dataset.
+
+    WHY THIS IS A CORRECTNESS FIX AND NOT A CONVENIENCE
+        `append_partition` is read-modify-write: it reads the whole daily
+        partition, merges the new batch and replaces the file. Two concurrent
+        writers therefore race on the WHOLE DAY, not on a row -- A reads, B
+        reads, A writes, B writes, and A's snapshot is gone. The loss is
+        silent, and for forward-only data it is permanent.
+
+        A systemd unit cannot race itself, but a manual `python -m
+        deltabt.data.quote_recorder` alongside a running service can, and that
+        is exactly how this repository has been operated.
+
+    `flock` is released automatically when the process dies for any reason,
+    including SIGKILL, so a crash never leaves a stale lock behind.
+    """
+    d = Path(root or LOCK_ROOT)
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{name}.lock"
+    fh = open(path, "w")
+    try:
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EAGAIN):
+                raise AlreadyRunning(
+                    f"another {name} recorder already holds {path}; refusing to "
+                    f"start a second writer on the same partitions") from None
+            raise
+        fh.write(f"{os.getpid()}\n")
+        fh.flush()
+        yield path
+    finally:
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            fh.close()

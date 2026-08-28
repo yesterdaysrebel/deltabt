@@ -249,6 +249,63 @@ def overlap_health(root: Path | None = None) -> dict:
     }
 
 
+# ------------------------------------------------------- daily durability
+
+def durability_report(root: Path | None = None, *, now: int | None = None) -> dict:
+    """Is today's recorded data durable and recoverable?
+
+    Infrastructure health only. Nothing here is a research metric and nothing
+    here may be read as one.
+    """
+    from deltabt.data import backup as bk
+
+    now = int(datetime.now(timezone.utc).timestamp()) if now is None else now
+    base = Path(root or DATA_DIR)
+    out: dict = {"datasets": {}}
+
+    for ds, expected_period in (("options", HEDGE_GRID_SECONDS),
+                                ("perp_quotes", 60), ("perp_candles", 60)):
+        parts = bk.partitions(ds, root)
+        cp = archive.read_checkpoint(ds)
+        entry = {
+            "partitions": len(parts),
+            "latest_partition": parts[-1].name if parts else None,
+            "latest_partition_bytes": parts[-1].stat().st_size if parts else 0,
+            "partition_age_seconds": (
+                int(now - parts[-1].stat().st_mtime) if parts else None),
+            "manifest_present": None,
+            "checkpoint_age_seconds": None,
+            "last_heartbeat": cp.last_timestamp or None,
+            "heartbeat_age_seconds": (now - cp.last_timestamp) if cp.last_timestamp else None,
+            "schema_version": cp.schema_version or archive.SCHEMA_VERSIONS[ds],
+            "last_error": cp.last_error or None,
+        }
+        if parts:
+            day = parts[-1].stem.split("_")[-1]
+            entry["manifest_present"] = (
+                archive.MANIFEST_ROOT / ds / f"{day}.json").exists()
+        cpp = archive.checkpoint_path(ds)
+        if cpp.exists():
+            entry["checkpoint_age_seconds"] = int(now - cpp.stat().st_mtime)
+        # The option recorder does not write a checkpoint -- it predates the
+        # archive module and its collection semantics were deliberately left
+        # untouched -- so its liveness is read from the partition instead.
+        stale_after = 3 * expected_period
+        age = entry["partition_age_seconds"]
+        entry["status"] = (
+            CRITICAL if age is None or age > stale_after
+            else WARN if age > 2 * expected_period else OK)
+        out["datasets"][ds] = entry
+
+    out["integrity"] = bk.status(root)
+    worst = [v["status"] for v in out["datasets"].values()] + [
+        CRITICAL if out["integrity"]["integrity"] != "OK" else OK]
+    out["status"] = (CRITICAL if CRITICAL in worst
+                     else WARN if WARN in worst else OK)
+    out["backup_current"] = out["integrity"]["last_backup"] is not None
+    return out
+
+
 # ----------------------------------------------------------- gap detection
 
 def detect_gaps(root: Path | None = None, *, now: int | None = None) -> list[dict]:

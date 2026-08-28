@@ -92,9 +92,36 @@ def main() -> None:
               + (f"  median align gap {v['median_align_gap_s']}s"
                  if v.get("median_align_gap_s") is not None else ""))
 
+    dur = health.durability_report()
+    print("\nDURABILITY  <- is today's data recoverable?")
+    for ds, v in dur["datasets"].items():
+        age = v["partition_age_seconds"]
+        print(f"  [{v['status']:<8}] {ds:<14} {v['latest_partition'] or '-':<34} "
+              f"age {age if age is not None else '-'}s  "
+              f"manifest {'yes' if v['manifest_present'] else 'NO'}  "
+              f"schema v{v['schema_version']}"
+              + (f"  last_error {v['last_error'][:40]}" if v["last_error"] else ""))
+    integ = dur["integrity"]
+    print(f"  {'checksum integrity':<{W}} {integ['integrity']}  "
+          f"({integ['checksum_ok']}/{integ['sealed_partitions_checked']} sealed partitions verified, "
+          f"{len(integ['open_partitions'])} open)")
+    print(f"  {'backup target':<{W}} {'configured' if integ['backup_target_configured'] else 'NONE CONFIGURED'}")
+    print(f"  {'last backup':<{W}} {integ['last_backup'] or 'never'}")
+
     print("\nGAPS / ALERTS")
     for g in gaps:
         print(f"  [{g['severity']:<8}] {g['code']:<28} {g['message']}")
+
+    print("\nSIX-MONTH CLOCK  (never inferred from file count or calendar span)")
+    dc = [("calendar days (options)", o.get("calendar_days", 0.0)),
+          ("usable options days", o.get("usable_days", 0.0)),
+          ("calendar days (perp)", p.get("calendar_days", 0.0)),
+          ("usable perp days", p.get("usable_days", 0.0)),
+          ("overlap days", ov.get("overlap_days", 0.0)),
+          ("HEDGEABLE overlap days", ov.get("hedgeable_days", 0.0))]
+    for label, v in dc:
+        print(f"  {label:<{W}} {v:.4f}"
+              + (f"   / {health.REQUIRED_DAYS} required" if "HEDGEABLE" in label else ""))
 
     print("\nREADINESS GATE")
     for k, v in r.checks.items():
@@ -115,6 +142,16 @@ def main() -> None:
         "dedup_keys": {k: list(v) for k, v in archive.DEDUP_KEYS.items()},
         "collector_version": archive.COLLECTOR_VERSION,
         "health_findings": gaps,
+        "durability": dur,
+        "hedgeable_usable_day_count": ov.get("hedgeable_days", 0.0),
+        "day_counts": {
+            "options_calendar_days": o.get("calendar_days", 0.0),
+            "options_usable_days": o.get("usable_days", 0.0),
+            "perp_calendar_days": p.get("calendar_days", 0.0),
+            "perp_usable_days": p.get("usable_days", 0.0),
+            "overlap_days": ov.get("overlap_days", 0.0),
+            "hedgeable_overlap_days": ov.get("hedgeable_days", 0.0),
+        },
         "readiness": {"status": r.status, "ready": r.ready,
                       "checks": r.checks, "detail": r.detail},
         "note": "Infrastructure state, not research evidence. No experiment has been run.",

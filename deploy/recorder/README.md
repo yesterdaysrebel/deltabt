@@ -1,48 +1,132 @@
-# Option quote surface recorder
+# Forward recorders — operations
 
-Captures what Delta does not keep.
+Two processes keep the volatility programme alive. Neither can be backfilled:
+whatever they do not capture at the moment the exchange serves it is gone.
 
-The exchange serves candle history for traded premium and for mark price going
-back to 2024-01, and none whatsoever for **quotes, implied vol or greeks**.
-`best_bid`, `best_ask`, `bid_iv`, `ask_iv`, `mark_iv` and the greek set live
-only in the current `/v2/tickers` response.
+| unit | what it records | cadence |
+|---|---|---|
+| `deltabt-quote-recorder` | option quote surface (bid/ask/size, IV, greeks, OI) | 900 s |
+| `deltabt-perp-recorder` | BTCUSD/ETHUSD perpetual quotes + 1 m OHLCV | 60 s |
 
-This matters because the quoted spread is the **larger half of the round trip**
-on this venue -- 1.34% of mid at the median against a 1.18% fee term, on an
-ATM straddle whose total friction is 6-11% of premium
-(`docs/options_feasibility.md` §3). Until a real spread record exists, every
-options backtest here is conditional on today's spread having applied on a past
-date, which is an assumption and is labelled as one throughout.
+They are only useful **together**. H-Vol-6 needs the option surface *and* the
+hedge instrument at the same instant, so the readiness metric is the overlap
+between them, not either series alone.
 
-## Running it
+---
 
-Locally, for a quick look:
+## Before you install: two ways to silently lose the dataset
 
-    python -m deltabt.data.quote_recorder --once        # one snapshot, then exit
-    python -m deltabt.data.quote_recorder               # poll every 900s
+**1. A different data root.** Both units set
+`Environment=DELTABT_DATA=/var/lib/deltabt/data`. The recorders default to
+`<checkout>/data` when the variable is unset, which is where the manually
+launched processes have been writing since 2026-08-24. Starting a unit with a
+different root does not fail — it begins an empty second dataset and leaves the
+real one to rot, while both `systemctl status` and the audit look healthy.
 
-Durably, on a host that stays up:
+Point `DELTABT_DATA` at the directory that already holds the history, or move
+that directory to `/var/lib/deltabt/data` first. There is no merge afterwards
+that recovers a missed snapshot.
 
-    sudo cp deltabt-quote-recorder.service /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now deltabt-quote-recorder
+**2. A second writer.** `append_partition` is read-modify-write over the whole
+daily partition: two writers race on the day, not the row, and one silently
+discards the other's snapshots. Both recorders now take an exclusive `flock`,
+but **the processes running since 2026-08-24 predate the lock and do not hold
+it.** Stop them before starting a unit:
 
-A session-scoped background process is fine for a day and wrong for a quarter:
-the gap left by a laptop closing cannot be backfilled from any endpoint.
+```sh
+pkill -f 'deltabt.data.quote_recorder'
+pkill -f 'deltabt.data.perp_recorder'
+sleep 2
+```
 
-## What lands on disk
+## Install
 
-One Parquet file per UTC day under `$DELTABT_DATA/quotes/`, appended per
-snapshot and deduplicated on `(snapshot_ts, symbol)`. Roughly 103k rows/day at
-the 900s default, near 1 GB/year.
+```sh
+sudo cp deltabt-*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now deltabt-quote-recorder deltabt-perp-recorder
+journalctl -u deltabt-quote-recorder -u deltabt-perp-recorder -f
+```
 
-Both the local poll instant and the exchange's own timestamp are stored, so
-clock skew stays measurable rather than assumed away.
+Installation needs root. The services themselves run as the unprivileged
+`deltabt` user, with `ProtectSystem=strict` and a single `ReadWritePaths`.
 
-## When it becomes useful
+`Restart=on-failure`, not `always`: a clean `systemctl stop` is an operator
+decision and must not be undone by the supervisor. `StartLimitBurst=5` in 600 s
+stops a restart storm — a process dying at startup has a bad path, a missing
+venv or a held lock, none of which retrying fixes.
 
-Not immediately -- it is building a record, and a week of it says little. The
-point at which it changes a conclusion is when there is enough history to
-replace `DEFAULT_HALF_SPREAD_FRAC` in `deltabt/options_costs.py` with a
-measured, time-varying, per-moneyness spread. Until then it costs one process
-and about 3 MB a day.
+## Daily check
+
+```sh
+python -m deltabt.data.backup --verify-only     # checksums vs manifests
+python scripts/vol_data_audit.py                # coverage, gaps, readiness
+```
+
+The audit prints the six-month clock as five distinct numbers. Only the last
+one gates H-Vol-6:
+
+```
+calendar days (options) / usable options days / calendar days (perp)
+usable perp days / overlap days / HEDGEABLE overlap days
+```
+
+## Backup
+
+No durable target is configured. `scripts/backup.sh` covers the paper-trading
+Postgres database only, and the sole S3 bucket in `infra/terraform` is the
+OpenTofu **state** bucket — not a market-data target.
+
+```sh
+python -m deltabt.data.backup --destination /mnt/vol              # dry run
+python -m deltabt.data.backup --destination /mnt/vol --execute    # copies
+```
+
+Dry run is the default. Copies are verified by re-hashing the destination, not
+the source. Raw partitions are copied before the manifests that describe them,
+so a torn backup never claims to describe data it does not contain.
+
+---
+
+## MANUAL REBOOT TEST — NOT EXECUTED
+
+Everything below the reboot itself is covered by the automated suite: SIGKILL
+mid-write, restart, checkpoint recovery, duplicate-free resumption, manifest
+checksum continuity, a deliberate outage left as a real gap, and recovered bars
+labelled `fetched_ts` rather than passed off as live.
+
+**The host reboot itself has NOT been performed.** This environment is a dev
+container running both recorders and the interactive session; rebooting it
+would terminate the very dataset the exercise protects. Run this on the
+production host after installing the units, and record the result here.
+
+```sh
+# 1. before
+systemctl is-enabled deltabt-quote-recorder deltabt-perp-recorder   # expect: enabled
+python -m deltabt.data.backup --verify-only > /tmp/pre-reboot.json
+python scripts/vol_data_audit.py | tee /tmp/pre-reboot-audit.txt
+
+# 2. reboot
+sudo reboot
+
+# 3. after — expect both active, without manual intervention
+systemctl is-active deltabt-quote-recorder deltabt-perp-recorder
+journalctl -u deltabt-perp-recorder --since "-10 min" | head -20
+
+# 4. integrity: sealed partitions must still match their manifests
+python -m deltabt.data.backup --verify-only
+
+# 5. continuity: the downtime must appear as a GAP, never as filled minutes
+python scripts/vol_data_audit.py
+```
+
+Pass requires all of:
+
+- both units `active` after boot with no manual start
+- checksum integrity `OK` on every sealed partition
+- no duplicate rows under the dedup key
+- no `.tmp` residue under `$DELTABT_DATA`
+- the reboot window visible as missing minutes in the audit, **not** filled
+- `hedgeable_usable_day_count` continues from its pre-reboot value
+
+Do not record this as PASS until it has actually been run.

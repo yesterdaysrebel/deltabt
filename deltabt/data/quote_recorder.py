@@ -45,6 +45,7 @@ from pathlib import Path
 import pandas as pd
 
 from deltabt.config import DATA_DIR
+from deltabt.data import archive
 from deltabt.data.client import DeltaClient
 
 log = logging.getLogger(__name__)
@@ -224,21 +225,31 @@ def run(
         except ValueError:
             pass  # not on the main thread; caller handles shutdown
 
-    written = 0
-    while not stopping["now"]:
-        started = time.monotonic()
-        try:
-            record_once(client, quote_dir=quote_dir)
-            written += 1
-        except Exception as exc:  # noqa: BLE001 -- see docstring
-            log.warning("snapshot failed, continuing: %s: %s", type(exc).__name__, exc)
+    # SINGLE INSTANCE. Added 2026-08-28; collection semantics are untouched.
+    # `append` is read-modify-write over the whole daily partition, so a second
+    # writer silently discards the first one's snapshots. The running process
+    # (PID 160539) predates this lock and does not hold it, so it must be
+    # stopped before a systemd unit is started -- see deploy/recorder/README.md.
+    attempts = written = 0
+    with archive.single_instance("quote_recorder"):
+        while not stopping["now"]:
+            started = time.monotonic()
+            attempts += 1
+            try:
+                record_once(client, quote_dir=quote_dir)
+                written += 1
+            except Exception as exc:  # noqa: BLE001 -- see docstring
+                log.warning("snapshot failed, continuing: %s: %s",
+                            type(exc).__name__, exc)
 
-        if max_snapshots is not None and written >= max_snapshots:
-            break
-        sleep_for = interval - (time.monotonic() - started)
-        while sleep_for > 0 and not stopping["now"]:
-            time.sleep(min(1.0, sleep_for))
-            sleep_for -= 1.0
+            # ATTEMPTS, not successes: a bounded run must terminate even when
+            # every poll fails. Same defect the perp recorder had.
+            if max_snapshots is not None and attempts >= max_snapshots:
+                break
+            sleep_for = interval - (time.monotonic() - started)
+            while sleep_for > 0 and not stopping["now"]:
+                time.sleep(min(1.0, sleep_for))
+                sleep_for -= 1.0
     return written
 
 
