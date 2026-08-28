@@ -208,7 +208,8 @@ FAMILIES: dict[str, dict] = {
 
 
 def build_spec(family: str, primary_minutes: int,
-               confirm_minutes: int | None = None) -> StrategySpec:
+               confirm_minutes: int | None = None,
+               stop_atr_multiplier: float | None = None) -> StrategySpec:
     """Build a family's spec at ``primary_minutes``.
 
     ``confirm_minutes`` overrides the constant 5:1 ratio. It exists so the
@@ -238,5 +239,21 @@ def build_spec(family: str, primary_minutes: int,
         confirm=f["confirm"],
     )
     spec = replace(spec, **f["over"])
+    # Widening the stop is the one lever that moves cost_r DIRECTLY:
+    # cost_r = round_trip_rate / stop_pct, so doubling the stop halves it.
+    # Whether that helps is not obvious and must be measured, because R is the
+    # unit gross_r is denominated in -- a fixed price edge is worth half as
+    # many R when R doubles, so gross and cost may simply shrink together and
+    # converge on zero rather than on profit.
+    #
+    # Only meaningful for ATR-stop families; a fixed-percentage stop ignores
+    # it, and saying so beats silently doing nothing.
+    if stop_atr_multiplier is not None:
+        if f["over"].get("stop") != "atr":
+            raise ValueError(
+                f"family {family!r} does not use an ATR stop "
+                f"(stop={f['over'].get('stop')!r}), so stop_atr_multiplier "
+                f"would have no effect")
+        spec = replace(spec, stop_atr_multiplier=stop_atr_multiplier)
     spec.validate()
     return spec

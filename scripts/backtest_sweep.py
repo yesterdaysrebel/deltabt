@@ -61,6 +61,10 @@ def main() -> None:
     # rounded, because a confirmation bar that does not tile the primary lands
     # on a different instant every bar. Omit for the ratio, which is default.
     ap.add_argument("--confirm", nargs="*", type=int, default=None)
+    # Override the family's ATR stop multiplier. cost_r = round_trip_rate /
+    # stop_pct, so this is the only knob that moves cost directly rather than
+    # by filtering signals. Skipped for fixed-percentage-stop families.
+    ap.add_argument("--stop-mult", nargs="*", type=float, default=None)
     ap.add_argument("--out", default=str(OUT / "backtests.csv"))
     args = ap.parse_args()
 
@@ -102,16 +106,20 @@ def main() -> None:
                     if confirm is not None and (confirm > minutes
                                                 or minutes % confirm):
                         continue
-                    try:
-                        rows.append(run_cell(data, family, minutes, costs,
-                                             cache, confirm))
-                    except Exception as exc:              # noqa: BLE001
-                        log.warning("%s %s @%dm/%sm failed: %s", symbol, family,
-                                    minutes, confirm, exc)
-                        rows.append(dict(symbol=symbol, family=family,
-                                         timeframe_min=minutes,
-                                         confirm_min=confirm,
-                                         status=f"error: {exc}"))
+                    for mult in (args.stop_mult or [None]):
+                        try:
+                            row = run_cell(data, family, minutes, costs,
+                                           cache, confirm, mult)
+                            row["stop_mult"] = mult
+                            rows.append(row)
+                        except Exception as exc:          # noqa: BLE001
+                            log.warning("%s %s @%dm/%sm x%s failed: %s", symbol,
+                                        family, minutes, confirm, mult, exc)
+                            rows.append(dict(symbol=symbol, family=family,
+                                             timeframe_min=minutes,
+                                             confirm_min=confirm,
+                                             stop_mult=mult,
+                                             status=f"error: {exc}"))
                 done += 1
             log.info("%s @%dm  (%d/%d, %.0fs)", symbol, minutes, done, total,
                      time.time() - t0)
