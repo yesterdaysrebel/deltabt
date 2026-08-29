@@ -50,6 +50,13 @@ DELTABOT_MAX_OPEN=${max_open_positions}
 DELTABOT_MAX_DRAWDOWN=${max_drawdown_pct}
 DELTABOT_MAX_DAILY_LOSS=${max_daily_loss_pct}
 DELTABOT_MAX_CONSEC_LOSSES=${max_consecutive_losses}
+# The two cooldowns. Written here from 2026-08-29 because they previously
+# reached no host at all -- settings.py read them, nothing set them, so the
+# container always used 900/3600 whatever this file said. Both are GLOBAL
+# across symbols, so a non-zero value censors the sample toward whatever
+# fires earliest. They are part of the risk hash.
+DELTABOT_COOLDOWN_AFTER_TRADE=${cooldown_after_trade_seconds}
+DELTABOT_COOLDOWN_AFTER_LOSS=${cooldown_after_loss_seconds}
 # 0 disables the time stop and is the current value. It is written here
 # because it previously reached no host at all: the code shipped, the
 # delivery did not. Setting it non-zero moves the risk hash, so a running
