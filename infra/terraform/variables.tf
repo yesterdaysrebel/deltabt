@@ -276,6 +276,22 @@ variable "bot_symbols" {
     narrowing above was correct for v5 and is being reversed for a different
     strategy, not overruled.
 
+    DROPPED TO FIVE ON 2026-08-29 AND RESTORED THE SAME DAY. The drop gave as
+    its reason the line above -- "Changing it changes the experiment identity"
+    -- which is an argument for leaving a universe alone, not for removing a
+    symbol from it. It also left this block describing six symbols and naming
+    BANKUSD among them while the default listed five, so the file argued
+    against itself for the length of one commit. The six are restored, and the
+    comparability argument of 2026-08-26 is the operative one again.
+
+    WHAT BANKUSD COSTS ON A 5m PRIMARY. resample_complete keeps a bucket with
+    at least min_frac=0.9 of its minutes, so a 5m bar needs 4 of 5: one absent
+    minute is tolerated, two drop the bar, and the 16-minute gap observed on
+    2026-08-26 removes three or four consecutive bars outright. The filter
+    drops rather than truncates, so the bars that survive are honest and the
+    cost is a thin, intermittent sample -- read BANKUSD's per-symbol counts
+    with that in mind, and do not read its absence from a window as a signal.
+
     CHANGING THIS REPLACES THE INSTANCE. It is interpolated into user_data and
     ec2.tf sets user_data_replace_on_change = true, so BOT_INSTANCE_ID_V5 must
     be updated afterwards and the image re-rolled. Cheap only while no forward
@@ -289,7 +305,7 @@ variable "bot_symbols" {
     check being cheap rather than the check being wrong.
   EOT
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,AKEUSD,BEATUSD"
+  default     = "BTCUSD,ETHUSD,SOLUSD,AKEUSD,BEATUSD,BANKUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
