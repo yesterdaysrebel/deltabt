@@ -289,7 +289,7 @@ variable "bot_symbols" {
     check being cheap rather than the check being wrong.
   EOT
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,BEATUSD,BANKUSD,AKEUSD"
+  default     = "BTCUSD,ETHUSD,SOLUSD,AKEUSD,BEATUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -507,7 +507,7 @@ variable "max_drawdown_pct" {
     ends it silently but for the ERROR line and the daily report.
   EOT
   type        = number
-  default     = 0.10
+  default     = 1.0
 }
 
 variable "max_daily_loss_pct" {
@@ -524,7 +524,7 @@ variable "max_daily_loss_pct" {
     0.02 is the value that was in force before it was disabled on 2026-08-20.
   EOT
   type        = number
-  default     = 0.02
+  default     = 1.0
 }
 
 variable "max_consecutive_losses" {
@@ -538,7 +538,7 @@ variable "max_consecutive_losses" {
     than latching.
   EOT
   type        = number
-  default     = 3
+  default     = 0
 }
 
 variable "admin_cidrs" {
@@ -561,4 +561,36 @@ variable "alarm_email" {
   description = "Optional address for alarm notifications. Empty disables SNS."
   type        = string
   default     = ""
+}
+
+variable "cooldown_after_trade_seconds" {
+  description = <<-EOT
+    Global post-trade cooldown, in seconds. 0 disables it.
+
+    NEW 2026-08-29. app/config/settings.py has read DELTABOT_COOLDOWN_AFTER_TRADE
+    since the same day, but user_data never wrote it, so the container fell back
+    to the code default of 900 and no amount of editing this file could turn it
+    off. That is the identical failure DELTABOT_MAX_DAILY_LOSS had: the code
+    shipped, the delivery did not.
+
+    BOTH COOLDOWNS ARE GLOBAL ACROSS SYMBOLS, NOT PER SYMBOL. Leaving them on
+    makes the recorded sample whatever fires EARLIEST rather than a fair draw
+    from the signal population, and that bias is invisible in the results it
+    produces. 0 for an observation run whose purpose is an uncensored sample.
+
+    Part of the risk hash: changing it makes a running bot refuse to continue
+    its experiment rather than silently trade a different configuration.
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "cooldown_after_loss_seconds" {
+  description = <<-EOT
+    Global post-loss cooldown, in seconds. 0 disables it. See
+    cooldown_after_trade_seconds -- same delivery gap, same censoring argument,
+    and at 3600 it suppressed every symbol for an hour after any single loss.
+  EOT
+  type        = number
+  default     = 0
 }
