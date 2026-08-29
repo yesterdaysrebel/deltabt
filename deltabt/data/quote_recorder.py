@@ -177,11 +177,49 @@ def append(df: pd.DataFrame, *, quote_dir: Path = QUOTE_DIR) -> Path:
     return path
 
 
+def _manifest_root(quote_dir: Path) -> Path | None:
+    """Where this run's manifests belong, following the data root.
+
+    Mirrors ``perp_recorder._sidecar_roots``. Production writes to
+    ``archive.MANIFEST_ROOT`` (signalled by None); a run pointed at a temp
+    directory keeps its manifests beside its own data, so an isolated run
+    cannot overwrite the manifest describing the real partition -- the exact
+    contamination ``archive._default_manifest_root`` was written to prevent.
+    """
+    if Path(quote_dir) == Path(QUOTE_DIR):
+        return None
+    return Path(quote_dir).parent / "manifests"
+
+
 def record_once(client: DeltaClient | None = None, *, quote_dir: Path = QUOTE_DIR) -> int:
     """Take one snapshot and persist it. Returns the row count written."""
     client = client or DeltaClient()
     df = snapshot(client)
     path = append(df, quote_dir=quote_dir)
+
+    # MANIFEST ON EVERY APPEND, ADDED 2026-08-29.
+    #
+    # This recorder wrote no manifest at all. Partitions were described only
+    # when something else -- scripts/vol_data_audit.py -- happened to refresh
+    # them, so a partition sealed at the UTC roll against whatever snapshot the
+    # last refresh had taken. On 2026-08-28 that left the options manifest
+    # claiming 83,786 rows against 100,046 on disk: a permanently
+    # unverifiable day, and the mismatch is recorded in
+    # out/durability/manifest_mismatch_2026-08-28.json rather than repaired away.
+    #
+    # `append` is read-modify-write over the whole partition, so the manifest
+    # is rebuilt from the merged file and is correct for the partition as it
+    # now stands -- which is what makes the day-roll seal honest.
+    #
+    # IT MUST NEVER KILL THE POLL. The value of this process is that it keeps
+    # running; a manifest write that fails at 03:00 costs one description, but
+    # an exception escaping here costs every snapshot until somebody notices.
+    try:
+        archive.write_manifest("options", path, root=_manifest_root(quote_dir))
+    except Exception:                                    # noqa: BLE001
+        log.exception("manifest write failed for %s; snapshot is still saved",
+                      path.name)
+
     spread = _median_half_spread(df)
     log.info(
         "recorded %d contracts -> %s (median half-spread %.2f%% of mid)",

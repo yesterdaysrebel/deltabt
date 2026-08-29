@@ -202,7 +202,24 @@ class Settings:
             ("DELTABOT_MAX_TRADES_PER_DAY", "max_trades_per_day", int),
             ("DELTABOT_MAX_CONSEC_LOSSES", "max_consecutive_losses", int),
             ("DELTABOT_MAX_HOLD", "max_hold_seconds", int),
+            # CONFIGURATION PLUMBING ONLY, ADDED 2026-08-29. The two cooldowns
+            # were the only risk fields with no environment path, so an ungated
+            # observation run could not be configured without editing a default.
+            # The DEFAULTS ARE UNCHANGED (900s / 3600s) and the enforcement in
+            # app/risk/engine.py is untouched -- this adds a way to say a
+            # different number, not a different number.
+            #
+            # WHY IT MATTERS THAT THEY ARE GLOBAL: both cooldowns apply across
+            # ALL symbols, not per symbol, so leaving them on makes the sample
+            # whatever fires EARLIEST rather than a fair draw from the signal
+            # population. That is the censoring an ungated run exists to avoid.
+            ("DELTABOT_COOLDOWN_AFTER_TRADE", "cooldown_after_trade_seconds", int),
+            ("DELTABOT_COOLDOWN_AFTER_LOSS", "cooldown_after_loss_seconds", int),
         ):
+            # Guard left EXACTLY as it was. "0" is a non-empty string and so is
+            # already truthy, which is what this experiment needs to set the
+            # cooldowns to zero; changing it would have been a behaviour change
+            # dressed up as a fix.
             if env.get(key):
                 risk_overrides[field_name] = cast(env[key])
         if risk_overrides:

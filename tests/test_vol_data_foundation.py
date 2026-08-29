@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -169,12 +170,100 @@ def test_a_changed_partition_breaks_its_manifest_checksum(tmp_path):
         "invisible")
 
 
-def test_manifests_exist_for_every_recorded_option_day():
-    days = sorted(p.stem.replace("quotes_", "")
-                  for p in (ROOT / "data" / "quotes").glob("quotes_*.parquet"))
-    man = sorted(p.stem for p in
-                 (ROOT / "out" / "manifests" / "options").glob("*.json"))
-    assert days and set(days) <= set(man), f"unmanifested days: {set(days)-set(man)}"
+def test_manifests_exist_for_every_sealed_option_day():
+    """Every SEALED options partition must be described by a manifest.
+
+    TWO BUGS FIXED HERE ON 2026-08-29, BOTH IN THE TEST, NEITHER IN THE DATA.
+
+    1. It required a manifest for TODAY's partition. Today's is still being
+       appended to every 900s, so it is open, not sealed -- and this test
+       therefore failed at every UTC midnight by construction. `backup.verify`
+       models exactly this distinction one module away (`day >= today` is
+       `open`); the test simply did not use it.
+
+    2. It read a gitignored directory with no guard. `data/` is `.gitignore`
+       line 12, so on a clean CI checkout `days` is empty and `assert days and
+       ...` failed on the emptiness rather than on anything about manifests.
+
+    WHAT IS DELIBERATELY NOT RELAXED: a past day that is sealed and has no
+    manifest still fails. That is the condition this test exists to catch, and
+    the fix narrows WHICH days are checked, never WHETHER they are checked.
+    """
+    quotes = ROOT / "data" / "quotes"
+    if not quotes.is_dir():
+        pytest.skip("no local data/quotes: this asserts against the live "
+                    "recorder tree, which is gitignored and absent in CI")
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # The filename is authoritative for the partition's day -- quote_recorder
+    # .partition_path builds it from the UTC day of the snapshot it holds.
+    all_days = sorted(p.stem.replace("quotes_", "")
+                      for p in quotes.glob("quotes_*.parquet"))
+    if not all_days:
+        pytest.skip("data/quotes exists but holds no partitions yet")
+
+    sealed = [d for d in all_days if d < today]
+    if not sealed:
+        pytest.skip(f"only an open partition exists ({all_days}); nothing is "
+                    f"sealed yet, so there is nothing this test can assert")
+
+    man = {p.stem for p in
+           (ROOT / "out" / "manifests" / "options").glob("*.json")}
+    missing = set(sealed) - man
+    assert not missing, (
+        f"sealed option days with no manifest: {sorted(missing)}. A sealed "
+        f"partition with no manifest cannot be verified afterwards, which is "
+        f"what the manifest is for.")
+
+
+def test_the_options_recorder_writes_a_manifest_on_every_append(tmp_path):
+    """Regression for the defect found on 2026-08-29.
+
+    `quote_recorder` wrote NO manifest. Partitions were described only when
+    something else refreshed them, so each day sealed against whatever stale
+    snapshot the last refresh had taken -- 2026-08-28's options manifest
+    claimed 83,786 rows against 100,046 on disk.
+
+    The assertion that matters is the SECOND append: a manifest written once
+    and never updated is precisely the failure mode, so it is not enough that
+    a manifest exists.
+    """
+    qd = tmp_path / "quotes"
+    rows = lambda ts: pd.DataFrame(  # noqa: E731
+        {"snapshot_ts": [ts, ts], "symbol": ["C-BTC-1", "P-BTC-1"],
+         "best_bid": [1.0, 2.0], "best_ask": [1.1, 2.1]})
+
+    original = qr.snapshot
+    try:
+        qr.snapshot = lambda _c: rows(1_787_990_000)
+        qr.record_once(client=object(), quote_dir=qd)
+        qr.snapshot = lambda _c: rows(1_787_990_900)
+        qr.record_once(client=object(), quote_dir=qd)
+    finally:
+        qr.snapshot = original
+
+    part = next(qd.glob("quotes_*.parquet"))
+    manifests = list((tmp_path / "manifests" / "options").glob("*.json"))
+    assert len(manifests) == 1, f"expected one manifest, got {manifests}"
+    m = json.loads(manifests[0].read_text())
+
+    assert m["rows"] == len(pd.read_parquet(part)) == 4, (
+        "the manifest must describe the partition AFTER the second append, "
+        "not the state it had when it was first written")
+    assert m["checksums"][part.name] == archive.sha256_file(part)
+
+
+def test_the_options_recorder_keeps_its_manifests_out_of_production(tmp_path):
+    """An isolated run must not overwrite the manifest of the real partition.
+
+    This is the contamination `archive._default_manifest_root` exists to
+    prevent, reintroduced the moment a second recorder gained a manifest
+    write. A test pointed at a temp directory writing into `out/manifests`
+    would silently redescribe live data.
+    """
+    assert qr._manifest_root(qr.QUOTE_DIR) is None, (
+        "production must resolve to archive.MANIFEST_ROOT")
+    assert qr._manifest_root(tmp_path / "quotes") == tmp_path / "manifests"
 
 
 # --------------------------------------------------------------- checkpoints
@@ -742,3 +831,87 @@ def test_missing_minutes_are_reported_by_the_health_monitor(tmp_path):
     archive.append_partition(df, "perp_candles", root=tmp_path)
     codes = {f["code"] for f in health.detect_gaps(root=tmp_path)}
     assert "perp_missing_minutes" in codes
+
+
+# ------------------------------------------------------------- provenance
+
+class TestManifestProvenance:
+    """A manifest must say whether it was observed or reconstructed.
+
+    ADDED 2026-08-29, after three sealed 2026-08-28 partitions were found
+    describing an earlier state of themselves. Rebuilding them made them
+    internally consistent -- and that is exactly the danger: a reconstructed
+    manifest agrees with its partition for the same reason a real one does,
+    so without a marker the archive would report a reconciled day as an
+    observed one, permanently and invisibly.
+    """
+
+    def test_a_recorder_manifest_says_so(self, tmp_path):
+        t = 1_800_000_000
+        p = archive.append_partition(_quote_rows(t), "perp_quotes", root=tmp_path)
+        out = archive.write_manifest("perp_quotes", p, root=tmp_path / "manifests")
+        m = json.loads(out.read_text())
+        assert m["provenance"] == archive.PROVENANCE_RECORDER
+        assert "superseded" not in m, (
+            "a manifest written during collection supersedes nothing")
+
+    def test_a_rebuilt_manifest_says_so_and_keeps_what_it_replaced(self, tmp_path):
+        t = 1_800_000_000
+        p = archive.append_partition(_quote_rows(t), "perp_quotes", root=tmp_path)
+        archive.write_manifest("perp_quotes", p, root=tmp_path / "manifests")
+        first = json.loads((tmp_path / "manifests" / "perp_quotes" /
+                            f"{archive.utc_day(t)}.json").read_text())
+
+        # The partition moves on without its manifest -- the real defect.
+        archive.append_partition(_quote_rows(t + 60), "perp_quotes", root=tmp_path)
+
+        out = archive.rebuild_manifest("perp_quotes", p, root=tmp_path / "manifests")
+        m = json.loads(out.read_text())
+        assert m["provenance"] == archive.PROVENANCE_REBUILT
+        assert m["rows"] == 4 and m["checksums"][p.name] == archive.sha256_file(p)
+        assert m["superseded"]["rows"] == first["rows"] == 2
+        assert m["superseded"]["checksum"] == first["checksums"][p.name]
+        assert m["superseded"]["detected_at"]
+
+    def test_reconstruction_cannot_happen_by_accident(self, tmp_path):
+        """`write_manifest` defaults to `recorder`, so a routine refresh can
+        never quietly relabel a reconstructed day as an observed one."""
+        import inspect
+        assert (inspect.signature(archive.write_manifest)
+                .parameters["provenance"].default == archive.PROVENANCE_RECORDER)
+        assert (inspect.signature(archive.build_manifest)
+                .parameters["provenance"].default == archive.PROVENANCE_RECORDER)
+        with pytest.raises(ValueError):
+            archive.build_manifest("perp_quotes", Path("x"), provenance="verified")
+
+    def test_verify_does_not_count_a_rebuild_as_originally_verified(self, tmp_path):
+        """The whole point. `ok` may include reconstructed days; the count of
+        days that were verified AS RECORDED must not."""
+        from deltabt.data import backup as bk
+
+        day = 1_800_000_000 - (1_800_000_000 % 86400)          # a sealed past day
+        p = archive.append_partition(_quote_rows(day), "perp_quotes", root=tmp_path)
+        man = tmp_path / "manifests"
+
+        archive.write_manifest("perp_quotes", p, root=man)
+        v = bk.verify(tmp_path, man, today="2030-01-01")
+        assert v.ok == 1 and v.originally_verified == 1 and not v.rebuilt
+
+        archive.rebuild_manifest("perp_quotes", p, root=man)
+        v = bk.verify(tmp_path, man, today="2030-01-01")
+        assert v.healthy, "a rebuilt manifest still matches its partition"
+        assert v.ok == 1, "it agrees"
+        assert v.originally_verified == 0, (
+            "but the agreement was established, not observed")
+        assert str(p) in v.rebuilt
+
+    def test_the_schema_version_of_the_partition_is_untouched(self):
+        """A manifest-only field must not report drift on stored checkpoints.
+
+        health.py compares SCHEMA_VERSIONS against the version written into
+        each checkpoint; bumping it here would raise a false alarm about data
+        that did not change.
+        """
+        assert archive.SCHEMA_VERSIONS == {"options": 1, "perp_quotes": 1,
+                                           "perp_candles": 1}
+        assert archive.MANIFEST_SCHEMA_VERSION == 2

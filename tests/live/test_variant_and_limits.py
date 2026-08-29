@@ -152,3 +152,64 @@ class TestRelaxedLimitsAreReachableFromTheEnvironment:
         assert a.config_hash != b.config_hash
 
 
+
+
+class TestCooldownsAreConfigurable:
+    """The two cooldowns gained an environment path on 2026-08-29.
+
+    WHY THEY NEEDED ONE. Every other risk limit could already be set from the
+    environment; these two could not, so an ungated observation run was
+    impossible to configure without editing a default -- and editing a default
+    changes what EVERY future run inherits, which is the opposite of what an
+    experiment-scoped override is for.
+
+    WHY IT MATTERS THAT THEY ARE GLOBAL. Both cooldowns apply across ALL
+    symbols rather than per symbol, so leaving them on makes the recorded
+    sample whatever fires EARLIEST rather than a fair draw from the signal
+    population. That is a censoring effect, and it is invisible in the results
+    it produces.
+    """
+
+    def test_the_defaults_are_unchanged(self):
+        """The override adds a way to say a number, not a different number."""
+        r = RiskConfig()
+        assert r.cooldown_after_trade_seconds == 900
+        assert r.cooldown_after_loss_seconds == 3600
+
+    def test_zero_is_accepted_and_not_swallowed_as_falsy(self):
+        """`0` is the value an ungated run sets, and it must survive the guard.
+
+        `if env.get(key)` tests the STRING, and "0" is truthy, so this passes
+        for the right reason -- but it is the one value where a plausible
+        "improvement" to that guard would silently drop the override and leave
+        the 15-minute cooldown quietly in force.
+        """
+        env = {"DELTABOT_COOLDOWN_AFTER_TRADE": "0",
+               "DELTABOT_COOLDOWN_AFTER_LOSS": "0"}
+        with mock.patch.dict(os.environ, env, clear=False):
+            s = Settings.from_env()
+        assert s.risk.cooldown_after_trade_seconds == 0
+        assert s.risk.cooldown_after_loss_seconds == 0
+
+    def test_an_unset_variable_leaves_the_default_in_place(self):
+        keys = ("DELTABOT_COOLDOWN_AFTER_TRADE", "DELTABOT_COOLDOWN_AFTER_LOSS")
+        env = {k: v for k, v in os.environ.items() if k not in keys}
+        with mock.patch.dict(os.environ, env, clear=True):
+            s = Settings.from_env()
+        assert s.risk.cooldown_after_trade_seconds == 900
+        assert s.risk.cooldown_after_loss_seconds == 3600
+
+    def test_disabling_the_cooldowns_moves_the_risk_hash(self):
+        """An ungated run must not be mistakable for a gated one.
+
+        The identity is what a running bot verifies itself against, so a
+        configuration this different has to be a NEW experiment rather than a
+        continuation of the gated one.
+        """
+        gated = RiskConfig()
+        ungated = replace(gated, cooldown_after_trade_seconds=0,
+                          cooldown_after_loss_seconds=0)
+        a = build_identity("E", FROZEN, gated, {}, ("BTCUSD",))
+        b = build_identity("E", FROZEN, ungated, {}, ("BTCUSD",))
+        assert a.risk_hash != b.risk_hash
+        assert a.config_hash != b.config_hash

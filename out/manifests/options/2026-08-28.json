@@ -1,12 +1,22 @@
 {
   "dataset": "options",
   "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "superseded": {
+    "checksum": "292bb35931ba540c8f7723d340e3ca8a8d2d8c191d48f625f37efdb1c72d72cf",
+    "rows": 83786,
+    "generated_at": "2026-08-28T20:19:05.555333+00:00",
+    "provenance": "unknown -- predates provenance",
+    "detected_at": "2026-08-29T06:16:57.236952+00:00",
+    "reason": "checksum did not match the partition it described"
+  },
   "date": "2026-08-28",
   "first_timestamp": 1787875460,
-  "last_timestamp": 1787947471,
-  "rows": 83786,
+  "last_timestamp": 1787960974,
+  "rows": 100046,
   "unique_contracts": 1400,
-  "unique_batches": 81,
+  "unique_batches": 96,
   "schema_version": 1,
   "columns": [
     "snapshot_ts",
@@ -35,12 +45,12 @@
     "symbol"
   ],
   "file_paths": [
-    "/workspaces/glueops/deltabt/data/quotes/quotes_2026-08-28.parquet"
+    "data/quotes/quotes_2026-08-28.parquet"
   ],
   "checksums": {
-    "quotes_2026-08-28.parquet": "292bb35931ba540c8f7723d340e3ca8a8d2d8c191d48f625f37efdb1c72d72cf"
+    "quotes_2026-08-28.parquet": "004c20551dabe2234b4b4eee310cc92f8b1c589167b57a9e929dda101c73475a"
   },
-  "bytes": 8135529,
+  "bytes": 9581689,
   "collection_process_version": "2026-08-28.1",
-  "generated_at": "2026-08-28T20:19:05.555333+00:00"
+  "generated_at": "2026-08-29T06:16:57.264269+00:00"
 }

@@ -61,10 +61,20 @@ class VerifyResult:
     mismatched: list[str] = field(default_factory=list)
     unmanifested: list[str] = field(default_factory=list)
     orphan_manifests: list[str] = field(default_factory=list)
+    #: Partitions whose manifest MATCHES but was RECONSTRUCTED after a
+    #: mismatch was found, not written during collection. They are healthy
+    #: from now on and must never be reported as originally verified: the
+    #: checksum proves nothing about the state the partition sealed in.
+    rebuilt: list[str] = field(default_factory=list)
 
     @property
     def healthy(self) -> bool:
         return not (self.mismatched or self.unmanifested or self.orphan_manifests)
+
+    @property
+    def originally_verified(self) -> int:
+        """`ok` minus the days whose agreement was established, not observed."""
+        return self.ok - len(self.rebuilt)
 
 
 def verify(root: Path | None = None,
@@ -80,9 +90,11 @@ def verify(root: Path | None = None,
         held to their manifest. Today's are listed as `open` and counted, so
         they are visible without being alarming.
 
-    A mismatch on a sealed partition is not repaired and not re-manifested.
-    Regenerating the manifest would make the discrepancy disappear, which is
-    the opposite of what a checksum is for.
+    A mismatch on a sealed partition is not repaired and not re-manifested
+    HERE. Regenerating the manifest would make the discrepancy disappear,
+    which is the opposite of what a checksum is for. Reconstruction is a
+    separate, deliberate act -- `archive.rebuild_manifest` -- and what it
+    produces is counted in `rebuilt`, never in `originally_verified`.
     """
     res = VerifyResult()
     man_root = Path(manifest_root or archive.MANIFEST_ROOT)
@@ -108,6 +120,8 @@ def verify(root: Path | None = None,
                 res.mismatched.append(str(p))
             else:
                 res.ok += 1
+                if m.get("provenance") == archive.PROVENANCE_REBUILT:
+                    res.rebuilt.append(str(p))
         d = man_root / ds
         if d.exists():
             for m in d.glob("*.json"):
@@ -142,6 +156,8 @@ def backup(destination: Path | None, *, dry_run: bool = True,
     pre = verify(root, manifest_root)
     plan["source_verification"] = {
         "sealed_checked": pre.checked, "ok": pre.ok,
+        "originally_verified": pre.originally_verified,
+        "rebuilt": pre.rebuilt,
         "open_partitions": pre.open_partitions,
         "mismatched": pre.mismatched, "unmanifested": pre.unmanifested,
         "healthy": pre.healthy}
@@ -199,6 +215,12 @@ def status(root: Path | None = None,
         "sealed_partitions_checked": v.checked,
         "open_partitions": v.open_partitions,
         "checksum_ok": v.ok,
+        # `ok` counts agreement; it does NOT mean the day was verified as
+        # recorded. A rebuilt manifest agrees with its partition because the
+        # agreement was ESTABLISHED after a mismatch was found. Reporting the
+        # two as one number would relabel a reconciled day as an observed one.
+        "originally_verified": v.originally_verified,
+        "reconstructed_manifests": v.rebuilt,
         "checksum_mismatched": v.mismatched,
         "unmanifested_partitions": v.unmanifested,
         "orphan_manifests": v.orphan_manifests,

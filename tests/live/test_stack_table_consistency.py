@@ -88,30 +88,60 @@ def test_the_variant_label_matches_what_actually_runs(table):
             f"decides; the label is what a human reads.")
 
 
-def test_a_spec_variant_pins_the_hash_that_variant_produces():
-    """The drift pin must be the hash the deployed spec actually reports."""
-    from deltabt.catalog import build_spec
+def _hash_the_variant_produces(variant: str) -> str:
+    """The config hash the deployed arm actually reports, whatever kind it is.
 
-    mon = _monitor_matrix()
-    checked = 0
-    for stack, fields in _terraform_stacks().items():
-        variant = fields["variant"]
-        if not variant.upper().startswith("SPEC:"):
-            continue
+    TWO KINDS OF ARM, TWO HASH LENGTHS, AND THE LENGTH IS NOT COSMETIC. A
+    `SPEC:` arm reports `spec.config_hash`, the full sha256 of the
+    StrategySpec (app/strategy/spec_arm.py). Every other arm carries its own
+    config object and truncates to 16 (AtrArmConfig.config_hash). Pinning the
+    wrong length can never match, and the daily report then calls a correct
+    deployment drifted every day -- which is the failure this module exists to
+    catch, and it has now happened in both directions.
+    """
+    if variant.upper().startswith("SPEC:"):
+        from deltabt.catalog import build_spec
         family, _, minutes = variant[5:].partition("@")
-        spec = build_spec(family, int(minutes))
+        return build_spec(family, int(minutes)).config_hash
+
+    from app.config.variants import resolve_strategy
+    return resolve_strategy({"DELTABOT_VARIANT": variant}).config_hash
+
+
+def test_the_pinned_hash_is_the_hash_that_variant_produces():
+    """The drift pin must be the hash the deployed arm actually reports.
+
+    SUPERSEDES an assertion that at least one `SPEC:` stack exists. That was
+    never the invariant -- it was a guard against the loop passing vacuously
+    while only SPEC arms were checked, and it fired the moment the ATR stack
+    moved back to the real `ATR` arm on 2026-08-29. The registry is allowed to
+    contain no SPEC arm at all.
+
+    The replacement is STRICTLY STRONGER: every stack is checked, not only the
+    SPEC ones, so a non-SPEC arm's pin can no longer drift unnoticed -- which
+    is exactly the case the old test skipped. The vacuity guard is kept, but
+    now asserts that every registered stack was checked rather than that a
+    particular kind of stack exists.
+    """
+    mon = _monitor_matrix()
+    tf = _terraform_stacks()
+    checked = 0
+    for stack, fields in tf.items():
+        variant = fields["variant"]
+        produced = _hash_the_variant_produces(variant)
         pinned = mon[stack]["strategy_hash"].strip().strip('"')
-        assert pinned == spec.config_hash, (
+        assert pinned == produced, (
             f"monitor.yml pins strategy_hash={pinned[:20]}... for stack "
-            f"'{stack}', but {variant} reports "
-            f"{spec.config_hash[:20]}.... The daily report would call every "
-            f"correct deployment drifted.")
-        assert len(pinned) == 64, (
-            f"a spec arm reports the FULL sha256 (app/strategy/spec_arm.py "
-            f"sets strategy_config_hash=spec.config_hash); {len(pinned)} "
-            f"characters can never match it")
+            f"'{stack}', but {variant} reports {produced[:20]}.... The daily "
+            f"report would call every correct deployment drifted.")
+        assert len(pinned) == len(produced), (
+            f"stack '{stack}' runs {variant}, which reports a "
+            f"{len(produced)}-character hash; monitor.yml pins "
+            f"{len(pinned)} characters, which can never match")
         checked += 1
-    assert checked, "no SPEC: stack found; this test would pass vacuously"
+    assert checked == len(tf) and checked, (
+        f"checked {checked} of {len(tf)} registered stacks; every stack in "
+        f"variables.tf must have its pin verified or this test is vacuous")
 
 
 def test_every_stack_names_a_database_and_a_log_group():

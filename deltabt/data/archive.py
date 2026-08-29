@@ -247,14 +247,44 @@ def manifest_path(dataset: str, day: str, root: Path | None = None) -> Path:
     return Path(root or MANIFEST_ROOT) / dataset / f"{day}.json"
 
 
-def build_manifest(dataset: str, path: Path, *, venue: str = "delta_india") -> dict:
-    """Describe one partition exactly as it stands on disk."""
+#: How a manifest came to exist. A manifest answers "did this partition
+#: change since it was described"; that answer is worthless if it cannot also
+#: say whether the description was taken during collection or reconstructed
+#: after a mismatch had already been found.
+PROVENANCE_RECORDER = "recorder"
+PROVENANCE_REBUILT = "rebuilt"
+
+#: NOT VERSIONED IN SCHEMA_VERSIONS, DELIBERATELY. That map describes the
+#: PARTITION's columns, and health.py compares it against the version stored
+#: in each checkpoint -- bumping it for a manifest-only field would report
+#: schema drift on every existing checkpoint, which is a false alarm about
+#: data that did not change. Partition contents, dedup, naming and retention
+#: are untouched by this field.
+MANIFEST_SCHEMA_VERSION = 2
+
+
+def build_manifest(dataset: str, path: Path, *, venue: str = "delta_india",
+                   provenance: str = PROVENANCE_RECORDER,
+                   superseded: dict | None = None) -> dict:
+    """Describe one partition exactly as it stands on disk.
+
+    `provenance` distinguishes a manifest written during normal collection
+    from one reconstructed after a mismatch was detected. A rebuilt manifest
+    is internally consistent with its partition, but that consistency was
+    ESTABLISHED, not observed -- and a reader must be able to tell the two
+    apart forever. See `rebuild_manifest`.
+    """
+    if provenance not in (PROVENANCE_RECORDER, PROVENANCE_REBUILT):
+        raise ValueError(f"unknown provenance {provenance!r}")
     df = pd.read_parquet(path)
     tcol = TIME_COLUMN[dataset]
     sym = "symbol" if "symbol" in df.columns else None
     return {
         "dataset": dataset,
         "venue": venue,
+        "provenance": provenance,
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        **({"superseded": superseded} if superseded else {}),
         "date": utc_day(int(df[tcol].min())) if len(df) else "",
         "first_timestamp": int(df[tcol].min()) if len(df) else None,
         "last_timestamp": int(df[tcol].max()) if len(df) else None,
@@ -273,8 +303,11 @@ def build_manifest(dataset: str, path: Path, *, venue: str = "delta_india") -> d
 
 
 def write_manifest(dataset: str, path: Path, *, root: Path | None = None,
-                   venue: str = "delta_india") -> Path:
-    m = build_manifest(dataset, path, venue=venue)
+                   venue: str = "delta_india",
+                   provenance: str = PROVENANCE_RECORDER,
+                   superseded: dict | None = None) -> Path:
+    m = build_manifest(dataset, path, venue=venue, provenance=provenance,
+                       superseded=superseded)
     out = manifest_path(dataset, m["date"], root)
     out.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(out.parent), suffix=".json.tmp")
@@ -282,6 +315,47 @@ def write_manifest(dataset: str, path: Path, *, root: Path | None = None,
         json.dump(m, fh, indent=2)
     os.replace(tmp, out)
     return out
+
+
+def rebuild_manifest(dataset: str, path: Path, *, root: Path | None = None,
+                     venue: str = "delta_india") -> Path:
+    """Reconstruct a manifest whose checksum no longer matches its partition.
+
+    THE ONLY SUPPORTED WAY TO PRODUCE A `rebuilt` MANIFEST, and it exists so
+    that reconstruction cannot happen by accident. `write_manifest` defaults
+    to `recorder`, so a routine refresh can never quietly relabel a
+    reconstructed day as an observed one.
+
+    WHAT IT CARRIES FORWARD. The superseded checksum and row count are copied
+    into the new manifest before the old one is replaced, so the artifact
+    itself answers "what did this used to claim, and how far off was it".
+    Without that the rebuild would be indistinguishable from a manifest that
+    had always matched -- which is the failure this function exists to avoid.
+
+    IT DOES NOT MAKE THE DAY VERIFIED. A rebuilt manifest proves the partition
+    is internally consistent from now on. It says nothing about whether the
+    partition was intact when it was sealed, and `backup.verify` reports it as
+    reconstructed rather than as originally verified.
+    """
+    out = manifest_path(dataset, utc_day(_partition_first_ts(dataset, path)), root)
+    superseded = None
+    if out.exists():
+        old = json.loads(out.read_text())
+        superseded = {
+            "checksum": (old.get("checksums") or {}).get(path.name),
+            "rows": old.get("rows"),
+            "generated_at": old.get("generated_at"),
+            "provenance": old.get("provenance", "unknown -- predates provenance"),
+            "detected_at": datetime.now(timezone.utc).isoformat(),
+            "reason": "checksum did not match the partition it described",
+        }
+    return write_manifest(dataset, path, root=root, venue=venue,
+                          provenance=PROVENANCE_REBUILT, superseded=superseded)
+
+
+def _partition_first_ts(dataset: str, path: Path) -> int:
+    return int(pd.read_parquet(path, columns=[TIME_COLUMN[dataset]])[
+        TIME_COLUMN[dataset]].min())
 
 
 def refresh_manifests(dataset: str, *, root: Path | None = None,
