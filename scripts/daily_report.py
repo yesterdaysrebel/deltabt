@@ -539,9 +539,24 @@ def main() -> int:
         if began:
             run_age_seconds = (
                 datetime.datetime.now(datetime.timezone.utc) - began).total_seconds()
+    # THE OLD NOTE ASSERTED WHAT THE QUERY NEVER ESTABLISHED. It called every
+    # unbound signal "pre-binding ... they predate the run", from an all-time
+    # count carrying no timestamp. The reassuring reading was usually right and
+    # was never checked, and the case it would have hidden is the serious one:
+    # a signal recorded with no experiment id AFTER started_at means the bot is
+    # persisting outside the dataset while a run is nominally live.
+    during = db.get("signals_unbound_since")
     if db.get("signals_unbound", 0) and running:
-        notes.append(f"{db['signals_unbound']} pre-binding signals carry no experiment id "
-                     f"(expected: they predate the run and stay out of the dataset)")
+        if during:
+            problems.append(
+                f"{during} signal(s) carry no experiment id but were recorded "
+                f"AFTER the run started -- the dataset is losing rows")
+        elif during == 0:
+            notes.append(f"{db['signals_unbound']} unbound signals, all recorded "
+                         f"before this run started; they stay out of the dataset")
+        else:
+            notes.append(f"{db['signals_unbound']} unbound signals; the probe did "
+                         f"not report when they were recorded")
 
     # --- 2. what did it do? -------------------------------------------------
     print("## What it did\n")
@@ -565,8 +580,15 @@ def main() -> int:
     bound, unbound = db.get("signals_bound"), db.get("signals_unbound")
     if bound is not None or unbound is not None:
         scope = db.get("scoped_to") or "NONE -- running unbound"
-        print(f"Signals recorded all-run: **{bound or 0}** bound · "
-              f"**{unbound or 0}** unbound · scoped to `{scope}`\n")
+        # THIS RUN FIRST, because that is the number the heading implies. The
+        # all-time pair stays: it is the probe-liveness cross-check the
+        # 2026-08-19 incident asked for, and it is only confusing when it is
+        # the ONLY count on the line.
+        this_run = db.get("signals_bound_run")
+        if this_run is not None:
+            print(f"Signals recorded by `{scope}`: **{this_run}**\n")
+        print(f"Signals in the database, all experiments: **{bound or 0}** bound · "
+              f"**{unbound or 0}** unbound\n")
     if outcomes:
         print("| Outcome | Count |")
         print("|---|---|")
