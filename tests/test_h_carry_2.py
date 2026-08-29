@@ -30,6 +30,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import h_carry_2 as hc  # noqa: E402
 
+from tests._live_data import require_live_data  # noqa: E402
+
 
 def _hourly(rate: float, days: int, start: str = "2026-01-01") -> pd.Series:
     idx = pd.date_range(start, periods=days * 24, freq="1h", tz="UTC")
@@ -153,6 +155,7 @@ def test_notional_uses_contract_value():
 
 def test_real_products_have_materially_different_contract_values():
     import json
+    require_live_data("data/meta/products.json")
     prod = json.loads((ROOT / "data" / "meta" / "products.json").read_text())
     assert prod["BTCUSD"]["contract_value"] == pytest.approx(0.001)
     others = {s: p["contract_value"] for s, p in prod.items()

@@ -24,9 +24,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import options_surface as osf  # noqa: E402
 
+from tests._live_data import require_live_data  # noqa: E402
+
 
 @pytest.fixture(scope="module")
 def quotes():
+    require_live_data("data/quotes")
     fs = sorted(glob.glob(str(ROOT / "data" / "quotes" / "*.parquet")))
     return osf.enrich(pd.concat([pd.read_parquet(f) for f in fs], ignore_index=True))
 

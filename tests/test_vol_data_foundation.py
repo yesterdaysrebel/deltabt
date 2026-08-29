@@ -32,6 +32,8 @@ from deltabt.data import archive, health  # noqa: E402
 from deltabt.data import perp_recorder as pr  # noqa: E402
 from deltabt.data import quote_recorder as qr  # noqa: E402
 
+from tests._live_data import require_live_data  # noqa: E402
+
 
 # --------------------------------------------------------------- fixtures
 
@@ -327,6 +329,7 @@ def test_timestamps_are_stored_sorted_within_a_partition(tmp_path):
 # ------------------------------------------------------------ data validity
 
 def test_recorded_option_quotes_obey_bid_le_ask_where_two_sided():
+    require_live_data("data/quotes")
     df = pd.read_parquet(sorted((ROOT / "data" / "quotes").glob("*.parquet"))[-1])
     ok = (df.best_bid > 0) & (df.best_ask > 0)
     crossed = (df.loc[ok, "best_bid"] > df.loc[ok, "best_ask"])
@@ -334,12 +337,14 @@ def test_recorded_option_quotes_obey_bid_le_ask_where_two_sided():
 
 
 def test_recorded_prices_are_never_negative():
+    require_live_data("data/quotes")
     df = pd.read_parquet(sorted((ROOT / "data" / "quotes").glob("*.parquet"))[-1])
     for c in ("mark_price", "best_bid", "best_ask", "spot_price"):
         assert (df[c].dropna() >= 0).all()
 
 
 def test_recorded_deltas_are_in_range_and_greeks_are_sane():
+    require_live_data("data/quotes")
     df = pd.read_parquet(sorted((ROOT / "data" / "quotes").glob("*.parquet"))[-1])
     assert (df["delta"].dropna().abs() <= 1.0).all()
     assert (df["gamma"].dropna() >= 0).all()
@@ -348,6 +353,7 @@ def test_recorded_deltas_are_in_range_and_greeks_are_sane():
 
 def test_expiry_is_after_the_snapshot_for_live_contracts():
     import re
+    require_live_data("data/quotes")
     df = pd.read_parquet(sorted((ROOT / "data" / "quotes").glob("*.parquet"))[-1])
     pat = re.compile(r"^[CP]-[A-Z0-9]+-[0-9.]+-(\d{2})(\d{2})(\d{2})$")
     exp = df["symbol"].map(
@@ -532,6 +538,7 @@ def test_backup_defaults_to_a_dry_run():
 
 
 def test_dry_run_copies_nothing(tmp_path):
+    require_live_data("data/quotes")
     from deltabt.data import backup as bk
     plan = bk.backup(tmp_path, dry_run=True)
     assert plan["status"] == "DRY RUN"
@@ -541,6 +548,7 @@ def test_dry_run_copies_nothing(tmp_path):
 
 def test_backup_orders_raw_partitions_before_manifests(tmp_path):
     """A torn backup must never describe data it does not contain."""
+    require_live_data("data/quotes")
     from deltabt.data import backup as bk
     rel = [f["relative"] for f in bk.backup(None, dry_run=True)["files"]]
     last_data = max(i for i, r in enumerate(rel) if r.startswith("data/"))
@@ -550,6 +558,7 @@ def test_backup_orders_raw_partitions_before_manifests(tmp_path):
 
 
 def test_backup_never_includes_derived_research_output(tmp_path):
+    require_live_data("data/quotes")
     from deltabt.data import backup as bk
     rel = [f["relative"] for f in bk.backup(None, dry_run=True)["files"]]
     assert not any("sweep" in r or "experiments" in r or "vrp" in r for r in rel)
@@ -557,6 +566,7 @@ def test_backup_never_includes_derived_research_output(tmp_path):
 
 
 def test_an_executed_backup_verifies_the_copy_not_the_source(tmp_path):
+    require_live_data("data/quotes")
     from deltabt.data import backup as bk
     plan = bk.backup(tmp_path, dry_run=False)
     assert plan["status"] == "OK", plan.get("failed")
@@ -569,6 +579,7 @@ def test_an_executed_backup_verifies_the_copy_not_the_source(tmp_path):
 def test_open_partitions_are_not_held_to_a_stale_checksum():
     """Today's partition is appended to every 60s. Verifying it strictly would
     report corruption daily and train the reader to ignore the alarm."""
+    require_live_data("data/quotes")
     from deltabt.data import backup as bk
     v = bk.verify()
     today = __import__("datetime").datetime.now(

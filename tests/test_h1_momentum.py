@@ -23,9 +23,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import h1_momentum as hm  # noqa: E402
 
+from tests._live_data import require_live_data  # noqa: E402
+
 
 @pytest.fixture(scope="module")
 def panel():
+    require_live_data("data/meta/products.json", "data/candles")
     return hm.load_panel()
 
 
@@ -78,6 +81,7 @@ def test_weights_at_t_cannot_use_returns_after_t():
 def test_liquidity_screen_cannot_use_future_volume(panel):
     raw = {}
     import json
+    require_live_data("data/meta/products.json")
     prod = json.loads((ROOT / "data" / "meta" / "products.json").read_text())
     import os
     for s in panel.symbols:
@@ -106,6 +110,7 @@ def test_notional_uses_contract_value_not_bare_close_times_volume():
 
 def test_real_universe_spans_four_orders_of_contract_value():
     import json
+    require_live_data("data/meta/products.json")
     prod = json.loads((ROOT / "data" / "meta" / "products.json").read_text())
     cv = {p["contract_value"] for p in prod.values()}
     assert min(cv) <= 0.001 and max(cv) >= 1000
@@ -115,6 +120,7 @@ def test_real_universe_spans_four_orders_of_contract_value():
 
 def test_no_symbol_is_eligible_before_its_launch_time(panel):
     import json
+    require_live_data("data/meta/products.json")
     prod = json.loads((ROOT / "data" / "meta" / "products.json").read_text())
     bad = []
     for s in panel.symbols:
@@ -126,6 +132,7 @@ def test_no_symbol_is_eligible_before_its_launch_time(panel):
 
 def test_no_daily_bar_precedes_its_products_launch_time(panel):
     import json
+    require_live_data("data/meta/products.json")
     prod = json.loads((ROOT / "data" / "meta" / "products.json").read_text())
     bad = [s for s in panel.symbols
            if panel.px[s].dropna().index.min()
