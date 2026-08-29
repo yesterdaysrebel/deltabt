@@ -58,6 +58,26 @@ async def collect(con) -> dict:
         "select count(*) from strategy_signals where experiment_id is not null")
     out["signals_unbound"] = await con.fetchval(
         "select count(*) from strategy_signals where experiment_id is null")
+
+    # THE TWO COUNTS ABOVE ARE ALL-TIME, AND THE REPORT PRINTED THEM BESIDE
+    # `scoped_to`. On 2026-08-29, three minutes into a new experiment, that
+    # read "2264 bound ... scoped to ATR-5M-UN-GATED-PAPER-20260829-1" -- 2264
+    # being every signal every experiment had ever recorded, while the new run
+    # had six. Nothing was wrong with the number; it answered a question nobody
+    # was asking at that position on the page.
+    out["signals_bound_run"] = await con.fetchval(
+        "select count(*) from strategy_signals where experiment_id = $1", rid)
+
+    # WHETHER THE UNBOUND SIGNALS PREDATE THE RUN, ASKED RATHER THAN ASSUMED.
+    # The note called them "pre-binding ... they predate the run", which the
+    # all-time count cannot establish. An unbound signal recorded AFTER
+    # started_at is a different animal entirely: it means the bot is evaluating
+    # and persisting without an experiment id while a run is nominally live, so
+    # the dataset is silently losing rows. That must escalate, not reassure.
+    out["signals_unbound_since"] = await con.fetchval(
+        "select count(*) from strategy_signals "
+        "where experiment_id is null and ($1::timestamptz is null "
+        "or created_at >= $1)", since)
     out["dup_signal_keys"] = await con.fetchval(
         "select count(*) from (select idempotency_key from strategy_signals "
         "group by idempotency_key having count(*)>1) x")

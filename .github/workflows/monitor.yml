@@ -122,10 +122,51 @@ jobs:
           path: report.md
           retention-days: 90
 
+      - name: email the report
+        # THE REPORT NOW REACHES A PERSON WHETHER OR NOT IT IS BAD NEWS.
+        #
+        # It used to have one route out: the failing run below, which GitHub
+        # emails the actor about. An ALL CLEAR therefore notified nobody, and
+        # on 2026-08-29 the operator confirmed the SNS subscription, waited for
+        # the report, and got nothing -- correctly, because nothing published
+        # to it. Alarms did arrive, which made the silence look like proof the
+        # wiring worked.
+        #
+        # `continue-on-error` because a notification that can fail the run it
+        # describes would turn "SNS had a bad minute" into "the bot needs
+        # attention". The report is already in the summary and the artifact;
+        # this is a third copy, not the record.
+        continue-on-error: true
+        env:
+          OUTCOME: ${{ steps.report.outputs.exitcode == '0' && 'all clear' || 'NEEDS ATTENTION' }}
+        run: |
+          set -uo pipefail
+          # Matched by suffix rather than a pinned ARN: the stack publishes to
+          # exactly one alarms topic, and a hand-copied ARN is the same kind of
+          # stale variable that pointed the deploy at a terminated instance.
+          TOPIC="$(aws sns list-topics --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+                    --query "Topics[?ends_with(TopicArn, ':deltabt-paper-alarms')].TopicArn" \
+                    --output text)"
+          if [ -z "$TOPIC" ] || [ "$TOPIC" = "None" ]; then
+            echo "no alarm topic found -- alarm_email is probably unset; skipping"
+            exit 0
+          fi
+          # SNS caps a subject at 100 characters and a message at 256KB. The
+          # subject carries the verdict so the inbox is readable without
+          # opening anything; the body is the whole report, truncated well
+          # under the cap rather than risking a rejected publish.
+          head -c 200000 report.md > body.txt
+          aws sns publish --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            --topic-arn "$TOPIC" \
+            --subject "deltabt ${{ matrix.stack }} daily report -- $OUTCOME" \
+            --message file://body.txt \
+            --query MessageId --output text
+
       - name: fail the run if the report found a problem
-        # A failing run is the notification. GitHub emails the actor on a
-        # scheduled-workflow failure, so "something needs a human" reaches you
-        # without SNS, an address, or any alarm action.
+        # The failing run remains a notification, but is no longer the ONLY
+        # one: the step above emails the report either way. This still exists
+        # because a red run is visible in the Actions list forever, whereas an
+        # email is read once and archived.
         run: |
           if [ "${{ steps.report.outputs.exitcode }}" != "0" ]; then
             echo "::error::The daily report found something that needs attention -- see the summary."

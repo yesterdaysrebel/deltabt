@@ -177,8 +177,45 @@ resource "aws_iam_role_policy" "github_monitor" {
         Action   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
         Resource = "*"
       },
+
+      # SEND THE REPORT TO A HUMAN.
+      #
+      # Until 2026-08-29 the daily report had exactly one route to a person:
+      # a failed workflow run, which GitHub emails the actor about. That means
+      # an ALL CLEAR report notified nobody, and the operator confirmed an SNS
+      # subscription expecting the report and received nothing -- correctly,
+      # because nothing published to it.
+      #
+      # Worse, the one route that did notify depended on GitHub's `schedule`
+      # trigger, which is best effort: it fired once in three days, 80 minutes
+      # late, and skipped 2026-08-27 entirely. Its failure mode is silence,
+      # which reads exactly like a healthy morning.
+      #
+      # ListTopics is discovery rather than a pinned ARN on purpose. Two repo
+      # variables held stale values on 2026-08-29 -- BOT_INSTANCE_ID_ATR
+      # pointed at an instance terminated two replacements earlier, and
+      # EXPECTED_RISK_HASH still described the gated limits -- because both are
+      # kept in sync by hand and nothing checks them. Publish stays scoped to
+      # this stack's topic; only the lookup is dynamic.
+      {
+        Sid      = "DiscoverTheAlarmTopic"
+        Effect   = "Allow"
+        Action   = ["sns:ListTopics"]
+        Resource = "*" # ListTopics cannot be resource-scoped
+      },
+      {
+        Sid      = "PublishTheDailyReport"
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = var.alarm_email != "" ? [aws_sns_topic.alarms[0].arn] : []
+      },
     ]
   })
+}
+
+output "alarm_topic_arn" {
+  description = "Where the daily report and every alarm are published. Empty when alarm_email is unset, which disables both."
+  value       = var.alarm_email != "" ? aws_sns_topic.alarms[0].arn : ""
 }
 
 output "github_monitor_role_arn" {
