@@ -464,7 +464,21 @@ variable "stacks" {
     #
     # `SPEC:` resolves through deltabt.catalog, so the thing deployed is the
     # thing the sweep ran -- no second implementation to keep in step.
-    atr = { variant = "SPEC:atr_banded@5", db_name = "deltabt_atr" }
+    # 2026-08-29: BACK TO THE FROZEN atr_arm FOR AN UNGATED OBSERVATION RUN,
+    # experiment ATR-5M-UN-GATED-PAPER-20260829-1. The stack, the database,
+    # the EIP, the log group and every alarm are reused; only what the bot
+    # evaluates changes. deltabt_atr is NOT recreated -- it holds open
+    # positions from BANDED-5M-GATED-20260827-1 which recover() will adopt.
+    #
+    # "ATR" and "V4" are the same arm (app/config/variants.py), hash
+    # 8a564836b862ea74, unchanged by this edit.
+    #
+    # THE BACKTEST STILL DOES NOT SUPPORT THIS ARM and nothing below is
+    # withdrawn: net-negative in all four out-of-sample walk-forward blocks,
+    # and the 2026-08-28 audit closed the family as ATR FAMILY DEAD. This run
+    # is an implementation/accounting observation, not a measurement of edge,
+    # and its P&L must not be read as evidence either way.
+    atr = { variant = "ATR", db_name = "deltabt_atr" }
   }
 }
 

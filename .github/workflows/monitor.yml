@@ -64,20 +64,25 @@ jobs:
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
           - stack: atr
-            variant: SPEC:atr_banded@5
+            variant: ATR
             instance_var: BOT_INSTANCE_ID_ATR
             document_var: SSM_MONITOR_DOCUMENT_ATR
             # 2026-08-27: the stack kept its name and its database and changed
             # what it evaluates -- atr_arm's %R floor gained a ceiling at the
             # band midpoint. `ATR-5M-GATED-20260826-2` was stopped deliberately.
             #
-            # THE HASH IS 64 CHARACTERS HERE AND WAS 16 BEFORE, AND THAT IS NOT
-            # A TYPO. A spec arm reports `spec.config_hash`, which is the full
-            # sha256 of the StrategySpec (app/strategy/spec_arm.py:56); the old
-            # AtrArmConfig truncated its own to 16. Pinning the truncation
-            # against a spec arm would never match and the report would call a
-            # correct deployment drifted, every day.
-            strategy_hash: "ddd76a9fda2bcfdb5fd12cdd65dab0387443ba54709770329affb119421455ac"
+            # 2026-08-29: BACK TO atr_arm for ATR-5M-UN-GATED-PAPER-20260829-1.
+            # Same stack, same database, same EIP, same log group, same alarms.
+            #
+            # THE HASH IS 16 CHARACTERS AGAIN, AND THAT IS THE POINT OF THE
+            # PARAGRAPH BELOW READ BACKWARDS. A SPEC arm reports
+            # `spec.config_hash`, the full sha256 of the StrategySpec
+            # (app/strategy/spec_arm.py:56), so it pins 64. AtrArmConfig
+            # truncates its own to 16 (atr_arm.py: `[:16]`), so pinning 64
+            # against THIS arm could never match and the daily report would
+            # call a correct deployment drifted, every day -- the same failure
+            # as before, in the opposite direction. The length follows the arm.
+            strategy_hash: "8a564836b862ea74"
             log_group: /deltabt/paper/atr/bot
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and

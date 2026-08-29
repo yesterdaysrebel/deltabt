@@ -1,0 +1,155 @@
+{
+  "spec": "docs/volume_shock_discovery_spec.md",
+  "spec_sha256": "8f8dc68075e5275916cf8198b06eb15fbd9e46437db460113091658cb3c22594",
+  "git_sha": "da6d857f806832a4ba0fc56e14b661748292a629",
+  "parameters": {
+    "lookback": 1440,
+    "rvol_threshold": 5.0,
+    "logz_threshold": 4.0,
+    "horizons": [
+      15,
+      30,
+      60
+    ],
+    "primary_horizon": 30,
+    "cooldown_min": 60,
+    "block_min": 60,
+    "n_perm": 10000,
+    "n_boot": 10000
+  },
+  "input_fingerprints": [
+    {
+      "symbol": "BTCUSD",
+      "sha256_16": "b608dfd46be20c43",
+      "bars": 847204,
+      "first": 1735689600,
+      "last": 1786531920
+    },
+    {
+      "symbol": "ETHUSD",
+      "sha256_16": "0be104ac7768cd69",
+      "bars": 847218,
+      "first": 1735689600,
+      "last": 1786531980
+    },
+    {
+      "symbol": "SOLUSD",
+      "sha256_16": "99da5f6d9ae0c95f",
+      "bars": 847348,
+      "first": 1735689600,
+      "last": 1786531980
+    },
+    {
+      "symbol": "XRPUSD",
+      "sha256_16": "543707dc0c0c6ac3",
+      "bars": 847359,
+      "first": 1735689600,
+      "last": 1786531980
+    },
+    {
+      "symbol": "BEATUSD",
+      "sha256_16": "3ada6a38e6a91157",
+      "bars": 314854,
+      "first": 1767619920,
+      "last": 1786531920
+    }
+  ],
+  "sample_counts": {
+    "BTCUSD": {
+      "C1_rvol_median": {
+        "candidate_bars": 42416,
+        "events_after_cooldown": 5366,
+        "events_with_complete_outcome": 5364,
+        "excluded_no_outcome": 2,
+        "baseline_bars": 278593,
+        "invalid_window_bars": 244801
+      },
+      "C2_logvol_z": {
+        "candidate_bars": 18,
+        "events_after_cooldown": 16,
+        "events_with_complete_outcome": 16,
+        "excluded_no_outcome": 0,
+        "baseline_bars": 601198,
+        "invalid_window_bars": 244801
+      }
+    },
+    "ETHUSD": {
+      "C1_rvol_median": {
+        "candidate_bars": 39158,
+        "events_after_cooldown": 5480,
+        "events_with_complete_outcome": 5478,
+        "excluded_no_outcome": 2,
+        "baseline_bars": 290046,
+        "invalid_window_bars": 226081
+      },
+      "C2_logvol_z": {
+        "candidate_bars": 12,
+        "events_after_cooldown": 11,
+        "events_with_complete_outcome": 11,
+        "excluded_no_outcome": 0,
+        "baseline_bars": 620250,
+        "invalid_window_bars": 226081
+      }
+    },
+    "SOLUSD": {
+      "C1_rvol_median": {
+        "candidate_bars": 58135,
+        "events_after_cooldown": 7960,
+        "events_with_complete_outcome": 7959,
+        "excluded_no_outcome": 1,
+        "baseline_bars": 324277,
+        "invalid_window_bars": 38881
+      },
+      "C2_logvol_z": {
+        "candidate_bars": 0,
+        "events_after_cooldown": 0,
+        "events_with_complete_outcome": 0,
+        "excluded_no_outcome": 0,
+        "baseline_bars": 808381,
+        "invalid_window_bars": 38881
+      }
+    },
+    "XRPUSD": {
+      "C1_rvol_median": {
+        "candidate_bars": 91875,
+        "events_after_cooldown": 9806,
+        "events_with_complete_outcome": 9805,
+        "excluded_no_outcome": 1,
+        "baseline_bars": 227700,
+        "invalid_window_bars": 23041
+      },
+      "C2_logvol_z": {
+        "candidate_bars": 0,
+        "events_after_cooldown": 0,
+        "events_with_complete_outcome": 0,
+        "excluded_no_outcome": 0,
+        "baseline_bars": 824243,
+        "invalid_window_bars": 23041
+      }
+    },
+    "BEATUSD": {
+      "C1_rvol_median": {
+        "candidate_bars": 36263,
+        "events_after_cooldown": 2496,
+        "events_with_complete_outcome": 2494,
+        "excluded_no_outcome": 2,
+        "baseline_bars": 115875,
+        "invalid_window_bars": 47521
+      },
+      "C2_logvol_z": {
+        "candidate_bars": 291,
+        "events_after_cooldown": 120,
+        "events_with_complete_outcome": 119,
+        "excluded_no_outcome": 1,
+        "baseline_bars": 259720,
+        "invalid_window_bars": 47521
+      }
+    }
+  },
+  "outputs": [
+    "out/volshock/cells.csv",
+    "out/volshock/thirds.csv",
+    "out/volshock/intensity.csv"
+  ],
+  "note": "DISCOVERY ONLY. Not a validated finding. No P&L, no execution."
+}

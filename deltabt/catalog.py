@@ -166,14 +166,106 @@ FAMILIES: dict[str, dict] = {
                           wpr_rule="variant_a"),
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
     ),
+    # --- does the ADX STRENGTH gate help? ---------------------------------
+    #
+    # atr_arm deliberately drops V3's `adx >= 25`, keeping only DI DIRECTION,
+    # and the module docstring calls that out as widening the gate
+    # considerably. On 2026-08-28 the live banded arm closed 9 trades, 8 of
+    # them stop-outs, and a bar-by-bar replay of V3's gates over the same
+    # window fired ZERO times -- every entry sat in conditions where ADX had
+    # not confirmed on both timeframes. One day proves nothing; these families
+    # ask the same question of 21 days.
+    #
+    # THREE FAMILIES BECAUSE "ADD ADX" IS THREE DIFFERENT CHANGES. The gate
+    # can go on the primary, on both timeframes, or on the arm that is
+    # actually running. Collapsing them would attribute one result to a
+    # change nobody made.
+    "atr_adx": dict(
+        desc="atr_arm plus V3's ADX>=25 on the primary only",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
+    "atr_adx_both": dict(
+        desc="atr_arm plus ADX>=25 on BOTH timeframes -- the leg that refused today's entries",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
+    # --- the TARGET, which nothing had ever varied ------------------------
+    #
+    # gross_r = p*T - (1-p)*1 has two free terms and roughly 1,150 cells of
+    # entry-filter and timeframe work attacked only p. Holding T at 2.0 was
+    # never a finding, it was a default.
+    #
+    # In-sample over 4 majors at 15m/5m, pooled across stop widths and holds,
+    # gross_r by target: 1.0R +0.038, 2.0R +0.032, 3.0R +0.057, 4.0R +0.099 --
+    # and 4R beats 2R on BTCUSD, ETHUSD, SOLUSD and XRPUSD INDEPENDENTLY. The
+    # exit decomposition says why: at a 2R cap 31.8% of trades reach target
+    # and 62.3% stop, when gross break-even alone needs 32.9%. The cap is
+    # truncating the right tail of a trend rule.
+    #
+    # THAT IS AN IN-SAMPLE PATTERN FOUND BY SWEEPING, which is exactly how the
+    # XRPUSD@45m cell appeared before it dissolved. It is here to be walked
+    # forward, not because it is believed.
+    "atr_t3": dict(
+        desc="atr_arm with a 3R target instead of 2R",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0,
+                  target_r=3.0),
+    ),
+    "atr_t4": dict(
+        desc="atr_arm with a 4R target -- the best in-sample gross measured",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=None,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0,
+                  target_r=4.0),
+    ),
+    "atr_banded_adx": dict(
+        desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned", di=False, adx_min=None,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0),
+    ),
 }
 
 
-def build_spec(family: str, primary_minutes: int) -> StrategySpec:
+def build_spec(family: str, primary_minutes: int,
+               confirm_minutes: int | None = None,
+               stop_atr_multiplier: float | None = None,
+               target_r: float | None = None) -> StrategySpec:
+    """Build a family's spec at ``primary_minutes``.
+
+    ``confirm_minutes`` overrides the constant 5:1 ratio. It exists so the
+    confirmation timeframe can be held FIXED while the primary widens, which
+    is a different question from the one the ratio answers: the ratio asks
+    "what does this family do at scale", a fixed confirmation asks "what does
+    a 60m primary confirmed by the 5m chart I actually watch do".
+
+    The default is unchanged, so every spec built without this argument keeps
+    the hash it had.
+    """
     f = FAMILIES[family]
-    confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
-    if primary_minutes % confirm_minutes:
-        confirm_minutes = 1
+    if confirm_minutes is None:
+        confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
+        if primary_minutes % confirm_minutes:
+            confirm_minutes = 1
+    elif confirm_minutes > primary_minutes or primary_minutes % confirm_minutes:
+        raise ValueError(
+            f"confirm_minutes={confirm_minutes} must divide and not exceed "
+            f"primary_minutes={primary_minutes}; a confirmation bar that does "
+            f"not tile the primary aligns to a different instant on each bar")
     spec = StrategySpec(
         name=f"{family}@{primary_minutes}m",
         primary_minutes=primary_minutes,
@@ -182,5 +274,28 @@ def build_spec(family: str, primary_minutes: int) -> StrategySpec:
         confirm=f["confirm"],
     )
     spec = replace(spec, **f["over"])
+    # Widening the stop is the one lever that moves cost_r DIRECTLY:
+    # cost_r = round_trip_rate / stop_pct, so doubling the stop halves it.
+    # Whether that helps is not obvious and must be measured, because R is the
+    # unit gross_r is denominated in -- a fixed price edge is worth half as
+    # many R when R doubles, so gross and cost may simply shrink together and
+    # converge on zero rather than on profit.
+    #
+    # Only meaningful for ATR-stop families; a fixed-percentage stop ignores
+    # it, and saying so beats silently doing nothing.
+    if stop_atr_multiplier is not None:
+        if f["over"].get("stop") != "atr":
+            raise ValueError(
+                f"family {family!r} does not use an ATR stop "
+                f"(stop={f['over'].get('stop')!r}), so stop_atr_multiplier "
+                f"would have no effect")
+        spec = replace(spec, stop_atr_multiplier=stop_atr_multiplier)
+    # The target and the hold cap interact, which is why this is overridable.
+    # A 2R target on an 8xATR stop sits 16xATR away; at a 24h cap that is
+    # usually unreachable, so the position times out and the wide stop looks
+    # worthless. Shrinking the target is the alternative to lengthening the
+    # hold, and the two must be compared rather than assumed equivalent.
+    if target_r is not None:
+        spec = replace(spec, target_r=target_r)
     spec.validate()
     return spec

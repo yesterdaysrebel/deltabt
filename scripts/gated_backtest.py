@@ -43,6 +43,17 @@ OUT = OUT_DIR / "sweep"
 GATE_SETS = {
     "ungated": RiskGates.off(),
     "live_defaults": RiskGates(),                       # 20/day, 10% DD, 3 losses
+    # WHAT THE BOT ACTUALLY RUNS, which "live_defaults" is not. That entry is
+    # RiskGates(), whose defaults are max_open_positions=1 and
+    # max_daily_loss_pct=1.0 (disabled). infra/terraform/variables.tf and
+    # deploy/aws/run.sh set DELTABOT_MAX_OPEN=6 and DELTABOT_MAX_DAILY_LOSS
+    # =0.02, so the difference is six concurrent slots instead of one and a
+    # daily-loss limit that exists. Six slots is the bigger of the two: with
+    # one slot the symbols queue for it and most signals are simply never
+    # taken, which understates trade count several-fold.
+    "production": RiskGates(max_open_positions=6, max_trades_per_day=20,
+                            max_daily_loss_pct=0.02, max_drawdown_pct=0.10,
+                            max_consecutive_losses=3),
     "two_per_day": RiskGates(max_trades_per_day=2, max_daily_loss_pct=0.02,
                              max_drawdown_pct=0.10, max_consecutive_losses=3),
     "tight": RiskGates(max_trades_per_day=2, max_daily_loss_pct=0.01,
@@ -56,10 +67,13 @@ GATE_SETS = {
 }
 
 
-def build_books(symbols, family, minutes, cache):
+def build_books(symbols, family, minutes, cache, confirm_minutes: int | None = None,
+                stop_mult: float | None = None,
+                target_r: float | None = None,
+                hold_hours: int | None = None):
     books, funding = {}, {}
     catalog = ProductCatalog()
-    spec = build_spec(family, minutes)
+    spec = build_spec(family, minutes, confirm_minutes, stop_mult, target_r)
     for sym in symbols:
         data = cache.get(sym) or load_symbol(sym)
         if data is None:
@@ -90,6 +104,12 @@ def main() -> None:
     ap.add_argument("--families", nargs="*", default=list(FAMILIES))
     ap.add_argument("--timeframes", nargs="*", type=int, default=[15, 30, 60, 240])
     ap.add_argument("--capital", type=float, default=10_000.0)
+    # The wide-stop candidate needs all four of these; the defaults reproduce
+    # every previously recorded run unchanged.
+    ap.add_argument("--confirm", type=int, default=None)
+    ap.add_argument("--stop-mult", type=float, default=None)
+    ap.add_argument("--target-r", type=float, default=None)
+    ap.add_argument("--hold-hours", type=int, default=None)
     args = ap.parse_args()
 
     cache: dict = {}
@@ -100,10 +120,12 @@ def main() -> None:
 
     for minutes in args.timeframes:
         for family in args.families:
-            spec, books, funding = build_books(args.symbols, family, minutes, cache)
+            spec, books, funding = build_books(
+                args.symbols, family, minutes, cache,
+                args.confirm, args.stop_mult, args.target_r, args.hold_hours)
             if not books:
                 continue
-            params = params_for(spec, minutes)
+            params = params_for(spec, minutes, args.hold_hours)
             for gname, gates in GATE_SETS.items():
                 res = run_portfolio(books, params, gates,
                                     initial_capital=args.capital, funding=funding)

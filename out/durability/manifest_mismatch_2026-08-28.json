@@ -1,0 +1,79 @@
+{
+  "captured_at": "2026-08-29T06:11:11.629052+00:00",
+  "reason": "sealed 2026-08-28 partitions fail checksum verification; captured before any manifest rebuild so the original mismatch is not erased",
+  "verify": {
+    "sealed_checked": 7,
+    "ok": 4,
+    "open_partitions": [
+      "/workspaces/glueops/deltabt/data/quotes/quotes_2026-08-29.parquet",
+      "/workspaces/glueops/deltabt/data/perp/perp_quotes_2026-08-29.parquet",
+      "/workspaces/glueops/deltabt/data/perp/perp_candles_1m_2026-08-29.parquet"
+    ],
+    "mismatched": [
+      "/workspaces/glueops/deltabt/data/quotes/quotes_2026-08-28.parquet",
+      "/workspaces/glueops/deltabt/data/perp/perp_quotes_2026-08-28.parquet",
+      "/workspaces/glueops/deltabt/data/perp/perp_candles_1m_2026-08-28.parquet"
+    ],
+    "unmanifested": [],
+    "orphan_manifests": [],
+    "healthy": false
+  },
+  "root_cause": {
+    "quote_recorder": "writes NO manifests: 0 occurrences of write_manifest in deltabt/data/quote_recorder.py. Running since 2026-08-24 16:03:36, predates the archive module.",
+    "perp_recorder": "_commit() does call archive.write_manifest, but the running process (PID 240326) started 2026-08-28 19:57:57, BEFORE commits 459ad29 (20:01) and ea8d228 (20:16) introduced it. The live process runs pre-fix bytecode.",
+    "observed": "no manifest written since 2026-08-28T20:19:05Z"
+  },
+  "partitions": [
+    {
+      "dataset": "options",
+      "partition": "data/quotes/quotes_2026-08-28.parquet",
+      "partition_mtime": "2026-08-28T23:49:37.108542+00:00",
+      "partition_bytes": 9581689,
+      "manifest": "out/manifests/options/2026-08-28.json",
+      "manifest_mtime": "2026-08-28T20:19:05.552337+00:00",
+      "manifest_generated_at": "2026-08-28T20:19:05.555333+00:00",
+      "manifest_rows": 83786,
+      "actual_rows": 100046,
+      "rows_unrecorded": 16260,
+      "manifest_checksum": "292bb35931ba540c8f7723d340e3ca8a8d2d8c191d48f625f37efdb1c72d72cf",
+      "actual_checksum": "004c20551dabe2234b4b4eee310cc92f8b1c589167b57a9e929dda101c73475a",
+      "manifest_last_timestamp": 1787947471,
+      "actual_last_timestamp": 1787960974,
+      "status": "MISMATCHED -- manifest describes an earlier state of this partition"
+    },
+    {
+      "dataset": "perp_quotes",
+      "partition": "data/perp/perp_quotes_2026-08-28.parquet",
+      "partition_mtime": "2026-08-28T23:59:01.688576+00:00",
+      "partition_bytes": 44879,
+      "manifest": "out/manifests/perp_quotes/2026-08-28.json",
+      "manifest_mtime": "2026-08-28T20:19:05.556337+00:00",
+      "manifest_generated_at": "2026-08-28T20:19:05.558817+00:00",
+      "manifest_rows": 46,
+      "actual_rows": 486,
+      "rows_unrecorded": 440,
+      "manifest_checksum": "48c8e0db706b5eb96fbd01ad1a0896185d77d6a48f7c91ff03b4aa9f89d45e06",
+      "actual_checksum": "959efd11746a925ab14125e0b33022aa38d1baa3b748b29e364d6507947f8359",
+      "manifest_last_timestamp": 1787948337,
+      "actual_last_timestamp": 1787961540,
+      "status": "MISMATCHED -- manifest describes an earlier state of this partition"
+    },
+    {
+      "dataset": "perp_candles",
+      "partition": "data/perp/perp_candles_1m_2026-08-28.parquet",
+      "partition_mtime": "2026-08-29T00:13:02.388625+00:00",
+      "partition_bytes": 20241,
+      "manifest": "out/manifests/perp_candles/2026-08-28.json",
+      "manifest_mtime": "2026-08-28T20:19:05.556337+00:00",
+      "manifest_generated_at": "2026-08-28T20:19:05.561325+00:00",
+      "manifest_rows": 84,
+      "actual_rows": 528,
+      "rows_unrecorded": 444,
+      "manifest_checksum": "2095cf36396057ead4f65bc67a6c705a20d39e4b6876eb78cfafe5f06f22dadd",
+      "actual_checksum": "c62d972ff840832a16579642ea2b3b3e859b80abf16d0a6c01d6a1a9ebfe6a01",
+      "manifest_last_timestamp": 1787948220,
+      "actual_last_timestamp": 1787961540,
+      "status": "MISMATCHED -- manifest describes an earlier state of this partition"
+    }
+  ]
+}

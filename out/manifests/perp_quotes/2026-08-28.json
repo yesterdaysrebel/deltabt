@@ -1,0 +1,53 @@
+{
+  "dataset": "perp_quotes",
+  "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "superseded": {
+    "checksum": "48c8e0db706b5eb96fbd01ad1a0896185d77d6a48f7c91ff03b4aa9f89d45e06",
+    "rows": 46,
+    "generated_at": "2026-08-28T20:19:05.558817+00:00",
+    "provenance": "unknown -- predates provenance",
+    "detected_at": "2026-08-29T06:16:57.284515+00:00",
+    "reason": "checksum did not match the partition it described"
+  },
+  "date": "2026-08-28",
+  "first_timestamp": 1787946617,
+  "last_timestamp": 1787961540,
+  "rows": 486,
+  "unique_contracts": 2,
+  "unique_batches": 243,
+  "schema_version": 1,
+  "columns": [
+    "snapshot_ts",
+    "exchange_ts",
+    "recv_ts",
+    "symbol",
+    "underlying",
+    "best_bid",
+    "best_ask",
+    "bid_size",
+    "ask_size",
+    "mark_price",
+    "spot_price",
+    "last_price",
+    "mark_basis",
+    "funding_rate",
+    "oi_contracts",
+    "turnover_usd",
+    "volume"
+  ],
+  "dedup_key": [
+    "snapshot_ts",
+    "symbol"
+  ],
+  "file_paths": [
+    "data/perp/perp_quotes_2026-08-28.parquet"
+  ],
+  "checksums": {
+    "perp_quotes_2026-08-28.parquet": "959efd11746a925ab14125e0b33022aa38d1baa3b748b29e364d6507947f8359"
+  },
+  "bytes": 44879,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-29T06:16:57.287021+00:00"
+}

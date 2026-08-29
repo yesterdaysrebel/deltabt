@@ -1,0 +1,77 @@
+# Forward recorder for the perpetual hedge instrument (BTCUSD, ETHUSD).
+#
+# WHY THIS EXISTS, AND WHY IT IS URGENT
+#
+#   The options research gate found the gap that blocks H-Vol-6: the cached
+#   perpetual 1-minute series ends 2026-08-12 10:52 and the option quote
+#   recorder starts 2026-08-24 16:03. ZERO OVERLAP. A delta-hedged option
+#   study needs the underlying at the hedge instants, so until this runs the
+#   option recorder accumulates data H-Vol-6 still cannot use.
+#
+#   The two recorders are only useful TOGETHER. Overlap, not either series
+#   alone, is the readiness metric.
+#
+# READ THIS BEFORE STARTING THE UNIT
+#
+#   DELTABT_DATA must match the option recorder's root exactly. The overlap
+#   metric is computed across both datasets under one root; split them and it
+#   reads zero forever while both recorders look healthy.
+#
+# WHY 60 SECONDS AND NOT 900
+#
+#   The hedge grid H-Vol-6 is specified against is 15 minutes, but the raw
+#   series must be finer so the frozen experiment can construct that grid
+#   itself rather than inherit one.
+#
+# Read-only against public endpoints. No API keys, no signing, no order path.
+#
+# Install:
+#   sudo cp deltabt-perp-recorder.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now deltabt-perp-recorder
+#   journalctl -u deltabt-perp-recorder -f
+#
+# Storage: 2 symbols x 1440 quote snapshots/day plus ~2,880 1m bars/day is a
+# few MB a month -- negligible beside the option surface.
+
+[Unit]
+Description=deltabt Delta India perpetual hedge-instrument recorder
+Documentation=file:///opt/deltabt/docs/options_data_audit.md
+After=network-online.target
+Wants=network-online.target
+
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=deltabt
+Group=deltabt
+WorkingDirectory=/opt/deltabt
+
+# THE PRODUCTION DATA ROOT. Must equal the option recorder's.
+Environment=DELTABT_DATA=/var/lib/deltabt/data
+Environment=PYTHONUNBUFFERED=1
+
+# No --once and no --max-polls: bounded modes exit, and a supervisor would
+# then restart them forever.
+ExecStart=/opt/deltabt/.venv/bin/python -m deltabt.data.perp_recorder --interval 60
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deltabt-perp-recorder
+
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+Restart=on-failure
+RestartSec=15
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/deltabt/data
+
+[Install]
+WantedBy=multi-user.target

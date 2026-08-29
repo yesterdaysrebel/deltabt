@@ -1,0 +1,194 @@
+{
+  "calendar": [
+    "2025-01-01",
+    "2026-08-27"
+  ],
+  "n_symbols_loaded": 34,
+  "primary": {
+    "days": 422,
+    "years": 1.155,
+    "rebalances": 56,
+    "carry_ann": 0.8612259750700237,
+    "price_ann": 1.0904530761583309,
+    "fees_ann": 0.03487185426540284,
+    "net_ann": 1.916807196962951,
+    "vol_ann": 0.6795243568970584,
+    "price_vol_ann": 0.6800945063607087,
+    "sharpe": 2.8208071977224645,
+    "max_drawdown": -0.2579041325153839,
+    "win_rate": 0.5639810426540285,
+    "nw_t": 2.3302864911414587,
+    "p_value": 0.019791014263217735,
+    "sharpe_ci": [
+      0.9138177368018977,
+      4.541050103435354
+    ],
+    "n_symbols_used": 21,
+    "symbols_used": [
+      "AAVEUSD",
+      "ADAUSD",
+      "AINUSD",
+      "ARCUSD",
+      "AVAXUSD",
+      "BCHUSD",
+      "BEATUSD",
+      "BLESSUSD",
+      "BNBUSD",
+      "BTCUSD",
+      "DOGEUSD",
+      "ETHUSD",
+      "HUSD",
+      "HYPEUSD",
+      "LINKUSD",
+      "LTCUSD",
+      "RIVERUSD",
+      "SOLUSD",
+      "UNIUSD",
+      "XRPUSD",
+      "ZECUSD"
+    ],
+    "n_eligible_mean": 8.436781609195402,
+    "k_mode": 2,
+    "k_range": [
+      0,
+      2
+    ],
+    "effective_n": 2.422120612532539
+  },
+  "kill": {
+    "k1_liquidity_disguise": {
+      "frac_rebalances_with_sub_floor_short": 0.0,
+      "limit": 0.3,
+      "verdict": "PASS",
+      "note": "Vacuous by construction: eligibility screens on the same causal 30d median at the same floor, so a short-leg constituent below the floor cannot exist. Disclosed, not modified. See k1_supplementary."
+    },
+    "k1_supplementary": {
+      "short_leg_turnover_p05": 1241292.4545,
+      "short_leg_turnover_median": 4559727.28675,
+      "long_leg_turnover_median": 4055550.8727500006,
+      "frac_short_picks_below_5M": 0.5245901639344263,
+      "frac_short_picks_below_2M": 0.2786885245901639
+    },
+    "k2_single_name": {
+      "worst_symbol": "BNBUSD",
+      "share_of_rebalances": 0.6065573770491803,
+      "limit": 0.5,
+      "verdict": "FAIL",
+      "short_leg_shares": {
+        "BNBUSD": 0.6065573770491803,
+        "HUSD": 0.2459016393442623,
+        "SOLUSD": 0.22950819672131148,
+        "ETHUSD": 0.21311475409836064,
+        "DOGEUSD": 0.14754098360655737,
+        "AAVEUSD": 0.09836065573770492,
+        "AINUSD": 0.09836065573770492,
+        "BEATUSD": 0.09836065573770492,
+        "BTCUSD": 0.06557377049180328,
+        "LINKUSD": 0.04918032786885246,
+        "ZECUSD": 0.03278688524590164,
+        "ARCUSD": 0.03278688524590164,
+        "ADAUSD": 0.01639344262295082,
+        "BLESSUSD": 0.01639344262295082,
+        "BCHUSD": 0.01639344262295082,
+        "RIVERUSD": 0.01639344262295082,
+        "XRPUSD": 0.01639344262295082
+      }
+    },
+    "k3_residual": {
+      "annualised_price_vol": 0.6800945063607087,
+      "annualised_carry": 0.8612259750700237,
+      "ratio_vol_over_carry": 0.789681832698337,
+      "limit": 2.0,
+      "verdict": "PASS"
+    }
+  },
+  "nulls": {
+    "sign": {
+      "seeds": 200,
+      "net_ann_mean": -0.044395543675124556,
+      "net_ann_p05": -1.1710060211077133,
+      "net_ann_p95": 1.1592131097700529,
+      "carry_ann_mean": 0.006890932594340047,
+      "sharpe_mean": -0.06582102961635712,
+      "frac_null_beats_real_net": 0.005,
+      "frac_null_beats_real_carry": 0.0
+    },
+    "shuffle": {
+      "seeds": 200,
+      "net_ann_mean": -0.07507759824822062,
+      "net_ann_p05": -0.8436868742089155,
+      "net_ann_p95": 0.7527193005887794,
+      "carry_ann_mean": 0.004613942622595155,
+      "sharpe_mean": -0.175657282953871,
+      "frac_null_beats_real_net": 0.0,
+      "frac_null_beats_real_carry": 0.0
+    },
+    "random": {
+      "seeds": 200,
+      "net_ann_mean": 0.00286618558676035,
+      "net_ann_p05": -0.8336268432222587,
+      "net_ann_p95": 0.8887853339252292,
+      "carry_ann_mean": 0.004995922342639514,
+      "sharpe_mean": -0.012708992763673085,
+      "frac_null_beats_real_net": 0.0,
+      "frac_null_beats_real_carry": 0.0
+    }
+  },
+  "splits": {
+    "TRAIN": {
+      "days": 183,
+      "years": 0.501,
+      "rebalances": 25,
+      "carry_ann": 0.2748981398336066,
+      "price_ann": -0.04312619083235696,
+      "fees_ann": 0.033900389344262295,
+      "net_ann": 0.19787155965698727,
+      "vol_ann": 0.23335485319680802,
+      "price_vol_ann": 0.23092666989305885,
+      "sharpe": 0.8479427659047029,
+      "max_drawdown": -0.15858522029973154,
+      "win_rate": 0.4644808743169399,
+      "nw_t": 0.6317451568239238,
+      "p_value": 0.5275534155596397
+    },
+    "VALIDATION": {
+      "days": 151,
+      "years": 0.413,
+      "rebalances": 19,
+      "carry_ann": 1.0666081794040976,
+      "price_ann": -0.10937926132883626,
+      "fees_ann": 0.035351846026490066,
+      "net_ann": 0.9218770720487712,
+      "vol_ann": 0.6030882928424921,
+      "price_vol_ann": 0.607541215030278,
+      "sharpe": 1.5285938775295325,
+      "max_drawdown": -0.18776215077172673,
+      "win_rate": 0.6158940397350994,
+      "nw_t": 1.3296978082085344,
+      "p_value": 0.18361785728968932
+    },
+    "TEST": {
+      "days": 88,
+      "years": 0.241,
+      "rebalances": 12,
+      "carry_ann": 1.7281041681816052,
+      "price_ann": 5.506585903656717,
+      "fees_ann": 0.0360684375,
+      "net_ann": 7.198621634338323,
+      "vol_ann": 1.1808778102197335,
+      "price_vol_ann": 1.1924830021322443,
+      "sharpe": 6.095991957879901,
+      "max_drawdown": -0.25790413251538424,
+      "win_rate": 0.6818181818181818,
+      "nw_t": 2.6996511991442373,
+      "p_value": 0.006941220692117734
+    }
+  },
+  "grid": {
+    "cells": 27,
+    "raw_p_lt_05": 4,
+    "raw_p_lt_05_and_positive": 4,
+    "surviving_bh": 0,
+    "sharpe_gt_1": 19
+  }
+}

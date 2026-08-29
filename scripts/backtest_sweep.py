@@ -55,6 +55,20 @@ def main() -> None:
     ap.add_argument("--symbols", nargs="*", default=None)
     ap.add_argument("--families", nargs="*", default=None)
     ap.add_argument("--timeframes", nargs="*", type=int, default=None)
+    # Hold the CONFIRMATION timeframe fixed instead of letting it track the
+    # primary at 5:1. Each value listed here is run against every primary it
+    # divides; primaries it does not divide are skipped rather than silently
+    # rounded, because a confirmation bar that does not tile the primary lands
+    # on a different instant every bar. Omit for the ratio, which is default.
+    ap.add_argument("--confirm", nargs="*", type=int, default=None)
+    # Override the family's ATR stop multiplier. cost_r = round_trip_rate /
+    # stop_pct, so this is the only knob that moves cost directly rather than
+    # by filtering signals. Skipped for fixed-percentage-stop families.
+    ap.add_argument("--stop-mult", nargs="*", type=float, default=None)
+    # Max hold in hours. The default 24h is the binding constraint on any wide
+    # stop: a 2R target on an 8xATR stop is 16xATR away and a day is not long
+    # enough to get there, so without this the stop sweep measures the cap.
+    ap.add_argument("--hold-hours", nargs="*", type=int, default=None)
     ap.add_argument("--out", default=str(OUT / "backtests.csv"))
     args = ap.parse_args()
 
@@ -92,12 +106,27 @@ def main() -> None:
         cache: dict = {}
         for minutes in timeframes:
             for family in families:
-                try:
-                    rows.append(run_cell(data, family, minutes, costs, cache))
-                except Exception as exc:                  # noqa: BLE001
-                    log.warning("%s %s @%dm failed: %s", symbol, family, minutes, exc)
-                    rows.append(dict(symbol=symbol, family=family,
-                                     timeframe_min=minutes, status=f"error: {exc}"))
+                for confirm in (args.confirm or [None]):
+                    if confirm is not None and (confirm > minutes
+                                                or minutes % confirm):
+                        continue
+                    for mult in (args.stop_mult or [None]):
+                      for hold in (args.hold_hours or [None]):
+                        try:
+                            row = run_cell(data, family, minutes, costs,
+                                           cache, confirm, mult, hold)
+                            row["stop_mult"] = mult
+                            row["hold_hours"] = hold
+                            rows.append(row)
+                        except Exception as exc:          # noqa: BLE001
+                            log.warning("%s %s @%dm/%sm x%s h%s failed: %s",
+                                        symbol, family, minutes, confirm, mult,
+                                        hold, exc)
+                            rows.append(dict(symbol=symbol, family=family,
+                                             timeframe_min=minutes,
+                                             confirm_min=confirm,
+                                             stop_mult=mult, hold_hours=hold,
+                                             status=f"error: {exc}"))
                 done += 1
             log.info("%s @%dm  (%d/%d, %.0fs)", symbol, minutes, done, total,
                      time.time() - t0)

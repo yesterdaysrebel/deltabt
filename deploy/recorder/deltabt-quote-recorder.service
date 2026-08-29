@@ -1,0 +1,89 @@
+# Forward recorder for the Delta India option quote surface.
+#
+# WHY THIS IS A LONG-RUNNING SERVICE AND NOT A CRON JOB
+#
+#   The data is unrecoverable. Delta publishes candle history for premium and
+#   mark, but NO history for quotes, implied vol or greeks -- those exist only
+#   in the live /v2/tickers snapshot. Whatever is not captured at the moment it
+#   is served is gone permanently, so the failure mode that matters is silent
+#   downtime, not a slow run.
+#
+# READ THIS BEFORE STARTING THE UNIT
+#
+#   1. DELTABT_DATA BELOW MUST POINT AT THE DIRECTORY THAT ALREADY HOLDS THE
+#      HISTORY. The recorder defaults to <checkout>/data when the variable is
+#      unset, which is where the manually launched process has been writing
+#      since 2026-08-24. Starting this unit with a different root does not
+#      fail -- it silently begins an empty second dataset and leaves the real
+#      one to rot. Point it at the existing directory, or move the existing
+#      directory here first. There is no way to merge them afterwards that
+#      recovers a missed snapshot.
+#
+#   2. STOP THE MANUAL PROCESS FIRST. The recorder now takes an exclusive
+#      flock, but the process running since 2026-08-24 predates the lock and
+#      does not hold it. Two writers read-modify-write the same daily
+#      partition and silently discard each other's snapshots.
+#          pkill -f 'deltabt.data.quote_recorder' && sleep 2
+#
+# It is read-only against public endpoints. No API keys, no signing, no order
+# path -- and the reason it needs no credentials of any kind.
+#
+# Install:
+#   sudo cp deltabt-quote-recorder.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now deltabt-quote-recorder
+#   journalctl -u deltabt-quote-recorder -f
+#
+# Storage: ~1,225 contracts per snapshot, 96 snapshots/day at the 900s default
+# is ~118k rows/day, roughly 1 GB/year as Parquet.
+
+[Unit]
+Description=deltabt Delta India option quote surface recorder
+Documentation=file:///opt/deltabt/docs/options_data_audit.md
+After=network-online.target
+Wants=network-online.target
+
+# A restart storm means the process is dying on startup -- a bad path, a
+# missing venv, a held lock -- none of which resolve by retrying. Give up
+# after 5 failures in 10 minutes and leave the unit failed and visible, rather
+# than hammering the API and burying the cause in the journal.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=deltabt
+Group=deltabt
+WorkingDirectory=/opt/deltabt
+
+# THE PRODUCTION DATA ROOT. Explicit, never inherited from whatever shell
+# happened to launch the process. A test or bounded run must use a different
+# value; tests/test_vol_data_foundation.py asserts these are not equal.
+Environment=DELTABT_DATA=/var/lib/deltabt/data
+Environment=PYTHONUNBUFFERED=1
+
+# No --once and no --max-snapshots: those are bounded modes and would make the
+# service exit after one pass, which systemd would then restart forever.
+ExecStart=/opt/deltabt/.venv/bin/python -m deltabt.data.quote_recorder --interval 900
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deltabt-quote-recorder
+
+# SIGTERM lets the current snapshot finish and the partition close cleanly.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+# on-failure, not always: a clean SIGTERM stop is an operator decision and
+# must not be undone by the supervisor.
+Restart=on-failure
+RestartSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/deltabt/data
+
+[Install]
+WantedBy=multi-user.target

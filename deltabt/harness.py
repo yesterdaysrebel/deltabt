@@ -55,12 +55,19 @@ HOLD_HOURS = 24
 EXIT_ON_TREND_FLIP = False
 
 
-def params_for(spec, minutes: int) -> StrategyParams:
-    """Execution settings for a cell. Not part of the strategy definition."""
+def params_for(spec, minutes: int, hold_hours: int | None = None) -> StrategyParams:
+    """Execution settings for a cell. Not part of the strategy definition.
+
+    ``hold_hours`` overrides the 24h default. It matters most for WIDE stops:
+    a 2R target on an 8xATR stop sits 16xATR away, which a position rarely
+    reaches inside a day, so a fixed 24h cap silently converts a wide-stop
+    strategy into "hold overnight and take whatever" and makes the stop-width
+    sweep measure the cap rather than the stop.
+    """
     return StrategyParams(
         base_minutes=minutes,
         confirm_minutes=max(minutes * CONFIRM_RATIO, minutes + 1),
-        max_hold_bars=max(20, (HOLD_HOURS * 60) // minutes),
+        max_hold_bars=max(20, ((hold_hours or HOLD_HOURS) * 60) // minutes),
         exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
     )
@@ -115,8 +122,12 @@ def _resampled(data: dict, minutes: int, cache: dict) -> tuple:
 
 
 def run_cell(data: dict, family: str, minutes: int, costs: SymbolCosts,
-             cache: dict) -> dict:
-    spec = build_spec(family, minutes)
+             cache: dict, confirm_minutes: int | None = None,
+             stop_atr_multiplier: float | None = None,
+             hold_hours: int | None = None,
+             target_r: float | None = None) -> dict:
+    spec = build_spec(family, minutes, confirm_minutes, stop_atr_multiplier,
+                      target_r)
     primary, mark, tradable = _resampled(data, minutes, cache)
     confirm, _, _ = (_resampled(data, spec.confirm_minutes, cache)
                      if spec.confirm.enabled else (None, None, None))
@@ -133,7 +144,7 @@ def run_cell(data: dict, family: str, minutes: int, costs: SymbolCosts,
     params = StrategyParams(
         base_minutes=minutes,
         confirm_minutes=max(minutes * CONFIRM_RATIO, minutes + 1),
-        max_hold_bars=max(20, (HOLD_HOURS * 60) // minutes),
+        max_hold_bars=max(20, ((hold_hours or HOLD_HOURS) * 60) // minutes),
         exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
     )
