@@ -303,9 +303,55 @@ variable "bot_symbols" {
     that no automation can contain one -- and it cannot tell a comment from an
     instruction. Prose that names the command fails the build, which is the
     check being cheap rather than the check being wrong.
+
+    NARROWED TO BEATUSD ALONE, 2026-08-31, for the manual_scalp arm.
+
+    The clone was measured as a PORTFOLIO -- one account, the way the bot
+    actually runs -- not as seven independent accounts, and the two differ
+    enormously because losses compound on shared capital:
+
+        all 7 symbols   8,759 trades   -91.2%   93.0% drawdown   $877 left
+        thin 3            911 trades   -14.3%   20.3% drawdown
+        BEATUSD only      744 trades    -4.4%   16.9% drawdown
+
+    Breadth does not diversify here, it multiplies the trade count, and every
+    trade pays cost. BEATUSD is the only symbol with a positive GROSS edge
+    (+0.017R) because its 449 bps median stop costs 0.027R where BTCUSD's
+    96 bps costs 0.103R -- the same cost law that killed every arm before it.
+
+    AKEUSD AND BANKUSD ADDED BY INSTRUCTION, 2026-08-31. The operator's own
+    hand trading made +1,892 and +1,269 on them -- they are the two symbols
+    where the discretion demonstrably worked -- and the universe is theirs to
+    choose.
+
+    THE OBJECTIONS BELOW STILL HOLD AND ARE NOT WITHDRAWN. The clone INVERTS
+    the manual result on exactly these two:
+
+        symbol     hand-traded      manual_scalp backtest
+        AKEUSD        +1,892        -0.083R  (gross -0.059)
+        BANKUSD       +1,269        -0.186R  (gross -0.162)
+        BEATUSD         -825        -0.010R  (gross +0.017)
+
+    Both are gross-NEGATIVE, which is evidence the encoded rule does not
+    capture whatever the discretion was doing there. Both also carry only three
+    weeks of cached 1m history (from 2026-07-22), so neither result can be
+    checked against a longer sample, and 87 and 80 backtested trades is not a
+    sample at all.
+
+    THE PORTFOLIO COST OF ADDING THEM, measured rather than assumed:
+
+        BEATUSD only      744 trades    -4.4%   16.9% drawdown   $9,560
+        thin 3            911 trades   -14.3%   20.3% drawdown   $8,568
+
+    Read that as the price of the breadth, not as a forecast: on a 7-month
+    single-account run the wider universe loses three times as much.
+
+    CHANGING THIS REPLACES THE INSTANCE and ends the running experiment.
+
   EOT
   type        = string
-  default     = "BTCUSD,ETHUSD,SOLUSD,AKEUSD,BEATUSD,BANKUSD"
+
+  default = "BEATUSD,AKEUSD,BANKUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -494,7 +540,7 @@ variable "stacks" {
     # and the 2026-08-28 audit closed the family as ATR FAMILY DEAD. This run
     # is an implementation/accounting observation, not a measurement of edge,
     # and its P&L must not be read as evidence either way.
-    atr = { variant = "ATR", db_name = "deltabt_atr" }
+    atr = { variant = "SPEC:manual_scalp@5", db_name = "deltabt_atr" }
   }
 }
 

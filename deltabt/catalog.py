@@ -230,6 +230,43 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=2.0,
                   target_r=4.0),
     ),
+    # --- the operator's own hand-traded style, encoded -------------------
+    #
+    # NOT A NEW HYPOTHESIS. This is the configuration recovered from 165
+    # hand-placed round trips on the seven symbols (out/manual/), so that the
+    # thing traded by hand and the thing the backtester scores are one
+    # StrategySpec rather than two descriptions that drift apart.
+    #
+    # WHY NO SUPERTREND AND NO DI. Both were measured against the operator's
+    # own winners and losers and carry no information: Supertrend agreed with
+    # 39% of winners and 39% of losers, DI with 51% and 54%. 61% of the trades
+    # were taken AGAINST the Supertrend direction and those netted +2,223.
+    # Requiring alignment would encode a gate the record says is inert.
+    #
+    # WHY target_r=1.0. The winners cluster hard at 0.5-1.5R (77 of 83) -- the
+    # money is taken near 1R, not held for 2R. This is also the whole of the
+    # "50% win rate vs the bot's 29%" gap: a 1R target mechanically produces
+    # ~50% (measured 0.496-0.510 across six families), so the hit rate is the
+    # target, not entry skill.
+    #
+    # WHY stop_atr_multiplier=4.0. Stop width is the ONE discriminator that
+    # survived: winners were set at a median 150 bps, losers at 122 bps. Tight
+    # stops got hit. It is also the only lever that moves cost_r, which is the
+    # binding constraint (cost_r = round_trip / stop_pct).
+    #
+    # WHAT THIS IS WORTH, STATED PLAINLY. Pooled over the seven symbols it
+    # scores about -0.04R per trade under the operator's real execution
+    # (maker entry, taker stop exit). It is NOT an edge. Its value is that a
+    # bot risking 0.5% with a 3x leverage cap cannot be liquidated, and
+    # liquidation is what actually cost the money: 165 clean trades made
+    # +2,297 while 44 liquidations lost -9,172.
+    "manual_scalp": dict(
+        desc="the operator's hand-traded style: %R alone, 1R target, wide stop",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,

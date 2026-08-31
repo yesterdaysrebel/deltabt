@@ -143,7 +143,7 @@ jobs:
           # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
           # step with infra/terraform/variables.tf so the job title does not
           # announce a strategy the host is not running.
-          all='[{"stack":"atr","variant":"ATR","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
