@@ -540,7 +540,27 @@ variable "stacks" {
     # and the 2026-08-28 audit closed the family as ATR FAMILY DEAD. This run
     # is an implementation/accounting observation, not a measurement of edge,
     # and its P&L must not be read as evidence either way.
-    atr = { variant = "SPEC:manual_scalp@5", db_name = "deltabt_atr" }
+    # 2026-08-31: A NEW DATABASE, AND THE REASON IS THREE OPEN POSITIONS.
+    #
+    # ATR-5M-UN-GATED-PAPER-20260829-1 was stopped holding SOLUSD, BTCUSD and
+    # ETHUSD. `forward-test stop` leaves open positions alone on purpose --
+    # closing them would fabricate exits the strategy never produced -- and
+    # manual_scalp trades BEATUSD/AKEUSD/BANKUSD, so recover() refused to start:
+    #
+    #     refusing to become ready: open position in SOLUSD, which is not in
+    #     the configured universe
+    #
+    # That refusal is correct: a bot must not run while holding a position it
+    # has no cost model or price feed for. Splitting the database resolves it
+    # without touching those rows. deltabt_atr keeps the ATR run's history and
+    # its three positions exactly as they were left, which is the honest record
+    # of an experiment that ended holding them -- the same reasoning the note
+    # above gives for why "v1" kept the original database.
+    #
+    # REMEMBER create_stack_database.py. It is not run by user_data; the
+    # database must be created from the host before the first deploy, or the
+    # bot fails to connect.
+    atr = { variant = "SPEC:manual_scalp@5", db_name = "deltabt_manual" }
   }
 }
 
