@@ -245,6 +245,34 @@ class BrokerEvent:
 FILL_RR_RETENTION = 0.85
 
 
+#: Entry-order settings. Named so the CLI and the bot can read the SAME values
+#: rather than each carrying a literal -- see broker_params below.
+ENTRY_TTL_SECONDS = 90
+MAX_ENTRY_DEVIATION = 0.25
+
+
+def broker_params(risk) -> dict:
+    """The execution settings a live PaperBroker is constructed with.
+
+    ONE SOURCE, BECAUSE TWO DIVERGED TWICE. app/cli.py carried a literal
+    EXEC_PARAMS = {..., "min_fill_rr": 1.7} used when an experiment is CREATED,
+    while the bot built the same dict from the broker's own attributes when it
+    VERIFIES itself. identity.execution_params() was written to stop those two
+    disagreeing, and it did -- for the values it was given.
+
+    On 2026-08-31 min_fill_rr became a ratio of the arm's RR floor so a 1R arm
+    could fill at all. The broker changed; the literal did not. The CLI wrote
+    an experiment claiming 1.7, the bot computed 0.85, and the bot refused its
+    own experiment on execution_hash drift and would not start. Exactly the
+    failure that docstring describes, reintroduced by changing one side.
+
+    So neither side gets to hold a literal any more. Both call this.
+    """
+    return {"entry_ttl_seconds": ENTRY_TTL_SECONDS,
+            "max_entry_deviation": MAX_ENTRY_DEVIATION,
+            "min_fill_rr": FILL_RR_RETENTION * risk.minimum_rr}
+
+
 class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
 

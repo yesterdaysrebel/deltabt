@@ -308,18 +308,52 @@ class TestBothSidesComputeTheSameExecutionHash:
 
     SYMS = ("BTCUSD", "ETHUSD", "SOLUSD", "BEATUSD", "BANKUSD", "AKEUSD")
 
+    # BOTH SIDES NOW READ PRODUCTION, AND THAT IS THE WHOLE POINT.
+    #
+    # This class previously stubbed the bot side with a literal
+    # {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25, "min_fill_rr": 1.7}
+    # and read the CLI side from app.cli.EXEC_PARAMS, which held the same three
+    # numbers. So it proved execution_params() is deterministic -- not that the
+    # two PRODUCTION sources agree.
+    #
+    # On 2026-08-31 min_fill_rr became a ratio of the arm's RR floor in the
+    # broker while cli.py's literal stayed at 1.7. The CLI wrote an experiment
+    # the bot could not reproduce, the bot refused to start, and this class
+    # stayed green throughout: the stub said 1.7 and the literal said 1.7.
+    #
+    # The docstring above claims this is the test that would have caught the
+    # 2026-08-15 drift. It would not have caught the 2026-08-31 one. It does
+    # now, because neither side is written down here any more.
+
+    RISK = RiskConfig()
+
     def _cli_side(self, symbols):
-        from app.cli import EXEC_PARAMS
-        return execution_params({**EXEC_PARAMS, "slippage_bps": 2.0}, symbols)
+        """Exactly what cmd_start records when an experiment is created."""
+        from app.execution.paper_broker import broker_params
+        return execution_params(
+            {**broker_params(self.RISK), "slippage_bps": 2.0}, symbols)
 
     def _bot_side(self, symbols):
-        """What TradingBot.current_identity builds, with a stub broker."""
-        broker = type("B", (), {"entry_ttl_seconds": 90,
-                                "max_entry_deviation": 0.25,
-                                "min_fill_rr": 1.7})()
+        """What TradingBot.current_identity reads off a REAL broker, built the
+        way bot.py builds it."""
+        from app.execution.paper_broker import PaperBroker, broker_params
+        broker = PaperBroker({}, starting_equity=10_000.0,
+                             **broker_params(self.RISK))
         return execution_params(
             {f: getattr(broker, f, None) if f != "slippage_bps" else 2.0
              for f in EXECUTION_FIELDS}, symbols)
+
+    async def test_a_one_sided_change_is_caught(self):
+        """The regression itself: change the broker's floor, leave the CLI's,
+        and the hashes must diverge -- proving the two sides are genuinely
+        independent reads rather than the same literal twice."""
+        from app.execution.paper_broker import PaperBroker, broker_params
+        drifted = PaperBroker({}, starting_equity=10_000.0,
+                              **{**broker_params(self.RISK), "min_fill_rr": 9.9})
+        bot = execution_params(
+            {f: getattr(drifted, f, None) if f != "slippage_bps" else 2.0
+             for f in EXECUTION_FIELDS}, self.SYMS)
+        assert bot != self._cli_side(self.SYMS)
 
     async def test_the_two_sides_agree(self):
         assert self._cli_side(self.SYMS) == self._bot_side(self.SYMS)
