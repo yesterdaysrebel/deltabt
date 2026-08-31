@@ -79,3 +79,10 @@ bootstrap.tfplan.json
 # throwaway process is not a change to review.
 core
 core.*
+
+# Derived from the operator's own Delta account statements in /data/, which is
+# ignored above. THIS REPOSITORY IS PUBLIC: these two files carry 275 real
+# trades with entry, exit, quantity, notional and P&L. The findings drawn from
+# them belong in commit messages and docs; the per-trade record does not belong
+# on a public remote.
+out/manual/

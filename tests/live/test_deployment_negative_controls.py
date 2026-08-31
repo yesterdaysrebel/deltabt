@@ -749,6 +749,20 @@ def _report():
     return load("daily_report")
 
 
+def _running_with_hold(max_hold_seconds):
+    """The RUNNING experiment row, carrying a risk snapshot.
+
+    The report reads max_hold_seconds off the running experiment's persisted
+    risk config (app/runtime/bot.py passes asdict(settings.risk)), so a test
+    that wants to pin the time-stop wording has to supply one.
+    """
+    return {"experiment_id": "H-WPR-1-PAPER-AWS-20260813",
+            "status": "RUNNING",
+            "started_at": "2026-08-13T19:41:15",
+            "planned_days": 30,
+            "risk": {"max_hold_seconds": max_hold_seconds}}
+
+
 def _probe(started="2026-08-13T19:42:44.492000000Z", **db):
     """A probe payload in the ===SECTION=== format the report parses."""
     body = {"experiments": [{"experiment_id": "H-WPR-1-PAPER-AWS-20260813",
@@ -1311,13 +1325,46 @@ class TestTheReportPrintsWhatTheRunIsMeasuring:
         assert code == 0, "a symbol not trading is a finding, not a fault"
 
     def test_a_stale_open_position_escalates(self, monkeypatch, capsys):
-        """There is no time stop: only STOP_LOSS and TAKE_PROFIT close."""
+        """A stale position escalates whatever the time stop is set to.
+
+        This test used to assert the report says "no time stop", which was
+        true of the code and false of the deployment: max_hold_seconds is
+        configurable and DELTABOT_MAX_HOLD=86400 was live. What escalates is
+        the age; what the report must NOT do is guess at the mechanism that
+        will release it. See tests/live/test_report_states_facts.py.
+        """
         code, out = _run_report(monkeypatch, capsys,
-                                _probe(oldest_open_seconds=5 * 86400),
+                                _probe(oldest_open_seconds=5 * 86400,
+                                       experiments=[_running_with_hold(0)]),
                                 beats=HEALTHY_BEATS)
         assert "Oldest open position" in out
         assert code == 1
         assert "no time stop" in out
+
+    def test_a_stale_position_under_a_time_stop_says_so(self, monkeypatch, capsys):
+        """A 24h hold is configured and the position is 120h old.
+
+        That combination is worse than the plain stale case -- the release
+        mechanism exists and did not fire -- so it must still escalate, and it
+        must not be described as having no time stop.
+        """
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(oldest_open_seconds=5 * 86400,
+                                       experiments=[_running_with_hold(86400)]),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "24.0h" in out
+        assert "no time stop" not in out
+        assert "despite a 24.0h time stop" in out
+
+    def test_a_stale_position_with_no_snapshot_does_not_guess(self, monkeypatch, capsys):
+        """The risk snapshot carried no max_hold_seconds. Say that, don't guess."""
+        code, out = _run_report(monkeypatch, capsys,
+                                _probe(oldest_open_seconds=5 * 86400),
+                                beats=HEALTHY_BEATS)
+        assert code == 1
+        assert "could not read max_hold_seconds" in out
+        assert "no time stop" not in out
 
     def test_a_normal_open_position_does_not_escalate(self, monkeypatch, capsys):
         code, out = _run_report(monkeypatch, capsys,

@@ -402,6 +402,37 @@ def gated_replay(trades: list[dict], day_start: float, profile: dict) -> dict:
                 halted_after=taken if halted else None)
 
 
+def time_stop_sentence(max_hold_seconds) -> str:
+    """Describe what will release an open position, from the RUNNING config.
+
+    DO NOT hard-code whether a time stop exists. It is configurable
+    (``RiskConfig.max_hold_seconds``, 0 disables) and delivered through the
+    Terraform -> user_data -> run.sh env chain, so the only true answer is the
+    running experiment's own risk snapshot.
+
+    This line read "there is no time stop" unconditionally while
+    ``DELTABOT_MAX_HOLD=86400`` was live and forwarded into the container. That
+    inverts the reader's decision: told a losing position is held indefinitely,
+    an operator intervenes; told it closes in 24h, they wait. A report is read
+    during an incident, which is exactly when a confident wrong sentence costs
+    the most.
+
+    ``None`` means the snapshot did not carry the field, which is NOT the same
+    as 0 and must not be rendered as "no time stop".
+    """
+    if max_hold_seconds is None:
+        return ("The running experiment's risk snapshot did not report "
+                "max_hold_seconds, so whether a time stop will release it is "
+                "unknown to this report.")
+    if max_hold_seconds:
+        return (f"A time stop is configured at "
+                f"{int(max_hold_seconds) / 3600.0:.1f}h, so it closes on max "
+                f"hold if the target is not reached first.")
+    return ("No time stop is configured (max_hold_seconds=0), so only "
+            "STOP_LOSS and TAKE_PROFIT close a position and a target that "
+            "cannot be reached is held indefinitely.")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--instance-id", required=True)
@@ -915,9 +946,15 @@ def main() -> int:
     by_sym = db.get("by_symbol") or []
     if by_sym:
         print("## Per symbol\n")
-        print("A symbol that never trades is invisible in a total. AKEUSD and "
-              "BEATUSD had every setup refused for stop width and the "
-              "aggregates showed nothing.\n")
+        # DO NOT name symbols or a rejection reason here. This paragraph is
+        # printed on every run, so anything specific in it is a claim about
+        # data the paragraph has not read. It previously said "AKEUSD and
+        # BEATUSD had every setup refused for stop width", which stayed in the
+        # report long after it stopped being true. The specific finding is
+        # derived from `by_sym` below.
+        print("A symbol that never trades is invisible in a total: a limit "
+              "that always bites the same symbol shows up here and nowhere "
+              "else.\n")
         print("| Symbol | Setups | Approved | Rejected | Stop % range | Bars | Synthetic |")
         print("|---|---|---|---|---|---|---|")
         quality = {q["symbol"]: q for q in (db.get("bar_quality") or [])}
@@ -939,12 +976,26 @@ def main() -> int:
     oldest = db.get("oldest_open_seconds")
     if oldest:
         hours = int(oldest) / 3600.0
-        print(f"Oldest open position: **{hours:.1f}h**. Only STOP_LOSS and "
-              f"TAKE_PROFIT close a position -- there is no time stop -- so a "
-              f"target that cannot be reached is held indefinitely.\n")
+        # DO NOT hard-code whether a time stop exists. It is configurable
+        # (RiskConfig.max_hold_seconds, 0 disables) and delivered through the
+        # env chain, so the only true answer is the running experiment's own
+        # risk snapshot. This line said "there is no time stop" while
+        # DELTABOT_MAX_HOLD=86400 was live and forwarded, which inverts the
+        # reader's decision about whether to intervene on an open position.
+        max_hold = _risk.get("max_hold_seconds")
+        print(f"Oldest open position: **{hours:.1f}h**. "
+              f"{time_stop_sentence(max_hold)}\n")
         if hours >= 72:
-            problems.append(f"a position has been open {hours:.0f}h with no "
-                            f"time stop to release it")
+            if max_hold:
+                problems.append(f"a position has been open {hours:.0f}h "
+                                f"despite a {int(max_hold) / 3600.0:.1f}h "
+                                f"time stop")
+            elif max_hold is None:
+                problems.append(f"a position has been open {hours:.0f}h and "
+                                f"the report could not read max_hold_seconds")
+            else:
+                problems.append(f"a position has been open {hours:.0f}h with "
+                                f"no time stop to release it")
 
     # --- 4. sample size -----------------------------------------------------
     print("## Sample size\n")
