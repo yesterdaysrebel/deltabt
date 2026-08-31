@@ -46,8 +46,8 @@ from app.config.settings import (
 from app.config.strategy import FROZEN, StrategyConfig
 from app.execution.allocation import UnmatchedFill, resolve_position
 from app.execution.order_state import OrderStatus
-from app.execution.paper_broker import (FILL_RR_RETENTION, ExitReason,
-                                        PaperBroker, PaperPosition)
+from app.execution.paper_broker import (ExitReason, PaperBroker,
+                                        PaperPosition, broker_params)
 from app.forwardtest.identity import (
     EXECUTION_FIELDS,
     execution_params,
@@ -179,9 +179,8 @@ class TradingBot:
         # on 2026-08-31 alone.
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
                                   slippage_bps=settings.risk.slippage_bps,
-                                  min_fill_rr=(FILL_RR_RETENTION
-                                               * settings.risk.minimum_rr),
-                                  max_hold_seconds=settings.risk.max_hold_seconds)
+                                  max_hold_seconds=settings.risk.max_hold_seconds,
+                                  **broker_params(settings.risk))
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)
 

@@ -37,8 +37,11 @@ from datetime import datetime, timezone
 
 from app.runtime.bot import STATE_KEY
 
-EXEC_PARAMS = {"entry_ttl_seconds": 90, "max_entry_deviation": 0.25,
-               "min_fill_rr": 1.7}
+# EXEC_PARAMS WAS A LITERAL AND IT DRIFTED. It said min_fill_rr 1.7 while the
+# broker computed 0.85 from the arm's RR floor, so an experiment created here
+# recorded an execution_hash the bot could not reproduce and the bot refused to
+# start. broker_params() is now the only statement of these values.
+from app.execution.paper_broker import broker_params
 
 
 def default_experiment_id(now: datetime | None = None) -> str:
@@ -118,7 +121,7 @@ async def cmd_start(args) -> int:
     # to start on an execution_hash it could not reproduce.
     ident = build_identity(
         exp_id, resolve_strategy(), settings.risk,
-        execution_params({**EXEC_PARAMS,
+        execution_params({**broker_params(settings.risk),
                           "slippage_bps": settings.risk.slippage_bps},
                          settings.symbols),
         settings.symbols)

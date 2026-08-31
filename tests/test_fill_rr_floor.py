@@ -55,16 +55,20 @@ def test_the_floor_is_always_below_the_approved_target(minimum_rr):
 
 def test_the_bot_passes_a_derived_floor_not_the_default():
     """PaperBroker always accepted min_fill_rr. bot.py never passed it, which
-    is the whole defect -- so this asserts the wiring, not the arithmetic."""
+    is the whole defect -- so this asserts the wiring, not the arithmetic.
+
+    It checks for broker_params rather than the constant: deriving the value
+    inline in bot.py was the FIRST version of this fix, and it left cli.py's
+    literal behind. Going through one function is what stops that.
+    """
     import inspect
 
     from app.runtime import bot as bot_module
     src = inspect.getsource(bot_module.TradingBot.__init__)
-    assert "min_fill_rr" in src, (
-        "bot.py must pass min_fill_rr; leaving it defaulted is what refused "
-        "every fill on the 1R arm")
-    assert "FILL_RR_RETENTION" in src and "minimum_rr" in src, (
-        "it must be derived from the arm's own RR floor, not hardcoded again")
+    assert "broker_params" in src, (
+        "bot.py must build its execution settings from broker_params; a "
+        "defaulted min_fill_rr is what refused every fill on the 1R arm, and "
+        "an inline derivation is what let cli.py drift away from it")
 
 
 def test_min_fill_rr_is_part_of_the_experiment_identity():
@@ -78,3 +82,52 @@ def test_the_risk_config_default_still_pairs_with_the_old_constant():
     """RiskConfig.minimum_rr defaults to 2.0; 0.85 x 2.0 is the historic 1.7,
     so an arm that configures nothing behaves exactly as before."""
     assert FILL_RR_RETENTION * RiskConfig().minimum_rr == pytest.approx(1.7)
+
+
+# --------------------------------------------------------------------------
+# ONE SOURCE. The first version of this fix changed the broker and left
+# app/cli.py's EXEC_PARAMS literal at 1.7, so an experiment created by the CLI
+# recorded an execution_hash the bot could not reproduce. The bot refused its
+# own experiment and would not start. identity.execution_params() exists
+# because these two had already diverged once; changing one side reintroduced
+# it. These tests pin that neither side holds a literal.
+
+def test_broker_params_is_the_only_statement_of_these_values():
+    """cli.py must not carry its own copy again."""
+    import inspect
+
+    from app import cli
+    src = inspect.getsource(cli)
+    assert "broker_params" in src, "cli.py must build the dict from one source"
+    assert '"min_fill_rr": 1.7' not in src and "'min_fill_rr': 1.7" not in src, (
+        "cli.py is holding a literal min_fill_rr again -- that is the bug")
+
+
+def test_the_bot_and_the_cli_would_agree(monkeypatch):
+    """THE INVARIANT THAT BROKE. What the CLI records when an experiment is
+    created must equal what the bot computes when it verifies itself, or the
+    bot refuses to start on execution_hash drift."""
+    from app.config.settings import RiskConfig
+    from app.execution.paper_broker import PaperBroker, broker_params
+
+    for minimum_rr in (1.0, 2.0):
+        risk = RiskConfig(minimum_rr=minimum_rr)
+        recorded = broker_params(risk)                     # what the CLI writes
+        broker = PaperBroker({}, starting_equity=10_000.0,
+                             **broker_params(risk))        # what the bot builds
+        for field, value in recorded.items():
+            assert getattr(broker, field) == value, (
+                f"{field} recorded as {value} but the broker holds "
+                f"{getattr(broker, field)}")
+
+
+def test_every_execution_field_the_identity_hashes_is_covered():
+    """A field in EXECUTION_FIELDS that broker_params does not set is a field
+    the two sides can disagree about. slippage_bps comes from RiskConfig and is
+    passed separately, so it is the one exception."""
+    from app.execution.paper_broker import broker_params
+    from app.forwardtest.identity import EXECUTION_FIELDS
+    from app.config.settings import RiskConfig
+    covered = set(broker_params(RiskConfig())) | {"slippage_bps"}
+    assert set(EXECUTION_FIELDS) <= covered, (
+        f"not covered by broker_params: {set(EXECUTION_FIELDS) - covered}")
