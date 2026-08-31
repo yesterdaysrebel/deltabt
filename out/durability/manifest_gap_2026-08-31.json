@@ -1,0 +1,78 @@
+{
+  "captured": "2026-08-31T08:50:04.762414+00:00",
+  "note": "manifest coverage gap found 2026-08-31; evidence before repair",
+  "missing": [
+    {
+      "dataset": "options",
+      "date": "2026-08-29",
+      "partition": "data/quotes/quotes_2026-08-29.parquet",
+      "bytes": 9282495,
+      "sha256": "577de1272f90e9f0d3e763e6eff49a81a0d36ddd0652c1540373292fa7da5377"
+    },
+    {
+      "dataset": "options",
+      "date": "2026-08-30",
+      "partition": "data/quotes/quotes_2026-08-30.parquet",
+      "bytes": 9184797,
+      "sha256": "7eda7a9696626ba57b161ee152f135b44e6ccdddf18e5b5d4b3dbbe1fd126460"
+    },
+    {
+      "dataset": "perp_candles",
+      "date": "2026-08-29",
+      "partition": "data/perp/perp_candles_1m_2026-08-29.parquet",
+      "bytes": 74790,
+      "sha256": "0d928a8d1047945d5ba70dbe62fc058cb666269cbcb14aada14849bce19a4dad"
+    },
+    {
+      "dataset": "perp_candles",
+      "date": "2026-08-30",
+      "partition": "data/perp/perp_candles_1m_2026-08-30.parquet",
+      "bytes": 83400,
+      "sha256": "6480fcff5270a5e5eb3ec8156403fd725351ba4e4e02611b09c644f35f9d1699"
+    },
+    {
+      "dataset": "perp_quotes",
+      "date": "2026-08-29",
+      "partition": "data/perp/perp_quotes_2026-08-29.parquet",
+      "bytes": 203386,
+      "sha256": "8d5a9f1706395378e4445337d9c1c72b427f605f4efcb04bacc63578bdf58cc6"
+    },
+    {
+      "dataset": "perp_quotes",
+      "date": "2026-08-30",
+      "partition": "data/perp/perp_quotes_2026-08-30.parquet",
+      "bytes": 213809,
+      "sha256": "98c422e48691d5e78bebabeef79c1f67c4d9380d9111df6034bf0e81a368d746"
+    }
+  ],
+  "stale_wrong_root": [
+    {
+      "path": "data/manifests/perp_candles/2026-08-28.json",
+      "rows": 528,
+      "provenance": null,
+      "schema_version": 1,
+      "checksum_matches": false
+    },
+    {
+      "path": "data/manifests/perp_candles/2026-08-29.json",
+      "rows": 756,
+      "provenance": null,
+      "schema_version": 1,
+      "checksum_matches": false
+    },
+    {
+      "path": "data/manifests/perp_quotes/2026-08-28.json",
+      "rows": 486,
+      "provenance": null,
+      "schema_version": 1,
+      "checksum_matches": false
+    },
+    {
+      "path": "data/manifests/perp_quotes/2026-08-29.json",
+      "rows": 758,
+      "provenance": null,
+      "schema_version": 1,
+      "checksum_matches": false
+    }
+  ]
+}

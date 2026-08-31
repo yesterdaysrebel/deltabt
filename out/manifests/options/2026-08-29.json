@@ -1,0 +1,48 @@
+{
+  "dataset": "options",
+  "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "date": "2026-08-29",
+  "first_timestamp": 1787961874,
+  "last_timestamp": 1788047355,
+  "rows": 100582,
+  "unique_contracts": 1186,
+  "unique_batches": 96,
+  "schema_version": 1,
+  "columns": [
+    "snapshot_ts",
+    "exchange_ts",
+    "symbol",
+    "underlying",
+    "mark_price",
+    "spot_price",
+    "best_bid",
+    "best_ask",
+    "bid_size",
+    "ask_size",
+    "mark_iv",
+    "bid_iv",
+    "ask_iv",
+    "delta",
+    "gamma",
+    "vega",
+    "theta",
+    "oi_contracts",
+    "turnover_usd",
+    "volume"
+  ],
+  "dedup_key": [
+    "snapshot_ts",
+    "symbol"
+  ],
+  "file_paths": [
+    "data/quotes/quotes_2026-08-29.parquet"
+  ],
+  "checksums": {
+    "quotes_2026-08-29.parquet": "577de1272f90e9f0d3e763e6eff49a81a0d36ddd0652c1540373292fa7da5377"
+  },
+  "bytes": 9282495,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-31T08:50:17.151472+00:00"
+}

@@ -220,6 +220,27 @@ def record_once(client: DeltaClient | None = None, *, quote_dir: Path = QUOTE_DI
         log.exception("manifest write failed for %s; snapshot is still saved",
                       path.name)
 
+    # AND THEN ASK WHETHER ANY SEALED DAY IS UNDESCRIBED.
+    #
+    # The try/except above is what makes the gap silent: it exists so a failed
+    # manifest can never kill the poll, which also means a failed manifest says
+    # nothing. On 2026-08-31 six sealed partitions across three datasets had no
+    # manifest -- 19 MB of options quotes among them -- while this recorder
+    # logged 72 and 96 successful polls on those same days and not one failure.
+    # Nothing had failed. Nothing had ASKED.
+    #
+    # A directory listing of a handful of files, once every 900s. If it is ever
+    # slow enough to matter the archive has bigger problems than this line.
+    try:
+        gaps = archive.unmanifested_days("options",
+                                         manifest_root=_manifest_root(quote_dir))
+        if gaps:
+            log.warning("SEALED DAYS WITH NO MANIFEST: options %s -- rebuild "
+                        "with archive.rebuild_manifest so they are labelled "
+                        "'rebuilt', never 'recorder'", ", ".join(gaps))
+    except Exception:                                    # noqa: BLE001
+        log.exception("manifest coverage check failed; snapshot is still saved")
+
     spread = _median_half_spread(df)
     log.info(
         "recorded %d contracts -> %s (median half-spread %.2f%% of mid)",

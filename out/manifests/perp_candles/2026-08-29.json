@@ -1,0 +1,36 @@
+{
+  "dataset": "perp_candles",
+  "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "date": "2026-08-29",
+  "first_timestamp": 1787961600,
+  "last_timestamp": 1788047940,
+  "rows": 2850,
+  "unique_contracts": 2,
+  "unique_batches": 1425,
+  "schema_version": 1,
+  "columns": [
+    "time",
+    "fetched_ts",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "dedup_key": [
+    "time",
+    "symbol"
+  ],
+  "file_paths": [
+    "data/perp/perp_candles_1m_2026-08-29.parquet"
+  ],
+  "checksums": {
+    "perp_candles_1m_2026-08-29.parquet": "0d928a8d1047945d5ba70dbe62fc058cb666269cbcb14aada14849bce19a4dad"
+  },
+  "bytes": 74790,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-31T08:50:17.176563+00:00"
+}

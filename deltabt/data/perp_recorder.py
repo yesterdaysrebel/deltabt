@@ -226,6 +226,20 @@ def _commit(df: pd.DataFrame, dataset: str, time_col: str,
     man_root, cp_root = _sidecar_roots(root)
     path = archive.append_partition(df, dataset, root=root)
     archive.write_manifest(dataset, path, root=man_root)
+
+    # See quote_recorder.record_once: the manifest write cannot complain, so
+    # something has to ask. Six sealed partitions went undescribed for two days
+    # in 2026-08 while every poll logged success.
+    try:
+        gaps = archive.unmanifested_days(dataset, root=root,
+                                         manifest_root=man_root)
+        if gaps:
+            log.warning("SEALED DAYS WITH NO MANIFEST: %s %s -- rebuild with "
+                        "archive.rebuild_manifest so they are labelled "
+                        "'rebuilt', never 'recorder'", dataset, ", ".join(gaps))
+    except Exception:                                    # noqa: BLE001
+        log.exception("manifest coverage check failed for %s; batch is still "
+                      "saved", dataset)
     cp = archive.read_checkpoint(dataset, cp_root)
     cp.last_timestamp = int(df[time_col].max())
     cp.last_partition = str(path)

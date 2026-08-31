@@ -1,0 +1,36 @@
+{
+  "dataset": "perp_candles",
+  "venue": "delta_india",
+  "provenance": "recorder",
+  "manifest_schema_version": 2,
+  "date": "2026-08-31",
+  "first_timestamp": 1788134400,
+  "last_timestamp": 1788166440,
+  "rows": 1070,
+  "unique_contracts": 2,
+  "unique_batches": 535,
+  "schema_version": 1,
+  "columns": [
+    "time",
+    "fetched_ts",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "dedup_key": [
+    "time",
+    "symbol"
+  ],
+  "file_paths": [
+    "/workspaces/glueops/deltabt/data/perp/perp_candles_1m_2026-08-31.parquet"
+  ],
+  "checksums": {
+    "perp_candles_1m_2026-08-31.parquet": "767a137faf688316b433c8c28a94e53fb4557a7636dd0b18b1ecc180e882e159"
+  },
+  "bytes": 37329,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-31T08:55:35.399107+00:00"
+}
