@@ -40,6 +40,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -379,6 +380,58 @@ def refresh_manifests(dataset: str, *, root: Path | None = None,
     for p in sorted(globs.glob(f"{prefix}*.parquet")):
         out.append(write_manifest(dataset, p, root=manifest_root))
     return out
+
+
+#: Partition directory and filename prefix per dataset. `refresh_manifests`
+#: and `unmanifested_days` both need it, and two copies would drift.
+_PARTITION_LAYOUT: dict[str, tuple[str, str]] = {
+    "options": ("quotes", "quotes_"),
+    "perp_quotes": ("perp", "perp_quotes_"),
+    "perp_candles": ("perp", "perp_candles_1m_"),
+}
+
+
+def unmanifested_days(dataset: str, *, root: Path | None = None,
+                      manifest_root: Path | None = None,
+                      today: str | None = None) -> list[str]:
+    """Sealed partitions of ``dataset`` that no manifest describes.
+
+    WHY THIS EXISTS. On 2026-08-31 six sealed partitions -- options,
+    perp_candles and perp_quotes for the 29th and 30th -- had no manifest at
+    all, including 19 MB of options quotes. The recorders were running the
+    whole time and logged 72 and 96 successful polls across those days; not one
+    manifest-write failure was logged, because none failed.
+
+    So the gap was not an error path. Nothing ever ASKED whether the days on
+    disk were described, and a missing description raises no exception, fails
+    no health check and appears in no log. The manifest write was already
+    wrapped in try/except precisely so it could never kill the poll, which
+    means the one thing that could have complained was silenced by design.
+
+    A count, not a repair: this reports and lets the caller decide. Rebuilding
+    automatically would relabel observed days as reconstructed ones behind
+    somebody's back, which is exactly what `rebuild_manifest` refuses to let
+    happen by accident.
+
+    Today's partition is excluded -- it is still open, and its manifest is
+    rewritten on every append.
+    """
+    if dataset not in _PARTITION_LAYOUT:
+        raise ValueError(f"unknown dataset {dataset!r}; "
+                         f"known: {sorted(_PARTITION_LAYOUT)}")
+    subdir, prefix = _PARTITION_LAYOUT[dataset]
+    base = Path(root or ARCHIVE_ROOT) / subdir
+    if not base.exists():
+        return []
+    today = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    gaps = []
+    for p in sorted(base.glob(f"{prefix}*.parquet")):
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", p.name)
+        if not m or m.group(1) == today:
+            continue
+        if not manifest_path(dataset, m.group(1), manifest_root).exists():
+            gaps.append(m.group(1))
+    return gaps
 
 
 # ------------------------------------------------------- single instance lock

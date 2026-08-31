@@ -1,0 +1,45 @@
+{
+  "dataset": "perp_quotes",
+  "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "date": "2026-08-29",
+  "first_timestamp": 1787961600,
+  "last_timestamp": 1788047956,
+  "rows": 2880,
+  "unique_contracts": 2,
+  "unique_batches": 1440,
+  "schema_version": 1,
+  "columns": [
+    "snapshot_ts",
+    "exchange_ts",
+    "recv_ts",
+    "symbol",
+    "underlying",
+    "best_bid",
+    "best_ask",
+    "bid_size",
+    "ask_size",
+    "mark_price",
+    "spot_price",
+    "last_price",
+    "mark_basis",
+    "funding_rate",
+    "oi_contracts",
+    "turnover_usd",
+    "volume"
+  ],
+  "dedup_key": [
+    "snapshot_ts",
+    "symbol"
+  ],
+  "file_paths": [
+    "data/perp/perp_quotes_2026-08-29.parquet"
+  ],
+  "checksums": {
+    "perp_quotes_2026-08-29.parquet": "8d5a9f1706395378e4445337d9c1c72b427f605f4efcb04bacc63578bdf58cc6"
+  },
+  "bytes": 203386,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-08-31T08:50:17.184646+00:00"
+}
