@@ -70,10 +70,16 @@ if [[ -z "$PREVIOUS" || "$PREVIOUS" == "none" ]]; then
   exit 1
 fi
 
+# A failed rollback must STOP, not loop: start_and_verify uses `systemctl
+# restart` and the unit is Restart=always. And the previous image cannot always
+# run the CURRENT user_data -- see tests/live/test_rollback_stops.py.
 if start_and_verify "$PREVIOUS"; then
   log "rolled back to $PREVIOUS"
 else
-  log "ROLLBACK ALSO FAILED -- the problem is not the image. Investigate the"
-  log "database and the network before deploying anything else."
+  systemctl stop deltabt.service || true
+  log "ROLLBACK ALSO FAILED -- service STOPPED rather than left looping."
+  log "Usually the problem is not the image: two failures point at the"
+  log "database or the network. BUT NOT ALWAYS -- the previous image may not"
+  log "run the current env. Check DELTABOT_VARIANT against the catalog."
 fi
 exit 1
