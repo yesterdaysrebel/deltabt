@@ -46,7 +46,8 @@ from app.config.settings import (
 from app.config.strategy import FROZEN, StrategyConfig
 from app.execution.allocation import UnmatchedFill, resolve_position
 from app.execution.order_state import OrderStatus
-from app.execution.paper_broker import ExitReason, PaperBroker, PaperPosition
+from app.execution.paper_broker import (FILL_RR_RETENTION, ExitReason,
+                                        PaperBroker, PaperPosition)
 from app.forwardtest.identity import (
     EXECUTION_FIELDS,
     execution_params,
@@ -169,8 +170,17 @@ class TradingBot:
         self.builder = CandleBuilder(self.symbols, max_bars=max_bars)
         self.halts = {s: HaltDetector(s, min_run=halt_min_run(s))
                       for s in self.symbols}
+        # min_fill_rr TRACKS THE ARM'S OWN RR FLOOR RATHER THAN A CONSTANT.
+        # PaperBroker's 1.7 default is 0.85 x 2.0 and assumes a 2R target, so a
+        # 1R arm has every fill refused while looking perfectly healthy.
+        # Derived from minimum_rr, which is already configured per arm and
+        # already inside risk_hash -- so no fifth value has to be delivered
+        # through the Terraform/user_data/run.sh chain that leaked four times
+        # on 2026-08-31 alone.
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
                                   slippage_bps=settings.risk.slippage_bps,
+                                  min_fill_rr=(FILL_RR_RETENTION
+                                               * settings.risk.minimum_rr),
                                   max_hold_seconds=settings.risk.max_hold_seconds)
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)

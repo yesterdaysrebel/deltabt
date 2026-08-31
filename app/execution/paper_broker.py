@@ -225,6 +225,26 @@ class BrokerEvent:
     payload: dict = field(default_factory=dict)
 
 
+#: How much of the APPROVED reward/risk a fill must retain.
+#:
+#: THE 1.7 DEFAULT BELOW IS 0.85 x 2.0, AND THAT WAS INVISIBLE. It encodes
+#: "reject a fill that gives away more than 15% of the planned RR", but written
+#: as an absolute it silently means "reject everything" for any arm whose target
+#: is below 1.7R.
+#:
+#: manual_scalp takes profit at 1R -- the finding it encodes, recovered from 165
+#: hand-placed trades. On 2026-08-31 it approved four setups, sent four orders,
+#: and every fill was refused with "reward/risk at the actual fill is 1.00,
+#: below the 1.70 floor". Healthy, bound, evaluating, and structurally unable to
+#: open a position -- the same shape as minimum_rr=2.0 refusing every setup
+#: earlier that day, one layer down and with no configuration path at all:
+#: bot.py constructed PaperBroker without passing it.
+#:
+#: As a ratio it is correct for any target. 0.85 x 2.0 = 1.7 exactly, so every
+#: 2R arm keeps the behaviour it has today.
+FILL_RR_RETENTION = 0.85
+
+
 class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
 
