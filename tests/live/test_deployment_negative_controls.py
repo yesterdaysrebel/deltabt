@@ -180,8 +180,28 @@ class TestBrokenImageRollsBack:
         assert "leaving the service stopped rather than looping" in self.DEPLOY
 
     def test_a_failed_rollback_is_reported_as_not_the_image(self):
+        """Two images failing to start usually means the environment.
+
+        The assertion below used to be the whole story. 2026-08-31 falsified
+        its absolutism: the rollback failed BECAUSE of the image. The stack
+        moved to SPEC:manual_scalp@5 and the previous tag predated that catalog
+        family, so the rolled-back container died on 'names no catalog family'
+        every 20 seconds. `usually` is now load-bearing, and the counter-case
+        is named so nobody re-derives it at 3am.
+        """
         assert "ROLLBACK ALSO FAILED" in self.DEPLOY
         assert "the problem is not the image" in self.DEPLOY
+        assert "BUT NOT ALWAYS" in self.DEPLOY
+        assert "DELTABOT_VARIANT" in self.DEPLOY
+
+    def test_a_failed_rollback_stops_rather_than_loops(self):
+        """start_and_verify uses `systemctl restart` and the unit is
+        Restart=always, so logging and exiting leaves an unattended crash loop.
+        It burned CPU and filled the journal on 2026-08-31 until somebody
+        stopped it by hand. A stopped host is honest: /readyz is unreachable,
+        the report says so, the alarms fire."""
+        tail = self.DEPLOY[self.DEPLOY.index('if start_and_verify "$PREVIOUS"'):]
+        assert "systemctl stop deltabt.service" in tail
 
     def test_the_deploy_workflow_fails_when_the_host_command_fails(self):
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()

@@ -72,3 +72,10 @@ tfplan
 tfplan.json
 bootstrap.tfplan
 bootstrap.tfplan.json
+
+# Core dumps. One appeared on 2026-08-31 from an ad-hoc `python -c` reading
+# parquet -- 1.3 GB of address space, 68 MB on disk -- and sat in `git status`
+# for hours looking like something that needed a decision. A crash dump from a
+# throwaway process is not a change to review.
+core
+core.*
