@@ -625,6 +625,29 @@ variable "alarm_email" {
   default     = ""
 }
 
+variable "minimum_rr" {
+  description = <<-EOT
+    Reward/risk floor. A setup whose target is closer than this multiple of the
+    stop is REFUSED by app/risk/engine.py before sizing.
+
+    IT MUST TRACK THE ARM'S target_r, AND NOTHING CHECKED THAT UNTIL NOW.
+    manual_scalp takes profit at 1R -- that is the whole finding it encodes,
+    recovered from 165 hand-placed trades whose winners cluster at 0.5-1.5R.
+    Against the 2.0 default every one of its setups computes rr = 1.00 and is
+    refused, so the bot would boot, pass /readyz, report healthy, evaluate
+    bars, and approve NOTHING, forever.
+
+    This gate is LIVE-ONLY. deltabt/engine.py has no equivalent, so no backtest
+    could ever surface the conflict; it was caught because forward-test
+    preflight prints the risk config beside the strategy.
+
+    Changing this moves risk_hash, so EXPECTED_RISK_HASH must be updated with
+    it or the daily report calls a correct deployment drifted every morning.
+  EOT
+  type        = number
+  default     = 1.0
+}
+
 variable "cooldown_after_trade_seconds" {
   description = <<-EOT
     Global post-trade cooldown, in seconds. 0 disables it.

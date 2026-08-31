@@ -130,6 +130,7 @@ resource "aws_instance" "bot" {
     max_drawdown_pct             = var.max_drawdown_pct
     max_daily_loss_pct           = var.max_daily_loss_pct
     max_consecutive_losses       = var.max_consecutive_losses
+    minimum_rr                   = var.minimum_rr
     cooldown_after_trade_seconds = var.cooldown_after_trade_seconds
     cooldown_after_loss_seconds  = var.cooldown_after_loss_seconds
     max_hold_seconds             = var.max_hold_seconds
