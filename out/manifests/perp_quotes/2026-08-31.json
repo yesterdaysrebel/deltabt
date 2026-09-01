@@ -5,10 +5,10 @@
   "manifest_schema_version": 2,
   "date": "2026-08-31",
   "first_timestamp": 1788134429,
-  "last_timestamp": 1788166534,
-  "rows": 1072,
+  "last_timestamp": 1788220768,
+  "rows": 2880,
   "unique_contracts": 2,
-  "unique_batches": 536,
+  "unique_batches": 1440,
   "schema_version": 1,
   "columns": [
     "snapshot_ts",
@@ -37,9 +37,9 @@
     "/workspaces/glueops/deltabt/data/perp/perp_quotes_2026-08-31.parquet"
   ],
   "checksums": {
-    "perp_quotes_2026-08-31.parquet": "9792170c2e28a65e9e1f5cf96ef19e468d0ffeaccd516e469294fd275f6e0ed0"
+    "perp_quotes_2026-08-31.parquet": "de0accf2aa60aa9f00028d5e2d3e7246ed29e74ef89830c8440c8577281c1bb5"
   },
-  "bytes": 89137,
+  "bytes": 222050,
   "collection_process_version": "2026-08-28.1",
-  "generated_at": "2026-08-31T08:55:34.757957+00:00"
+  "generated_at": "2026-08-31T23:59:30.524502+00:00"
 }

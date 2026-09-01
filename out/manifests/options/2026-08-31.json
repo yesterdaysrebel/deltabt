@@ -5,10 +5,10 @@
   "manifest_schema_version": 2,
   "date": "2026-08-31",
   "first_timestamp": 1788134669,
-  "last_timestamp": 1788166174,
-  "rows": 38361,
-  "unique_contracts": 1070,
-  "unique_batches": 36,
+  "last_timestamp": 1788220346,
+  "rows": 101980,
+  "unique_contracts": 1193,
+  "unique_batches": 97,
   "schema_version": 1,
   "columns": [
     "snapshot_ts",
@@ -40,9 +40,9 @@
     "/workspaces/glueops/deltabt/data/quotes/quotes_2026-08-31.parquet"
   ],
   "checksums": {
-    "quotes_2026-08-31.parquet": "a38916a829c29e02391b7dcc398f7c82593a62eb40ef4f28d1d83a18a22f91f0"
+    "quotes_2026-08-31.parquet": "836b1f4e8746254b6ce967dc733139142c3e2825392f7721dddb09ce36820c96"
   },
-  "bytes": 3828626,
+  "bytes": 9958358,
   "collection_process_version": "2026-08-28.1",
-  "generated_at": "2026-08-31T08:49:37.917430+00:00"
+  "generated_at": "2026-08-31T23:52:28.853659+00:00"
 }
