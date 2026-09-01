@@ -64,7 +64,7 @@ jobs:
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
           - stack: atr
-            variant: SPEC:manual_scalp@5
+            variant: SPEC:manual_scalp_st@5
             instance_var: BOT_INSTANCE_ID_ATR
             document_var: SSM_MONITOR_DOCUMENT_ATR
             # 2026-08-27: the stack kept its name and its database and changed
@@ -91,7 +91,15 @@ jobs:
             # a SPEC arm reports spec.config_hash in full, so a 16-char pin
             # here could never match and the daily report would call a correct
             # deployment drifted every morning. The length follows the arm.
-            strategy_hash: "977909932064d543c4681c8af46cca0e72ce8fda91e6c94746059b859012ada7"
+            # 2026-09-01: SPEC:manual_scalp_st@5 -- manual_scalp plus
+            # Supertrend alignment, no DI, no ADX. Same stack, EIP, log group
+            # and alarms; NEW database (deltabt_st) because the previous
+            # experiment is stopped holding open positions, and the universe
+            # widens to all seven by instruction.
+            #
+            # STILL 64 CHARACTERS, for the reason two paragraphs up: a SPEC
+            # arm reports spec.config_hash in full.
+            strategy_hash: "218901c5946f6e4f9220513df491cdef83eebc6135452a8c4a9c2aba91621853"
             log_group: /deltabt/paper/atr/bot
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and

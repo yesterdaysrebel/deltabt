@@ -267,6 +267,43 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # manual_scalp with the SAME %R rule required on the confirmation
+    # timeframe as well. manual_scalp itself gates the primary only -- its
+    # confirm rules are all off -- so this family exists to measure how many
+    # of its signals ALSO satisfy the rule on 1m. The operator described
+    # trading "5 min and 1 min as confirmation, sometimes just the 1 min";
+    # this is the strict reading of that, and manual_scalp is the loose one.
+    "manual_scalp_both": dict(
+        desc="manual_scalp, but %R must agree on the confirmation timeframe too",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    # manual_scalp with a CEILING on %R. `variant_a` is a floor with nothing
+    # above it, so a long is valid at %R = -9 -- price at the top of the
+    # 140-bar range. The live arm did exactly that on AKEUSD at 2026-09-01
+    # 00:05Z: %R -9.35, close 0.0081435 against a leg high of 0.0081825, and
+    # ATR had doubled since the previous entry so the stop went 2.46% -> 4.67%.
+    # `banded` keeps the direction requirement and adds the midpoint ceiling.
+    "manual_scalp_banded": dict(
+        desc="manual_scalp with the %R midpoint ceiling (banded, not variant_a)",
+        primary=_tf_rules(wpr_rule="banded"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    # manual_scalp plus Supertrend ALIGNMENT and nothing else. No DI, no ADX,
+    # no confirmation timeframe -- the operator's question was "just supertrend
+    # and wpr". `atr_arm` is the nearest existing family but carries DI=True,
+    # so the Supertrend contribution cannot be isolated from it there.
+    "manual_scalp_st": dict(
+        desc="manual_scalp plus Supertrend alignment on the primary; no DI, no ADX",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
