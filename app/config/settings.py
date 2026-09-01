@@ -29,6 +29,20 @@ GAP_LOOKBACK = 300.0
 CANDLE_ROLL_GRACE = 5.0
 
 
+def _as_bool(raw: str) -> bool:
+    """Parse a DELTABOT_* flag.
+
+    THE LOOP THAT CALLS THIS SKIPS FALSEY STRINGS -- ``if env.get(key)`` -- so
+    an empty value never reaches here and the code default stands. But "0" and
+    "false" are NON-EMPTY strings and therefore truthy in Python, so a naive
+    ``bool(raw)`` would turn DELTABOT_WPR_BAND_EXIT=0 into True and switch on
+    the very thing the operator wrote 0 to switch off. The cooldowns rely on
+    the same truthiness for ints, where "0" legitimately means zero seconds;
+    for a flag it means OFF, and only an explicit list can tell the two apart.
+    """
+    return raw.strip().lower() not in ("0", "false", "no", "off")
+
+
 @dataclass(frozen=True)
 class RiskConfig:
     """Every limit is configurable; none may be overridden by the strategy."""
@@ -109,6 +123,32 @@ class RiskConfig:
     #: here leaves the strategy hash alone, so the rules under test stay
     #: identifiable as d7837e445bc74781.
     max_hold_seconds: int = 0
+
+    # --- CLOSE WHEN THE SETUP STOPPED BEING TRUE ---------------------------
+    #
+    # A long is entered because %R sits inside the band and is rising. If %R
+    # then drops out of the band's FLOOR the reason for the trade is gone, and
+    # waiting for the stop costs the rest of the move plus the same fees.
+    #
+    # Leaving the band the FAVOURABLE way is NOT an exit: a long whose %R
+    # climbs past the midpoint toward overbought is the trade working, and
+    # closing there would cut exactly the trades that reach target.
+    #
+    # THIS LIVES IN RISK, NOT IN THE STRATEGY, for the reason given above for
+    # max_hold_seconds: it is a policy about carrying an open position, not a
+    # signal rule, so the strategy hash still identifies the rules under test.
+    # It DOES move the risk hash, which ends the running experiment by design.
+    #
+    # MEASURED BEFORE BEING BUILT (2026-09-01, ungated portfolio):
+    #     thin 3   -6.56% -> -7.32%, max drawdown 14.85% -> 12.40%
+    #     all 7   -60.43% -> -81.47%, drawdown 63.67% -> 83.14%
+    # It helps where trading is cheap and hurts where it is not, because it
+    # roughly doubles turnover and the majors cost 0.19-0.30R per round trip.
+    exit_on_wpr_band_exit: bool = False
+    #: A long closes when %R falls BELOW this. Mirrors the entry band's floor.
+    wpr_exit_long_level: float = -80.0
+    #: A short closes when %R rises ABOVE this. Mirrors the band's ceiling.
+    wpr_exit_short_level: float = -20.0
     max_position_notional: float = 50_000.0
     max_total_notional: float = 50_000.0
     max_leverage: float = 3.0
@@ -202,6 +242,9 @@ class Settings:
             ("DELTABOT_MAX_TRADES_PER_DAY", "max_trades_per_day", int),
             ("DELTABOT_MAX_CONSEC_LOSSES", "max_consecutive_losses", int),
             ("DELTABOT_MAX_HOLD", "max_hold_seconds", int),
+            ("DELTABOT_WPR_BAND_EXIT", "exit_on_wpr_band_exit", _as_bool),
+            ("DELTABOT_WPR_EXIT_LONG", "wpr_exit_long_level", float),
+            ("DELTABOT_WPR_EXIT_SHORT", "wpr_exit_short_level", float),
             # CONFIGURATION PLUMBING ONLY, ADDED 2026-08-29. The two cooldowns
             # were the only risk fields with no environment path, so an ungated
             # observation run could not be configured without editing a default.

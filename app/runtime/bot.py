@@ -180,6 +180,16 @@ class TradingBot:
         self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
                                   slippage_bps=settings.risk.slippage_bps,
                                   max_hold_seconds=settings.risk.max_hold_seconds,
+                                  # RISK config, like max_hold_seconds above,
+                                  # so risk_hash covers it. NOT routed through
+                                  # broker_params: that feeds EXECUTION_FIELDS,
+                                  # and a value there but not in the tuple is
+                                  # silently dropped from execution_hash --
+                                  # the divergence execution_params() exists
+                                  # to prevent.
+                                  exit_on_wpr_band_exit=settings.risk.exit_on_wpr_band_exit,
+                                  wpr_exit_long_level=settings.risk.wpr_exit_long_level,
+                                  wpr_exit_short_level=settings.risk.wpr_exit_short_level,
                                   **broker_params(settings.risk))
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)
@@ -687,6 +697,23 @@ class TradingBot:
         market_now = (exp.bar_open + bar_seconds if exp.bar_open
                       else self.clock.now())
         self.clock.observe(market_now)
+
+        # CLOSE A POSITION WHOSE SETUP HAS FAILED, BEFORE CONSIDERING A NEW ONE.
+        #
+        # Ordering is deliberate: this runs before the DETECTED branch, so a
+        # bar that both invalidates an open position and produces a fresh
+        # signal frees the slot first rather than refusing the new entry with
+        # "already holding an open position".
+        #
+        # %R is read from the bar the decision was made from -- the same value
+        # recorded in the audit trail -- so the exit is reproducible from the
+        # signal row. Off unless RiskConfig.exit_on_wpr_band_exit is set.
+        _primary = (exp.indicators or {}).get("primary") or {}
+        _wpr, _close = _primary.get("wpr"), _primary.get("close")
+        if _wpr is not None and _close is not None:
+            self._pending_events.extend(
+                self.broker.close_if_setup_invalidated(
+                    symbol, _wpr, _close, market_now))
         if exp.outcome is Outcome.DETECTED:
             self.metrics.signals_detected += 1
             decision = self.risk.evaluate(

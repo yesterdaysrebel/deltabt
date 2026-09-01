@@ -134,6 +134,9 @@ resource "aws_instance" "bot" {
     cooldown_after_trade_seconds = var.cooldown_after_trade_seconds
     cooldown_after_loss_seconds  = var.cooldown_after_loss_seconds
     max_hold_seconds             = var.max_hold_seconds
+    exit_on_wpr_band_exit        = var.exit_on_wpr_band_exit ? 1 : 0
+    wpr_exit_long_level          = var.wpr_exit_long_level
+    wpr_exit_short_level         = var.wpr_exit_short_level
     run_sh_b64                   = base64gzip(file("${path.root}/../../deploy/aws/run.sh"))
     deploy_sh_b64                = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
     cw_agent_b64                 = base64gzip(file("${path.root}/../../deploy/aws/cloudwatch-agent.json"))
