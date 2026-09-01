@@ -293,6 +293,17 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # manual_scalp plus Supertrend ALIGNMENT and nothing else. No DI, no ADX,
+    # no confirmation timeframe -- the operator's question was "just supertrend
+    # and wpr". `atr_arm` is the nearest existing family but carries DI=True,
+    # so the Supertrend contribution cannot be isolated from it there.
+    "manual_scalp_st": dict(
+        desc="manual_scalp plus Supertrend alignment on the primary; no DI, no ADX",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,

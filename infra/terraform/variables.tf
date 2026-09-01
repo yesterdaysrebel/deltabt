@@ -351,7 +351,34 @@ variable "bot_symbols" {
   EOT
   type        = string
 
-  default = "BEATUSD,AKEUSD,BANKUSD"
+  # WIDENED TO ALL SEVEN BY INSTRUCTION, 2026-09-01, for manual_scalp_st.
+  #
+  # THE MEASUREMENT SAYS THIS IS WORSE AND IS NOT WITHDRAWN. Portfolio, one
+  # account, ungated -- the honest column, because a gated run that halts
+  # early reports a truncated sample as a result:
+  #
+  #     universe                 return    max DD    trades
+  #     thin 3 (BEAT/AKE/BANK)   -8.24%     15.6%       746
+  #     4 symbols ST helps      -49.55%     54.7%     2,275
+  #     six (no XRP)            -55.11%     57.1%     2,331
+  #     all 7                   -55.56%     57.0%     2,472
+  #
+  # It is not breadth that hurts, it is WHICH symbols breadth adds. BTC, ETH,
+  # SOL and XRP carry 1R widths of 30-45 bps, so cost_r runs 0.10-0.12 against
+  # 0.03-0.04 on the thin three, and they generate most of the trades. The
+  # same cost law that killed every arm before this one.
+  #
+  # THE REASON IT WAS CHOSEN ANYWAY IS SOUND AND IS RECORDED HERE SO IT IS NOT
+  # MISREAD LATER AS AN OVERSIGHT. Seven symbols produce roughly three times
+  # the trade rate. This is a PAPER run whose product is evidence, not money:
+  # the thin 3 needs ~4 days to reach 30 closed trades, all 7 needs ~1-2. The
+  # operator chose a decisive sample over a survivable equity curve, which is
+  # a legitimate trade in paper and would not be in production.
+  #
+  # Expect a large drawdown. It is forecast, not a fault. What would be a
+  # fault is reading the resulting P&L as a verdict on manual_scalp_st rather
+  # than on this universe.
+  default = "BEATUSD,AKEUSD,BANKUSD,ETHUSD,SOLUSD,BTCUSD,XRPUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -560,7 +587,37 @@ variable "stacks" {
     # REMEMBER create_stack_database.py. It is not run by user_data; the
     # database must be created from the host before the first deploy, or the
     # bot fails to connect.
-    atr = { variant = "SPEC:manual_scalp@5", db_name = "deltabt_manual" }
+    # 2026-09-01: SPEC:manual_scalp_st@5, AND A NEW DATABASE AGAIN.
+    #
+    # manual_scalp gates on %R alone. It was built that way partly on a FALSE
+    # reading: the manual-trade analysis reported 61% of the operator's entries
+    # as counter-Supertrend, computed with `direction > 0` as bullish. Pine
+    # returns direction -1 for an UPTREND (deltabt/rulecore.py:142), so the
+    # column was inverted and the real figure is 62.4% ALIGNED. Corrected:
+    #
+    #     clean manual trades   n     win     mean R
+    #     ALIGNED with ST      96   50.0%   -0.0455
+    #     COUNTER to ST        62   50.0%   -0.1451
+    #
+    # Supertrend carried information and the arm was built without it. The
+    # live run agrees on a sample too small to lean on: all 4 winners were
+    # aligned, all 3 losers counter.
+    #
+    # ACROSS 6,559 BACKTESTED TRADES THE EFFECT IS ~ZERO (-0.0013R
+    # trade-weighted), so this is a correction of a mistaken premise, not a
+    # discovered edge. Four symbols improve, three worsen.
+    #
+    # THE NEW DATABASE IS NOT COSMETIC. MANUAL-SCALP-5M-PAPER-20260831-4 is
+    # RUNNING and holds open BEATUSD and AKEUSD positions. `forward-test stop`
+    # leaves open positions alone on purpose, and they would load into the new
+    # arm holding two of six slots while bound to a dead experiment -- the
+    # same failure that produced the 2026-08-31 split above, and the same
+    # cleanup that cost an hour this morning. deltabt_manual keeps the
+    # manual_scalp record and its open positions exactly as they were left.
+    #
+    # REMEMBER create_stack_database.sh. It is not run by user_data; the
+    # database must be created from the host before the first deploy.
+    atr = { variant = "SPEC:manual_scalp_st@5", db_name = "deltabt_st" }
   }
 }
 
