@@ -378,6 +378,30 @@ variable "bot_symbols" {
   # Expect a large drawdown. It is forecast, not a fault. What would be a
   # fault is reading the resulting P&L as a verdict on manual_scalp_st rather
   # than on this universe.
+  # ALL SEVEN, BY INSTRUCTION, 2026-09-01 -- CHOSEN TWICE WITH THE NUMBERS IN
+  # VIEW, SO THIS IS A DECISION AND NOT AN OVERSIGHT.
+  #
+  # Under the operator's own rule (Supertrend agrees AND %R banded), measured
+  # as a PORTFOLIO on one account, ungated -- the honest column, because a
+  # gated run that halts early reports a truncated sample as a result:
+  #
+  #     universe   trades/day    return    max DD    PF
+  #     thin 3         2.38      -6.56%     14.9%   0.95
+  #     all 7          3.23     -60.43%     63.7%   0.82
+  #
+  # 1.36x the sample for 9x the drawdown. The objection was put twice and is
+  # NOT withdrawn: it is not breadth that hurts, it is WHICH symbols breadth
+  # adds. BTC, ETH, SOL and XRP carry 1R widths of 30-45 bps, so cost_r runs
+  # 0.10-0.12 against 0.03-0.04 on the thin three, and they generate most of
+  # the trades. Getting the entry rule right does not touch that: BTCUSD's 1R
+  # ran 71 bps live on 2026-09-01, so cost_r was 0.22 -- a fifth of the risk
+  # budget gone to fees before the trade did anything.
+  #
+  # WHAT WOULD BE A FAULT is reading the resulting P&L as a verdict on
+  # manual_scalp_st_banded rather than on this universe. Expect a large
+  # drawdown; it is forecast. What this run can honestly measure is whether
+  # the ENTRY RULE behaves out of sample, and seven symbols reach a 30-trade
+  # sample sooner than three.
   default = "BEATUSD,AKEUSD,BANKUSD,ETHUSD,SOLUSD,BTCUSD,XRPUSD"
 }
 
@@ -617,7 +641,45 @@ variable "stacks" {
     #
     # REMEMBER create_stack_database.sh. It is not run by user_data; the
     # database must be created from the host before the first deploy.
-    atr = { variant = "SPEC:manual_scalp_st@5", db_name = "deltabt_st" }
+    # 2026-09-01, SECOND CHANGE OF THE DAY: SPEC:manual_scalp_st_banded@5.
+    #
+    # THE OPERATOR SAID PLAINLY THAT THE ARM WAS NOT RUNNING THEIR SYSTEM, AND
+    # THEY WERE RIGHT THREE TIMES OVER. Their rule, as finally stated: "if wpr
+    # is banded and supertrend agrees I take trades", %R length 140, Supertrend
+    # 10/2.0, no ADX, no DI, 1R target. Every arm before this one got some part
+    # of that wrong:
+    #
+    #   manual_scalp       %R variant_a alone -- a floor with no ceiling, so it
+    #                      bought at %R -9 and sold at %R -93.
+    #   manual_scalp_st    added Supertrend but kept variant_a, and opened four
+    #                      shorts in ONE bar at %R -90 to -94, price a hair off
+    #                      the leg low. Tested against the operator's rule, the
+    #                      two agreed on NOTHING: 6 signals taken, 6 refused.
+    #
+    # `banded` bounds WHERE in the range an entry may happen. It is the piece
+    # that was missing, and the objection raised three separate times.
+    #
+    # THREE THINGS THE OPERATOR ASKED FOR ARE DELIBERATELY NOT HERE, each
+    # because it was measured and each because it costs money on the thin 3:
+    #
+    #     1m confirmation ON      -6.56% -> -13.46%   win 50% -> 44%
+    #     max hold cut to 1h      -6.56% -> -18.38%
+    #     tighter stop with it    -18.38% -> -34.41% at 2xATR
+    #
+    # The short hold is not wrong in itself; it is incompatible with a 4xATR
+    # stop, because a 1R target on a stop that wide takes hours to reach. And
+    # it cannot be rescued by tightening the stop: cost_r = round_trip/stop_pct,
+    # so halving the stop doubles the cost per R. Best of a 15-cell grid was
+    # 4xATR at 24h, which is what is configured.
+    #
+    # A NEW DATABASE, deltabt_stb, FOR THE THIRD TIME AND THE SAME REASON.
+    # deltabt_st holds six open positions from the seven-symbol run, four of
+    # them in ETHUSD/SOLUSD/BTCUSD/XRPUSD. Narrowing the universe would make
+    # recover() refuse to start -- "open position in SOLUSD, which is not in
+    # the configured universe" -- which is correct behaviour, not a bug.
+    #
+    # REMEMBER create_stack_database.sh. user_data does not run it.
+    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_stb" }
   }
 }
 

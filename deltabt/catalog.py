@@ -304,6 +304,71 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # manual_scalp_st with the %R CEILING as well: Supertrend alignment AND a
+    # band-midpoint bound on where in the range an entry may happen.
+    #
+    # WHY IT EXISTS. On 2026-09-01 09:05Z the live manual_scalp_st arm opened
+    # four shorts in one bar at %R -93.51, -93.77, -92.68 and -90.61, with
+    # price within a hair of the leg low (BTCUSD entered 77,849 against a leg
+    # low of 77,755). variant_a's short leg is `%R < -20 AND falling` -- a
+    # ceiling with no floor -- so -93 qualifies exactly as -25 does. The same
+    # bar approved a long at %R -14.53, the mirror case. `banded` refuses five
+    # of those six signals.
+    #
+    # In their defence ADX ran 31-46 and Supertrend was bearish, so these are
+    # strong-downtrend continuation shorts that a trend follower takes on
+    # purpose. The operator's hand-traded style does not, and this family is
+    # meant to encode that style.
+    "manual_scalp_st_banded": dict(
+        desc="manual_scalp plus Supertrend alignment AND the %R midpoint ceiling",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    # THE OPERATOR'S ACTUAL SETUP, as stated on 2026-09-01 -- and it is not
+    # what manual_scalp or manual_scalp_st encode.
+    #
+    #   %R length 140          matches; there is no indicator mismatch
+    #   %R below -80 = LONG    mean reversion, near the OPPOSITE of variant_a
+    #   Supertrend = TRIGGER   enter on the FLIP, not a direction filter
+    #
+    # `cross_levels` is that entry: long as %R leaves oversold, short as it
+    # leaves overbought, a one-bar event -- so the trigger is `level`, not
+    # `edge`. This is `flip_wide` with the operator's 1R target instead of 2R.
+    #
+    # A Supertrend FLIP confluent with a %R band cross on the SAME bar is a
+    # rare conjunction. Expect very few trades; that is the shape of the rule,
+    # not a fault in it, and it is the first thing to check in the results.
+    "manual_flip": dict(
+        desc="the operator's stated setup: ST flip trigger, %R band cross, 1R",
+        primary=_tf_rules(supertrend="flip", wpr_rule="cross_levels"),
+        confirm=_tf_rules(),
+        over=dict(trigger="level", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    # THE OPERATOR'S SETUP AS FINALLY SPECIFIED, 2026-09-01, after three wrong
+    # guesses on my part. Stated directly: "if wpr is banded and supertrend
+    # agrees I take trades", %R length 140, Supertrend 10/2.0, no ADX, no DI,
+    # 1m as a confirmation timeframe, 1R target.
+    #
+    # WHAT EACH EARLIER GUESS GOT WRONG, so none is repeated:
+    #   manual_scalp      %R variant_a alone -- a floor with no ceiling, so it
+    #                     bought at %R -9 and sold at %R -93.
+    #   manual_scalp_st   added Supertrend as a filter but kept variant_a, so
+    #                     it still sold four majors at %R -90 to -94 in one bar.
+    #   manual_flip       read Supertrend as a TRIGGER. It is a FILTER.
+    #
+    # `banded` is the piece that was missing throughout: it bounds WHERE in the
+    # range an entry may happen, which is the objection the operator raised
+    # three separate times before I measured the right thing.
+    "manual_v2": dict(
+        desc="operator's stated setup: ST agrees + %R banded, both timeframes, 1R",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
+        confirm=_tf_rules(wpr_rule="banded"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
