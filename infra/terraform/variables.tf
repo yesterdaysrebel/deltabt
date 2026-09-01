@@ -818,3 +818,47 @@ variable "cooldown_after_loss_seconds" {
   type        = number
   default     = 0
 }
+
+variable "exit_on_wpr_band_exit" {
+  description = <<-EOT
+    Close a position when %R leaves the entry band ADVERSELY.
+
+    A long is entered because %R sits inside the band and is rising. If %R then
+    drops out of the band's FLOOR the reason for the trade is gone, and waiting
+    for the stop costs the rest of the move plus the same fees. Leaving the
+    band the FAVOURABLE way is NOT an exit -- a long climbing toward overbought
+    is the trade working.
+
+    MEASURED BEFORE BEING BUILT, 2026-09-01, ungated portfolio:
+
+        thin 3    -6.56% -> -7.32%   max drawdown 14.85% -> 12.40%
+        all 7    -60.43% -> -81.47%  max drawdown 63.67% -> 83.14%
+
+    It helps where trading is cheap and hurts badly where it is not: it roughly
+    doubles turnover (1,901 -> 3,647 trades on all 7) and the majors cost
+    0.19-0.30R per round trip. ENABLED ON ALL SEVEN BY INSTRUCTION, with that
+    objection recorded and not withdrawn.
+
+    Part of the RISK hash, not the strategy hash: it is a policy about carrying
+    an open position, not a signal rule.
+
+    THE DRAWDOWN HALT IS ALREADY OFF. DELTABOT_MAX_DRAWDOWN is 1.0 on the host
+    and MAX_DAILY_LOSS and MAX_CONSEC_LOSSES are disabled too, so the forecast
+    drawdown will not stop the run -- which is what was asked for. It also
+    means the UNGATED column above is the one that describes this deployment.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "wpr_exit_long_level" {
+  description = "A long closes when %R falls BELOW this. Mirrors the band floor."
+  type        = number
+  default     = -80
+}
+
+variable "wpr_exit_short_level" {
+  description = "A short closes when %R rises ABOVE this. Mirrors the band ceiling."
+  type        = number
+  default     = -20
+}

@@ -243,6 +243,18 @@ def run_backtest(
                 or (pos_side == SHORT and signals.bull_1m[i])
             ):
                 exit_price, exit_reason = px, "trend_flip"
+            elif params.exit_at_adverse_r is not None and (
+                (pos_side == LONG
+                 and (entry_price - px) >= params.exit_at_adverse_r * (entry_price - stop_price))
+                or (pos_side == SHORT
+                    and (px - entry_price) >= params.exit_at_adverse_r * (stop_price - entry_price))
+            ):
+                exit_price, exit_reason = px, "adverse_r"
+            elif params.exit_on_wpr_band_exit and np.isfinite(signals.wpr[i]) and (
+                (pos_side == LONG and signals.wpr[i] < params.wpr_exit_long_level)
+                or (pos_side == SHORT and signals.wpr[i] > params.wpr_exit_short_level)
+            ):
+                exit_price, exit_reason = px, "wpr_band"
             elif params.max_hold_bars and (i - entry_index) >= params.max_hold_bars:
                 exit_price, exit_reason = px, "max_hold"
 

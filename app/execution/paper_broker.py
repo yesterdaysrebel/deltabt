@@ -42,6 +42,7 @@ TRIGGER PRICES
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -81,6 +82,7 @@ class ExitReason(str, Enum):
     TAKE_PROFIT = "TAKE_PROFIT"
     MANUAL_CLOSE = "MANUAL_CLOSE"
     TIME_EXIT = "TIME_EXIT"
+    SETUP_INVALIDATED = "SETUP_INVALIDATED"
     SYSTEM_SAFETY = "SYSTEM_SAFETY"
     DATA_FAILURE = "DATA_FAILURE"
 
@@ -280,7 +282,10 @@ class PaperBroker:
                  slippage_bps: float = 2.0, entry_ttl_seconds: int = 90,
                  max_entry_deviation: float = 0.25,
                  min_fill_rr: float = 1.7,
-                 max_hold_seconds: int = 0) -> None:
+                 max_hold_seconds: int = 0,
+                 exit_on_wpr_band_exit: bool = False,
+                 wpr_exit_long_level: float = -80.0,
+                 wpr_exit_short_level: float = -20.0) -> None:
         self.costs = costs
         self.equity = starting_equity
         self.slippage_bps = slippage_bps
@@ -322,6 +327,11 @@ class PaperBroker:
         self.min_fill_rr = min_fill_rr
         #: 0 disables. See RiskConfig.max_hold_seconds for why this exists.
         self.max_hold_seconds = max_hold_seconds
+        #: Close a position when %R leaves the entry band ADVERSELY. Off by
+        #: default; see RiskConfig.exit_on_wpr_band_exit for the measurement.
+        self.exit_on_wpr_band_exit = exit_on_wpr_band_exit
+        self.wpr_exit_long_level = wpr_exit_long_level
+        self.wpr_exit_short_level = wpr_exit_short_level
         self.orders: dict[str, PaperOrder] = {}
         self.positions: dict[str, PaperPosition] = {}
         #: intent_id -> order_uid, so a replayed intent cannot double-fill.
@@ -814,6 +824,35 @@ class PaperBroker:
                 self._close(pos, px, ExitReason.TIME_EXIT, tick.ts,
                             tick.ts_us, maker=False)
 
+        return self.events[before:]
+
+    def close_if_setup_invalidated(self, symbol: str, wpr: float, price: float,
+                                   now: int) -> list["BrokerEvent"]:
+        """Close an open position whose entry band no longer holds.
+
+        Called from the bot once per CLOSED primary bar, because %R only
+        updates on a closed bar -- evaluating it per tick would act on a
+        forming value the strategy never saw.
+
+        ONLY THE ADVERSE SIDE COUNTS. A long exits below the band's floor; a
+        long that climbs past the ceiling is winning and is left alone. Getting
+        that backwards would close exactly the trades that reach target.
+
+        Stop and target are NOT checked here. They are handled on the tick and
+        bar paths, which run first and use the bar's extremes; this reads the
+        close, so pre-empting them would book a price the position never got.
+        """
+        before = len(self.events)
+        if not self.exit_on_wpr_band_exit or wpr is None or not math.isfinite(wpr):
+            return []
+        for pos in list(self.positions.values()):
+            if pos.symbol != symbol or pos.status != "OPEN":
+                continue
+            failed = (wpr < self.wpr_exit_long_level if pos.side == LONG
+                      else wpr > self.wpr_exit_short_level)
+            if failed:
+                self._close(pos, self._slip(price, -pos.side),
+                            ExitReason.SETUP_INVALIDATED, now, None, maker=False)
         return self.events[before:]
 
     def _timed_out(self, pos, now: int) -> bool:

@@ -274,6 +274,18 @@ def run_portfolio(
                 or (pos.side == SHORT and s.book.signals.bull_1m[i])
             ):
                 exit_price, exit_reason = px, "trend_flip"
+            elif params.exit_at_adverse_r is not None and (
+                (pos.side == LONG
+                 and (pos.entry_price - px) >= params.exit_at_adverse_r * (pos.entry_price - pos.stop_price))
+                or (pos.side == SHORT
+                    and (px - pos.entry_price) >= params.exit_at_adverse_r * (pos.stop_price - pos.entry_price))
+            ):
+                exit_price, exit_reason = px, "adverse_r"
+            elif params.exit_on_wpr_band_exit and np.isfinite(s.book.signals.wpr[i]) and (
+                (pos.side == LONG and s.book.signals.wpr[i] < params.wpr_exit_long_level)
+                or (pos.side == SHORT and s.book.signals.wpr[i] > params.wpr_exit_short_level)
+            ):
+                exit_price, exit_reason = px, "wpr_band"
             elif params.max_hold_bars and (i - pos.entry_index) >= params.max_hold_bars:
                 exit_price, exit_reason = px, "max_hold"
             if not exit_reason:

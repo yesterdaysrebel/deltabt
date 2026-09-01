@@ -186,6 +186,37 @@ class StrategyParams:
     max_hold_bars: int = 240
     exit_on_trend_flip: bool = True
 
+    # --- EXITS FOR "THE SETUP STOPPED BEING TRUE" --------------------------
+    #
+    # Both default OFF. A stop and a target are RESTING orders, so the engine
+    # checks them against the bar's high/low. These two are CONDITIONS the bot
+    # evaluates on a closed bar, exactly as the live runtime does, so they are
+    # checked against the CLOSE. That is deliberately conservative: an
+    # intrabar reading would fire more often than the live bot could.
+    #
+    # Ordering matters and is not arbitrary. Stop and target are checked
+    # first: if the bar reached either, that is the real exit and these must
+    # not pre-empt it with a better price the position never actually got.
+
+    #: Close when the unrealised move AGAINST the position reaches this
+    #: fraction of the stop distance. 0.5 exits at half the planned loss.
+    #: Rationale: a full stop-out does not cost 1R, it costs 1R PLUS fees --
+    #: measured at -1.187R and -1.351R live on 2026-09-01 -- so truncating
+    #: the loss saves the price move AND leaves the fee proportionally
+    #: smaller. It also cuts winners that would have recovered, which is why
+    #: this is measured rather than assumed.
+    exit_at_adverse_r: float | None = None
+
+    #: Close when %R leaves the band in the ADVERSE direction: a long exits
+    #: below ``wpr_exit_long_level``, a short exits above
+    #: ``wpr_exit_short_level``. Leaving the band the FAVOURABLE way is the
+    #: trade working and is not an exit -- a long whose %R climbs past the
+    #: midpoint toward overbought is winning, and closing there would cut
+    #: exactly the trades that reach target.
+    exit_on_wpr_band_exit: bool = False
+    wpr_exit_long_level: float = -80.0
+    wpr_exit_short_level: float = -20.0
+
     #: Reject signals whose modelled round-trip cost exceeds this fraction of
     #: R. The single most important addition: on 1m with a 2xATR stop, cost
     #: routinely runs 0.36R-0.71R, which no win rate can overcome.
@@ -223,6 +254,22 @@ class StrategyParams:
             if not 0.0 <= getattr(self, name) <= 1.0:
                 raise ValueError(f"{name} must be in [0, 1], got {getattr(self, name)}")
         self.wpr.validate()
+        if self.exit_at_adverse_r is not None and not 0.0 < self.exit_at_adverse_r < 1.0:
+            raise ValueError(
+                f"exit_at_adverse_r must be in (0, 1) or None -- at 1.0 it is "
+                f"the stop and at 0 it exits instantly, got "
+                f"{self.exit_at_adverse_r}")
+        if not -100.0 <= self.wpr_exit_long_level <= 0.0:
+            raise ValueError(f"wpr_exit_long_level must be in [-100, 0], got "
+                             f"{self.wpr_exit_long_level}")
+        if not -100.0 <= self.wpr_exit_short_level <= 0.0:
+            raise ValueError(f"wpr_exit_short_level must be in [-100, 0], got "
+                             f"{self.wpr_exit_short_level}")
+        if self.wpr_exit_long_level >= self.wpr_exit_short_level:
+            raise ValueError(
+                f"wpr_exit_long_level {self.wpr_exit_long_level} must be BELOW "
+                f"wpr_exit_short_level {self.wpr_exit_short_level}; a long "
+                f"exits under the floor and a short over the ceiling")
 
     @property
     def warmup_bars(self) -> int:

@@ -63,6 +63,9 @@ DELTABOT_COOLDOWN_AFTER_LOSS=${cooldown_after_loss_seconds}
 # delivery did not. Setting it non-zero moves the risk hash, so a running
 # bot will refuse to continue its experiment rather than change mid-run.
 DELTABOT_MAX_HOLD=${max_hold_seconds}
+DELTABOT_WPR_BAND_EXIT=${exit_on_wpr_band_exit}
+DELTABOT_WPR_EXIT_LONG=${wpr_exit_long_level}
+DELTABOT_WPR_EXIT_SHORT=${wpr_exit_short_level}
 DELTABOT_LOG_LEVEL=INFO
 ENVEOF
 chmod 0644 /opt/deltabt/env
