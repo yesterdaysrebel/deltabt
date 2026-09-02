@@ -378,31 +378,30 @@ variable "bot_symbols" {
   # Expect a large drawdown. It is forecast, not a fault. What would be a
   # fault is reading the resulting P&L as a verdict on manual_scalp_st rather
   # than on this universe.
-  # ALL SEVEN, BY INSTRUCTION, 2026-09-01 -- CHOSEN TWICE WITH THE NUMBERS IN
-  # VIEW, SO THIS IS A DECISION AND NOT AN OVERSIGHT.
+  # THE THIN THREE, 2026-09-02, and the seven-symbol run is what settled it.
   #
-  # Under the operator's own rule (Supertrend agrees AND %R banded), measured
-  # as a PORTFOLIO on one account, ungated -- the honest column, because a
-  # gated run that halts early reports a truncated sample as a result:
+  # The wide universe was chosen deliberately to reach a 30-trade sample fast,
+  # with the forecast in view, and it did exactly that: 26 closed trades inside
+  # a day. The sample then agreed with the forecast -- 6 wins of 26, mean
+  # -0.273R, equity 10,000 -> 9,537, against a predicted 28% win rate and an
+  # observed 23%.
   #
-  #     universe   trades/day    return    max DD    PF
-  #     thin 3         2.38      -6.56%     14.9%   0.95
-  #     all 7          3.23     -60.43%     63.7%   0.82
+  # WHY IT IS THE UNIVERSE AND NOT THE RULE, stated as arithmetic rather than
+  # as a ranking. From the anchored walk-forward blocks:
   #
-  # 1.36x the sample for 9x the drawdown. The objection was put twice and is
-  # NOT withdrawn: it is not breadth that hurts, it is WHICH symbols breadth
-  # adds. BTC, ETH, SOL and XRP carry 1R widths of 30-45 bps, so cost_r runs
-  # 0.10-0.12 against 0.03-0.04 on the thin three, and they generate most of
-  # the trades. Getting the entry rule right does not touch that: BTCUSD's 1R
-  # ran 71 bps live on 2026-09-01, so cost_r was 0.22 -- a fifth of the risk
-  # budget gone to fees before the trade did anything.
+  #     thin 3 @ 1.5R   gross ~ +0.085R   cost ~ 0.038R   net ~ +0.047R
+  #     all 7  @ 1.5R   gross ~ +0.020R   cost ~ 0.100R   net ~ -0.080R
   #
-  # WHAT WOULD BE A FAULT is reading the resulting P&L as a verdict on
-  # manual_scalp_st_banded rather than on this universe. Expect a large
-  # drawdown; it is forecast. What this run can honestly measure is whether
-  # the ENTRY RULE behaves out of sample, and seven symbols reach a 30-trade
-  # sample sooner than three.
-  default = "BEATUSD,AKEUSD,BANKUSD,ETHUSD,SOLUSD,BTCUSD,XRPUSD"
+  # Same rule, same signals, same code. On the thin three the gross edge is
+  # about twice its transaction cost; on all seven it is about a fifth of it.
+  # cost_r = round_trip / stop_pct, and BTC/ETH/SOL/XRP carry 1R widths of
+  # 30-115 bps against 240-460 here, so the same fixed round trip is a far
+  # larger share of the risk budget -- and those four generate most of the
+  # trades.
+  #
+  # This is not a cell chosen from a sweep. It is the reason every fitted
+  # result on the wide universe failed.
+  default = "BEATUSD,AKEUSD,BANKUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
