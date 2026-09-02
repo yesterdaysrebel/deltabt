@@ -369,6 +369,40 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # THE TARGET SWEEP, AS CATALOG ENTRIES so walkforward_specs.py can track
+    # them by name. In-sample on the thin 3 (ungated, 4xATR stop, 24h hold):
+    #
+    #     1.0R  522 trades  win 50%   -6.56%  maxDD 14.85%  PF 0.95
+    #     1.5R  412         win 45%  +13.30%  maxDD  9.20%  PF 1.11
+    #     2.0R  339         win 39%   +8.12%  maxDD 12.44%  PF 1.08
+    #     2.5R  317         win 32%  -12.44%  maxDD 18.40%  PF 0.87
+    #     3.0R  307         win 31%   -1.41%  maxDD 19.10%  PF 0.99
+    #
+    # WHY THE TARGET IS THE LEVER. Against a 1R stop with cost c, breakeven is
+    # (1+c)/(T+1): 52.0% at 1R, 41.6% at 1.5R, 34.7% at 2R. The rule delivers
+    # ~50%, so a 1R target is structurally short by two points and no filter,
+    # exit or universe can close that -- which is why nothing else tested on
+    # 2026-09-01/02 worked.
+    #
+    # THESE ARE NOT PROMOTED ON THAT TABLE. The curve is NOT monotonic, 2.5R is
+    # the worst of five, and this repository has a documented walk-forward
+    # SELECTION PREMIUM of +0.1310 that exceeded the +0.0310 effect it was
+    # measuring. The table above is the best of five cells chosen in-sample.
+    # That is exactly the shape of a result that does not survive.
+    "manual_stb_t15": dict(
+        desc="manual_scalp_st_banded with a 1.5R target instead of 1R",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.5, max_stop_pct=0.10),
+    ),
+    "manual_stb_t20": dict(
+        desc="manual_scalp_st_banded with a 2R target instead of 1R",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=2.0, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,

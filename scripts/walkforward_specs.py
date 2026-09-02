@@ -76,7 +76,16 @@ FIXED_CELLS = (("trend_wide_stop", 60), ("trend_wide_stop", 240),
                # The two survivors of the gated PORTFOLIO run. Tracked by name
                # across every block because that is the question that decides
                # whether either is worth paper trading.
-               ("wpr_only", 240), ("atr_arm", 240))
+               ("wpr_only", 240), ("atr_arm", 240),
+               # 2026-09-02: the target sweep. In-sample on the thin 3 the 1R
+               # target scores -6.56% and 1.5R scores +13.30%, the first
+               # positive cell of that day's work. The curve is NOT monotonic
+               # (2.5R is the worst of five), and this is the best of five
+               # chosen in-sample -- precisely the shape the selection premium
+               # above was written about. Tracked by name so the question is
+               # answered on blocks the choice did not see.
+               ("manual_scalp_st_banded", 5), ("manual_stb_t15", 5),
+               ("manual_stb_t20", 5))
 
 
 def cell_result(data: dict, family: str, minutes: int, costs: SymbolCosts,
@@ -133,7 +142,13 @@ def pooled(rows: list[dict]) -> dict:
     """Trade-weighted pooling across symbols for one cell."""
     rows = [r for r in rows if r and r["trades"] > 0]
     if not rows:
-        return dict(trades=0, net_r=float("nan"), symbols=0, positive_symbols=0)
+        # gross_r BELONGS HERE. The only caller reads p["gross_r"]
+        # unconditionally, so a tracked cell that takes no trades in a
+        # block -- ordinary when a symbol's history starts mid-run, as
+        # AKEUSD and BANKUSD do on 2026-07-22 -- crashed the whole walk
+        # forward with KeyError rather than reporting an empty block.
+        return dict(trades=0, net_r=float("nan"), gross_r=float("nan"),
+                    symbols=0, positive_symbols=0)
     w = np.array([r["trades"] for r in rows], dtype=float)
     net = np.array([r["net_r"] for r in rows], dtype=float)
     gross = np.array([r.get("gross_r", np.nan) for r in rows], dtype=float)
