@@ -378,31 +378,30 @@ variable "bot_symbols" {
   # Expect a large drawdown. It is forecast, not a fault. What would be a
   # fault is reading the resulting P&L as a verdict on manual_scalp_st rather
   # than on this universe.
-  # ALL SEVEN, BY INSTRUCTION, 2026-09-01 -- CHOSEN TWICE WITH THE NUMBERS IN
-  # VIEW, SO THIS IS A DECISION AND NOT AN OVERSIGHT.
+  # THE THIN THREE, 2026-09-02, and the seven-symbol run is what settled it.
   #
-  # Under the operator's own rule (Supertrend agrees AND %R banded), measured
-  # as a PORTFOLIO on one account, ungated -- the honest column, because a
-  # gated run that halts early reports a truncated sample as a result:
+  # The wide universe was chosen deliberately to reach a 30-trade sample fast,
+  # with the forecast in view, and it did exactly that: 26 closed trades inside
+  # a day. The sample then agreed with the forecast -- 6 wins of 26, mean
+  # -0.273R, equity 10,000 -> 9,537, against a predicted 28% win rate and an
+  # observed 23%.
   #
-  #     universe   trades/day    return    max DD    PF
-  #     thin 3         2.38      -6.56%     14.9%   0.95
-  #     all 7          3.23     -60.43%     63.7%   0.82
+  # WHY IT IS THE UNIVERSE AND NOT THE RULE, stated as arithmetic rather than
+  # as a ranking. From the anchored walk-forward blocks:
   #
-  # 1.36x the sample for 9x the drawdown. The objection was put twice and is
-  # NOT withdrawn: it is not breadth that hurts, it is WHICH symbols breadth
-  # adds. BTC, ETH, SOL and XRP carry 1R widths of 30-45 bps, so cost_r runs
-  # 0.10-0.12 against 0.03-0.04 on the thin three, and they generate most of
-  # the trades. Getting the entry rule right does not touch that: BTCUSD's 1R
-  # ran 71 bps live on 2026-09-01, so cost_r was 0.22 -- a fifth of the risk
-  # budget gone to fees before the trade did anything.
+  #     thin 3 @ 1.5R   gross ~ +0.085R   cost ~ 0.038R   net ~ +0.047R
+  #     all 7  @ 1.5R   gross ~ +0.020R   cost ~ 0.100R   net ~ -0.080R
   #
-  # WHAT WOULD BE A FAULT is reading the resulting P&L as a verdict on
-  # manual_scalp_st_banded rather than on this universe. Expect a large
-  # drawdown; it is forecast. What this run can honestly measure is whether
-  # the ENTRY RULE behaves out of sample, and seven symbols reach a 30-trade
-  # sample sooner than three.
-  default = "BEATUSD,AKEUSD,BANKUSD,ETHUSD,SOLUSD,BTCUSD,XRPUSD"
+  # Same rule, same signals, same code. On the thin three the gross edge is
+  # about twice its transaction cost; on all seven it is about a fifth of it.
+  # cost_r = round_trip / stop_pct, and BTC/ETH/SOL/XRP carry 1R widths of
+  # 30-115 bps against 240-460 here, so the same fixed round trip is a far
+  # larger share of the risk budget -- and those four generate most of the
+  # trades.
+  #
+  # This is not a cell chosen from a sweep. It is the reason every fitted
+  # result on the wide universe failed.
+  default = "BEATUSD,AKEUSD,BANKUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -679,7 +678,27 @@ variable "stacks" {
     # the configured universe" -- which is correct behaviour, not a bug.
     #
     # REMEMBER create_stack_database.sh. user_data does not run it.
-    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_stb" }
+    # 2026-09-02: A FOURTH DATABASE, AND THE REASON IS SLOTS, NOT THE UNIVERSE.
+    #
+    # The first draft of this note said the wide run must be holding majors
+    # that recover() would refuse. It was CHECKED AND THAT WAS WRONG: at the
+    # time of writing deltabt_stb held exactly two open positions, BEATUSD and
+    # AKEUSD, both inside the thin three. recover() would have started fine.
+    #
+    # THE REAL REASON IS THAT TWO OF THREE SYMBOLS WOULD BEGIN BLOCKED. A
+    # carried position holds its symbol's slot until it closes, and with a
+    # three-symbol universe that is two thirds of the arm unavailable for up to
+    # 24h on max hold. That exact situation on 2026-08-31 produced zero
+    # approved signals for hours and cost most of a morning.
+    #
+    # `forward-test stop` leaves open positions alone on purpose -- closing
+    # them would fabricate exits the strategy never produced -- so deltabt_stb
+    # keeps the wide run's record and its two positions as they were left,
+    # which is the honest account of an experiment that ended holding them.
+    #
+    # REMEMBER create_stack_database.sh. user_data does not run it, and the
+    # bot cannot connect until the database exists.
+    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_thin" }
   }
 }
 
@@ -843,12 +862,47 @@ variable "exit_on_wpr_band_exit" {
     an open position, not a signal rule.
 
     THE DRAWDOWN HALT IS ALREADY OFF. DELTABOT_MAX_DRAWDOWN is 1.0 on the host
-    and MAX_DAILY_LOSS and MAX_CONSEC_LOSSES are disabled too, so the forecast
-    drawdown will not stop the run -- which is what was asked for. It also
-    means the UNGATED column above is the one that describes this deployment.
+    and MAX_DAILY_LOSS and MAX_CONSEC_LOSSES are disabled too, so the ungated
+    column above is the one that describes this deployment.
+
+    SWITCHED BACK OFF 2026-09-02, ON LIVE EVIDENCE FROM 26 CLOSED TRADES. It
+    fired 17 times and lost on EVERY ONE, mean -0.527R:
+
+        TAKE_PROFIT          6   +5.285R   mean +0.881
+        STOP_LOSS            3   -3.425R   mean -1.142
+        SETUP_INVALIDATED   17   -8.952R   mean -0.527
+                            --   -------
+                            26   -7.092R   mean -0.273
+
+    The other nine trades netted +1.86R. The exit is the whole deficit, not a
+    drag on it.
+
+    THE MECHANISM IS A DESIGN FAULT, NOT BAD LUCK. The exit trigger was the
+    SAME level as the entry band's edge, so an entry at %R -78 sat two points
+    from its own exit and ordinary noise closed it at a loss. It was detecting
+    proximity to the band edge, not a failed setup. The holding times say so:
+    4m, 4m, 4m, 9m, 9m, 12m, 24m.
+
+    A BUFFER WAS TESTED AND DOES NOT RESCUE IT. Widening the gap recovers the
+    win rate monotonically, which confirms the mechanism -- and every setting
+    is still worse than no exit at all:
+
+        OFF          1,901 trades  win 49%  -60.43%  maxDD 63.67%
+        -80 / -20    3,647         win 28%  -81.47%  maxDD 83.14%
+        -85 / -15    2,916         win 35%  -72.12%
+        -90 / -10    2,499         win 40%  -69.50%
+        -95 /  -5    2,215         win 45%  -63.16%  maxDD 66.54%
+
+    Live tracked the forecast closely: 23% win rate against 28% predicted for
+    this exact configuration.
+
+    THE CODE, PARAMETERS AND TESTS STAY. The exit is measured, not deleted. It
+    is roughly neutral on the thin 3 (-6.56% -> -7.32%, drawdown 14.85% ->
+    12.40%) where turnover is cheap, so it remains available if the universe
+    ever narrows. It is simply not worth running on seven symbols.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "wpr_exit_long_level" {

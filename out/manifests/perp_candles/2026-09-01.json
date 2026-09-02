@@ -1,0 +1,44 @@
+{
+  "dataset": "perp_candles",
+  "venue": "delta_india",
+  "provenance": "rebuilt",
+  "manifest_schema_version": 2,
+  "superseded": {
+    "checksum": "7f023c539cdc2df599685030e4a3528abb8180e1e1d0eb76eb11943acebea1bb",
+    "rows": 2880,
+    "generated_at": "2026-09-02T00:00:42.340046+00:00",
+    "provenance": "recorder",
+    "detected_at": "2026-09-02T09:52:47.308296+00:00",
+    "reason": "checksum did not match the partition it described"
+  },
+  "date": "2026-09-01",
+  "first_timestamp": 1788220800,
+  "last_timestamp": 1788307140,
+  "rows": 2880,
+  "unique_contracts": 2,
+  "unique_batches": 1440,
+  "schema_version": 1,
+  "columns": [
+    "time",
+    "fetched_ts",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "dedup_key": [
+    "time",
+    "symbol"
+  ],
+  "file_paths": [
+    "data/perp/perp_candles_1m_2026-09-01.parquet"
+  ],
+  "checksums": {
+    "perp_candles_1m_2026-09-01.parquet": "8f1c14a9716593ceebf346992051d86c84d839d01010f6bae28a883062a79524"
+  },
+  "bytes": 91334,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-09-02T09:52:47.312589+00:00"
+}

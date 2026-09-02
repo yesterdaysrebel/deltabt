@@ -111,9 +111,33 @@ class SymbolCosts:
 
     # -- costs --------------------------------------------------------------
 
+    #: Model the ENTRY as a resting limit order rather than a market order.
+    #:
+    #: The operator's own Delta history says this is how they traded: 1,074 of
+    #: 1,437 executed orders (74.7%) were limit_order, and those paid a median
+    #: 2.36 bps -- exactly 0.02% x 1.18 GST, the maker rate to the decimal.
+    #: The bot pays 7.9 bps instead (5.9 taker + 2.0 slippage), so a maker
+    #: entry saves ~5.5 bps per leg.
+    #:
+    #: THIS FLAG MODELS ONLY THE PRICE, NOT THE FILL. A resting order does not
+    #: always fill: 32.1% of the operator's limit orders were cancelled unfilled
+    #: (1,582 placed, 1,074 filled). Turning this on therefore measures an
+    #: UPPER BOUND -- every signal still becomes a trade, at a better price.
+    #: The real question is whether the 68% that fill are as good as the 100%
+    #: that fill at market, and that needs a fill model this backtester does
+    #: not have. Do not read a result from this flag as achievable.
+    maker_entry: bool = False
+
     def entry_cost(self, contracts: int, price: float) -> float:
-        """Taker fee plus slippage on the way in."""
+        """Cost on the way in.
+
+        A market entry crosses the spread: taker fee plus modelled slippage.
+        A resting limit entry earns the maker rate and, by construction, pays
+        no slippage -- it fills at its own price or not at all.
+        """
         n = self.notional(contracts, price)
+        if self.maker_entry:
+            return n * self.effective_maker
         return n * (self.effective_taker + self.slippage_rate)
 
     def exit_cost(self, contracts: int, price: float, *, maker: bool) -> float:
