@@ -678,7 +678,27 @@ variable "stacks" {
     # the configured universe" -- which is correct behaviour, not a bug.
     #
     # REMEMBER create_stack_database.sh. user_data does not run it.
-    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_stb" }
+    # 2026-09-02: A FOURTH DATABASE, AND THE REASON IS SLOTS, NOT THE UNIVERSE.
+    #
+    # The first draft of this note said the wide run must be holding majors
+    # that recover() would refuse. It was CHECKED AND THAT WAS WRONG: at the
+    # time of writing deltabt_stb held exactly two open positions, BEATUSD and
+    # AKEUSD, both inside the thin three. recover() would have started fine.
+    #
+    # THE REAL REASON IS THAT TWO OF THREE SYMBOLS WOULD BEGIN BLOCKED. A
+    # carried position holds its symbol's slot until it closes, and with a
+    # three-symbol universe that is two thirds of the arm unavailable for up to
+    # 24h on max hold. That exact situation on 2026-08-31 produced zero
+    # approved signals for hours and cost most of a morning.
+    #
+    # `forward-test stop` leaves open positions alone on purpose -- closing
+    # them would fabricate exits the strategy never produced -- so deltabt_stb
+    # keeps the wide run's record and its two positions as they were left,
+    # which is the honest account of an experiment that ended holding them.
+    #
+    # REMEMBER create_stack_database.sh. user_data does not run it, and the
+    # bot cannot connect until the database exists.
+    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_thin" }
   }
 }
 
