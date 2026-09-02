@@ -843,12 +843,47 @@ variable "exit_on_wpr_band_exit" {
     an open position, not a signal rule.
 
     THE DRAWDOWN HALT IS ALREADY OFF. DELTABOT_MAX_DRAWDOWN is 1.0 on the host
-    and MAX_DAILY_LOSS and MAX_CONSEC_LOSSES are disabled too, so the forecast
-    drawdown will not stop the run -- which is what was asked for. It also
-    means the UNGATED column above is the one that describes this deployment.
+    and MAX_DAILY_LOSS and MAX_CONSEC_LOSSES are disabled too, so the ungated
+    column above is the one that describes this deployment.
+
+    SWITCHED BACK OFF 2026-09-02, ON LIVE EVIDENCE FROM 26 CLOSED TRADES. It
+    fired 17 times and lost on EVERY ONE, mean -0.527R:
+
+        TAKE_PROFIT          6   +5.285R   mean +0.881
+        STOP_LOSS            3   -3.425R   mean -1.142
+        SETUP_INVALIDATED   17   -8.952R   mean -0.527
+                            --   -------
+                            26   -7.092R   mean -0.273
+
+    The other nine trades netted +1.86R. The exit is the whole deficit, not a
+    drag on it.
+
+    THE MECHANISM IS A DESIGN FAULT, NOT BAD LUCK. The exit trigger was the
+    SAME level as the entry band's edge, so an entry at %R -78 sat two points
+    from its own exit and ordinary noise closed it at a loss. It was detecting
+    proximity to the band edge, not a failed setup. The holding times say so:
+    4m, 4m, 4m, 9m, 9m, 12m, 24m.
+
+    A BUFFER WAS TESTED AND DOES NOT RESCUE IT. Widening the gap recovers the
+    win rate monotonically, which confirms the mechanism -- and every setting
+    is still worse than no exit at all:
+
+        OFF          1,901 trades  win 49%  -60.43%  maxDD 63.67%
+        -80 / -20    3,647         win 28%  -81.47%  maxDD 83.14%
+        -85 / -15    2,916         win 35%  -72.12%
+        -90 / -10    2,499         win 40%  -69.50%
+        -95 /  -5    2,215         win 45%  -63.16%  maxDD 66.54%
+
+    Live tracked the forecast closely: 23% win rate against 28% predicted for
+    this exact configuration.
+
+    THE CODE, PARAMETERS AND TESTS STAY. The exit is measured, not deleted. It
+    is roughly neutral on the thin 3 (-6.56% -> -7.32%, drawdown 14.85% ->
+    12.40%) where turnover is cheap, so it remains available if the universe
+    ever narrows. It is simply not worth running on seven symbols.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "wpr_exit_long_level" {

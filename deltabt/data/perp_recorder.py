@@ -225,7 +225,31 @@ def _commit(df: pd.DataFrame, dataset: str, time_col: str,
     """Persist one batch, refresh its manifest, advance its checkpoint."""
     man_root, cp_root = _sidecar_roots(root)
     path = archive.append_partition(df, dataset, root=root)
-    archive.write_manifest(dataset, path, root=man_root)
+
+    # MANIFEST EVERY DAY THE BATCH TOUCHED, NOT JUST THE ONE IT RETURNED.
+    #
+    # append_partition splits a batch that straddles midnight and returns only
+    # the LAST path -- groupby yields days ascending, so that is the NEW day.
+    # Manifesting only that left YESTERDAY's partition rewritten with a stale
+    # manifest, and verification then refuses the entire backup:
+    #
+    #     source failed verification; refusing to propagate a partition that
+    #     does not match its manifest
+    #
+    # It happened on 2026-09-01 (parquet rewritten 00:13:29, manifest written
+    # 00:00:29) and again on 2026-09-02, both times on perp_candles, because
+    # the 00:0x poll carries the previous day's final minutes.
+    #
+    # unmanifested_days() below does NOT catch this: it checks a manifest
+    # EXISTS, not that it AGREES.
+    # Grouped exactly as append_partition groups, so the set of days is the
+    # same set it wrote. utc_day returns a DATE STRING, so a representative
+    # timestamp from each group is what resolves the path.
+    tcol = archive.TIME_COLUMN[dataset]
+    for _day, part in df.groupby(df[tcol].map(archive.utc_day)):
+        day_path = archive.partition_path(dataset, int(part[tcol].iloc[0]), root)
+        if day_path.exists():
+            archive.write_manifest(dataset, day_path, root=man_root)
 
     # See quote_recorder.record_once: the manifest write cannot complain, so
     # something has to ask. Six sealed partitions went undescribed for two days

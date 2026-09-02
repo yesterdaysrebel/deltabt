@@ -127,3 +127,78 @@ def test_the_manifest_is_named_from_the_data_not_the_filename(tmp_path):
         "options", root=tmp_path, manifest_root=tmp_path / "m",
         today="2026-06-01") == ["2026-03-02"], (
         "and so the partition's own day is reported as undescribed")
+
+
+# --- a batch that straddles midnight ----------------------------------------
+#
+# WHAT HAPPENED, TWICE. archive.append_partition splits a batch spanning
+# midnight and returns only the LAST path -- groupby yields days ascending, so
+# that is the NEW day. _commit manifested only that one, leaving YESTERDAY's
+# partition rewritten with a stale manifest, and verification then refused the
+# ENTIRE backup:
+#
+#     source failed verification; refusing to propagate a partition that does
+#     not match its manifest
+#
+# 2026-09-01: perp_candles parquet rewritten 00:13:29, manifest written
+# 00:00:29. 2026-09-02: the same, same dataset. The 00:0x poll carries the
+# previous day's final minutes, so it recurs every night.
+#
+# unmanifested_days() does NOT catch it. It checks a manifest EXISTS, not that
+# it AGREES -- it reported clean on both mornings.
+
+import hashlib
+import json
+
+import pandas as pd
+
+from deltabt.data import archive as _archive
+from deltabt.data.perp_recorder import _commit as _perp_commit
+
+_MIDNIGHT = 1788220800          # 2026-09-01 00:00:00 UTC
+
+
+def _candles(ts: int, n: int) -> pd.DataFrame:
+    return pd.DataFrame({
+        "time": [ts + 60 * i for i in range(n)], "fetched_ts": [ts] * n,
+        "symbol": ["BTCUSD"] * n, "open": [1.0] * n, "high": [1.0] * n,
+        "low": [1.0] * n, "close": [1.0] * n, "volume": [1.0] * n})
+
+
+def _manifest_matches(root, day: str) -> bool:
+    mp = _archive.manifest_path("perp_candles", day, root / "manifests")
+    if not mp.exists():
+        return False
+    m = json.loads(mp.read_text())
+    part = root / "perp" / f"perp_candles_1m_{day}.parquet"
+    want = list(m["checksums"].values())[0]
+    return want == hashlib.sha256(part.read_bytes()).hexdigest()
+
+
+def test_a_batch_spanning_midnight_manifests_BOTH_days(tmp_path):
+    """The regression. Yesterday's partition is rewritten by the batch, so its
+    manifest must be rewritten with it."""
+    _perp_commit(_candles(_MIDNIGHT + 600, 5), "perp_candles", "time", tmp_path)
+    nxt = _MIDNIGHT + 86400
+    _perp_commit(_candles(nxt - 180, 6), "perp_candles", "time", tmp_path)
+
+    assert _manifest_matches(tmp_path, "2026-09-01"), \
+        "the OLD day was rewritten by the straddling batch and left stale"
+    assert _manifest_matches(tmp_path, "2026-09-02")
+
+
+def test_a_single_day_batch_still_manifests_its_one_day(tmp_path):
+    _perp_commit(_candles(_MIDNIGHT + 600, 5), "perp_candles", "time", tmp_path)
+    assert _manifest_matches(tmp_path, "2026-09-01")
+    assert not _archive.manifest_path(
+        "perp_candles", "2026-09-02", tmp_path / "manifests").exists()
+
+
+def test_three_days_in_one_batch_are_all_manifested(tmp_path):
+    """Not a real polling pattern, but the loop must not assume exactly two."""
+    df = pd.concat([_candles(_MIDNIGHT + 600, 2),
+                    _candles(_MIDNIGHT + 86400 + 600, 2),
+                    _candles(_MIDNIGHT + 172800 + 600, 2)], ignore_index=True)
+    _perp_commit(df, "perp_candles", "time", tmp_path)
+    for day in ("2026-09-01", "2026-09-02", "2026-09-03"):
+        assert _manifest_matches(tmp_path, day), day
