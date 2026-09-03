@@ -403,6 +403,52 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=2.0, max_stop_pct=0.10),
     ),
+    # TWO SOLUSD CELLS, NOW CLOSED AS A SELECTION ARTEFACT. Kept so the record
+    # of how they failed stays next to the definitions.
+    #
+    # MISLABELLING, CORRECTED. The first draft of this note called these
+    # "trend_wide_stop at 8x/6x". They are NOT: their confirm gate carries the
+    # FULL stack (ST + DI + ADX>=25 + %R on the confirmation timeframe, copied
+    # from hwpr_v2), whereas trend_wide_stop's confirm is Supertrend only. The
+    # two are different strategies with different hashes, and the difference
+    # was only noticed when the same "cell" gave 4/4 blocks one way and 2/4
+    # the other. A family's name must describe its rules, not its parent.
+    #
+    # WHY THEY WERE ADDED. On SOLUSD, in-sample, trend_wide_stop was positive
+    # in all six wide-stop cells tried (6/8/10xATR x 1.0/1.5R), found in a
+    # ~270-cell search where positive cells are expected rather than
+    # informative. trend_wide_6x15 then held NET-positive in 4/4 anchored
+    # walk-forward blocks (+0.024 +0.027 +0.112 +0.007), which looked like a
+    # real result.
+    #
+    # WHY THEY ARE CLOSED. Five independent tests, 2026-09-03:
+    #   1. spike, not plateau -- every neighbouring stop/target cell is 2-3/4
+    #   2. SOLUSD only -- the exact cell is 1/4 on ETHUSD, XRPUSD and BTCUSD
+    #   3. window-scheme sensitive -- 3/4 on four equal blocks
+    #   4. the selection procedure that picks such cells measures -0.2592R out
+    #      of sample (in-sample +0.1334; selection premium +0.3926)
+    #   5. TRUE out-of-sample, 2026-08-12 -> 09-03, data no sweep touched:
+    #      30 trades, win 43%, exp_r -0.018 [-0.442, +0.397], return -0.3%
+    #
+    # NOT PROMOTED, NOT DEPLOYED, NOT TO BE RETRIED under a different name.
+    "trend_wide_8x": dict(
+        desc="FULL confirm stack (hwpr_v2 gates) at 8xATR, 1R -- closed as artefact",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=8.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    "trend_wide_6x15": dict(
+        desc="FULL confirm stack (hwpr_v2 gates) at 6xATR, 1.5R -- closed as artefact",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=6.0,
+                  target_r=1.5, max_stop_pct=0.10),
+    ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",
         primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
