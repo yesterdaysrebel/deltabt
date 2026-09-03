@@ -494,7 +494,25 @@ def main() -> int:
     #
     # A missing probe is now its own finding. It is NOT rendered as zeros.
     db_ok = bool(db)
-    db_truncated = bool(_persist_last) and not db_ok
+    # TWO DIFFERENT FAILURES USED TO GET ONE MESSAGE, AND IT WAS THE WRONG ONE.
+    #
+    # gunzip_section returns "" when the base64 blob was cut off -- that is
+    # what the SSM cap does. A NON-EMPTY section that is not JSON therefore
+    # decompressed fine and the probe PRINTED something else: a traceback.
+    # On 2026-09-03 that was `InvalidPasswordError: password authentication
+    # failed` after the RDS master password rotated, and the report called it
+    # "hit the SSM 24,000-byte cap". The guess sent the investigation at the
+    # wrong cause for twenty minutes. Show what the probe actually said.
+    db_truncated = bool(sec.get("PERSISTENCE_GZ") or sec.get("PERSISTENCE")) \
+        and not _persist_raw.strip()
+    db_errored = bool(_persist_raw.strip()) and not db_ok
+    db_error_text = ""
+    if db_errored:
+        lines = [ln for ln in _persist_raw.splitlines() if ln.strip()]
+        # The exception line is the last non-indented one; keep it and the
+        # line before it so a bare "KeyError" still carries some context.
+        tail = [ln for ln in lines if not ln.startswith((" ", "\t"))][-2:] or lines[-2:]
+        db_error_text = " | ".join(ln.strip()[:160] for ln in tail)
 
     # --- 1. is it alive and is it still the same experiment? ---------------
     print("## Is it running, and is it still the same experiment?\n")
@@ -548,7 +566,14 @@ def main() -> int:
                 f"(experiment {e.get('experiment_id')})")
 
     running = [e for e in experiments if str(e.get("status")).upper() == "RUNNING"]
-    if db_truncated:
+    if db_errored:
+        problems.append(
+            f"DATABASE PROBE ERRORED -- it returned this instead of JSON: "
+            f"`{db_error_text}`. Every database figure in this report is "
+            f"UNAVAILABLE, not zero. A password error here means the RDS "
+            f"master password rotated and the container still holds the old "
+            f"one; a restart re-resolves it.")
+    elif db_truncated:
         problems.append(
             "DATABASE PROBE UNREADABLE -- the monitor output hit the SSM "
             "24,000-byte cap and the PERSISTENCE JSON was truncated. Every "
