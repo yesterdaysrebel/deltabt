@@ -350,6 +350,20 @@ FAMILIES: dict[str, dict] = {
     # there. All seven stays negative in every variant: the majors' cost
     # problem is untouched by where direction is read.
     #
+    # TRUE OUT OF SAMPLE, thin 3, 2026-08-12 -> 09-03 (22 days, no sweep
+    # touched them; 5m from Delta 1m integer-bucketed, HTF bars from Delta
+    # directly, every alignment asserted):
+    #
+    #                          trades   win    exp_r   [95% CI]           return
+    #     live: 5m ST + %R       109    53%   +0.006  [-0.178, +0.181]    +0.2%
+    #     MOVE direction -> 1h    78    55%   +0.064  [-0.164, +0.285]    +2.5%
+    #     MOVE direction -> 4h    95    52%   -0.003  [-0.211, +0.194]    -0.2%
+    #
+    # 1h ranks first out of sample as it did in, with the same +2 points of
+    # win rate; 4h -- best in-sample -- is flat out of sample, which is the
+    # selection premium showing where it should. 78 trades cannot separate
+    # +0.064R from zero. Consistent, not confirmed.
+    #
     # STILL A SEARCH OVER SIX. The operator named the hypothesis before the
     # data did, and all six move the same way, which is not what a spike looks
     # like -- but block 2 (Apr-Jun 2026) is negative for every variant, two of
