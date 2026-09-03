@@ -319,6 +319,34 @@ FAMILIES: dict[str, dict] = {
     # strong-downtrend continuation shorts that a trend follower takes on
     # purpose. The operator's hand-traded style does not, and this family is
     # meant to encode that style.
+    # FIVE ENTRY FILTERS FOR THIS FAMILY, ALL TESTED CAUSALLY ON 2026-09-03,
+    # NONE SURVIVES. Recorded here so they are not run again under new names.
+    #
+    # The observed failure: on BEATUSD, 02-03 Sep, the rule fired 27 longs
+    # into a -6.9% move, every one with the last CLOSED 1h Supertrend bearish.
+    # The mechanism is real -- a 5m Supertrend at 2.0x flips bullish on every
+    # bounce inside a decline, and "Supertrend agrees" is satisfied on 5m
+    # while the higher timeframe disagrees. Five ways of not buying those
+    # bounces were walked forward (anchored, 4 blocks, ungated, 4xATR/1R):
+    #
+    #                                 thin 3 +ve   full    all 7 +ve   full
+    #     baseline (live)                 2/4     -6.6%       0/4    -60.4%
+    #     1h Supertrend must agree        1/4               0/4
+    #     ST 10/3.0 instead of 10/2.0     1/4     -9.8%       0/4    -44.6%
+    #     ST held bullish >= 3 bars       2/4     -2.1%       0/4    -42.8%
+    #     ST held bullish >= 6 bars       1/4     -9.8%       0/4    -32.8%
+    #     %R cross UP out of -80          1/4     -7.8%       0/4    -40.4%
+    #
+    # Not one produces a positive block the baseline lacked; "held >= 3" has
+    # the baseline's exact block signature (+ + - -), so its full-window
+    # number is block-0 noise. Across twenty months the bounces these remove
+    # are not worse than the trades they keep. The BEATUSD week was a regime
+    # where buying bounces was catastrophic, and no input of this rule
+    # distinguishes that regime in advance.
+    #
+    # A 1h-filter version that showed +36% and 4/4 on all seven was a
+    # look-ahead bug (reindex(ffill) reading the containing, unclosed HTF
+    # bar). Causal it is 0/4. See PR #37's commit message for the full record.
     "manual_scalp_st_banded": dict(
         desc="manual_scalp plus Supertrend alignment AND the %R midpoint ceiling",
         primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
