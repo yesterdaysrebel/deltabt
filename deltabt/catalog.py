@@ -319,34 +319,45 @@ FAMILIES: dict[str, dict] = {
     # strong-downtrend continuation shorts that a trend follower takes on
     # purpose. The operator's hand-traded style does not, and this family is
     # meant to encode that style.
-    # FIVE ENTRY FILTERS FOR THIS FAMILY, ALL TESTED CAUSALLY ON 2026-09-03,
-    # NONE SURVIVES. Recorded here so they are not run again under new names.
+    # WHERE THE DIRECTION FILTER LOOKS -- TESTED 2026-09-03, AND THE FIRST TWO
+    # ATTEMPTS WERE WRONG IN OPPOSITE DIRECTIONS.
     #
     # The observed failure: on BEATUSD, 02-03 Sep, the rule fired 27 longs
     # into a -6.9% move, every one with the last CLOSED 1h Supertrend bearish.
-    # The mechanism is real -- a 5m Supertrend at 2.0x flips bullish on every
-    # bounce inside a decline, and "Supertrend agrees" is satisfied on 5m
-    # while the higher timeframe disagrees. Five ways of not buying those
-    # bounces were walked forward (anchored, 4 blocks, ungated, 4xATR/1R):
+    # A 5m Supertrend at 2.0x flips bullish on every bounce inside a decline,
+    # so "Supertrend agrees" holds on 5m while the bigger picture disagrees.
     #
-    #                                 thin 3 +ve   full    all 7 +ve   full
-    #     baseline (live)                 2/4     -6.6%       0/4    -60.4%
-    #     1h Supertrend must agree        1/4               0/4
-    #     ST 10/3.0 instead of 10/2.0     1/4     -9.8%       0/4    -44.6%
-    #     ST held bullish >= 3 bars       2/4     -2.1%       0/4    -42.8%
-    #     ST held bullish >= 6 bars       1/4     -9.8%       0/4    -32.8%
-    #     %R cross UP out of -80          1/4     -7.8%       0/4    -40.4%
+    # ATTEMPT 1 read the HTF bar that CONTAINED each 5m bar (not yet closed):
+    # +36% and 4/4 on all seven. Look-ahead. ATTEMPT 2 "fixed" that with
+    # DatetimeIndex.view/asi8 // 1e9 to get bar opens -- which returns 1 for
+    # every bar on a tz-aware index in this pandas build, so searchsorted hit
+    # the last bar every time and the mask was CONSTANT: 0/4. Not a test.
+    # ATTEMPT 3 takes opens as int(ts.timestamp()) and ASSERTS they are
+    # monotone epoch seconds and the mask is 20-80% bull before any number
+    # is read. Anchored, 4 blocks, ungated, 4xATR/1R:
     #
-    # Not one produces a positive block the baseline lacked; "held >= 3" has
-    # the baseline's exact block signature (+ + - -), so its full-window
-    # number is block-0 noise. Across twenty months the bounces these remove
-    # are not worse than the trades they keep. The BEATUSD week was a regime
-    # where buying bounces was catastrophic, and no input of this rule
-    # distinguishes that regime in advance.
+    #                              thin 3 +ve   full    maxDD   all 7 +ve   full
+    #     live: 5m ST + %R            2/4     -6.6%   14.9%      0/4    -60.4%
+    #     ADD  1h ST as 2nd gate      2/4     +1.1%    9.5%      1/4    -28.8%
+    #     MOVE direction -> 15m       3/4     -0.9%   10.6%      0/4    -26.4%
+    #     MOVE direction -> 1h        3/4     +6.6%    8.4%      0/4    -43.2%
+    #     MOVE direction -> 4h        3/4     +7.4%   13.2%      0/4    -44.0%
     #
-    # A 1h-filter version that showed +36% and 4/4 on all seven was a
-    # look-ahead bug (reindex(ffill) reading the containing, unclosed HTF
-    # bar). Causal it is 0/4. See PR #37's commit message for the full record.
+    # MOVING the direction source -- 5m Supertrend removed, %R banded still on
+    # 5m, permission from the last closed 1h or 4h Supertrend -- turns the thin
+    # three positive at a 54-55% win rate with roughly half the drawdown. Every
+    # one of six HTF variants beats the live rule on both return and drawdown
+    # there. All seven stays negative in every variant: the majors' cost
+    # problem is untouched by where direction is read.
+    #
+    # STILL A SEARCH OVER SIX. The operator named the hypothesis before the
+    # data did, and all six move the same way, which is not what a spike looks
+    # like -- but block 2 (Apr-Jun 2026) is negative for every variant, two of
+    # the three symbols carry 21 days, and this is not yet out of sample.
+    #
+    # Also tested, valid (rulecore only, no HTF arithmetic), none survives:
+    # ST 10/3.0 (1/4, -9.8%), ST held >=3 bars (2/4, -2.1%, baseline's exact
+    # block signature), ST held >=6 (1/4), %R cross up out of -80 (1/4).
     "manual_scalp_st_banded": dict(
         desc="manual_scalp plus Supertrend alignment AND the %R midpoint ceiling",
         primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
