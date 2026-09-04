@@ -140,8 +140,15 @@ variable "max_hold_seconds" {
     the -e list in run.sh, so max_hold_seconds was 0 in every container
     regardless of intent.
 
-    NOW 86400 (24h), because the ATR arm this stack runs is specified with a
-    24-hour time exit. It was 0 while the plumbing was staged out.
+    NOW 259200 (72h), 2026-09-04, together with the move to a 3R target.
+    The two belong together: a 3R target on a 4xATR stop is 12xATR away, and
+    a 24-hour cap converts that into "hold overnight and take whatever" --
+    the cap becomes the exit rather than the target. Measured on the live
+    universe, holding 24h/48h/72h at a 3R target gives +0.186/+0.251/+0.289,
+    and at 72h the exits are 275 stop, 137 target, 14 max_hold, so the target
+    is doing the work and the cap is a backstop.
+
+    It was 86400 (24h) for the 1R arm, where that was the right pairing.
 
     IT IS PART OF RiskConfig, SO IT IS PART OF THE RISK HASH. The experiment
     running here records 0338a386c43d39a4: that config WITH the 24h hold,
@@ -154,7 +161,7 @@ variable "max_hold_seconds" {
     EXPERIMENT and cannot be applied to one already running.
   EOT
   type        = number
-  default     = 86400
+  default     = 259200
 }
 
 # --- access ----------------------------------------------------------------
@@ -423,31 +430,43 @@ variable "bot_symbols" {
   # cost/volatility screen does not find more of these. Surviving a screen
   # of 25 is itself a selection, so expect WIFUSD to behave like BEATUSD:
   # near breakeven with materially lower drawdown.
-  # SOLUSD ADDED 2026-09-04 BY INSTRUCTION, AGAINST THE MEASURED EVIDENCE.
+  # CHANGING THIS FILE ROLLS THE BOT, ON PURPOSE.
   #
-  # Measured under the family that is actually running
-  # (`manual_scalp_banded_h1dir`, 4xATR/1R/24h, scripts/audit_context_direction.py):
+  # The universe, the variant and the risk knobs below are what the
+  # experiment's config_hash is computed from. Terraform replacing the host is
+  # only half of such a change: the other half is retiring the running
+  # experiment and registering a successor, and that lives in the deploy
+  # workflow. So `infra/terraform/variables.tf` is in deploy.yml's path filter
+  # even though none of it is in the image, and
+  # tests/live/test_identity_paths_trigger_deploy.py fails if it is removed.
   #
-  #   blk0    blk1    blk2    blk3   +ve   net     gross   n     win
-  #  -0.179  -0.134  -0.088  -0.150  0/4  -0.139  -0.035  793   47%
+  # Without that, a universe change applies, the host comes up with a new
+  # identity, and bind_experiment refuses it against a database still holding
+  # the old RUNNING experiment -- a bot that is live and cannot bind, with
+  # nothing red to say so. SOLUSD sat merged-but-unapplied for an hour on
+  # 2026-09-04 for exactly this reason.
   #
-  # Three things make this different from a symbol that merely underperforms:
+  # SOLUSD WAS ADDED AND THEN WITHDRAWN, 2026-09-04, both by instruction.
   #
-  #   * GROSS IS NEGATIVE (-0.035R). This is not a cost problem that better
-  #     execution could rescue -- the signal points the wrong way on SOLUSD
-  #     before a single fee is charged.
-  #   * It loses in ALL FOUR anchored blocks, including the current regime.
-  #   * No context timeframe repairs it: 30m, 60m, 120m and 240m are all 0/4.
+  # It was merged (#42) but its apply failed on a transient artifact error, so
+  # it never reached a host -- and the decision was then taken to leave the
+  # running arm alone. Reverting it here matters more than it looks: master
+  # was carrying a universe the bot was NOT running, and the next
+  # infrastructure apply for any reason would have replaced the host and
+  # restarted the experiment as a side effect of an unrelated change.
   #
-  # Total over the archive is -110.3R across 793 trades. At the arm's 0.5%
-  # risk per trade that is roughly half the account. Nothing in the
-  # concentration profile softens it either: removing the ten best trades
-  # makes the average WORSE (-0.153R), which is what a genuinely negative
-  # edge looks like rather than a few bad prints.
+  # The evidence, kept because it is the reason not to bring it back casually.
+  # Measured under the family that is running, at BOTH the live exit and the
+  # wider one, so it is not an artefact of the exit setting:
   #
-  # It is here because it was asked for after the evidence was put. Removing
-  # it is one line, and the arm is paper only.
-  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD,SOLUSD"
+  #             1R / 24h            3R / 72h
+  #   net       -0.139   0/4        -0.129   0/4
+  #   gross     -0.035 (negative BEFORE fees)
+  #
+  # Losing in all four anchored blocks at both exits, and gross-negative, so
+  # no execution improvement can rescue it. Re-adding it is one line; the
+  # measurement is the argument against, not the effort.
+  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -753,7 +772,7 @@ variable "stacks" {
     # default resolves the confirmation to 1m and the bot trades a rule
     # nobody measured; app/config/variants.py refuses the bare form for
     # exactly this family rather than let that happen quietly.
-    atr = { variant = "SPEC:manual_scalp_banded_h1dir@5/60", db_name = "deltabt_h1dir" }
+    atr = { variant = "SPEC:manual_scalp_banded_h1dir_t3@5/60", db_name = "deltabt_h1dir" }
   }
 }
 

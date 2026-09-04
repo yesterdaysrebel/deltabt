@@ -68,6 +68,27 @@ on:
       - '!deltabt/research/run_*.py'
       - 'deploy/docker/**'
       - 'pyproject.toml'
+      # NOT PART OF THE IMAGE, AND IT STILL HAS TO ROLL.
+      #
+      # This file holds the universe, the variant and the risk knobs -- the
+      # things the experiment's config_hash is computed FROM. Change one and
+      # Terraform replaces the host with a different identity, but nothing
+      # here matched, so no deploy ran and no successor experiment was
+      # registered. The new host then came up against a database holding a
+      # RUNNING experiment whose hash no longer matched, and bind_experiment
+      # refused it: a bot live and unable to bind, with no failure anywhere
+      # to say so.
+      #
+      # That is exactly what happened to SOLUSD on 2026-09-04: merged, then
+      # stranded unapplied because the only workflow that could have carried
+      # it never fired.
+      #
+      # The image is unchanged when only this file moves, so the roll is a
+      # no-op for the container; what it actually buys is the experiment
+      # lifecycle -- retire the old run, register a successor on the new
+      # identity. tests/live/test_identity_paths_trigger_deploy.py fails if
+      # this entry is removed.
+      - 'infra/terraform/variables.tf'
   workflow_dispatch:
     inputs:
       image_tag:
@@ -220,7 +241,7 @@ jobs:
           # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
           # step with infra/terraform/variables.tf so the job title does not
           # announce a strategy the host is not running.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_banded_h1dir@5/60","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_banded_h1dir_t3@5/60","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then

@@ -181,3 +181,43 @@ def test_existing_variant_strings_resolve_exactly_as_before(variant):
 # The terraform/deploy.yml/monitor.yml cross-check already exists as
 # tests/live/test_stack_table_consistency.py and was taught this variant
 # format rather than duplicated here.
+
+
+# --- the 3R variant ---------------------------------------------------------
+
+def test_the_wide_target_family_differs_only_in_its_target():
+    """Same entry, harvested wider. If the ENTRY ever drifts between the two,
+    the comparison that justified the change stops being about the exit."""
+    a = build_spec("manual_scalp_banded_h1dir", PRIMARY_MIN, CTX_MIN)
+    b = build_spec("manual_scalp_banded_h1dir_t3", PRIMARY_MIN, CTX_MIN)
+    da, db = a.to_dict(), b.to_dict()
+    assert {k for k in da if da[k] != db[k]} == {"name", "target_r"}
+    assert (da["target_r"], db["target_r"]) == (1.0, 3.0)
+
+
+def test_the_two_families_fire_on_identical_bars(frames):
+    """The exit changed; the entry did not."""
+    primary, ctx = frames
+    a = rulecore.to_engine_signals(rulecore.compute(
+        primary, ctx, build_spec("manual_scalp_banded_h1dir", PRIMARY_MIN, CTX_MIN)))
+    b = rulecore.to_engine_signals(rulecore.compute(
+        primary, ctx, build_spec("manual_scalp_banded_h1dir_t3", PRIMARY_MIN, CTX_MIN)))
+    assert a.long_entry.sum() + a.short_entry.sum() > 0, "fixture fired nothing"
+    np.testing.assert_array_equal(a.long_entry, b.long_entry)
+    np.testing.assert_array_equal(a.short_entry, b.short_entry)
+
+
+def test_the_hold_is_paired_with_the_target():
+    """A 3R target on a 4xATR stop sits 12xATR away. Under a 24h cap the CAP
+    becomes the exit rather than the target, which is how a wide-target arm
+    silently turns into 'hold overnight and take whatever'."""
+    import pathlib
+    import re
+    tf = (pathlib.Path(__file__).resolve().parents[1]
+          / "infra/terraform/variables.tf").read_text()
+    hold = int(re.search(r'variable "max_hold_seconds".*?default\s+=\s+(\d+)', tf, re.S).group(1))
+    variant = re.search(r'atr\s*=\s*\{\s*variant\s*=\s*"([^"]+)"', tf).group(1)
+    if "_t3@" in variant:
+        assert hold >= 48 * 3600, (
+            f"the 3R arm is configured with a {hold/3600:.0f}h hold; it was "
+            f"measured at 72h, and at 24h the time cap outranks the target")

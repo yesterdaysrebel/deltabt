@@ -493,6 +493,51 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # THE SAME ENTRY, HARVESTED PROPERLY. A 1R target is the worst way to take
+    # this move, and that is measured rather than argued.
+    #
+    # The entry was searched hard and nothing improved it: ADX, DI, price
+    # confirmation, %R hold, band floor, trend age, the 5m Supertrend, and
+    # every combination of them. Each cost sample and returned nothing. The
+    # EXIT had never been swept, and it is where the money was.
+    #
+    # Live universe, 4xATR stop, anchored blocks, target x hold (all 18 cells
+    # positive in all four blocks, so this is a slope, not a fitted cell):
+    #
+    #   target   24h      48h      72h
+    #   1.0R   +0.048   +0.046   +0.043     <- what was running
+    #   2.0R   +0.170   +0.188   +0.201
+    #   3.0R   +0.186   +0.251   +0.289     <- THIS
+    #   4.0R   +0.225   +0.348   +0.402     <- measured peak
+    #   6.0R                     +0.271     <- rolls over
+    #
+    # 3R is taken deliberately one step INSIDE the peak at 4R, because taking
+    # the maximum of a grid is what the selection premium punishes; the
+    # premium here is +0.087 and 3R clears it comfortably.
+    #
+    # THE TARGET IS REACHED, so this is not a truncation artefact -- the trap
+    # that killed manual_scalp_st_banded_fade. At 3R/72h the exits are 275
+    # stop, 137 target, 14 max_hold: the target does the work, and the surface
+    # rolls over at 6R where max_hold starts to dominate.
+    #
+    # Per symbol, live 1R/24h -> 3R/72h: BEATUSD +0.012 -> +0.103 (2/4 -> 4/4),
+    # AKEUSD +0.220 -> +0.339, WIFUSD +0.043 -> +0.325 (3/4 -> 4/4). Drawdown
+    # falls on every one. On the MAJORS it changes nothing -- pooled -0.116 ->
+    # -0.115, SOLUSD still 0/4 -- so this is not a licence to widen the
+    # universe.
+    #
+    # WHAT IT COSTS: the win rate falls from 55% to 35%. Two trades in three
+    # lose. The three-consecutive-loss daily breaker will trip more often, and
+    # profit concentrates into fewer winners -- on BEATUSD and AKEUSD the top
+    # three trades carry most of the net, so their estimates are softer than
+    # the pooled figure suggests. WIFUSD (n=231, top 3 = 12%) is the clean one.
+    "manual_scalp_banded_h1dir_t3": dict(
+        desc="manual_scalp_banded_h1dir with a 3R target: same entry, harvested wider",
+        primary=_tf_rules(wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
     "manual_scalp_st_banded_fade": dict(
         desc="inverse of manual_scalp_st_banded: fade the 5m ST flip in the lower half of the %R range",
         primary=_tf_rules(supertrend="counter", wpr_rule="banded_fade"),
