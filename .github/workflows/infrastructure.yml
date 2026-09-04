@@ -294,7 +294,21 @@ jobs:
   apply:
     name: apply
     needs: plan
-    if: github.ref == 'refs/heads/master' && needs.plan.outputs.changes == '2'
+    # RUNS ON EVERY MASTER PUSH, INCLUDING WHEN THE PLAN IS EMPTY, and the
+    # `tofu apply` STEP below carries the changes==2 gate instead.
+    #
+    # It used to be gated here, and that hid a database from a whole run.
+    # The database step lives in this job, so "no infrastructure changed"
+    # silently meant "no database was ensured". On 2026-09-04 the first roll
+    # of two new stacks failed its database step on a timing race; the re-run
+    # planned NO CHANGES, skipped this entire job, reported success -- and
+    # left both databases missing. The deploy then had a green infrastructure
+    # run to roll onto and two hosts with nowhere to connect. Both had to be
+    # created by hand.
+    #
+    # An empty plan is the NORMAL case for a re-run, and it is exactly when
+    # the database check matters most.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     # NO ENVIRONMENT GATE. A merge to master applies.
     #
@@ -358,12 +372,20 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: apply the reviewed plan, not a fresh one
+        if: needs.plan.outputs.changes == '2'
         working-directory: infra/terraform
         # Applying the SAVED plan file, never `apply -auto-approve` against a
         # re-planned world. What was reviewed is what is applied.
+        #
+        # SKIPPED WHEN THE PLAN IS EMPTY, which is not the same as skipping
+        # the job: the steps after this one still run. A saved plan that
+        # matches an unchanged world would also be REFUSED -- "Saved plan is
+        # stale" -- if state moved between plan and apply, which is what a
+        # re-run of a partially-succeeded run always looks like.
         run: tofu apply -input=false -lock-timeout=5m tfplan
 
       - name: AWS preflight -- the applied stack
+        if: needs.plan.outputs.changes == '2'
         # Re-run after apply, in the strict phase, with no plan to excuse an
         # absence. Everything must now actually exist.
         run: |
@@ -431,12 +453,27 @@ jobs:
           # Passing it inline fails with a ParamValidation error pointing at
           # a column in a 4KB base64 blob, which is a genuinely terrible way
           # to spend an afternoon.
+          # SSM ONLINE IS NOT THE SAME AS BOOTSTRAPPED, and the gap is where
+          # this step failed on 2026-09-04. The agent registers while
+          # cloud-init is still running, so /opt/deltabt/env -- written by
+          # user_data, and the only place DB_NAME lives -- may not exist yet.
+          # Both new hosts reported Online at 20:22:06, this command ran at
+          # 20:22:08, and the file appeared at 20:22:11. Three seconds.
+          #
+          # So the sent script WAITS for the file rather than assuming it.
+          # Bounded at five minutes and then fails loudly: a host whose
+          # user_data never completed is a real fault, not something to
+          # paper over.
           python3 - <<'PY' > /tmp/ssm-params.json
           import base64, json, pathlib
           script = base64.b64encode(
               pathlib.Path("scripts/create_stack_database.sh").read_bytes()).decode()
-          cmd = (f"echo {script} | base64 -d > /tmp/cdb.sh && chmod +x /tmp/cdb.sh"
-                 " && . /opt/deltabt/env && sudo /tmp/cdb.sh \"$DB_NAME\"")
+          cmd = (
+              "for _ in $(seq 1 30); do [ -f /opt/deltabt/env ] && break; "
+              "echo 'waiting for user_data to write /opt/deltabt/env'; sleep 10; done; "
+              "[ -f /opt/deltabt/env ] || { echo 'user_data never wrote /opt/deltabt/env'; exit 1; }; "
+              f"echo {script} | base64 -d > /tmp/cdb.sh && chmod +x /tmp/cdb.sh"
+              " && . /opt/deltabt/env && sudo /tmp/cdb.sh \"$DB_NAME\"")
           print(json.dumps({"commands": [cmd]}))
           PY
           for id in $ids; do
@@ -446,7 +483,9 @@ jobs:
               --parameters file:///tmp/ssm-params.json \
               --query 'Command.CommandId' --output text)
             st=Pending
-            for _ in $(seq 1 40); do
+            # 70 x 10s, which must outlast the five-minute wait the sent
+            # script now does for /opt/deltabt/env plus the create itself.
+            for _ in $(seq 1 70); do
               st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
                     --command-id "$cmd" --instance-id "$id" \
                     --query Status --output text 2>/dev/null || echo Pending)
