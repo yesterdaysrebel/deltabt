@@ -400,12 +400,25 @@ jobs:
             echo "::warning::no running bot hosts; nothing to do"
             exit 0
           fi
-          script=$(base64 -w0 scripts/create_stack_database.sh)
+          # THE PARAMETERS GO IN A FILE, NOT ON THE COMMAND LINE. The
+          # `--parameters key=value` shorthand splits on commas and cannot
+          # carry a value containing quotes, and the command below has both.
+          # Passing it inline fails with a ParamValidation error pointing at
+          # a column in a 4KB base64 blob, which is a genuinely terrible way
+          # to spend an afternoon.
+          python3 - <<'PY' > /tmp/ssm-params.json
+          import base64, json, pathlib
+          script = base64.b64encode(
+              pathlib.Path("scripts/create_stack_database.sh").read_bytes()).decode()
+          cmd = (f"echo {script} | base64 -d > /tmp/cdb.sh && chmod +x /tmp/cdb.sh"
+                 " && . /opt/deltabt/env && sudo /tmp/cdb.sh \"$DB_NAME\"")
+          print(json.dumps({"commands": [cmd]}))
+          PY
           for id in $ids; do
             echo "::group::database on $id"
             cmd=$(aws ssm send-command --region "$AWS_REGION" \
               --instance-ids "$id" --document-name AWS-RunShellScript \
-              --parameters commands="echo $script | base64 -d > /tmp/cdb.sh && chmod +x /tmp/cdb.sh && . /opt/deltabt/env && sudo /tmp/cdb.sh \"\$DB_NAME\"" \
+              --parameters file:///tmp/ssm-params.json \
               --query 'Command.CommandId' --output text)
             st=Pending
             for _ in $(seq 1 40); do
