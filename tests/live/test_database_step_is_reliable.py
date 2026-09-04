@@ -130,3 +130,34 @@ def test_every_running_host_is_still_covered(marker):
     """Discovery by tag is what makes a new stack need no registration."""
     step = _step(_job("apply"), "create each stack's database")
     assert marker in step
+
+
+def test_everything_that_consumes_the_plan_is_gated_with_it():
+    """The job runs unconditionally so the database step can. Every step that
+    needs the saved plan must therefore carry the same condition.
+
+    The plan job uploads `tfplan` only when it found changes, so an ungated
+    download fails with "Artifact not found" on every no-op master push. That
+    is what broke the merge of #47 -- the first master push after the job was
+    made unconditional.
+    """
+    job = _job("apply")
+    gate = "if: needs.plan.outputs.changes == '2'"
+    for fragment in ("actions/download-artifact@v4",
+                     "apply the reviewed plan",
+                     "AWS preflight"):
+        i = job.index(fragment)
+        start = job.rindex("      - ", 0, i)
+        nxt = job.find("\n      - ", i)
+        block = job[start: nxt if nxt != -1 else len(job)]
+        assert gate in block, (
+            f"the step at {fragment!r} consumes the saved plan but is not "
+            f"gated on there being one")
+
+
+def test_the_database_step_is_the_reason_the_job_is_unconditional():
+    """Guards the guard: if nothing in the job is ungated, the change that
+    made the job unconditional has been quietly undone."""
+    job = _job("apply")
+    step = _step(job, "create each stack's database")
+    assert "if: needs.plan.outputs.changes" not in step

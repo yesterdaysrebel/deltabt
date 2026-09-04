@@ -360,6 +360,13 @@ jobs:
           tofu_wrapper: false
 
       - uses: actions/download-artifact@v4
+        # ONLY WHEN A PLAN WAS SAVED. The plan job uploads `tfplan` solely
+        # when it found changes, so on an empty plan this step fails with
+        # "Artifact not found for name: tfplan" -- which is exactly what it
+        # did on the merge of #47, the first master push after this job was
+        # made to run unconditionally. The job runs so the DATABASE step can
+        # run; everything that consumes the plan has to be gated with it.
+        if: needs.plan.outputs.changes == '2'
         with:
           name: tfplan
           path: infra/terraform
