@@ -98,6 +98,65 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
 jobs:
+  wait-for-infrastructure:
+    # ORDERING, WHICH IS THE WHOLE REASON A MERGE USED TO NEED A SECOND PUSH.
+    #
+    # Both workflows trigger on the same push. Terraform may REPLACE the host
+    # -- a changed variant or user-data always does -- so a deploy that starts
+    # at the same moment aims SSM at an instance that is about to be
+    # terminated, and fails. That is exactly what happened on the merge of
+    # #39: the push-triggered deploy failed, and shipping took a hand-run
+    # dispatch afterwards.
+    #
+    # This waits for any infrastructure run on THIS commit to finish before
+    # anything is built or rolled. It waits on the commit, not the branch: a
+    # run for some other SHA is not ours to wait for. When infrastructure did
+    # not trigger at all -- an app-only change -- there is nothing to wait for
+    # and this returns immediately.
+    name: wait for infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: block until this commit's infrastructure run is finished
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const deadline = Date.now() + 45 * 60 * 1000;
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+            while (true) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'infrastructure.yml',
+                head_sha: sha,
+                per_page: 20,
+              });
+              const mine = runs.data.workflow_runs;
+              if (mine.length === 0) {
+                core.info('no infrastructure run for this commit; nothing to wait for');
+                return;
+              }
+              const unfinished = mine.filter(r => r.status !== 'completed');
+              if (unfinished.length === 0) {
+                const bad = mine.filter(r => !['success', 'skipped'].includes(r.conclusion));
+                if (bad.length) {
+                  core.setFailed(
+                    `infrastructure concluded '${bad[0].conclusion}' for this commit ` +
+                    `(${bad[0].html_url}). Refusing to roll an image onto infrastructure ` +
+                    `that did not apply cleanly.`);
+                  return;
+                }
+                core.info('infrastructure completed successfully');
+                return;
+              }
+              if (Date.now() > deadline) {
+                core.setFailed('timed out waiting for the infrastructure run');
+                return;
+              }
+              core.info(`waiting for ${unfinished.length} infrastructure run(s)...`);
+              await sleep(20000);
+            }
+
   test:
     # The whole suite, including the paper-only AST scan, on the exact commit
     # being shipped. Nothing reaches the host without it.
@@ -135,15 +194,20 @@ jobs:
           #
           # Nothing here can detect that on its own: the deploy role can read
           # one ECR repository and invoke one SSM document, so it cannot query
-          # Terraform state or describe instances to derive this list. The
-          # table stays hand-written, which means adding or removing a stack is
-          # THREE edits -- variables.tf, here, and monitor.yml -- plus the two
-          # repository variables the new entry names.
+          # Terraform state to derive this list. The table stays hand-written,
+          # which means adding or removing a stack is THREE edits --
+          # variables.tf, here, and monitor.yml.
+          #
+          # `instance_var` IS DEAD AND IS KEPT ONLY AS A LABEL. The host is now
+          # discovered by its Name tag at roll time (see "find the host"),
+          # because the repository variable it used to name went stale on every
+          # instance replacement -- five times -- and each stale value aimed
+          # SSM at a terminated host.
           # `variant` here is a LABEL for the job name only; the running arm is
           # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
           # step with infra/terraform/variables.tf so the job title does not
           # announce a strategy the host is not running.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_st_banded@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_banded_h1dir@5/60","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
@@ -214,10 +278,15 @@ jobs:
 
   deploy:
     name: "roll ${{ matrix.stack }} (${{ matrix.variant }})"
-    needs: [test, build, targets]
+    needs: [test, build, targets, wait-for-infrastructure]
     # `always()` so a manual rollback (which skips `build`) still runs, but the
-    # build must not have FAILED.
-    if: always() && needs.build.result != 'failure' && needs.test.result == 'success'
+    # build must not have FAILED, and infrastructure must not have failed
+    # either -- rolling an image onto a half-applied stack is how a deploy
+    # ends up pointing at a terminated host.
+    if: >-
+      always() && needs.build.result != 'failure'
+      && needs.test.result == 'success'
+      && needs.wait-for-infrastructure.result == 'success'
     runs-on: ubuntu-latest
     # `paper-deploy`, NOT `paper`. Branch-restricted to master, but no required
     # reviewer -- and the distinction is the point.
@@ -286,13 +355,94 @@ jobs:
           echo "::warning::If a forward test is RUNNING, this changes the code underneath it."
           echo "::warning::Per docs/operations.md that means: stop the experiment, deploy, start a NEW experiment id."
 
+      - name: find the host
+        id: host
+        # DISCOVERED, NOT CONFIGURED. The repository variable this replaces
+        # went stale on every instance replacement -- five times -- and each
+        # time the deploy aimed SSM at a terminated host and failed in a way
+        # that looks like a broken deploy rather than a stale string. The tag
+        # is set by Terraform and cannot drift from the instance it names.
+        env:
+          NAME_TAG: deltabt-paper-${{ matrix.stack }}
+        run: |
+          set -euo pipefail
+          ids=$(aws ec2 describe-instances --region "$AWS_REGION" \
+            --filters "Name=tag:Name,Values=$NAME_TAG" \
+                      "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          n=$(printf '%s\n' $ids | grep -c . || true)
+          if [ "$n" -ne 1 ]; then
+            echo "::error::expected exactly one running host tagged $NAME_TAG, found $n: $ids"
+            echo "Two would mean a replacement left an orphan and a deploy could roll the wrong one."
+            exit 1
+          fi
+          echo "instance_id=$ids" >> "$GITHUB_OUTPUT"
+          echo "host $ids ($NAME_TAG)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: decide the experiment id
+        id: experiment
+        # An experiment records the git_sha it began on, so a code change and
+        # the run it belongs to are the same decision. Rolling a new image
+        # under a RUNNING experiment is refused by bind_experiment, and
+        # rightly: one id would then describe two programs.
+        #
+        # So a normal deploy retires the running experiment and registers a
+        # successor named for the variant, the date and this commit. A manual
+        # rollback passes an explicit image_tag and deliberately does NOT --
+        # the point of a rollback is to get back to what was running, not to
+        # reset the sample to zero.
+        env:
+          MANUAL_TAG: ${{ github.event.inputs.image_tag }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TAG:-}" ]; then
+            echo "id=none" >> "$GITHUB_OUTPUT"
+            echo "::notice::rollback to an explicit tag: experiments left untouched"
+            exit 0
+          fi
+          slug=$(printf '%s' "$VARIANT" \
+                 | sed 's|^SPEC:||; s|@|-|g; s|/|-|g; s|[^A-Za-z0-9._-]|-|g' \
+                 | tr '[:lower:]' '[:upper:]' | cut -c1-60)
+          id="${slug}-$(date -u +%Y%m%d)-${GITHUB_SHA:0:7}"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "experiment \`$id\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: retire the running experiment, on the image still running
+        if: steps.experiment.outputs.id != 'none'
+        # BEFORE the roll, deliberately. An experiment records its git_sha and
+        # bind_experiment() refuses a container carrying a different one, so
+        # rolling first guarantees a drift refusal: /readyz never passes and
+        # the host script rolls back an image that was fine.
+        env:
+          DOC: ${{ vars[matrix.document_var] }}-experiment
+          ID: ${{ steps.host.outputs.instance_id }}
+        run: |
+          set -euo pipefail
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "$DOC" --instance-ids "$ID" \
+            --parameters "Action=stop" \
+            --comment "gha ${{ github.run_id }} retire" \
+            --query 'Command.CommandId' --output text)
+          for _ in $(seq 1 60); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD" --instance-id "$ID" \
+            --query 'StandardOutputContent' --output text || true
+          [ "$st" = "Success" ] || { echo "::error::could not retire the running experiment"; exit 1; }
+
       - name: send the deploy command
         id: send
         run: |
           CMD=$(aws ssm send-command \
             --region "$AWS_REGION" \
             --document-name "${{ vars[matrix.document_var] }}" \
-            --instance-ids "${{ vars[matrix.instance_var] }}" \
+            --instance-ids "${{ steps.host.outputs.instance_id }}" \
             --parameters "ImageTag=${{ steps.tag.outputs.tag }}" \
             --comment "gha ${{ github.run_id }}" \
             --query 'Command.CommandId' --output text)
@@ -302,7 +452,7 @@ jobs:
       - name: wait for it, and fail loudly if it did not take
         run: |
           CMD="${{ steps.send.outputs.command_id }}"
-          ID="${{ vars[matrix.instance_var] }}"
+          ID="${{ steps.host.outputs.instance_id }}"
           # The host script allows up to 900s for readiness plus the same again
           # for a rollback, so this waits longer than that before giving up.
           for _ in $(seq 1 190); do
@@ -331,6 +481,53 @@ jobs:
           fi
           [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
 
+      - name: start the successor experiment
+        if: steps.experiment.outputs.id != 'none'
+        # AFTER the roll, so the experiment records the SHA the bot is actually
+        # running. The document stops the service, runs preflight, registers
+        # the id, restarts and waits for /readyz -- so a green step here means
+        # the bot is live AND bound, not merely that a row was written.
+        #
+        # A failure leaves a healthy bot running UNBOUND: its decisions carry
+        # no experiment id. That is loud and recoverable, and it is better than
+        # rolling back an image that passed its own health gate.
+        env:
+          DOC: ${{ vars[matrix.document_var] }}-experiment
+          ID: ${{ steps.host.outputs.instance_id }}
+          EXP: ${{ steps.experiment.outputs.id }}
+        run: |
+          set -euo pipefail
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "$DOC" --instance-ids "$ID" \
+            --parameters "Action=start,ExperimentId=$EXP" \
+            --comment "gha ${{ github.run_id }} start" \
+            --query 'Command.CommandId' --output text)
+          st=Pending
+          for _ in $(seq 1 120); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 10
+          done
+          {
+            echo '### Experiment'
+            echo '```'
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardOutputContent' --output text | tail -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$st" != "Success" ]; then
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardErrorContent' --output text || true
+            echo "::error::THE IMAGE IS DEPLOYED AND HEALTHY, BUT NO EXPERIMENT IS RUNNING."
+            echo "::error::The bot is live and unbound. Fix the cause, then re-run this workflow."
+            exit 1
+          fi
+          echo "experiment \`$EXP\` is running" >> "$GITHUB_STEP_SUMMARY"
+
       - name: what the deploy document reported
         # NO second SSM channel. This role's ssm:SendCommand is scoped to the
         # deltabt-paper-deploy document and that instance -- it cannot invoke
@@ -349,7 +546,7 @@ jobs:
           echo "The host script gated on /readyz and did not roll back."
           echo "Operator verification (14 checks, read-only):"
           echo "  AWS_PROFILE=... python3 scripts/verify_deployment.py \\"
-          echo "    --instance-id ${{ vars[matrix.instance_var] }} --region $AWS_REGION \\"
+          echo "    --instance-id ${{ steps.host.outputs.instance_id }} --region $AWS_REGION \\"
           echo "    --expected-sha ${{ steps.tag.outputs.tag }}"
 
       - name: the deployed commit, image and config hash

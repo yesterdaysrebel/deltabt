@@ -230,6 +230,22 @@ jobs:
         # how a safety check becomes something people route around.
         env:
           ALLOW_REPLACE: ${{ (github.event_name == 'workflow_dispatch' && inputs.allow_replace) && '1' || '' }}
+          # THE NARROW ALLOWANCE, AND WHY IT IS SAFE TO SET ON A PUSH.
+          #
+          # Replacing the bot host is the ordinary consequence of editing
+          # user-data or the strategy variant -- `user_data_replace_on_change`
+          # guarantees it -- so under the old rule every such change needed a
+          # dispatch with a flag and then an approval. In practice that meant
+          # the flag was set reflexively, which is a worse guard than none: it
+          # trained the operator to approve replacements without reading them.
+          #
+          # This lists the two types whose replacement is expected and
+          # reversible. A bare DESTROY of either is still refused, and every
+          # stateful resource -- the database above all -- is absent from this
+          # list and therefore unreachable from an unattended apply.
+          # tests/test_tf_guard_narrow_replace.py fails if that stops being
+          # true, including if someone widens this line.
+          ALLOW_REPLACE_TYPES: aws_instance,aws_eip
         run: |
           tofu show -json tfplan > tfplan.json
           python3 ../../scripts/tf_guard.py tfplan.json
@@ -280,10 +296,27 @@ jobs:
     needs: plan
     if: github.ref == 'refs/heads/master' && needs.plan.outputs.changes == '2'
     runs-on: ubuntu-latest
-    # A protected environment. Configure `paper` in repository settings with a
-    # required reviewer: that is what makes every infrastructure change a
-    # deliberate human decision rather than a merge side effect.
-    environment: paper
+    # NO ENVIRONMENT GATE. A merge to master applies.
+    #
+    # This job used to run in the protected `paper` environment so that every
+    # infrastructure change waited on a required reviewer. That was removed
+    # deliberately, and what replaced it is not nothing:
+    #
+    #   * a pull request still plans with a READ-ONLY role and posts the plan
+    #     as a comment, so the review happens where a review belongs -- on the
+    #     diff, before merge, rather than on a green check afterwards;
+    #   * tf_guard still refuses any DESTROY, and any REPLACE outside
+    #     `aws_instance` / `aws_eip` (see the step above);
+    #   * the cost guard still fails the job on a NAT gateway or a load
+    #     balancer;
+    #   * the apply still applies the exact reviewed plan FILE, not a fresh
+    #     plan of a world that may have moved.
+    #
+    # The approval was gating the wrong thing. It sat after the plan was
+    # already reviewed on the PR, it could not distinguish replacing a host
+    # from dropping the database -- tf_guard can -- and being the only thing
+    # between a merge and production made it a formality, which is the state
+    # in which approvals stop being read.
     steps:
       - uses: actions/checkout@v4
 
@@ -338,6 +371,69 @@ jobs:
             --region "$AWS_REGION" \
             --account "${{ vars.AWS_ACCOUNT_ID }}" \
             --state-bucket "${{ vars.TF_STATE_BUCKET }}"
+
+      - name: create each stack's database if it does not exist
+        # THE DATABASE BELONGS TO INFRASTRUCTURE, NOT TO THE DEPLOY.
+        #
+        # It cannot be a Terraform resource: RDS sits in a private subnet with
+        # no route from a CI runner, so the postgresql provider cannot reach
+        # it, and the alternatives (a bastion, a NAT gateway, a VPC Lambda) are
+        # permanent infrastructure existing to run one statement. It cannot be
+        # in user_data either: creating a database is a privileged operation on
+        # a shared resource, and putting it on the boot path re-runs it on
+        # every replacement.
+        #
+        # So it runs here, from the host, over SSM, immediately after apply and
+        # before any deploy can need it. scripts/create_stack_database.sh is
+        # idempotent -- "already exists; nothing to do" -- and resolves the
+        # master credentials on the instance, so no secret passes through this
+        # runner or its logs.
+        run: |
+          set -euo pipefail
+          # The host reads its own DB_NAME from /opt/deltabt/env, so this needs
+          # no per-stack table: every running bot host ensures its own database.
+          ids=$(aws ec2 describe-instances --region "$AWS_REGION" \
+                 --filters "Name=tag:Name,Values=deltabt-paper-*" \
+                           "Name=instance-state-name,Values=running" \
+                 --query 'Reservations[].Instances[].InstanceId' --output text)
+          if [ -z "$ids" ]; then
+            echo "::warning::no running bot hosts; nothing to do"
+            exit 0
+          fi
+          # THE PARAMETERS GO IN A FILE, NOT ON THE COMMAND LINE. The
+          # `--parameters key=value` shorthand splits on commas and cannot
+          # carry a value containing quotes, and the command below has both.
+          # Passing it inline fails with a ParamValidation error pointing at
+          # a column in a 4KB base64 blob, which is a genuinely terrible way
+          # to spend an afternoon.
+          python3 - <<'PY' > /tmp/ssm-params.json
+          import base64, json, pathlib
+          script = base64.b64encode(
+              pathlib.Path("scripts/create_stack_database.sh").read_bytes()).decode()
+          cmd = (f"echo {script} | base64 -d > /tmp/cdb.sh && chmod +x /tmp/cdb.sh"
+                 " && . /opt/deltabt/env && sudo /tmp/cdb.sh \"$DB_NAME\"")
+          print(json.dumps({"commands": [cmd]}))
+          PY
+          for id in $ids; do
+            echo "::group::database on $id"
+            cmd=$(aws ssm send-command --region "$AWS_REGION" \
+              --instance-ids "$id" --document-name AWS-RunShellScript \
+              --parameters file:///tmp/ssm-params.json \
+              --query 'Command.CommandId' --output text)
+            st=Pending
+            for _ in $(seq 1 40); do
+              st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                    --command-id "$cmd" --instance-id "$id" \
+                    --query Status --output text 2>/dev/null || echo Pending)
+              case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+              sleep 10
+            done
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$cmd" --instance-id "$id" \
+              --query 'StandardOutputContent' --output text || true
+            echo "::endgroup::"
+            [ "$st" = "Success" ] || { echo "::error::database creation failed on $id"; exit 1; }
+          done
 
       - name: outputs
         working-directory: infra/terraform

@@ -139,7 +139,13 @@ resource "aws_instance" "bot" {
     wpr_exit_short_level         = var.wpr_exit_short_level
     run_sh_b64                   = base64gzip(file("${path.root}/../../deploy/aws/run.sh"))
     deploy_sh_b64                = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
-    cw_agent_b64                 = base64gzip(file("${path.root}/../../deploy/aws/cloudwatch-agent.json"))
+    # NOTHING ELSE MAY BE EMBEDDED HERE without removing something first.
+    # user_data has a 16,384-byte hard cap and the rendered template passes
+    # its budget check with NINE bytes to spare (tests/live/test_user_data_size).
+    # That is why the experiment lifecycle is an SSM document above -- document
+    # content lives in AWS -- and why the database is created by the
+    # infrastructure workflow, which owns the database anyway.
+    cw_agent_b64 = base64gzip(file("${path.root}/../../deploy/aws/cloudwatch-agent.json"))
   })
 
   # Changing user-data replaces the instance. That is correct -- a host whose
@@ -183,6 +189,125 @@ resource "aws_eip" "bot" {
 # document with exactly one parameter, and the document runs a script that
 # lives in the repository under review.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# THE EXPERIMENT LIFECYCLE, AS A DOCUMENT RATHER THAN A HOST SCRIPT.
+#
+# Retiring a run and registering its successor has to happen on the host, in
+# the bot's exact environment. The obvious home is deploy.sh -- but user_data
+# has a 16,384-byte hard cap and the rendered template already passes its
+# budget check with NINE bytes to spare (tests/live/test_user_data_size.py).
+# Anything added to a shipped script fails the apply.
+#
+# An SSM document's content lives in AWS, not in user_data, so it costs the
+# template nothing. It also keeps the deploy role's boundary intact: the role
+# may invoke NAMED documents, and this is a second named document rather than
+# a grant of arbitrary shell.
+#
+# ORDER, WHICH IS NOT ADJUSTABLE. An experiment records the git_sha it began
+# on and bind_experiment() refuses a container with a different one, so the
+# old run must be stopped BEFORE the new image rolls; otherwise every deploy
+# during a run trips a drift refusal, /readyz never passes, and deploy.sh
+# rolls back a perfectly good image. Registering needs the service STOPPED:
+# preflight's advisory-lock check fails while the bot holds the lock, and
+# `forward-test start` refuses unless preflight passes. Hence stop -> roll ->
+# (stop service, preflight, start, restart).
+#
+# WHY NOT run.sh FOR THE ONE-OFF COMMANDS: it ends in
+# `docker run --name deltabot` with no "$@", so it ignores its arguments and
+# starts a SECOND bot, collides on the name and restarts the unit -- silently,
+# with plausible output and exit 0. The env below must MATCH the bot's, not
+# approximate it: config_hash and risk_hash are computed from these variables,
+# so defaults would register an experiment describing a rule nobody is running.
+# ---------------------------------------------------------------------------
+resource "aws_ssm_document" "experiment" {
+  for_each = local.stacks
+
+  name            = "${local.name}${each.value.suffix}-experiment"
+  document_type   = "Command"
+  document_format = "YAML"
+
+  content = yamlencode({
+    schemaVersion = "2.2"
+    description   = "Stop or start the forward-test experiment on the ${each.key} DeltaBot host."
+    parameters = {
+      Action = {
+        type          = "String"
+        description   = "stop | start"
+        allowedValues = ["stop", "start"]
+      }
+      ExperimentId = {
+        type           = "String"
+        description    = "Experiment id to register. Ignored by 'stop'."
+        default        = "none"
+        allowedPattern = "^(none|[A-Za-z0-9._-]{1,128})$"
+      }
+    }
+    mainSteps = [{
+      action = "aws:runShellScript"
+      name   = "experiment"
+      inputs = {
+        timeoutSeconds = "1800"
+        runCommand = [<<-SH
+          set -euo pipefail
+          set -a; . /opt/deltabt/env; set +a
+          TAG="$(aws ssm get-parameter --region "$AWS_REGION" --name "$SSM_IMAGE_TAG_PARAM" --query Parameter.Value --output text)"
+          cli() {
+            docker run --rm --env-file /run/deltabt/env \
+              -e "DELTABOT_SYMBOLS=$DELTABOT_SYMBOLS" \
+              -e "DELTABOT_VARIANT=$${DELTABOT_VARIANT:-V1}" \
+              -e "DELTABOT_MAX_OPEN=$${DELTABOT_MAX_OPEN:-1}" \
+              -e "DELTABOT_MAX_DRAWDOWN=$${DELTABOT_MAX_DRAWDOWN:-0.10}" \
+              -e "DELTABOT_MAX_DAILY_LOSS=$${DELTABOT_MAX_DAILY_LOSS:-0.02}" \
+              -e "DELTABOT_MAX_CONSEC_LOSSES=$${DELTABOT_MAX_CONSEC_LOSSES:-3}" \
+              -e "DELTABOT_MAX_HOLD=$${DELTABOT_MAX_HOLD:-0}" \
+              -e "DELTABOT_WPR_BAND_EXIT=$${DELTABOT_WPR_BAND_EXIT:-0}" \
+              -e "DELTABOT_WPR_EXIT_LONG=$${DELTABOT_WPR_EXIT_LONG:--80}" \
+              -e "DELTABOT_WPR_EXIT_SHORT=$${DELTABOT_WPR_EXIT_SHORT:--20}" \
+              -e "DELTABOT_MIN_RR=$${DELTABOT_MIN_RR:-2.0}" \
+              -e "DELTABOT_COOLDOWN_AFTER_TRADE=$${DELTABOT_COOLDOWN_AFTER_TRADE:-900}" \
+              -e "DELTABOT_COOLDOWN_AFTER_LOSS=$${DELTABOT_COOLDOWN_AFTER_LOSS:-3600}" \
+              -e TZ=UTC -e PYTHONUNBUFFERED=1 \
+              "$${ECR_REPOSITORY_URL}:$${TAG}" "$@"
+          }
+          case "{{ Action }}" in
+            stop)
+              echo "[experiment] retiring any running experiment"
+              cli forward-test stop
+              ;;
+            start)
+              ID="{{ ExperimentId }}"
+              if [ "$ID" = "none" ]; then echo "[experiment] id 'none': nothing to start"; exit 0; fi
+              echo "[experiment] registering $ID"
+              systemctl stop deltabt.service
+              sleep 5
+              if ! cli forward-test preflight; then
+                echo "[experiment] PREFLIGHT FAILED -- not starting"
+                systemctl start deltabt.service || true
+                exit 1
+              fi
+              if ! cli forward-test start --experiment-id "$ID" --days 30; then
+                echo "[experiment] start FAILED"
+                systemctl start deltabt.service || true
+                exit 1
+              fi
+              systemctl start deltabt.service
+              for _ in $(seq 1 90); do
+                if curl -fsS --max-time 5 http://127.0.0.1:8000/readyz >/dev/null 2>&1; then
+                  echo "[experiment] $ID running and the bot is ready"; exit 0
+                fi
+                sleep 10
+              done
+              echo "[experiment] the bot did not become ready after registering $ID"
+              exit 1
+              ;;
+          esac
+        SH
+        ]
+      }
+    }]
+  })
+}
+
 resource "aws_ssm_document" "deploy" {
   for_each = local.stacks
 

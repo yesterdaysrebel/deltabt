@@ -65,16 +65,36 @@ def test_the_ratio_is_still_the_default():
     assert build_spec("atr_arm", 60).confirm_minutes == 12
 
 
-@pytest.mark.parametrize("minutes,confirm", [(15, 7), (10, 3), (5, 2)])
+@pytest.mark.parametrize("minutes,confirm", [
+    (15, 7), (10, 3), (5, 2),        # confirmation faster, does not tile
+    (5, 7), (5, 12), (15, 40),       # confirmation slower, does not tile
+])
 def test_a_confirmation_that_does_not_tile_the_primary_is_refused(
         minutes, confirm):
     with pytest.raises(ValueError, match="divide"):
         build_spec("atr_arm", minutes, confirm)
 
 
-def test_a_confirmation_wider_than_the_primary_is_refused():
-    with pytest.raises(ValueError, match="divide|exceed"):
-        build_spec("atr_arm", 5, 15)
+@pytest.mark.parametrize("minutes,confirm", [(5, 15), (5, 60), (15, 60)])
+def test_a_confirmation_wider_than_the_primary_is_allowed_when_it_tiles(
+        minutes, confirm):
+    """It used to be refused. The restriction was intent, not safety.
+
+    A confirmation SLOWER than the primary is a CONTEXT chart: the %R band
+    and the trigger stay on the fast chart while the trend direction is read
+    from the slow one. That is `manual_scalp_banded_h1dir` (decision C), and
+    it is expressed this way precisely so no new StrategySpec field appears
+    in `asdict` to move every existing spec's config_hash.
+
+    What the guard is actually protecting is TILING, which is unchanged and
+    asserted below: `align_confirm` picks the last confirmation bar closing
+    at or before the primary close, and if the two sizes do not divide, that
+    instant drifts from bar to bar. Tiling is symmetric, so both directions
+    are safe and both are now allowed.
+    """
+    spec = build_spec("atr_arm", minutes, confirm)
+    assert spec.confirm_minutes == confirm
+    spec.validate()
 
 
 def test_changing_the_confirmation_changes_the_hash():

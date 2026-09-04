@@ -90,6 +90,10 @@ resource "aws_iam_role_policy" "github_app_deploy" {
         Action = ["ssm:SendCommand"]
         Resource = concat(
           [for d in aws_ssm_document.deploy : d.arn],
+          # The experiment lifecycle is a SECOND named document rather than a
+          # grant of arbitrary shell. The role can retire a run and register
+          # its successor, and still cannot run anything else on the host.
+          [for d in aws_ssm_document.experiment : d.arn],
           [for i in aws_instance.bot :
           "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${i.id}"],
         )
@@ -99,6 +103,25 @@ resource "aws_iam_role_policy" "github_app_deploy" {
         Effect   = "Allow"
         Action   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
         Resource = "*" # these actions are not resource-scopable
+      },
+      {
+        # FIND THE HOST INSTEAD OF BEING TOLD WHICH ONE IT IS.
+        #
+        # The deploy workflow used to read the instance id from a repository
+        # VARIABLE that a human updated after every replacement. It went stale
+        # five times between 2026-08-19 and 2026-09-04, each time aiming SSM
+        # at a terminated host; the failure is late, confusing and looks like
+        # a broken deploy rather than a stale string.
+        #
+        # Read-only and not resource-scopable, which is why it is a separate
+        # statement: DescribeInstances cannot change anything, and the
+        # SendCommand grant above is still pinned to the exact instance ARNs
+        # Terraform manages. Discovery widens what the role can SEE, never
+        # what it can DO.
+        Sid      = "FindTheBotHost"
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeInstances"]
+        Resource = "*"
       },
     ]
   })

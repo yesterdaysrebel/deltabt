@@ -118,3 +118,31 @@ def test_the_stale_claims_are_gone_from_the_source(source):
 
     assert "had every setup refused for stop width" not in code
     assert "there is no time stop" not in code
+
+
+# --- a probe that ERRORS is not a probe that was TRUNCATED --------------------
+
+def test_a_probe_traceback_is_reported_as_an_error_not_as_the_ssm_cap(source):
+    """On 2026-09-03 the RDS master password rotated. Every fresh connection
+    failed, the probe printed a traceback ending in InvalidPasswordError, and
+    the report said "hit the SSM 24,000-byte cap". gunzip_section returns ""
+    for a truncated blob, so non-empty non-JSON can only be probe OUTPUT."""
+    import importlib.util, pathlib, io, contextlib, types
+    spec = importlib.util.spec_from_file_location("daily_report", _REPORT)
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    assert "DATABASE PROBE ERRORED" in source
+    assert "db_errored" in source
+    # the error branch must be checked BEFORE the truncation branch
+    assert source.index("if db_errored:") < source.index("elif db_truncated:")
+
+
+def test_error_text_keeps_the_exception_line():
+    raw = ("Traceback (most recent call last):\n"
+           '  File "x.py", line 1, in <module>\n'
+           "    await repo.connect()\n"
+           'asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "deltabt"\n')
+    lines = [ln for ln in raw.splitlines() if ln.strip()]
+    tail = [ln for ln in lines if not ln.startswith((" ", "\t"))][-2:]
+    text = " | ".join(ln.strip()[:160] for ln in tail)
+    assert "InvalidPasswordError" in text
+    assert "password authentication failed" in text

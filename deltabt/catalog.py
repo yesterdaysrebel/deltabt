@@ -379,6 +379,127 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # THE EXACT INVERSE of manual_scalp_st_banded: same bars, opposite side.
+    #
+    # Found 2026-09-03 while looking for anything that moves GROSS R on the
+    # majors. The forward move in ATR after a manual_scalp_st_banded signal
+    # is negative at 12-96 bars on BTC/ETH/SOL/XRP in both halves of the
+    # archive, and swapping the sides gives gross +0.072 BTC, +0.053 SOL,
+    # +0.076 XRP, each 4/4 anchored blocks (ETH neutral). The same swap is
+    # NEGATIVE on BEATUSD/AKEUSD/BANKUSD, so the two universes want opposite
+    # rules and this is not an engine artefact.
+    #
+    # scripts/fade_walkforward.py, 2026-09-03, archive 2025-01-01..2026-08-12,
+    # anchored quarters, cost gate 0.15 on, GROSS R per trade (net in
+    # brackets). The PRIMARY cell was declared before the sweep ran:
+    #
+    #   fade 4x 1R 24h   BTC 3/4 +0.041   ETH 1/4 -0.015   SOL 3/4 +0.050
+    #                    XRP 4/4 +0.067   POOLED 4/4 +0.037 [net -0.069]
+    #
+    # Sweep stop{4,6,8} x target{1,1.5,2} x hold{24,48}: every one of the 18
+    # cells is gross-positive over the full period and 15 are 4/4. The
+    # selection test (best of 18 on training blocks, scored on the next
+    # block) chose 4x 2R 48h on every split and it HELD: train +0.101 ->
+    # +0.115, +0.107 -> +0.065, +0.093 -> +0.114. Selection premium +0.002,
+    # against +0.1310 for the 2026-08 stop-width sweep. 4x 2R 48h full period:
+    # gross +0.096, net -0.009, n=2676.
+    #
+    # TRUE out-of-sample 2026-08-12 -> 2026-09-03 (scripts/fade_oos.py, Delta
+    # 1m bucketed to 5m, 22 days, NET R, bootstrap 95%):
+    #
+    #   live 4x 1R 24h            n=109  win 39%  -0.310  [-0.495, -0.118]
+    #   fade 4x 1R 24h (primary)  n=109  win 61%  +0.146  [-0.044, +0.336]
+    #   fade 4x 2R 48h (sweep)    n= 81  win 47%  +0.310  [+0.026, +0.626]
+    #
+    # Per symbol OOS the fade is positive on BTC, SOL, XRP and flat on ETH,
+    # matching the archive. 22 days is 22 days: the OOS gross (+0.24) is
+    # several times the archive gross (+0.04), so the window was kind to the
+    # rule and the archive number is the one to plan on. Net at 4x/1R is
+    # still negative on the archive; 4x/2R/48h is net -0.009 there.
+    #
+    # 2026-09-03, LATER THE SAME DAY -- DO NOT TRADE THIS AS IT STANDS.
+    # An independent 108-cell audit (entry mode x stop x target x hold x
+    # trend age) found the fade is NOT net positive in any robust cell:
+    #   * the only net-positive configurations carry NO target and a 48h cap,
+    #     and their entire profit is 3 trades that hit the cap while trending
+    #     (top 3 = 105% of net; drop them and net is 0.000);
+    #   * the hold and stop neighbours are negative on both sides (h480
+    #     -0.036, h576 +0.037, h864 -0.030; 3.5x -0.056, 4x +0.037,
+    #     4.5x -0.033) -- a spike, not a plateau;
+    #   * grid selection premium +0.036 R against a best cell of +0.068 R;
+    #   * BTC is net NEGATIVE (-0.13) and XRP alone is ~94% of the positive R.
+    # What survives is qualitative and worth keeping: the majors DO mean
+    # revert after a YOUNG Supertrend flip taken low in the 140-bar range
+    # (gross by trend age: 0 bars +0.084, 2-3 +0.200, 4-7 +0.184, 16+ -0.006),
+    # the move needs more than 4 hours, and a 1R target is the worst way to
+    # harvest it (net improves monotonically as the target widens). A maker
+    # limit entry at 0.25xATR is a real saving -- cost 0.104 -> 0.070 R -- but
+    # closes only a fifth of the gap. This needs sub-4 bps per leg to trade.
+    # DECISION C: the direction filter reads the 1h chart, not the 5m one.
+    #
+    # The live family fires 64% of its entries on the bar the 5m Supertrend
+    # flips, because the %R band is usually already true and the flip is the
+    # last condition to turn. Those flip-bar entries are the losers. Moving
+    # the DIRECTION question to the hourly chart, and leaving the %R band,
+    # the slope requirement and the edge trigger on 5m, is expressed here
+    # with no new spec field: the confirmation timeframe becomes a CONTEXT
+    # timeframe by being SLOWER than the primary. `align_confirm` already
+    # returns the last CLOSED confirmation bar, which is exactly the causal
+    # higher-timeframe read; see spec.StrategySpec.validate.
+    #
+    # scripts/audit_context_direction.py is the acceptance test AND the audit.
+    # It asserts, per symbol, that `align_confirm` equals an independent
+    # causal read, that no chosen context bar closes after the primary bar
+    # it gates, and that no entry fires against the context direction.
+    #
+    # Thin 3, anchored blocks, 4xATR / 1R / 24h, cost gate on:
+    #
+    #                        blk0    blk1    blk2    blk3   +ve   net      n
+    #   live 5m direction   +0.057  +0.036  -0.116  -0.001  2/4  -0.009  591
+    #   THIS (1h context)   +0.113  +0.116  -0.065  +0.092  3/4  +0.070  337
+    #
+    # It survives the audit that killed manual_scalp_st_banded_fade: the top
+    # 3 trades are 15% of net (the fade's were 105%), removing the best ten
+    # still leaves +0.038, and the neighbours AGREE rather than collapsing --
+    # contexts 60m/120m and stops 3.5x-5.0x and holds 12-72h are all net
+    # positive, with 30m and 240m the only weak ones. Exits are 179 target /
+    # 145 stop / 13 time, so it is not a truncation artefact. Bootstrap
+    # P(net>0) = 0.91.
+    #
+    # WHAT THE NUMBERS DO NOT SAY, and this is the part to read twice:
+    #
+    #   symbol    history  live net -> C net    drawdown       share of C's R
+    #   BEATUSD      219d    -0.022 -> +0.012   27.2R -> 18.0R      13%
+    #   AKEUSD        21d    -0.029 -> +0.220    7.7R ->  6.2R      42%
+    #   BANKUSD       21d    +0.145 -> +0.284    8.2R ->  2.1R      46%
+    #
+    # On BEATUSD -- the only symbol with real history, and 75% of the trades
+    # -- this is a DRAWDOWN improvement of a third, not a profit. AKEUSD and
+    # BANKUSD carry 88% of the positive R on 21 days each, and on the pooled
+    # timeline every one of their trades falls in the last block. Deploy it
+    # for the risk reduction; treat the profit as unproven until those two
+    # accumulate history.
+    #
+    # The numbers first recorded for this idea (in the comment beside
+    # manual_scalp_st_banded, and scripts/htf_direction_walkforward.py) are
+    # slightly different because that script builds the hourly frame from the
+    # 5m frame rather than from 1m, inventing 16 hourly bars on BEATUSD, and
+    # applies the edge trigger BEFORE the context gate rather than to the
+    # complete setup. The family follows the live construction on both counts.
+    "manual_scalp_banded_h1dir": dict(
+        desc="%R band and trigger on the primary; Supertrend DIRECTION read from the slower context timeframe",
+        primary=_tf_rules(wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    "manual_scalp_st_banded_fade": dict(
+        desc="inverse of manual_scalp_st_banded: fade the 5m ST flip in the lower half of the %R range",
+        primary=_tf_rules(supertrend="counter", wpr_rule="banded_fade"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     # THE OPERATOR'S ACTUAL SETUP, as stated on 2026-09-01 -- and it is not
     # what manual_scalp or manual_scalp_st encode.
     #
@@ -533,11 +654,17 @@ def build_spec(family: str, primary_minutes: int,
         confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
         if primary_minutes % confirm_minutes:
             confirm_minutes = 1
-    elif confirm_minutes > primary_minutes or primary_minutes % confirm_minutes:
+    elif primary_minutes % confirm_minutes and confirm_minutes % primary_minutes:
+        # The two must TILE one another, in either direction. A faster
+        # confirmation is the original gate; a SLOWER one is a context chart
+        # and is how the higher-timeframe direction source is expressed
+        # (`manual_scalp_banded_h1dir`). Anything that tiles neither way
+        # aligns to a different instant on each bar.
         raise ValueError(
-            f"confirm_minutes={confirm_minutes} must divide and not exceed "
-            f"primary_minutes={primary_minutes}; a confirmation bar that does "
-            f"not tile the primary aligns to a different instant on each bar")
+            f"confirm_minutes={confirm_minutes} and primary_minutes="
+            f"{primary_minutes} must divide one another; a confirmation bar "
+            f"that does not tile the primary aligns to a different instant "
+            f"on each bar")
     spec = StrategySpec(
         name=f"{family}@{primary_minutes}m",
         primary_minutes=primary_minutes,

@@ -38,7 +38,15 @@ from dataclasses import asdict, dataclass, field
 #: candidate %R rules in this repository differ by orders of magnitude in
 #: firing rate, so an unrecognised string must fail loudly rather than fall
 #: back to a default that quietly changes the strategy.
-WPR_RULES = ("variant_a", "cross_levels", "banded", "none")
+#: ``banded_fade``  the ``banded`` conditions with the SIDES SWAPPED: a long
+#:                  requires the banded SHORT condition (upper half, falling)
+#:                  and a short the banded LONG condition (lower half, rising).
+#:                  Exists because on BTC/ETH/SOL/XRP the forward move after a
+#:                  ``banded`` signal is NEGATIVE at 12-96 bars in both halves
+#:                  of 2025-01..2026-08 (scripts/fade_walkforward.py). It is a
+#:                  new vocabulary VALUE rather than a new field so no existing
+#:                  spec's ``config_hash`` moves.
+WPR_RULES = ("variant_a", "cross_levels", "banded", "banded_fade", "none")
 
 #: Entry trigger vocabulary.
 #:
@@ -69,7 +77,10 @@ STOPS = ("leg_extreme", "atr", "fixed_pct")
 #: ``flip``     direction agrees AND changed on this bar. Distinct from
 #:              ``aligned`` in firing rate by orders of magnitude: alignment is
 #:              a level condition true for a whole leg, a flip is one bar.
-SUPERTREND_MODES = ("off", "aligned", "flip")
+#: ``counter``  direction DISAGREES with the trade: a long needs a bearish
+#:              Supertrend, a short a bullish one. Pairs with ``banded_fade``
+#:              to express the exact inverse of ``manual_scalp_st_banded``.
+SUPERTREND_MODES = ("off", "aligned", "flip", "counter")
 
 
 @dataclass(frozen=True)
@@ -184,14 +195,30 @@ class StrategySpec:
             raise ValueError(f"stop must be one of {STOPS}, got {self.stop!r}")
         if self.primary_minutes < 1 or self.confirm_minutes < 1:
             raise ValueError("timeframes must be at least one minute")
-        if self.confirm.enabled and self.primary_minutes % self.confirm_minutes:
+        if self.confirm.enabled and (
+                self.primary_minutes % self.confirm_minutes
+                and self.confirm_minutes % self.primary_minutes):
             # Alignment picks the last confirmation bar closing at or before
             # the primary close. If the sizes do not divide, that bar's close
             # lands mid-primary-bar and the gate silently reads stale context.
+            #
+            # EITHER DIRECTION divides safely, and both are used:
+            #   confirm FASTER (5m primary, 1m confirm) -- the original
+            #     "confirm the setup on a finer chart" gate.
+            #   confirm SLOWER (5m primary, 60m confirm) -- a CONTEXT chart,
+            #     which is how the higher-timeframe direction source is
+            #     expressed. `align_confirm` is unchanged: its formula
+            #     already returns the last CLOSED confirmation bar whichever
+            #     side the ratio falls, and tests/test_context_timeframe.py
+            #     asserts that against an independent implementation.
+            #
+            # This is deliberately NOT a new spec field. A field would appear
+            # in `asdict` and move every existing spec's config_hash, orphan
+            # the recorded sweeps and refuse the running paper experiment.
             raise ValueError(
-                f"primary_minutes ({self.primary_minutes}) must be a multiple of "
-                f"confirm_minutes ({self.confirm_minutes}) while the confirmation "
-                f"gate is enabled")
+                f"primary_minutes ({self.primary_minutes}) and confirm_minutes "
+                f"({self.confirm_minutes}) must divide one another while the "
+                f"confirmation gate is enabled")
         if self.target_r <= 0:
             raise ValueError(f"target_r must be positive, got {self.target_r}")
         if self.stop == "fixed_pct" and not 0 < self.stop_pct < 1:

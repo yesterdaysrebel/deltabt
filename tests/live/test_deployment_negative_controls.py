@@ -697,10 +697,21 @@ class TestBootstrapNeverAdoptsSilently:
 # ===========================================================================
 
 class TestNothingStartsTheExperiment:
-    def test_no_automation_can_start_a_run(self):
+    def test_only_the_reviewed_path_can_start_a_run(self):
+        """Containment, not prohibition -- see test_deployment_safety.py.
+
+        The pipeline starts a run automatically as of 2026-09-04. Exactly one
+        place may do it: the experiment SSM document in infra/terraform/ec2.tf,
+        which runs preflight first and is reviewed on the pull request. Nothing
+        under scripts/ may, because those run on workstations against whatever
+        credentials happen to be loaded.
+        """
         pattern = re.compile(r"forward-test\s+(start|create)")
         safety = safety_module()
+        allowed = {"infra/terraform/ec2.tf"}
         for path in safety.FILES:
+            if str(path.relative_to(safety.ROOT)) in allowed:
+                continue
             assert not pattern.search(safety.code(path)), path
         for script in SCRIPTS.glob("*"):
             if script.suffix in (".py", ".sh"):
