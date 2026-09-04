@@ -101,8 +101,15 @@ def _hash_the_variant_produces(variant: str) -> str:
     """
     if variant.upper().startswith("SPEC:"):
         from deltabt.catalog import build_spec
-        family, _, minutes = variant[5:].partition("@")
-        return build_spec(family, int(minutes)).config_hash
+        # `SPEC:<family>@<primary>[/<confirm>]`. The optional suffix names a
+        # CONTEXT timeframe -- a confirmation slower than the primary, which
+        # is how `manual_scalp_banded_h1dir` reads the 1h Supertrend. It must
+        # be honoured here or this guard would compare the deployed hash
+        # against a different rule's and pass while production drifts.
+        family, _, rest = variant[5:].partition("@")
+        minutes, _, confirm = rest.partition("/")
+        return build_spec(family, int(minutes),
+                          int(confirm) if confirm else None).config_hash
 
     from app.config.variants import resolve_strategy
     return resolve_strategy({"DELTABOT_VARIANT": variant}).config_hash
@@ -162,9 +169,11 @@ def test_the_catalog_family_a_spec_variant_names_exists():
         variant = fields["variant"]
         if not variant.upper().startswith("SPEC:"):
             continue
-        family, sep, minutes = variant[5:].partition("@")
-        assert sep and minutes.isdigit(), (
-            f"stack '{stack}' variant '{variant}' is not SPEC:<family>@<mins>")
+        family, sep, rest = variant[5:].partition("@")
+        minutes, _, confirm = rest.partition("/")
+        assert sep and minutes.isdigit() and (not confirm or confirm.isdigit()), (
+            f"stack '{stack}' variant '{variant}' is not "
+            f"SPEC:<family>@<mins>[/<confirm_mins>]")
         assert family in FAMILIES, (
             f"stack '{stack}' deploys catalog family '{family}', which is not "
             f"in deltabt/catalog.py. resolve_strategy fails closed, so the "

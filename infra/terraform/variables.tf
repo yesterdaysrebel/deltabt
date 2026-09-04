@@ -401,7 +401,29 @@ variable "bot_symbols" {
   #
   # This is not a cell chosen from a sweep. It is the reason every fitted
   # result on the wide universe failed.
-  default = "BEATUSD,AKEUSD,BANKUSD"
+  # 2026-09-03: WIFUSD ADDED, and it is the only addition the evidence
+  # supports. 25 perps were pulled fresh and tested under this rule: the
+  # live 5m rule is net negative on all 25 and the 1h-context rule on 23.
+  # WIFUSD is the single symbol that passes every test the deployed cell
+  # passes -- net +0.043R over 299 trades and 345 days, 3 of 4 anchored
+  # blocks, top 3 trades only 23% of profit, and 7 of 9 parameter
+  # neighbours positive.
+  #
+  # TWO THAT LOOK LIKE CANDIDATES AND ARE NOT. VELVETUSD scores higher
+  # (+0.052R) on 57 days, but its top 3 trades are 55% of profit and
+  # removing the best ten turns it negative -- the exact shape that killed
+  # manual_scalp_st_banded_fade. MANTAUSD is 3 of 4 on neighbours with an
+  # expectancy of exactly zero, which buys fees and exposure and nothing
+  # else.
+  #
+  # The wider finding, recorded so it is not re-litigated: this rule does
+  # NOT generalise. Across 114 perps sharing BEATUSD's contract profile the
+  # median 4xATR stop is 38 bps against BEATUSD's 295, and the four that
+  # clear 250 bps were pulled and tested too -- one of five is positive. A
+  # cost/volatility screen does not find more of these. Surviving a screen
+  # of 25 is itself a selection, so expect WIFUSD to behave like BEATUSD:
+  # near breakeven with materially lower drawdown.
+  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -698,7 +720,16 @@ variable "stacks" {
     #
     # REMEMBER create_stack_database.sh. user_data does not run it, and the
     # bot cannot connect until the database exists.
-    atr = { variant = "SPEC:manual_scalp_st_banded@5", db_name = "deltabt_thin" }
+    # 2026-09-03: the direction filter moves to the 1h chart, and WIFUSD
+    # joins the universe. One replacement carries both, because either
+    # alone changes the experiment identity anyway.
+    #
+    # NOTE THE `/60`. The variant string's confirmation suffix is what makes
+    # this family read the HOURLY Supertrend. Without it the catalog's 5:1
+    # default resolves the confirmation to 1m and the bot trades a rule
+    # nobody measured; app/config/variants.py refuses the bare form for
+    # exactly this family rather than let that happen quietly.
+    atr = { variant = "SPEC:manual_scalp_banded_h1dir@5/60", db_name = "deltabt_h1dir" }
   }
 }
 

@@ -251,6 +251,16 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
     # Resolved here rather than placed in ALL for the reason the arms above
     # are: it is not a StrategyConfig, and StrategyConfig.validate() rejects
     # any timeframe pair but 5m/1m.
+    #
+    # THE OPTIONAL `/<confirm_minutes>` IS NOT COSMETIC. Without it the
+    # confirmation timeframe falls to the catalog's 5:1 default, which for a
+    # 5m primary is ONE MINUTE. A family whose whole point is reading the
+    # trend from a slower chart -- `manual_scalp_banded_h1dir`, which gets
+    # its direction from the 1h Supertrend -- would then silently read the
+    # 1m chart instead and trade a rule nobody measured, with a config_hash
+    # that looks perfectly valid. So the suffix is how a context timeframe
+    # is addressed, and `SPEC:manual_scalp_banded_h1dir@5` without it is
+    # refused rather than quietly resolved to something else.
     if name.upper().startswith("SPEC:"):
         from deltabt.catalog import FAMILIES, build_spec
 
@@ -258,20 +268,45 @@ def resolve_strategy(env: dict | None = None) -> StrategyConfig:
         if "@" not in body:
             raise ValueError(
                 f"{VARIANT_ENV}={name!r} is malformed; expected "
-                f"SPEC:<family>@<primary_minutes>, e.g. SPEC:wpr_only@240")
-        family, _, minutes = body.partition("@")
+                f"SPEC:<family>@<primary_minutes>[/<confirm_minutes>], "
+                f"e.g. SPEC:wpr_only@240 or SPEC:manual_scalp_banded_h1dir@5/60")
+        family, _, rest = body.partition("@")
         family = family.strip()
         if family not in FAMILIES:
             raise ValueError(
                 f"{VARIANT_ENV}={name!r} names no catalog family. Known: "
                 f"{', '.join(sorted(FAMILIES))}")
+        minutes, slash, confirm_text = rest.partition("/")
         try:
             primary = int(minutes)
         except ValueError:
             raise ValueError(
                 f"{VARIANT_ENV}={name!r}: {minutes!r} is not a bar size in minutes"
             ) from None
-        spec = build_spec(family, primary)
+        confirm = None
+        if slash:
+            try:
+                confirm = int(confirm_text)
+            except ValueError:
+                raise ValueError(
+                    f"{VARIANT_ENV}={name!r}: {confirm_text!r} is not a "
+                    f"confirmation bar size in minutes") from None
+        spec = build_spec(family, primary, confirm)
+        if spec.confirm.enabled and confirm is None and (
+                spec.confirm_minutes < spec.primary_minutes):
+            # Only bites for a family whose confirmation gate carries the
+            # trend direction; every pre-existing variant string resolves
+            # exactly as before.
+            from deltabt.spec import TimeframeRules
+            gate = spec.confirm
+            if gate.supertrend != "off" and gate.wpr_rule == "none" and not gate.di:
+                raise ValueError(
+                    f"{VARIANT_ENV}={name!r}: family {family!r} reads its trend "
+                    f"direction from the confirmation timeframe, so that "
+                    f"timeframe must be stated explicitly, e.g. "
+                    f"SPEC:{family}@{primary}/60. Without it the default "
+                    f"ratio resolves it to {spec.confirm_minutes}m, which is "
+                    f"a different rule from the one that was measured.")
         spec.validate()
         return spec
 
