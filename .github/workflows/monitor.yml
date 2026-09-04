@@ -106,6 +106,24 @@ jobs:
             strategy_hash: "0ae19f412d693456e53c043fec93994c550af50c4eef885f5c66925ab068c467"
             log_group: /deltabt/paper/atr/bot
 
+          # 2026-09-04: A SECOND CONCURRENT ARM. The 5m Supertrend the atr
+          # stack gave up, %R banded, 1R target, and entries only while the
+          # bar OPENS 18:00-24:00 UTC. It runs BESIDE atr, not instead of it:
+          # the two test different claims and are meant to disagree.
+          #
+          # fail-fast is already off above, which matters more with two
+          # stacks than with one -- a sick host must not cost the other's
+          # report.
+          #
+          # 64 CHARACTERS, for the reason the atr block gives at length: a
+          # SPEC arm reports spec.config_hash in full.
+          - stack: hours
+            variant: SPEC:manual_scalp_st_banded_h18_24@5
+            instance_var: BOT_INSTANCE_ID_HOURS
+            document_var: SSM_MONITOR_DOCUMENT_HOURS
+            strategy_hash: "89ed49527806c0e3b6394c4c3fff87cb8d02d6ec450bcb77d5b9068991e065f6"
+            log_group: /deltabt/paper/hours/bot
+
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.
@@ -118,15 +136,44 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
           role-session-name: gha-report-${{ github.run_id }}
 
+      - name: find the host
+        id: host
+        # DISCOVERED BY TAG, NOT READ FROM A REPOSITORY VARIABLE.
+        #
+        # deploy.yml moved off `vars[matrix.instance_var]` on 2026-09-04 after
+        # it went stale five times, each stale value aiming SSM at a
+        # terminated host. This job had the same bug and kept it, which also
+        # made a NEW stack impossible to add hands-free: the instance id does
+        # not exist until Terraform has applied, so the variable could only be
+        # set by a human afterwards, and until they did the report failed
+        # every night on a stack that was perfectly healthy.
+        #
+        # The monitor role already holds ec2:DescribeInstances (monitoring.tf,
+        # "ReadTheInfrastructureItReportsOn"), so this needs no new permission.
+        env:
+          NAME_TAG: deltabt-paper-${{ matrix.stack }}
+        run: |
+          set -euo pipefail
+          ids=$(aws ec2 describe-instances --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            --filters "Name=tag:Name,Values=$NAME_TAG" \
+                      "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          n=$(printf '%s\n' $ids | grep -c . || true)
+          if [ "$n" -ne 1 ]; then
+            echo "::error::expected exactly one running host tagged $NAME_TAG, found $n: $ids"
+            exit 1
+          fi
+          echo "instance_id=$ids" >> "$GITHUB_OUTPUT"
+
       - name: build the report
         id: report
         run: |
           set +e
           python3 scripts/daily_report.py \
-            --instance-id "${{ vars[matrix.instance_var] }}" \
+            --instance-id "${{ steps.host.outputs.instance_id }}" \
             --log-group "${{ matrix.log_group }}" \
             --stack "${{ matrix.stack }}" \
-            --document "${{ vars[matrix.document_var] }}" \
+            --document "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-monitor', matrix.stack) }}" \
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --expect-strategy-hash "${{ matrix.strategy_hash }}" \
             ${{ vars.EXPECTED_RISK_HASH && format('--expect-risk-hash {0}', vars.EXPECTED_RISK_HASH) || '' }} \

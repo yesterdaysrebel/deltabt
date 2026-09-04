@@ -1,0 +1,178 @@
+family manual_scalp_both   universe ['BEATUSD', 'AKEUSD', 'BANKUSD']   pooled blocks: b0 2026-01-05  b1 2026-03-01  b2 2026-04-25  b3 2026-06-18
+  BEATUSD    62961 5m bars  2026-01-05 .. 2026-08-12  own blocks every 55 days
+  AKEUSD      6009 5m bars  2026-07-22 .. 2026-08-12  own blocks every 5 days
+  BANKUSD     6009 5m bars  2026-07-22 .. 2026-08-12  own blocks every 5 days
+
+== A. BASELINE  (4xATR, cost gate on, RiskGates off)
+  variant                                  blk0       blk1       blk2       blk3
+  1R / 24h  (as it ran live)         -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  3R / 72h  (the exit now live)      +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+    BEATUSD 1R/24h                   -0.111(105) +0.052(163) -0.086(167) -0.096(232)  1/4  net -0.060  gross -0.020  win 49%  DD  52.1R  n=667  
+    AKEUSD 1R/24h                    +0.098( 18) -0.103( 24) -0.373( 22) -0.012( 19)  1/4  net -0.110  gross -0.073  win 46%  DD  12.5R  n=83   
+    BANKUSD 1R/24h                   +0.051( 15) -0.005( 18) +0.095( 25) -0.231( 15)  2/4  net -0.006  gross +0.029  win 51%  DD   7.4R  n=73   
+    BEATUSD 3R/72h                   +0.206( 47) -0.224( 84) +0.177( 78) +0.450( 94)  3/4  net +0.155  gross +0.193  win 31%  DD  29.4R  n=303  
+    AKEUSD 3R/72h                    -0.273( 11) -0.419( 13) -0.462( 11) +0.110(  7)  1/4  net -0.304  gross -0.272  win 19%  DD  19.8R  n=42   
+    BANKUSD 3R/72h                   +1.416(  5) +0.375( 11) +0.588(  7) +0.548(  5)  4/4  net +0.645  gross +0.671  win 43%  DD   3.5R  n=28   
+
+== B. EXITS THE ENGINE SUPPORTS, never switched on for this family
+  (closed-bar conditions, checked AFTER the resting stop and target;
+   adverse_r x = close at x of the planned loss; flip = 5m Supertrend turns against)
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  as is                              -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  adverse_r 0.25                     +0.003(186) -0.022(290) -0.052(324) -0.051(837)  1/4  net -0.040  gross +0.002  win 28%  DD  80.6R  n=1637 
+  adverse_r 0.5                      -0.069(144) -0.043(237) -0.015(235) -0.065(603)  0/4  net -0.051  gross -0.011  win 38%  DD  74.1R  n=1219 
+  adverse_r 0.75                     -0.142(113) -0.082(195) -0.072(184) -0.091(445)  0/4  net -0.092  gross -0.052  win 44%  DD  93.3R  n=937  
+  ST flip exit                       -0.083(213) -0.039(364) -0.035(394) -0.059(1059)  0/4  net -0.053  gross -0.011  win 33%  DD 116.1R  n=2030 
+  ST flip + adverse_r 0.5            -0.083(214) -0.038(366) -0.026(395) -0.060(1071)  0/4  net -0.052  gross -0.009  win 33%  DD 113.9R  n=2046 
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  as is                              +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  adverse_r 0.25                     +0.019(105) -0.091(182) -0.036(186) -0.057(469)  1/4  net -0.051  gross -0.009  win 12%  DD  82.4R  n=942  
+  adverse_r 0.5                      +0.092( 71) -0.277(132) +0.019(115) +0.086(260)  3/4  net -0.010  gross +0.030  win 19%  DD  59.4R  n=578  
+  adverse_r 0.75                     -0.011( 64) -0.212( 98) +0.168( 89) +0.032(199)  2/4  net -0.000  gross +0.038  win 25%  DD  37.6R  n=450  
+  ST flip exit                       -0.105(204) -0.069(347) -0.056(372) -0.056(958)  0/4  net -0.064  gross -0.021  win 32%  DD 129.9R  n=1881 
+  ST flip + adverse_r 0.5            -0.105(205) -0.061(349) -0.050(371) -0.054(971)  0/4  net -0.060  gross -0.017  win 32%  DD 122.1R  n=1896 
+  per symbol, 3R/72h:
+    BEATUSD as is                    +0.206( 47) -0.224( 84) +0.177( 78) +0.450( 94)  3/4  net +0.155  gross +0.193  win 31%  DD  29.4R  n=303  
+    BEATUSD ST flip exit             -0.105(204) -0.069(347) -0.056(372) -0.058(589)  0/4  net -0.066  gross -0.023  win 32%  DD 108.3R  n=1512 
+    BEATUSD adverse_r 0.5            +0.092( 71) -0.277(132) +0.019(115) +0.090(156)  3/4  net -0.029  gross +0.012  win 18%  DD  59.4R  n=474  
+    AKEUSD as is                     -0.273( 11) -0.419( 13) -0.462( 11) +0.110(  7)  1/4  net -0.304  gross -0.272  win 19%  DD  19.8R  n=42   
+    AKEUSD ST flip exit              +0.056( 37) +0.050( 57) -0.239( 56) -0.211( 42)  2/4  net -0.090  gross -0.048  win 30%  DD  22.2R  n=192  
+    AKEUSD adverse_r 0.5             -0.176( 22) -0.096( 13) -0.493( 18) -0.017( 15)  0/4  net -0.209  gross -0.172  win 13%  DD  19.1R  n=68   
+    BANKUSD as is                    +1.416(  5) +0.375( 11) +0.588(  7) +0.548(  5)  4/4  net +0.645  gross +0.671  win 43%  DD   3.5R  n=28   
+    BANKUSD ST flip exit             -0.092( 51) +0.050( 39) -0.002( 53) +0.006( 34)  2/4  net -0.015  gross +0.024  win 33%  DD   7.6R  n=177  
+    BANKUSD adverse_r 0.5            +2.177(  4) +0.196( 15) +0.899( 12) +0.007(  5)  4/4  net +0.624  gross +0.655  win 36%  DD   4.8R  n=36   
+
+== C. POST-ENTRY PATH, replayed on the engine's own trade list
+  Entry set is FIXED (the engine's, gated). An exit that closes earlier could
+  free the slot for an entry the engine did not take; that is not modelled,
+  so treat these as the path's shape, not as a backtest. Net R here is
+  path R minus the trade's cost_per_r (taker both legs), for every variant
+  including 'as is', so the comparison is like for like.
+
+  -- 1R/24h: engine net -0.060, replay of the same trades -0.064 (difference = maker exit on targets + funding)
+  stop-outs n=415: reached +0.5R first 32%, +1R 0%, +1.5R 0%, +2R 0%
+  target hits n=395: went -0.5R first 33%, -0.75R 13%
+  time-outs n=13: mean path -0.07R, mean MFE 0.64R
+  variant                                  blk0       blk1       blk2       blk3
+  as is (replay)                     -0.123(105) +0.056(163) -0.088(167) -0.088(388)  1/4  net -0.064  win 49%  exits {'stop': 415, 'target': 395, 'hold': 13}
+  breakeven once +0.5R               -0.104(105) -0.007(163) -0.044(167) -0.072(388)  0/4  net -0.057  win 37%  exits {'stop': 513, 'target': 305, 'hold': 5}
+  trail 2.0xATR after +1R, keep target -0.123(105) +0.053(163) -0.088(167) -0.088(388)  1/4  net -0.065  win 49%  exits {'stop': 416, 'target': 394, 'hold': 13}
+  trail 3.0xATR after +1R, keep target -0.123(105) +0.056(163) -0.088(167) -0.088(388)  1/4  net -0.064  win 49%  exits {'stop': 415, 'target': 395, 'hold': 13}
+  trail 4.0xATR after +1R, keep target -0.123(105) +0.056(163) -0.088(167) -0.088(388)  1/4  net -0.064  win 49%  exits {'stop': 415, 'target': 395, 'hold': 13}
+  trail 2.0xATR after +1R, NO target -0.119(105) +0.011(163) -0.141(167) -0.072(388)  1/4  net -0.075  win 45%  exits {'stop': 803, 'hold': 20}
+  trail 3.0xATR after +1R, NO target -0.118(105) -0.021(163) -0.086(167) -0.099(388)  0/4  net -0.083  win 45%  exits {'stop': 799, 'hold': 24}
+  trail 4.0xATR after +1R, NO target -0.080(105) -0.033(163) -0.100(167) -0.085(388)  0/4  net -0.077  win 44%  exits {'stop': 791, 'hold': 32}
+
+  -- 3R/72h: engine net +0.140, replay of the same trades +0.131 (difference = maker exit on targets + funding)
+  stop-outs n=258: reached +0.5R first 52%, +1R 29%, +1.5R 16%, +2R 8%
+  target hits n=100: went -0.5R first 45%, -0.75R 15%
+  time-outs n=15: mean path +1.37R, mean MFE 2.50R
+  variant                                  blk0       blk1       blk2       blk3
+  as is (replay)                     +0.189( 47) -0.219( 84) +0.155( 78) +0.283(164)  3/4  net +0.131  win 31%  exits {'stop': 258, 'target': 100, 'hold': 15}
+  breakeven once +0.5R               +0.147( 47) -0.192( 84) -0.064( 78) +0.077(164)  2/4  net -0.004  win 14%  exits {'stop': 321, 'target': 48, 'hold': 4}
+  breakeven once +1.0R               +0.296( 47) -0.216( 84) -0.039( 78) +0.126(164)  2/4  net +0.036  win 21%  exits {'stop': 296, 'target': 72, 'hold': 5}
+  breakeven once +1.5R               +0.253( 47) -0.264( 84) +0.086( 78) +0.244(164)  3/4  net +0.098  win 25%  exits {'stop': 279, 'target': 87, 'hold': 7}
+  breakeven once +2.0R               +0.296( 47) -0.196( 84) +0.073( 78) +0.247(164)  3/4  net +0.117  win 28%  exits {'stop': 269, 'target': 94, 'hold': 10}
+  trail 2.0xATR after +1R, keep target +0.075( 47) -0.028( 84) -0.118( 78) +0.017(164)  2/4  net -0.014  win 47%  exits {'stop': 358, 'target': 15}
+  trail 3.0xATR after +1R, keep target +0.053( 47) -0.066( 84) -0.075( 78) +0.033(164)  2/4  net -0.009  win 47%  exits {'stop': 342, 'target': 30, 'hold': 1}
+  trail 4.0xATR after +1R, keep target +0.164( 47) -0.102( 84) -0.067( 78) +0.059(164)  2/4  net +0.010  win 46%  exits {'stop': 326, 'target': 44, 'hold': 3}
+  trail 2.0xATR after +1R, NO target +0.094( 47) -0.005( 84) -0.141( 78) +0.025(164)  2/4  net -0.008  win 47%  exits {'stop': 373}
+  trail 3.0xATR after +1R, NO target +0.088( 47) -0.055( 84) -0.064( 78) +0.053(164)  2/4  net +0.009  win 47%  exits {'stop': 372, 'hold': 1}
+  trail 4.0xATR after +1R, NO target +0.213( 47) -0.073( 84) -0.072( 78) +0.086(164)  2/4  net +0.033  win 46%  exits {'stop': 369, 'hold': 4}
+
+== D. INDICATOR-PARAMETER NEIGHBOURHOOD of the live cell
+  live cell: Supertrend (2.0, 10), %R 140, band -80/-20. One knob at a time.
+  A cell that only works at exactly these values is a fluke; a plateau is not.
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  live                               -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST mult 1.5                        -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST mult 2.5                        -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST mult 3.0                        -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST mult 4.0                        -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST period 7                        -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST period 14                       -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST period 20                       -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  ST period 30                       -0.111(105) +0.052(163) -0.086(167) -0.082(388)  1/4  net -0.060  gross -0.021  win 48%  DD  54.4R  n=823  
+  %R period 70                       -0.144(109) +0.061(160) +0.030(162) -0.121(398)  2/4  net -0.059  gross -0.021  win 49%  DD  54.0R  n=829  
+  %R period 100                      -0.180(111) +0.031(169) +0.006(165) -0.120(393)  2/4  net -0.073  gross -0.034  win 48%  DD  64.8R  n=838  
+  %R period 200                      -0.084(104) +0.052(158) -0.009(166) -0.126(397)  1/4  net -0.063  gross -0.025  win 48%  DD  55.0R  n=825  
+  %R period 280                      -0.116(107) -0.002(160) -0.033(166) -0.126(394)  0/4  net -0.082  gross -0.043  win 47%  DD  71.6R  n=827  
+  band -90/-10                       -0.071(114) +0.102(169) -0.054(173) -0.121(398)  1/4  net -0.057  gross -0.018  win 49%  DD  68.6R  n=854  
+  band -70/-30                       -0.076(105) +0.057(153) +0.032(165) -0.108(398)  2/4  net -0.045  gross -0.007  win 49%  DD  45.9R  n=821  
+  band -85/-25                       -0.181(106) +0.053(157) -0.022(170) -0.071(392)  1/4  net -0.051  gross -0.013  win 49%  DD  48.9R  n=825  
+     select on blocks<1: best 'band -90/-10' train -0.071 -> block 1 +0.102
+     select on blocks<2: best 'band -90/-10' train +0.032 -> block 2 -0.054
+     select on blocks<3: best 'band -70/-30' train +0.014 -> block 3 -0.108
+     selection premium +0.012  (any in-sample gain below this is the act of choosing)
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  live                               +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST mult 1.5                        +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST mult 2.5                        +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST mult 3.0                        +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST mult 4.0                        +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST period 7                        +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST period 14                       +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST period 20                       +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  ST period 30                       +0.206( 47) -0.224( 84) +0.177( 78) +0.290(164)  3/4  net +0.140  gross +0.176  win 31%  DD  29.4R  n=373  
+  %R period 70                       +0.001( 56) -0.323( 84) +0.108( 72) +0.264(150)  3/4  net +0.056  gross +0.092  win 29%  DD  35.1R  n=362  
+  %R period 100                      -0.136( 61) -0.377( 81) +0.204( 78) +0.190(160)  2/4  net +0.020  gross +0.056  win 27%  DD  46.9R  n=380  
+  %R period 200                      +0.141( 51) -0.088( 81) +0.421( 66) +0.287(162)  3/4  net +0.206  gross +0.242  win 32%  DD  25.4R  n=360  
+  %R period 280                      +0.062( 59) -0.032( 79) +0.342( 70) +0.184(159)  3/4  net +0.148  gross +0.185  win 31%  DD  26.0R  n=367  
+  band -90/-10                       +0.060( 50) -0.189( 83) -0.127( 77) +0.301(145)  2/4  net +0.060  gross +0.095  win 29%  DD  45.4R  n=355  
+  band -70/-30                       +0.305( 48) -0.109( 77) +0.112( 77) +0.171(167)  3/4  net +0.118  gross +0.154  win 30%  DD  22.6R  n=369  
+  band -85/-25                       +0.132( 59) -0.079( 79) +0.065( 76) +0.182(169)  3/4  net +0.097  gross +0.134  win 30%  DD  26.1R  n=383  
+     select on blocks<1: best 'band -70/-30' train +0.305 -> block 1 -0.109
+     select on blocks<2: best 'band -70/-30' train +0.050 -> block 2 +0.112
+     select on blocks<3: best '%R period 200' train +0.141 -> block 3 +0.287
+     selection premium +0.069  (any in-sample gain below this is the act of choosing)
+  -- Supertrend multiplier x period, 1R/24h, net (n)
+                        p7           p10           p14           p20
+  mult 1.5   -0.060( 823)  -0.060( 823)  -0.060( 823)  -0.060( 823)
+  mult 2.0   -0.060( 823)  -0.060( 823)  -0.060( 823)  -0.060( 823)
+  mult 2.5   -0.060( 823)  -0.060( 823)  -0.060( 823)  -0.060( 823)
+  mult 3.0   -0.060( 823)  -0.060( 823)  -0.060( 823)  -0.060( 823)
+  mult 4.0   -0.060( 823)  -0.060( 823)  -0.060( 823)  -0.060( 823)
+
+== E. LONG against SHORT
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  longs                              -0.284( 49) -0.103( 91) +0.099( 85) +0.020(191)  2/4  net -0.027  gross +0.011  win 51%  DD  27.8R  n=416  
+  shorts                             +0.041( 56) +0.249( 72) -0.277( 82) -0.181(197)  2/4  net -0.094  gross -0.055  win 46%  DD  64.4R  n=407  
+    BEATUSD longs                    -0.284( 49) -0.103( 91) +0.099( 85) +0.014(116)  2/4  net -0.039  gross -0.000  win 51%  DD  27.8R  n=341  
+    BEATUSD shorts                   +0.041( 56) +0.249( 72) -0.277( 82) -0.206(116)  2/4  net -0.081  gross -0.042  win 46%  DD  48.6R  n=326  
+    AKEUSD longs                     +0.278( 11) +0.073( 11) -0.330( 12) +0.266(  9)  3/4  net +0.053  gross +0.086  win 53%  DD   4.5R  n=43   
+    AKEUSD shorts                    -0.184(  7) -0.252( 13) -0.425( 10) -0.263( 10)  0/4  net -0.286  gross -0.245  win 38%  DD  13.4R  n=40   
+    BANKUSD longs                    +0.755(  8) -0.442(  8) +0.005( 10) -0.427(  6)  2/4  net -0.000  gross +0.031  win 50%  DD   7.0R  n=32   
+    BANKUSD shorts                   -0.754(  7) +0.344( 10) +0.154( 15) -0.101(  9)  2/4  net -0.010  gross +0.027  win 51%  DD   5.2R  n=41   
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  longs                              -0.105( 23) -0.166( 47) +0.529( 35) +0.480( 81)  2/4  net +0.254  gross +0.290  win 34%  DD  16.7R  n=186  
+  shorts                             +0.504( 24) -0.298( 37) -0.109( 43) +0.105( 83)  2/4  net +0.027  gross +0.063  win 27%  DD  31.5R  n=187  
+    BEATUSD longs                    -0.105( 23) -0.166( 47) +0.529( 35) +0.676( 48)  2/4  net +0.266  gross +0.305  win 35%  DD  16.7R  n=153  
+    BEATUSD shorts                   +0.504( 24) -0.298( 37) -0.109( 43) +0.214( 46)  2/4  net +0.041  gross +0.079  win 27%  DD  31.5R  n=150  
+    AKEUSD longs                     +0.369(  6) -0.362(  6) -0.476(  7) +0.945(  2)  2/4  net -0.067  gross -0.039  win 24%  DD   9.4R  n=21   
+    AKEUSD shorts                    -1.043(  5) -0.468(  7) -0.438(  4) -0.224(  5)  0/4  net -0.541  gross -0.505  win 14%  DD  10.6R  n=21   
+    BANKUSD longs                    +3.066(  3) -0.941(  3) +0.967(  2) -0.115(  4)  2/4  net +0.654  gross +0.683  win 42%  DD   3.4R  n=12   
+    BANKUSD shorts                   -1.059(  2) +0.868(  8) +0.436(  5) +3.203(  1)  3/4  net +0.638  gross +0.662  win 44%  DD   2.7R  n=16   
+
+== F. ENTRY FEATURES on BEATUSD (its own two halves; a feature is only
+      worth anything if the sign agrees in BOTH halves)
+  -- on 1R/24h: n=667  net -0.060  H1 -0.012  H2 -0.092
+     hour     0: +0.011(68)/-0.060(101)    6: -0.042(82)/-0.162(120)*   12: +0.030(83)/-0.005(97)    18: -0.084(35)/-0.131(81)*
+     weekend  False: -0.041(184)/-0.041(275)*   True: +0.052(84)/-0.203(124) 
+     vol      low: +0.149(34)/-0.111(101)    mid: -0.056(54)/-0.157(93)*   high: -0.052(176)/-0.053(205)*
+     dist     near: -0.026(71)/-0.195(152)*   mid: -0.019(89)/-0.014(133)*   far: +0.004(108)/-0.045(114) 
+     age      0: -0.248(28)/-0.150(18)*   1-3: +0.113(42)/-0.012(65)    4-11: +0.043(99)/-0.154(103)    12+: -0.052(99)/-0.081(213)*
+     fund     f<0: +0.140(33)/-0.033(106)    f>=0: -0.033(235)/-0.113(293)*
+  -- on 3R/72h: n=303  net +0.155  H1 -0.070  H2 +0.326
+     hour     0: +0.213(41)/+0.353(40)*   6: -0.057(38)/+0.277(50)    12: -0.219(34)/+0.546(46)    18: -0.460(18)/+0.084(36) 
+     weekend  False: -0.029(96)/+0.323(124)    True: -0.182(35)/+0.334(48) 
+     vol      low: -0.178(15)/+0.301(28)    mid: -0.427(21)/+0.027(39)    high: -0.039(93)/+0.444(105) 
+     dist     near: -0.094(29)/-0.028(72)*   mid: -0.201(49)/+0.841(52)    far: +0.064(53)/+0.301(48)*
+     age      0: -0.214(13)/+0.711(9)    1-3: -0.157(16)/+0.306(27)    4-11: +0.121(63)/+0.318(53)*   12+: -0.296(39)/+0.296(83) 
+     fund     f<0: -0.118(21)/+0.856(44)    f>=0: -0.061(110)/+0.144(128) 
+     (* = same sign in both halves; H1/H2 = first/second half of BEATUSD's span)

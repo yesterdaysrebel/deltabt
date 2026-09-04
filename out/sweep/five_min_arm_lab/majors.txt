@@ -1,0 +1,170 @@
+universe ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD']   pooled blocks: b0 2025-01-01  b1 2025-05-28  b2 2025-10-22  b3 2026-03-18
+  BTCUSD    169474 5m bars  2025-01-01 .. 2026-08-12  own blocks every 147 days
+  ETHUSD    169475 5m bars  2025-01-01 .. 2026-08-12  own blocks every 147 days
+  SOLUSD    169475 5m bars  2025-01-01 .. 2026-08-12  own blocks every 147 days
+  XRPUSD    169475 5m bars  2025-01-01 .. 2026-08-12  own blocks every 147 days
+
+== A. BASELINE  (4xATR, cost gate on, RiskGates off)
+  variant                                  blk0       blk1       blk2       blk3
+  1R / 24h  (as it ran live)         -0.094(1288) -0.126(976) -0.115(1123) -0.086(577)  0/4  net -0.107  gross -0.001  win 49%  DD 424.7R  n=3964 
+  3R / 72h  (the exit now live)      +0.022(588) -0.159(551) -0.129(567) -0.069(357)  1/4  net -0.083  gross +0.020  win 28%  DD 182.9R  n=2063 
+    BTCUSD 1R/24h                    -0.095(170) -0.039( 44) -0.124(184) -0.200( 78)  0/4  net -0.118  gross -0.004  win 47%  DD  58.8R  n=476  
+    ETHUSD 1R/24h                    -0.054(317) -0.100(290) -0.033(278) -0.018(160)  0/4  net -0.056  gross +0.051  win 51%  DD  64.9R  n=1045 
+    SOLUSD 1R/24h                    -0.090(419) -0.137(364) -0.169(347) -0.071(212)  0/4  net -0.120  gross -0.015  win 48%  DD 161.9R  n=1342 
+    XRPUSD 1R/24h                    -0.131(382) -0.153(278) -0.121(314) -0.129(127)  0/4  net -0.134  gross -0.032  win 47%  DD 157.5R  n=1101 
+    BTCUSD 3R/72h                    -0.059( 93) -0.111( 31) -0.148(105) -0.321( 60)  0/4  net -0.151  gross -0.038  win 28%  DD  46.9R  n=289  
+    ETHUSD 3R/72h                    +0.241(142) -0.205(157) -0.162(143) +0.051( 98)  2/4  net -0.030  gross +0.075  win 29%  DD  68.9R  n=540  
+    SOLUSD 3R/72h                    -0.131(204) -0.161(208) -0.187(173) -0.050(123)  0/4  net -0.139  gross -0.037  win 25%  DD 107.0R  n=708  
+    XRPUSD 3R/72h                    +0.074(149) -0.121(155) -0.014(146) -0.053( 76)  1/4  net -0.026  gross +0.071  win 30%  DD  45.6R  n=526  
+
+== B. EXITS THE ENGINE SUPPORTS, never switched on for this family
+  (closed-bar conditions, checked AFTER the resting stop and target;
+   adverse_r x = close at x of the planned loss; flip = 5m Supertrend turns against)
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  as is                              -0.094(1288) -0.126(976) -0.115(1123) -0.086(577)  0/4  net -0.107  gross -0.001  win 49%  DD 424.7R  n=3964 
+  adverse_r 0.25                     -0.105(2146) -0.120(1517) -0.130(1796) -0.089(823)  0/4  net -0.114  gross -0.007  win 25%  DD 716.2R  n=6282 
+  adverse_r 0.5                      -0.084(1665) -0.112(1228) -0.115(1416) -0.083(700)  0/4  net -0.100  gross +0.007  win 38%  DD 500.5R  n=5009 
+  adverse_r 0.75                     -0.085(1385) -0.124(1052) -0.111(1195) -0.099(613)  0/4  net -0.104  gross +0.002  win 46%  DD 442.2R  n=4245 
+  ST flip exit                       -0.104(2121) -0.112(1486) -0.119(1724) -0.094(818)  0/4  net -0.109  gross -0.002  win 31%  DD 671.2R  n=6149 
+  ST flip + adverse_r 0.5            -0.105(2140) -0.112(1500) -0.119(1735) -0.098(823)  0/4  net -0.109  gross -0.002  win 31%  DD 679.7R  n=6198 
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  as is                              +0.022(588) -0.159(551) -0.129(567) -0.069(357)  1/4  net -0.083  gross +0.020  win 28%  DD 182.9R  n=2063 
+  adverse_r 0.25                     -0.057(1278) -0.126(1056) -0.129(1162) -0.103(629)  0/4  net -0.102  gross +0.003  win 11%  DD 429.2R  n=4125 
+  adverse_r 0.5                      -0.012(840) -0.139(758) -0.154(803) -0.088(442)  0/4  net -0.098  gross +0.006  win 19%  DD 289.7R  n=2843 
+  adverse_r 0.75                     +0.028(656) -0.158(595) -0.087(602) -0.041(375)  1/4  net -0.064  gross +0.039  win 26%  DD 165.2R  n=2228 
+  ST flip exit                       -0.131(1996) -0.119(1402) -0.146(1616) -0.116(776)  0/4  net -0.130  gross -0.023  win 30%  DD 756.9R  n=5790 
+  ST flip + adverse_r 0.5            -0.130(2011) -0.119(1413) -0.145(1627) -0.124(781)  0/4  net -0.131  gross -0.023  win 30%  DD 763.6R  n=5832 
+  per symbol, 3R/72h:
+    BTCUSD as is                     -0.059( 93) -0.111( 31) -0.148(105) -0.321( 60)  0/4  net -0.151  gross -0.038  win 28%  DD  46.9R  n=289  
+    BTCUSD ST flip exit              -0.144(210) -0.098( 53) -0.146(239) -0.098(100)  0/4  net -0.133  gross -0.018  win 29%  DD  85.1R  n=602  
+    BTCUSD adverse_r 0.5             +0.044(122) -0.053( 34) -0.196(149) -0.118( 65)  1/4  net -0.090  gross +0.024  win 21%  DD  44.4R  n=370  
+    ETHUSD as is                     +0.241(142) -0.205(157) -0.162(143) +0.051( 98)  2/4  net -0.030  gross +0.075  win 29%  DD  68.9R  n=540  
+    ETHUSD ST flip exit              -0.130(485) -0.133(410) -0.152(415) -0.120(219)  0/4  net -0.135  gross -0.026  win 29%  DD 212.7R  n=1529 
+    ETHUSD adverse_r 0.5             +0.070(202) -0.079(211) -0.222(192) +0.054(119)  2/4  net -0.053  gross +0.052  win 20%  DD  77.8R  n=724  
+    SOLUSD as is                     -0.131(204) -0.161(208) -0.187(173) -0.050(123)  0/4  net -0.139  gross -0.037  win 25%  DD 107.0R  n=708  
+    SOLUSD ST flip exit              -0.123(650) -0.111(532) -0.104(493) -0.105(278)  0/4  net -0.112  gross -0.006  win 32%  DD 221.2R  n=1953 
+    SOLUSD adverse_r 0.5             -0.079(287) -0.204(302) -0.055(228) -0.198(157)  0/4  net -0.131  gross -0.029  win 17%  DD 135.9R  n=974  
+    XRPUSD as is                     +0.074(149) -0.121(155) -0.014(146) -0.053( 76)  1/4  net -0.026  gross +0.071  win 30%  DD  45.6R  n=526  
+    XRPUSD ST flip exit              -0.137(651) -0.118(407) -0.183(469) -0.141(179)  0/4  net -0.146  gross -0.040  win 30%  DD 248.7R  n=1706 
+    XRPUSD adverse_r 0.5             -0.030(229) -0.119(211) -0.169(234) -0.067(101)  0/4  net -0.101  gross -0.002  win 18%  DD  95.2R  n=775  
+
+== C. POST-ENTRY PATH, replayed on the engine's own trade list
+  Entry set is FIXED (the engine's, gated). An exit that closes earlier could
+  free the slot for an entry the engine did not take; that is not modelled,
+  so treat these as the path's shape, not as a backtest. Net R here is
+  path R minus the trade's cost_per_r (taker both legs), for every variant
+  including 'as is', so the comparison is like for like.
+
+  -- 1R/24h: engine net -0.107, replay of the same trades -0.125 (difference = maker exit on targets + funding)
+  stop-outs n=1947: reached +0.5R first 32%, +1R 0%, +1.5R 0%, +2R 0%
+  target hits n=1878: went -0.5R first 32%, -0.75R 13%
+  time-outs n=139: mean path -0.04R, mean MFE 0.66R
+  variant                                  blk0       blk1       blk2       blk3
+  as is (replay)                     -0.111(1288) -0.145(976) -0.134(1123) -0.103(577)  0/4  net -0.125  win 49%  exits {'stop': 1947, 'target': 1878, 'hold': 139}
+  breakeven once +0.5R               -0.121(1288) -0.126(976) -0.133(1123) -0.094(577)  0/4  net -0.122  win 37%  exits {'stop': 2464, 'target': 1446, 'hold': 54}
+  trail 2.0xATR after +1R, keep target -0.111(1288) -0.145(976) -0.134(1123) -0.103(577)  0/4  net -0.125  win 49%  exits {'stop': 1947, 'target': 1878, 'hold': 139}
+  trail 3.0xATR after +1R, keep target -0.111(1288) -0.145(976) -0.134(1123) -0.103(577)  0/4  net -0.125  win 49%  exits {'stop': 1947, 'target': 1878, 'hold': 139}
+  trail 4.0xATR after +1R, keep target -0.111(1288) -0.145(976) -0.134(1123) -0.103(577)  0/4  net -0.125  win 49%  exits {'stop': 1947, 'target': 1878, 'hold': 139}
+  trail 2.0xATR after +1R, NO target -0.130(1288) -0.128(976) -0.127(1123) -0.106(577)  0/4  net -0.125  win 46%  exits {'stop': 3760, 'hold': 204}
+  trail 3.0xATR after +1R, NO target -0.117(1288) -0.140(976) -0.114(1123) -0.083(577)  0/4  net -0.117  win 46%  exits {'stop': 3683, 'hold': 281}
+  trail 4.0xATR after +1R, NO target -0.081(1288) -0.112(976) -0.120(1123) -0.087(577)  0/4  net -0.100  win 42%  exits {'stop': 3560, 'hold': 404}
+
+  -- 3R/72h: engine net -0.083, replay of the same trades -0.095 (difference = maker exit on targets + funding)
+  stop-outs n=1479: reached +0.5R first 53%, +1R 28%, +1.5R 17%, +2R 9%
+  target hits n=457: went -0.5R first 39%, -0.75R 16%
+  time-outs n=127: mean path +0.99R, mean MFE 2.09R
+  variant                                  blk0       blk1       blk2       blk3
+  as is (replay)                     +0.013(588) -0.168(551) -0.141(567) -0.087(357)  1/4  net -0.095  win 28%  exits {'stop': 1479, 'target': 457, 'hold': 127}
+  breakeven once +0.5R               -0.042(588) -0.082(551) -0.162(567) -0.065(357)  0/4  net -0.090  win 14%  exits {'stop': 1773, 'target': 256, 'hold': 34}
+  breakeven once +1.0R               -0.012(588) -0.121(551) -0.183(567) -0.077(357)  0/4  net -0.100  win 20%  exits {'stop': 1654, 'target': 349, 'hold': 60}
+  breakeven once +1.5R               +0.029(588) -0.148(551) -0.147(567) -0.063(357)  1/4  net -0.082  win 23%  exits {'stop': 1576, 'target': 406, 'hold': 81}
+  breakeven once +2.0R               +0.032(588) -0.175(551) -0.138(567) -0.080(357)  1/4  net -0.089  win 25%  exits {'stop': 1529, 'target': 430, 'hold': 104}
+  trail 2.0xATR after +1R, keep target -0.058(588) -0.177(551) -0.157(567) -0.123(357)  0/4  net -0.128  win 46%  exits {'stop': 2002, 'target': 52, 'hold': 9}
+  trail 3.0xATR after +1R, keep target -0.053(588) -0.185(551) -0.151(567) -0.108(357)  0/4  net -0.124  win 46%  exits {'stop': 1929, 'target': 123, 'hold': 11}
+  trail 4.0xATR after +1R, keep target -0.020(588) -0.165(551) -0.152(567) -0.075(357)  0/4  net -0.105  win 42%  exits {'stop': 1852, 'target': 197, 'hold': 14}
+  trail 2.0xATR after +1R, NO target -0.062(588) -0.181(551) -0.153(567) -0.130(357)  0/4  net -0.130  win 46%  exits {'stop': 2054, 'hold': 9}
+  trail 3.0xATR after +1R, NO target -0.053(588) -0.202(551) -0.133(567) -0.099(357)  0/4  net -0.123  win 46%  exits {'stop': 2052, 'hold': 11}
+  trail 4.0xATR after +1R, NO target +0.006(588) -0.186(551) -0.119(567) -0.078(357)  1/4  net -0.094  win 42%  exits {'stop': 2045, 'hold': 18}
+
+== D. INDICATOR-PARAMETER NEIGHBOURHOOD of the live cell
+  live cell: Supertrend (2.0, 10), %R 140, band -80/-20. One knob at a time.
+  A cell that only works at exactly these values is a fluke; a plateau is not.
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  live                               -0.094(1288) -0.126(976) -0.115(1123) -0.086(577)  0/4  net -0.107  gross -0.001  win 49%  DD 424.7R  n=3964 
+  ST mult 1.5                        -0.100(1344) -0.132(1033) -0.100(1206) -0.062(673)  0/4  net -0.102  gross +0.003  win 49%  DD 435.0R  n=4256 
+  ST mult 2.5                        -0.100(1173) -0.138(866) -0.099(991) -0.073(494)  0/4  net -0.105  gross +0.001  win 49%  DD 375.1R  n=3524 
+  ST mult 3.0                        -0.134(1055) -0.112(747) -0.079(872) -0.071(434)  0/4  net -0.104  gross +0.004  win 49%  DD 330.2R  n=3108 
+  ST mult 4.0                        -0.140(811) -0.107(579) -0.061(677) +0.001(353)  1/4  net -0.089  gross +0.019  win 50%  DD 223.8R  n=2420 
+  ST period 7                        -0.089(1281) -0.120(970) -0.108(1092) -0.075(551)  0/4  net -0.100  gross +0.006  win 49%  DD 390.2R  n=3894 
+  ST period 14                       -0.109(1288) -0.121(1002) -0.097(1123) -0.096(608)  0/4  net -0.106  gross -0.001  win 49%  DD 430.5R  n=4021 
+  ST period 20                       -0.102(1299) -0.124(1018) -0.107(1139) -0.099(649)  0/4  net -0.108  gross -0.003  win 49%  DD 447.8R  n=4105 
+  ST period 30                       -0.105(1315) -0.119(1023) -0.088(1167) -0.079(662)  0/4  net -0.100  gross +0.005  win 49%  DD 415.1R  n=4167 
+  %R period 70                       -0.102(1304) -0.114(954) -0.166(1105) -0.110(537)  0/4  net -0.124  gross -0.019  win 48%  DD 487.6R  n=3900 
+  %R period 100                      -0.099(1319) -0.128(965) -0.154(1112) -0.076(556)  0/4  net -0.118  gross -0.013  win 48%  DD 470.6R  n=3952 
+  %R period 200                      -0.101(1284) -0.137(974) -0.092(1094) -0.083(590)  0/4  net -0.105  gross +0.002  win 49%  DD 415.9R  n=3942 
+  %R period 280                      -0.046(1260) -0.148(908) -0.093(1097) -0.083(586)  0/4  net -0.089  gross +0.017  win 50%  DD 349.7R  n=3851 
+  band -90/-10                       -0.102(1351) -0.115(1021) -0.101(1156) -0.075(602)  0/4  net -0.101  gross +0.005  win 49%  DD 418.2R  n=4130 
+  band -70/-30                       -0.111(1129) -0.100(837) -0.110(950) -0.163(502)  0/4  net -0.116  gross -0.010  win 48%  DD 397.7R  n=3418 
+  band -85/-25                       -0.086(1280) -0.145(971) -0.108(1107) -0.086(579)  0/4  net -0.107  gross -0.001  win 49%  DD 422.4R  n=3937 
+     select on blocks<1: best '%R period 280' train -0.046 -> block 1 -0.148
+     select on blocks<2: best '%R period 280' train -0.089 -> block 2 -0.093
+     select on blocks<3: best '%R period 280' train -0.090 -> block 3 -0.083
+     selection premium +0.033  (any in-sample gain below this is the act of choosing)
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  live                               +0.022(588) -0.159(551) -0.129(567) -0.069(357)  1/4  net -0.083  gross +0.020  win 28%  DD 182.9R  n=2063 
+  ST mult 1.5                        -0.001(577) -0.138(552) -0.062(562) +0.015(380)  1/4  net -0.051  gross +0.051  win 29%  DD 119.7R  n=2071 
+  ST mult 2.5                        +0.022(572) -0.191(509) -0.064(537) -0.033(317)  1/4  net -0.067  gross +0.037  win 28%  DD 174.8R  n=1935 
+  ST mult 3.0                        -0.027(564) -0.040(453) +0.036(490) -0.135(294)  1/4  net -0.031  gross +0.076  win 29%  DD 120.2R  n=1801 
+  ST mult 4.0                        -0.045(510) +0.053(395) +0.107(408) -0.094(248)  2/4  net +0.012  gross +0.120  win 30%  DD  68.7R  n=1561 
+  ST period 7                        -0.002(584) -0.157(546) -0.093(548) -0.067(333)  0/4  net -0.079  gross +0.024  win 28%  DD 186.1R  n=2011 
+  ST period 14                       +0.035(590) -0.146(552) -0.060(550) -0.030(371)  1/4  net -0.051  gross +0.052  win 29%  DD 122.8R  n=2063 
+  ST period 20                       +0.019(582) -0.151(556) -0.055(544) -0.029(379)  1/4  net -0.055  gross +0.047  win 29%  DD 118.1R  n=2061 
+  ST period 30                       -0.010(580) -0.128(538) -0.097(553) -0.034(383)  0/4  net -0.069  gross +0.033  win 28%  DD 143.7R  n=2054 
+  %R period 70                       -0.037(598) -0.203(554) -0.117(586) +0.069(329)  1/4  net -0.087  gross +0.016  win 27%  DD 209.3R  n=2067 
+  %R period 100                      -0.004(598) -0.180(557) -0.119(581) -0.043(341)  0/4  net -0.090  gross +0.013  win 27%  DD 201.8R  n=2077 
+  %R period 200                      +0.018(574) -0.205(542) -0.088(545) -0.054(349)  1/4  net -0.083  gross +0.020  win 28%  DD 194.9R  n=2010 
+  %R period 280                      -0.036(560) -0.195(520) -0.120(537) -0.032(342)  0/4  net -0.100  gross +0.002  win 28%  DD 229.8R  n=1959 
+  band -90/-10                       -0.009(601) -0.143(562) -0.110(586) -0.052(364)  0/4  net -0.080  gross +0.023  win 28%  DD 188.4R  n=2113 
+  band -70/-30                       +0.022(570) -0.094(484) -0.142(508) -0.152(328)  1/4  net -0.082  gross +0.022  win 28%  DD 173.0R  n=1890 
+  band -85/-25                       -0.013(583) -0.251(547) -0.096(570) -0.072(359)  0/4  net -0.109  gross -0.006  win 27%  DD 238.8R  n=2059 
+     select on blocks<1: best 'ST period 14' train +0.035 -> block 1 -0.146
+     select on blocks<2: best 'ST mult 4.0' train -0.002 -> block 2 +0.107
+     select on blocks<3: best 'ST mult 4.0' train +0.032 -> block 3 -0.094
+     selection premium +0.066  (any in-sample gain below this is the act of choosing)
+  -- Supertrend multiplier x period, 1R/24h, net (n)
+                        p7           p10           p14           p20
+  mult 1.5   -0.113(4224)  -0.102(4256)  -0.101(4319)  -0.108(4363)
+  mult 2.0   -0.100(3894)  -0.107(3964)  -0.106(4021)  -0.108(4105)
+  mult 2.5   -0.104(3485)  -0.105(3524)  -0.098(3611)  -0.105(3701)
+  mult 3.0   -0.101(3022)  -0.104(3108)  -0.113(3210)  -0.114(3295)
+  mult 4.0   -0.078(2446)  -0.089(2420)  -0.106(2466)  -0.114(2521)
+
+== E. LONG against SHORT
+  -- on 1R/24h
+  variant                                  blk0       blk1       blk2       blk3
+  longs                              -0.082(654) -0.163(499) -0.161(629) -0.040(302)  0/4  net -0.119  gross -0.017  win 48%  DD 250.4R  n=2084 
+  shorts                             -0.107(634) -0.088(477) -0.055(494) -0.137(275)  0/4  net -0.093  gross +0.017  win 49%  DD 175.8R  n=1880 
+    BTCUSD longs                     -0.015( 88) -0.055( 26) -0.173(113) -0.093( 41)  0/4  net -0.098  gross +0.012  win 49%  DD  30.5R  n=268  
+    BTCUSD shorts                    -0.180( 82) -0.016( 18) -0.047( 71) -0.317( 37)  0/4  net -0.145  gross -0.024  win 46%  DD  31.3R  n=208  
+    ETHUSD longs                     -0.006(171) -0.122(144) -0.078(160) +0.048( 92)  1/4  net -0.047  gross +0.056  win 51%  DD  39.6R  n=567  
+    ETHUSD shorts                    -0.110(146) -0.078(146) +0.027(118) -0.107( 68)  1/4  net -0.066  gross +0.046  win 51%  DD  37.1R  n=478  
+    SOLUSD longs                     -0.107(198) -0.191(185) -0.211(185) -0.035(103)  0/4  net -0.148  gross -0.046  win 46%  DD 103.0R  n=671  
+    SOLUSD shorts                    -0.075(221) -0.081(179) -0.121(162) -0.105(109)  0/4  net -0.093  gross +0.016  win 49%  DD  62.0R  n=671  
+    XRPUSD longs                     -0.153(197) -0.188(144) -0.178(171) -0.137( 66)  0/4  net -0.167  gross -0.068  win 46%  DD 105.0R  n=578  
+    XRPUSD shorts                    -0.108(185) -0.116(134) -0.054(143) -0.121( 61)  0/4  net -0.097  gross +0.008  win 50%  DD  57.1R  n=523  
+  -- on 3R/72h
+  variant                                  blk0       blk1       blk2       blk3
+  longs                              -0.015(321) -0.228(281) -0.221(333) -0.128(195)  0/4  net -0.148  gross -0.050  win 27%  DD 171.6R  n=1130 
+  shorts                             +0.067(267) -0.087(270) +0.002(234) +0.003(162)  3/4  net -0.005  gross +0.105  win 29%  DD  74.1R  n=933  
+    BTCUSD longs                     +0.028( 51) -0.061( 20) -0.244( 67) -0.144( 35)  1/4  net -0.122  gross -0.016  win 29%  DD  29.4R  n=173  
+    BTCUSD shorts                    -0.166( 42) -0.201( 11) +0.020( 38) -0.568( 25)  1/4  net -0.195  gross -0.071  win 28%  DD  24.0R  n=116  
+    ETHUSD longs                     +0.154( 88) -0.181( 71) -0.138( 89) +0.059( 61)  2/4  net -0.026  gross +0.071  win 30%  DD  43.3R  n=309  
+    ETHUSD shorts                    +0.383( 54) -0.224( 86) -0.200( 54) +0.037( 37)  2/4  net -0.035  gross +0.080  win 29%  DD  41.7R  n=231  
+    SOLUSD longs                     -0.140( 96) -0.202(101) -0.334( 88) -0.136( 55)  0/4  net -0.208  gross -0.110  win 24%  DD  79.8R  n=340  
+    SOLUSD shorts                    -0.122(108) -0.121(107) -0.036( 85) +0.019( 68)  1/4  net -0.076  gross +0.032  win 26%  DD  44.1R  n=368  
+    XRPUSD longs                     -0.075( 86) -0.333( 89) -0.176( 89) -0.364( 44)  0/4  net -0.220  gross -0.124  win 25%  DD  74.9R  n=308  
+    XRPUSD shorts                    +0.277( 63) +0.166( 66) +0.240( 57) +0.374( 32)  4/4  net +0.248  gross +0.347  win 37%  DD  15.5R  n=218  

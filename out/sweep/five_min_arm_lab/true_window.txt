@@ -1,0 +1,47 @@
+== THE ARM AS IT WOULD TRADE (a family with the window) vs THE POST-HOC FILTER
+  variant                              blk0       blk1       blk2       blk3
+  all hours (the 5m arm)         +0.057( 71) +0.036(115) -0.116(111) -0.001(294)  2/4  net -0.009  win 51%  DD  30.8R  n=591
+  post-hoc filter 18-24          +0.624( 11) +0.290( 17) +0.254( 25) +0.320( 57)  4/4  net +0.331  win 67%  DD   4.1R  top3  10%  n=110
+  THE WINDOWED FAMILY            +0.404( 13) +0.136( 33) +0.113( 37) +0.074( 98)  4/4  net +0.117  win 57%  DD  11.0R  top3  18%  n=181
+
+== why they differ: the freed position slot
+  inherited from the all-hours arm :  100  net +0.362
+  NEW, the slot was busy before    :   81  net -0.186  win 42%
+  in the filter but not the arm    :   10  (a trade the arm was still holding)
+
+== robustness of the arm as it trades
+  variant                              blk0       blk1       blk2       blk3
+    BEATUSD                      +0.404( 13) +0.136( 33) +0.113( 37) -0.037( 64)  3/4  net +0.078  win 55%  DD  11.0R  top3  32%  n=147
+    AKEUSD                       +0.583(  5) -0.531(  4) +0.125(  7) -1.017(  1)  2/4  net +0.038  win 53%  DD   4.2R  top3 469%  n=17
+    BANKUSD                      -0.046(  4) +0.461(  7) +0.990(  6) +nan(  0)  2/4  net +0.528  win 76%  DD   1.8R  top3  36%  n=17
+  longs                          +0.573(  6) -0.271( 12) -0.033( 14) +0.171( 46)  2/4  net +0.097  win 58%  DD   8.1R  top3  42%  n=78
+  shorts                         +0.259(  7) +0.368( 21) +0.201( 23) -0.012( 52)  3/4  net +0.132  win 56%  DD   8.8R  top3  27%  n=103
+  concentration: total +21.1R  top3 18%  top10 54%  mean without top10 +0.057  median +0.926
+  exits {'target': 103, 'stop': 77, 'max_hold': 1}  cost_r 0.044
+  bootstrap net +0.117 95% [-0.031, +0.260] P(>0)=0.939
+  minus the all-hours arm's out-of-window trades: +0.203 95% [+0.029, +0.375]
+  trades/week 5.8
+
+== shifted windows, each built as a real family
+  variant                              blk0       blk1       blk2       blk3
+  16-22                          +0.383( 22) +0.252( 40) -0.185( 43) -0.012(106)  2/4  net +0.044  win 54%  DD  19.7R  top3  42%  n=211
+  17-23                          +0.273( 13) +0.086( 34) -0.049( 39) +0.039(103)  3/4  net +0.045  win 53%  DD  12.4R  top3  45%  n=189
+  18-24                          +0.404( 13) +0.136( 33) +0.113( 37) +0.074( 98)  4/4  net +0.117  win 57%  DD  11.0R  top3  18%  n=181
+  19-01                          +0.193( 12) +0.243( 22) +0.061( 35) -0.006(102)  3/4  net +0.054  win 54%  DD  14.1R  top3  38%  n=171
+  20-02                          +0.035( 13) +0.378( 20) +0.206( 36) +0.021(107)  4/4  net +0.101  win 56%  DD   9.5R  top3  19%  n=176
+  18-22                          +0.363( 12) +0.147( 29) -0.054( 31) -0.019( 77)  2/4  net +0.037  win 53%  DD  15.9R  top3  68%  n=149
+  20-24                          +0.416(  4) +0.310( 18) +0.162( 27) +0.125( 82)  4/4  net +0.167  win 60%  DD   9.0R  top3  15%  n=131
+  12-18                          +0.076( 32) +0.010( 50) -0.262( 39) -0.200(107)  2/4  net -0.126  win 46%  DD  39.9R  n=228
+  06-12                          -0.087( 25) -0.096( 49) -0.372( 35) -0.064(114)  0/4  net -0.122  win 45%  DD  29.0R  n=223
+  00-06                          +0.064( 22) -0.020( 38) -0.013( 36) -0.059(113)  1/4  net -0.031  win 50%  DD  16.3R  n=209
+
+== the window at other targets, as a real family
+  variant                              blk0       blk1       blk2       blk3
+  18-24 at 1.0R/24h              +0.404( 13) +0.136( 33) +0.113( 37) +0.074( 98)  4/4  net +0.117  win 57%  DD  11.0R  top3  18%  n=181
+  18-24 at 1.0R/72h              +0.365( 13) +0.136( 33) +0.113( 37) +0.074( 98)  4/4  net +0.114  win 57%  DD  11.0R  top3  18%  n=181
+  18-24 at 1.5R/24h              +0.039( 12) +0.047( 30) +0.175( 33) +0.175( 89)  4/4  net +0.142  win 48%  DD  10.9R  top3  24%  n=164
+  18-24 at 1.5R/72h              -0.004( 12) -0.049( 30) +0.207( 33) +0.189( 89)  2/4  net +0.135  win 46%  DD  10.9R  top3  27%  n=164
+  18-24 at 2.0R/24h              +0.200( 12) +0.110( 30) +0.012( 32) +0.158( 85)  4/4  net +0.122  win 41%  DD  16.2R  top3  38%  n=159
+  18-24 at 2.0R/72h              +0.205( 12) +0.057( 30) +0.024( 32) +0.167( 84)  4/4  net +0.120  win 38%  DD  16.3R  top3  40%  n=158
+  18-24 at 3.0R/24h              +0.274( 12) -0.072( 29) -0.004( 32) -0.077( 80)  1/4  net -0.033  win 32%  DD  26.1R  n=153
+  18-24 at 3.0R/72h              +0.131( 12) +0.050( 29) +0.063( 28) -0.043( 74)  3/4  net +0.011  win 27%  DD  25.1R  top3 640%  n=143

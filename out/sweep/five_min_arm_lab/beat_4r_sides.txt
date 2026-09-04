@@ -1,0 +1,11 @@
+BEATUSD block returns: b0 -68%  b1 +151%  b2 +182%  b3 -25%
+  manual_scalp               1R/ 24h longs  -0.179( 57) -0.122(109) +0.143( 98) +0.123(115)  2/4  net +0.012
+  manual_scalp               1R/ 24h shorts -0.029( 68) +0.163( 96) -0.292( 79) -0.120(119)  1/4  net -0.065
+  manual_scalp               4R/ 72h longs  +0.022( 31) +0.223( 36) +0.664( 39) +1.082( 33)  4/4  net +0.506
+  manual_scalp               4R/ 72h shorts +0.570( 25) -0.098( 30) -0.467( 37) +0.367( 29)  2/4  net +0.039
+  manual_scalp_h1dir         4R/120h longs  +0.276( 20) +0.166( 27) +0.713( 39) +0.634( 31)  4/4  net +0.491
+  manual_scalp_h1dir         4R/120h shorts +0.930( 19) +0.120( 21) -0.343( 34) +0.039( 36)  3/4  net +0.090
+  manual_scalp_banded_h1dir  3R/ 72h longs  +0.143( 12) -0.018( 23) +0.147( 19) +0.202( 21)  3/4  net +0.111
+  manual_scalp_banded_h1dir  3R/ 72h shorts +0.557( 16) +0.446( 10) -0.105( 22) -0.102( 33)  2/4  net +0.095
+  manual_scalp_banded_h1dir  4R/120h longs  +0.429( 12) +0.648( 14) +0.456( 19) +0.425( 19)  4/4  net +0.484
+  manual_scalp_banded_h1dir  4R/120h shorts +0.514( 14) +1.100(  8) +0.235( 20) -0.174( 27)  3/4  net +0.232

@@ -186,6 +186,25 @@ class StrategySpec:
     #: Reject a setup whose stop is further than this fraction of price.
     max_stop_pct: float = 0.05
 
+    #: Hours of the UTC day during which an entry may FIRE, ``(start, end)``
+    #: with ``end`` exclusive and 24 meaning midnight. ``None`` -- the default
+    #: and what every spec built before 2026-09-04 means -- is every hour.
+    #: ``(20, 2)`` wraps past midnight.
+    #:
+    #: IT GATES THE TRIGGER, NOT THE SETUP, and the difference is the whole
+    #: measurement. ``rulecore`` masks the FIRED arrays, so a setup that turns
+    #: true at 17:55 is simply not taken; it is not re-armed at 18:00. Folding
+    #: the window into the setup instead would make it go FALSE->TRUE on the
+    #: window boundary and fire a stale setup at the top of the hour, which is
+    #: a different rule from the one measured. The measurement was "take the
+    #: engine's trades and keep those whose entry bar opens in the window"
+    #: (scripts/five_min_arm_hours.py), and this reproduces it exactly.
+    #:
+    #: THE HOUR IS THE ENTRY BAR'S OPEN, in UTC, matching that script. On a 5m
+    #: primary an 18:00 window admits the bar opening 18:00 and excludes the
+    #: one opening 17:55, which fills at 18:00.
+    entry_hours_utc: tuple[int, int] | None = None
+
     def validate(self) -> None:
         self.primary.validate()
         self.confirm.validate()
@@ -223,6 +242,28 @@ class StrategySpec:
             raise ValueError(f"target_r must be positive, got {self.target_r}")
         if self.stop == "fixed_pct" and not 0 < self.stop_pct < 1:
             raise ValueError(f"stop_pct must be in (0, 1), got {self.stop_pct}")
+        if self.entry_hours_utc is not None:
+            try:
+                lo, hi = (int(h) for h in self.entry_hours_utc)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"entry_hours_utc must be a (start, end) pair of whole "
+                    f"hours or None, got {self.entry_hours_utc!r}") from None
+            if not (0 <= lo <= 23):
+                raise ValueError(
+                    f"entry_hours_utc start must be an hour 0-23, got {lo}")
+            if not (1 <= hi <= 24):
+                raise ValueError(
+                    f"entry_hours_utc end must be an hour 1-24 (24 is "
+                    f"midnight, and the end is exclusive), got {hi}")
+            if lo == hi or (lo, hi) == (0, 24):
+                # A window covering the whole day is not "every hour" spelled
+                # differently -- it hashes differently, so it would be a second
+                # identity for the same rule. None is the way to say all hours.
+                raise ValueError(
+                    f"entry_hours_utc={self.entry_hours_utc!r} admits every "
+                    f"hour; use None, which is what every spec measured "
+                    f"without a window records")
         for rules in (self.primary, self.confirm):
             if rules.wpr_rule != "none" and not (
                 -100.0 < rules.wpr_long_level < rules.wpr_short_level < 0.0
@@ -264,9 +305,45 @@ class StrategySpec:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    def _hash_payload(self) -> dict:
+        """What ``config_hash`` actually digests.
+
+        A FIELD AT ITS "NOT CONFIGURED" DEFAULT IS OMITTED, AND ONLY
+        ``entry_hours_utc`` IS ELIGIBLE. This exists so a spec can gain a rule
+        dimension without every existing spec's identity moving.
+
+        The trap is documented twice elsewhere in this file and once in
+        app/config/variants.py, because it has been paid for: a new key in
+        ``asdict`` changes the digest of EVERY spec, which orphans every
+        recorded sweep and makes ``bind_experiment`` refuse the running paper
+        experiment -- the arm stops, mid-run, as a side effect of adding a
+        feature it does not use. That is why ``confirm_minutes`` expresses a
+        context timeframe by being SLOWER rather than by adding a field, and
+        why ``banded_fade`` is a vocabulary VALUE rather than a flag.
+
+        An entry window could not be expressed that way: no existing field can
+        carry an hour range. So the field exists, and specs that do not set it
+        hash exactly as they did before -- ``None`` is not "a window that
+        happens to be open all day", it is the absence of the dimension, and
+        omitting the key is the honest encoding of that.
+
+        The omission is SAFE in the one way that matters: it cannot make two
+        different rules share a hash. ``validate`` refuses a window that admits
+        every hour, so any spec carrying the key differs from one without it in
+        which bars may fire.
+
+        ``to_dict``/``to_json`` deliberately keep the key. They are the record
+        of what a spec IS; this is only what identity is computed from.
+        """
+        payload = asdict(self)
+        if payload.get("entry_hours_utc") is None:
+            payload.pop("entry_hours_utc", None)
+        return payload
+
     @property
     def config_hash(self) -> str:
-        blob = json.dumps(asdict(self), sort_keys=True, separators=(",", ":"))
+        blob = json.dumps(self._hash_payload(), sort_keys=True,
+                          separators=(",", ":"))
         return hashlib.sha256(blob.encode()).hexdigest()
 
     def to_json(self) -> str:
@@ -278,6 +355,12 @@ class StrategySpec:
         for key in ("primary", "confirm"):
             if key in d and isinstance(d[key], dict):
                 d[key] = TimeframeRules(**d[key])
+        # JSON has no tuple. A spec written by to_json and read back would
+        # carry a LIST here, which hashes the same (json renders both as
+        # [18,24]) but compares unequal to the spec it came from, so a
+        # round-trip would look like a different object to anything using ==.
+        if isinstance(d.get("entry_hours_utc"), list):
+            d["entry_hours_utc"] = tuple(d["entry_hours_utc"])
         spec = cls(**d)
         spec.validate()
         return spec

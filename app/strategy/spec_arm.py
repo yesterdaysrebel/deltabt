@@ -126,6 +126,16 @@ def evaluate_spec(one_minute: pd.DataFrame, spec: StrategySpec, *,
                     f"{side} setup was already true on the previous closed bar; "
                     f"one signal per FALSE->TRUE transition")
                 exp.detail["suppressed_repeat"] = True
+            elif bool(sig.rejected_entry_hours[i]):
+                # The setup fired and the clock refused it. Distinct from "did
+                # not fire": the rule saw its trigger, and a reader of the
+                # audit trail should not have to infer that from the timestamp.
+                lo, hi = spec.entry_hours_utc
+                exp.outcome = Outcome.REJECTED
+                exp.rejection_reason = (
+                    f"{side} setup fired outside the {lo:02d}:00-{hi:02d}:00 "
+                    f"UTC entry window")
+                exp.detail["entry_hours_utc"] = [lo, hi]
             elif bool(sig.rejected_stop_pct[i]):
                 exp.outcome = Outcome.REJECTED
                 exp.rejection_reason = (
@@ -185,4 +195,7 @@ def _passed(spec: StrategySpec, is_long: bool) -> list[str]:
             out.append(f"{label}_adx_ge_{rules.adx_min:g}")
         if rules.wpr_rule != "none":
             out.append(f"{label}_wpr_{rules.wpr_rule}")
+    if spec.entry_hours_utc is not None:
+        lo, hi = spec.entry_hours_utc
+        out.append(f"entry_hours_utc_{lo:02d}_{hi:02d}")
     return out

@@ -271,6 +271,26 @@ resource "aws_ssm_document" "experiment" {
           }
           case "{{ Action }}" in
             stop)
+              # A STACK'S FIRST ROLL HAS NOTHING TO RETIRE, AND THAT MUST NOT
+              # BE AN ERROR. The deploy retires BEFORE it rolls, so on a host
+              # Terraform has just created this runs before anything has ever
+              # started: /run/deltabt/env is written by run.sh and does not
+              # exist yet, the image tag is still "none", and the CLI would
+              # exit 1 with "no experiment is RUNNING" even if both did. Under
+              # `set -e` each of those fails the step, the deploy aborts, and
+              # the new arm never starts -- which is how v4's first roll died
+              # on 2026-08-20 and what cost an outage on 2026-09-04.
+              #
+              # Each guard below is a precondition only a never-deployed host
+              # can fail. A genuine retire failure still fails the step.
+              if [ ! -f /run/deltabt/env ]; then
+                echo "[experiment] no container has ever run here; nothing to retire"
+                exit 0
+              fi
+              if [ -z "$${TAG:-}" ] || [ "$TAG" = "none" ]; then
+                echo "[experiment] no image deployed yet; nothing to retire"
+                exit 0
+              fi
               echo "[experiment] retiring any running experiment"
               # --reason IS REQUIRED by the CLI and its absence is not a
               # parse-time error anyone sees until the document runs: the
@@ -278,7 +298,24 @@ resource "aws_ssm_document" "experiment" {
               # arguments are required: --reason", after the host had already
               # been replaced. The reason is recorded on the experiment row,
               # so it should say what superseded the run.
-              cli forward-test stop --reason "superseded by a new deploy (run {{ ExperimentId }})"
+              set +e
+              out="$(cli forward-test stop --reason "superseded by a new deploy (run {{ ExperimentId }})" 2>&1)"
+              rc=$?
+              set -e
+              echo "$out"
+              # "nothing was running" is the ONE non-zero exit that is not a
+              # problem, and it is matched on the CLI's own words rather than
+              # on the exit code, which it shares with every real failure.
+              # tests/live/test_experiment_document_commands.py pins that this
+              # string is still what app/cli.py prints.
+              if [ "$rc" -ne 0 ]; then
+                case "$out" in
+                  *"no experiment is RUNNING"*)
+                    echo "[experiment] nothing was running; continuing" ;;
+                  *)
+                    echo "[experiment] retire FAILED"; exit "$rc" ;;
+                esac
+              fi
               ;;
             start)
               ID="{{ ExperimentId }}"
