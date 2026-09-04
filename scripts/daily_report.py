@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
+import io
 import datetime
 import gzip
 import json
@@ -433,25 +435,14 @@ def time_stop_sentence(max_hold_seconds) -> str:
             "cannot be reached is held indefinitely.")
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--instance-id", required=True)
-    ap.add_argument("--document", required=True)
-    ap.add_argument("--region", default="ap-south-1")
-    ap.add_argument("--environment", default="paper")
-    ap.add_argument("--log-group", default=None)
-    ap.add_argument("--stack", default=None,
-                    help="which concurrent run this is (v1, v2). Selects the "
-                         "log group when --log-group is not given.")
-    ap.add_argument("--day", default=None, help="UTC date to report on; default yesterday")
-    ap.add_argument("--expect-strategy-hash", default=None,
-                    help=f"strategy config hash this run must be on "
-                         f"(default {FROZEN_STRATEGY_HASH}, which is V1)")
-    ap.add_argument("--expect-risk-hash", default=None,
-                    help=f"risk hash the RUNNING experiment must carry "
-                         f"(default {FROZEN_RISK_HASH})")
-    args = ap.parse_args()
+def report_body(args, day, now, notes, problems, facts) -> None:
+    """Everything the report has to say, in detail order.
 
+    Prints to stdout, which ``main`` captures so the VERDICT can be
+    printed first. Nothing here decides the exit code: it appends to
+    ``problems`` and ``notes``, and records the handful of numbers the
+    headline needs in ``facts``.
+    """
     name = f"deltabt-{args.environment}"
     # The log group gained a stack segment when a second experiment started
     # running alongside the first. Falling back to the old path would make the
@@ -459,11 +450,6 @@ def main() -> int:
     log_group = args.log_group or (
         f"/deltabt/{args.environment}/{args.stack}/bot" if args.stack
         else f"/deltabt/{args.environment}/bot")
-    now = datetime.datetime.now(datetime.timezone.utc)
-    day = args.day or (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-
-    print(f"# DeltaBt daily report — {day} (UTC)")
-    print(f"_generated {now.strftime('%Y-%m-%dT%H:%M:%SZ')}_\n")
 
     # --- the host probe ----------------------------------------------------
     raw = probe(args.instance_id, args.document, day, args.region)
@@ -524,18 +510,31 @@ def main() -> int:
     print(f"readyz   {readyz.get('status', 'NO RESPONSE')}")
     print("```\n")
 
+    hz, rz = healthz.get("status", "NO RESPONSE"), readyz.get("status", "NO RESPONSE")
     if healthz.get("status") != "healthy":
         failing = [c["name"] for c in healthz.get("checks", []) if not c["ok"]]
         # A gap in a thin symbol is a property of the instrument, not a fault.
+        #
+        # DO NOT NAME THE SYMBOLS HERE. This note named XRPUSD and SOLUSD long
+        # after both left the universe, which is the same fault
+        # tests/live/test_report_states_facts.py already pins for two other
+        # sentences: a claim about data the line has not read. The gap table
+        # below names whichever symbols actually gapped.
         if failing == ["no_recent_gaps"]:
-            notes.append("healthz red only on no_recent_gaps — an illiquid-minute "
-                         "gap, expected on XRPUSD/SOLUSD; see the gap table below")
+            notes.append("healthz red only on no_recent_gaps — an unrepaired "
+                         "illiquid-minute gap; the gap counts by symbol are "
+                         "under Infrastructure")
         else:
             problems.append(f"healthz unhealthy: {failing}")
+        facts["health_line"] = f"readyz {rz} · healthz RED: {', '.join(failing)}"
+    else:
+        facts["health_line"] = f"readyz {rz} · healthz ok"
     if readyz.get("status") != "healthy":
         problems.append(f"readyz not ready: "
                         f"{[c['name'] for c in readyz.get('checks', []) if not c['ok']]}")
 
+    if strategy_version:
+        facts["strategy"] = str(strategy_version)
     want_strategy = args.expect_strategy_hash or FROZEN_STRATEGY_HASH
     got_strategy = status.get("strategy_config_hash")
     if got_strategy and got_strategy != want_strategy:
@@ -591,10 +590,15 @@ def main() -> int:
         started = str(e.get("started_at", ""))[:19]
         print(f"**Experiment** `{e.get('experiment_id')}` · {e.get('status')} · "
               f"started {started}Z · planned {e.get('planned_days')} days\n")
+        facts["experiment"] = str(e.get("experiment_id"))
         began = parse_ts(str(e.get("started_at", "")))
         if began:
             run_age_seconds = (
                 datetime.datetime.now(datetime.timezone.utc) - began).total_seconds()
+            planned = e.get("planned_days")
+            if planned:
+                facts["day_of"] = (f"day {int(run_age_seconds // 86400) + 1}"
+                                   f"/{planned}")
     # THE OLD NOTE ASSERTED WHAT THE QUERY NEVER ESTABLISHED. It called every
     # unbound signal "pre-binding ... they predate the run", from an all-time
     # count carrying no timestamp. The reassuring reading was usually right and
@@ -685,6 +689,23 @@ def main() -> int:
 
     if open_now:
         print("### Open\n")
+        # THE HEADLINE CARRIES THE WORST ONE, not the count alone. A reader
+        # deciding whether to open the report at all needs to know if
+        # something is deep under water, and "2 open" does not say that.
+        # KEY ON THE NUMBER ONLY. Two positions at the same R made min() fall
+        # through to comparing the dicts, which raises TypeError and takes the
+        # whole report down -- caught by the negative controls, which open two
+        # positions at once precisely because the risk cap is what they test.
+        _rs = [(num(t.get("r")), t) for t in open_now]
+        _worst = min((x for x in _rs if x[0] is not None),
+                     key=lambda x: x[0], default=None)
+        if _worst is not None:
+            _lead = "worst " if len(open_now) > 1 else ""
+            facts["open_line"] = (
+                f"{len(open_now)} · {_lead}{_worst[1].get('symbol')} "
+                f"{_worst[1].get('side')} {_worst[0]:+.2f}R")
+        else:
+            facts["open_line"] = f"{len(open_now)}"
         print("| Symbol | Side | Qty | Entered (IST) | Entry | Stop | Target | Now | R "
               "| Unrealised | 1R (bps) | Target |")
         print("|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -749,6 +770,10 @@ def main() -> int:
             wins = sum(1 for r in rs if r > 0)
             print(f"Closed: **{len(rs)}** · won **{wins}** · "
                   f"total **{sum(rs):+.2f}R** · mean **{sum(rs) / len(rs):+.3f}R**\n")
+            facts["closed_line"] = (f"{len(rs)} · {wins} won · {sum(rs):+.2f}R "
+                                    f"(mean {sum(rs) / len(rs):+.3f}R)")
+            facts["closed_today"], facts["won_today"] = len(rs), wins
+            facts["r_today"] = round(sum(rs), 4)
 
     # An open position the risk cap should have prevented is a control failure,
     # not a market outcome, so it is a problem even on a profitable day.
@@ -848,10 +873,8 @@ def main() -> int:
     econ = db.get("economics") or []
     if econ:
         print("## Cost, and what it leaves\n")
-        print("The binding constraint per the panel review is cost, not "
-              "signal: a fixed fraction of notional against a variable R. "
-              "Every column here was recorded from the first run and none of "
-              "it was reported.\n")
+        print("Cost is a fixed fraction of notional against a variable R, so "
+              "it is set by how wide the stop is.\n")
         print("| Symbol | R | planned R | fill R | slip | fees | funding | "
               "cost | cost/R | held |")
         print("|---|---|---|---|---|---|---|---|---|---|")
@@ -903,6 +926,11 @@ def main() -> int:
               f"**{'—' if dd is None else f'{100*dd:.2f}%'}** · "
               f"wins {rs.get('wins')} losses {rs.get('losses')} · "
               f"streak {rs.get('consecutive_losses')}\n")
+        facts["equity_line"] = (
+            f"{fmt(eq, 2)} · "
+            f"{'drawdown —' if dd is None else f'{100*dd:.2f}% from peak'} · "
+            f"{rs.get('wins')}W/{rs.get('losses')}L all time")
+        facts["equity"], facts["drawdown_pct"] = eq, None if dd is None else round(100 * dd, 3)
         # The drawdown halt is disabled for these runs, so nothing enforces
         # this number. That is exactly why it is printed.
         if dd is not None and dd >= 0.10:
@@ -926,6 +954,21 @@ def main() -> int:
             if e is not None and d is not None:
                 day_start = e - d
         if day_start:
+            # PRINT THE TABLE ONLY WHEN A PROFILE WOULD HAVE CHANGED THE DAY.
+            # On a day where nothing is refused it is three rows of identical
+            # numbers and two paragraphs of standing explanation, every night,
+            # for both arms. The finding is "no breaker would have bitten",
+            # which is one line.
+            replays = {n: gated_replay(seq, day_start, pr)
+                       for n, pr in GATE_PROFILES.items()}
+            bit = [n for n, g in replays.items()
+                   if g["blocked"] or g["halted"]]
+            if not bit:
+                print(f"**Breakers** no profile would have refused any of "
+                      f"today's {len(seq)} trade(s); every breaker is disabled "
+                      f"in this run by design.\n")
+                seq = []            # skip the table below
+        if day_start and seq:
             print("## What the circuit breakers would have done\n")
             print("Every breaker is DISABLED in this run, deliberately: one that "
                   "halts after a bad start deletes the trades that would have "
@@ -954,7 +997,7 @@ def main() -> int:
             print(f"| _as run_ | off | off | off | {len(seq)} | 0 "
                   f"| {actual:+.2f} | — | — |")
             for name, prof in GATE_PROFILES.items():
-                g = gated_replay(seq, day_start, prof)
+                g = replays[name]
                 delta = g["taken_pnl"] - actual
                 halt = (f"{g['halted']} after {g['halted_after']}"
                         if g["halted"] else "never fired")
@@ -977,9 +1020,8 @@ def main() -> int:
         # BEATUSD had every setup refused for stop width", which stayed in the
         # report long after it stopped being true. The specific finding is
         # derived from `by_sym` below.
-        print("A symbol that never trades is invisible in a total: a limit "
-              "that always bites the same symbol shows up here and nowhere "
-              "else.\n")
+        print("A limit that always bites the same symbol shows up here and "
+              "nowhere else.\n")
         print("| Symbol | Setups | Approved | Rejected | Stop % range | Bars | Synthetic |")
         print("|---|---|---|---|---|---|---|")
         quality = {q["symbol"]: q for q in (db.get("bar_quality") or [])}
@@ -1023,19 +1065,26 @@ def main() -> int:
                                 f"no time stop to release it")
 
     # --- 4. sample size -----------------------------------------------------
-    print("## Sample size\n")
+    # ONE LINE, AND IT IS IN THE HEADLINE TOO. The paragraph that used to sit
+    # here said the same thing every night for a month. What an operator needs
+    # is the count and whether it is enough; the reason a small sample proves
+    # nothing does not need restating daily.
     if closed < MIN_CLOSED_TRADES:
-        print(f"**{closed} / {MIN_CLOSED_TRADES} closed trades — INSUFFICIENT SAMPLE.** "
-              f"No performance conclusion can be drawn. What the run is validating so "
-              f"far is execution correctness, risk enforcement, persistence and "
-              f"restart safety, not profitability.\n")
+        facts["sample_line"] = (f"{closed}/{MIN_CLOSED_TRADES} closed — "
+                                f"INSUFFICIENT, execution correctness only")
+        print(f"**Sample** {closed} / {MIN_CLOSED_TRADES} closed trades — "
+              f"insufficient for any performance read.\n")
     else:
-        print(f"{closed} closed trades — at or above the {MIN_CLOSED_TRADES}-trade "
-              f"minimum for a performance read.\n")
+        facts["sample_line"] = f"{closed}/{MIN_CLOSED_TRADES} closed — readable"
+        print(f"**Sample** {closed} closed trades — at or above the "
+              f"{MIN_CLOSED_TRADES}-trade minimum.\n")
 
     # --- 5. the daily report from the app itself ---------------------------
     report = sec.get("DAILYREPORT", "").strip()
-    if report:
+    # A HEADER LINE IS NOT CONTENT. `forward-test report` emits its title even
+    # on a day with no trades, so this section printed a fenced block holding
+    # one line, every night. Require something under the title.
+    if len(report.splitlines()) > 1:
         print(f"## `forward-test report --day {day}`\n")
         print("```")
         print(report[:4000])
@@ -1204,10 +1253,13 @@ def main() -> int:
         if d.get("message", "").startswith("gap repair fetched 0"):
             unrepaired += 1
     if detected:
-        print(f"Candle gaps in 24h by symbol: `{detected}` — **{unrepaired} unrepaired**. "
-              f"Illiquid minutes produce no trade and therefore no bar; this is a "
-              f"property of the instrument and is recorded as evidence, not treated "
-              f"as a fault.\n")
+        line = (f"Candle gaps in 24h by symbol: `{detected}` — "
+                f"**{unrepaired} unrepaired**.")
+        if unrepaired:
+            line += (" Illiquid minutes produce no trade and therefore no bar; "
+                     "this is a property of the instrument, recorded as "
+                     "evidence rather than treated as a fault.")
+        print(line + "\n")
 
     if db.get("dup_signal_keys") or db.get("dup_candles"):
         problems.append(f"DUPLICATE PERSISTENCE: signal keys={db.get('dup_signal_keys')} "
@@ -1215,21 +1267,126 @@ def main() -> int:
     if db.get("quarantined_fills"):
         problems.append(f"{db['quarantined_fills']} quarantined fill(s)")
 
-    # --- verdict ------------------------------------------------------------
+    if db.get("dup_signal_keys") or db.get("dup_candles") or db.get("quarantined_fills"):
+        pass  # already appended above; kept so the block reads as terminal
+
+
+# ---------------------------------------------------------------- headline --
+#
+# WHY THE REPORT LEADS WITH THIS. The detail below is the evidence and it is
+# not going anywhere -- every column of it was added because something once
+# went wrong and nobody could tell from the report. But a reader opening this
+# at 02:00 has one question, "does this need me", and it used to be answerable
+# only by scrolling 130 lines to the bottom. The verdict now comes first and
+# the evidence follows it.
+#
+# It is also the ONLY part most nights will be read. Two arms now run, so two
+# of these arrive nightly; a summary that does not fit in an email preview is
+# a summary nobody reads twice.
+
+
+def headline(day, now, args, facts, problems, notes) -> str:
+    """The first fifteen lines: verdict, identity, and what moved."""
+    out = [f"# DeltaBt {args.stack or args.environment} — {day} (UTC)",
+           f"_generated {now.strftime('%Y-%m-%dT%H:%M:%SZ')}_\n"]
+
+    verdict = "**NEEDS ATTENTION**" if problems else "**ALL CLEAR**"
+    bits = [verdict]
+    if facts.get("strategy"):
+        bits.append(f"`{facts['strategy']}`")
+    if facts.get("experiment"):
+        bits.append(f"{facts['experiment']}")
+    if facts.get("day_of"):
+        bits.append(facts["day_of"])
+    out.append(" · ".join(bits) + "\n")
+
+    if problems:
+        for pr in problems:
+            out.append(f"- **{pr}**")
+        out.append("")
+
+    rows = []
+    if facts.get("closed_line"):
+        rows.append(("closed today", facts["closed_line"]))
+    if facts.get("open_line"):
+        rows.append(("open now", facts["open_line"]))
+    if facts.get("equity_line"):
+        rows.append(("equity", facts["equity_line"]))
+    if facts.get("health_line"):
+        rows.append(("health", facts["health_line"]))
+    if facts.get("sample_line"):
+        rows.append(("sample", facts["sample_line"]))
+    if rows:
+        out.append("| | |")
+        out.append("|---|---|")
+        out += [f"| {k} | {v} |" for k, v in rows]
+        out.append("")
+
+    if not problems:
+        out.append("All clear — nothing here needs a human. Detail follows.\n")
+    return "\n".join(out)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--instance-id", required=True)
+    ap.add_argument("--document", required=True)
+    ap.add_argument("--region", default="ap-south-1")
+    ap.add_argument("--environment", default="paper")
+    ap.add_argument("--log-group", default=None)
+    ap.add_argument("--stack", default=None,
+                    help="which concurrent run this is (atr, hours). Selects "
+                         "the log group when --log-group is not given.")
+    ap.add_argument("--day", default=None, help="UTC date to report on; default yesterday")
+    ap.add_argument("--expect-strategy-hash", default=None,
+                    help=f"strategy config hash this run must be on "
+                         f"(default {FROZEN_STRATEGY_HASH}, which is V1)")
+    ap.add_argument("--expect-risk-hash", default=None,
+                    help=f"risk hash the RUNNING experiment must carry "
+                         f"(default {FROZEN_RISK_HASH})")
+    ap.add_argument("--facts-json", default=None,
+                    help="also write the headline facts here, for a job that "
+                         "compares the concurrent arms")
+    args = ap.parse_args()
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    day = args.day or (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # `problems` and `notes` are MODULE-LEVEL, and the body appends to them
+    # from deep inside a 700-line function. They are passed in rather than
+    # rebound so the parameter and the global are the same object; threading
+    # them through every call site would be a far larger change than putting
+    # the verdict at the top.
+    problems.clear()
+    notes.clear()
+    facts: dict = {}
+
+    # THE BODY IS CAPTURED, NOT SUPPRESSED. Every line it prints still reaches
+    # the reader; it is only moved below the verdict, which cannot be computed
+    # until the body has run.
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        report_body(args, day, now, notes, problems, facts)
+
+    print(headline(day, now, args, facts, problems, notes))
+    print(buf.getvalue(), end="")
+
     print("---\n")
     for n in notes:
         print(f"- Note: {n}")
     if notes:
         print()
-    if problems:
-        print("## NEEDS ATTENTION\n")
-        for p in problems:
-            print(f"- **{p}**")
-        return 1
-    print("## All clear\n")
-    print("Nothing in this report needs a human. The bot is running the frozen "
-          "configuration, bound to the experiment, with no duplicate persistence.")
-    return 0
+
+    if args.facts_json:
+        facts.update(stack=args.stack, day=day,
+                     problems=problems, verdict="attention" if problems else "clear")
+        try:
+            with open(args.facts_json, "w") as fh:
+                json.dump(facts, fh, indent=2, default=str)
+        except OSError as exc:          # a report is not worth failing over a file
+            print(f"- Note: could not write {args.facts_json}: {exc}")
+
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":

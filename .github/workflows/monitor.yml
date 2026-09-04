@@ -181,6 +181,7 @@ jobs:
             --document "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-monitor', matrix.stack) }}" \
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --expect-strategy-hash "${{ matrix.strategy_hash }}" \
+            --facts-json facts.json \
             ${{ vars.EXPECTED_RISK_HASH && format('--expect-risk-hash {0}', vars.EXPECTED_RISK_HASH) || '' }} \
             ${{ github.event.inputs.day && format('--day {0}', github.event.inputs.day) || '' }} \
             > report.md
@@ -192,7 +193,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: daily-report-${{ matrix.stack }}-${{ github.run_id }}
-          path: report.md
+          # facts.json is what the digest job below reads. It is the SAME
+          # numbers the report printed, written once by the code that computed
+          # them, so the digest cannot drift from the report by re-deriving
+          # anything or by parsing markdown.
+          path: |
+            report.md
+            facts.json
+          if-no-files-found: warn
           retention-days: 90
 
       - name: email the report
@@ -246,3 +254,70 @@ jobs:
             exit 1
           fi
           echo "All clear."
+
+  digest:
+    name: both arms, one email
+    needs: report
+    # ALWAYS, because the arm that needs attention is the one whose job failed,
+    # and a digest that skips itself exactly when something is wrong is worse
+    # than no digest. `report` fails the run when it finds a problem.
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: daily-report-*-${{ github.run_id }}
+          path: facts
+
+      - name: compare the arms
+        id: digest
+        run: |
+          set +e
+          python3 scripts/arms_digest.py facts/*/facts.json > digest.md
+          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+          cat digest.md >> "$GITHUB_STEP_SUMMARY"
+          cat digest.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arms-digest-${{ github.run_id }}
+          path: digest.md
+          retention-days: 90
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_MONITOR_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          role-session-name: gha-digest-${{ github.run_id }}
+
+      - name: email the digest
+        # THE ONE MESSAGE WORTH READING FIRST. Each arm still emails its own
+        # full report; this arrives alongside them and answers "is either arm
+        # in trouble, and what did they each do" without opening either.
+        #
+        # continue-on-error for the same reason the per-arm publish has it: a
+        # notification that can fail the run it describes turns "SNS had a bad
+        # minute" into "the bot needs attention".
+        continue-on-error: true
+        env:
+          OUTCOME: ${{ steps.digest.outputs.exitcode == '0' && 'all clear' || 'NEEDS ATTENTION' }}
+        run: |
+          set -uo pipefail
+          TOPIC="$(aws sns list-topics --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+                    --query "Topics[?ends_with(TopicArn, ':deltabt-paper-alarms')].TopicArn" \
+                    --output text)"
+          if [ -z "$TOPIC" ] || [ "$TOPIC" = "None" ]; then
+            echo "no alarm topic found; skipping"
+            exit 0
+          fi
+          head -c 200000 digest.md > body.txt
+          aws sns publish --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            --topic-arn "$TOPIC" \
+            --subject "deltabt both arms -- $OUTCOME" \
+            --message file://body.txt \
+            --query MessageId --output text
