@@ -382,6 +382,64 @@ FAMILIES: dict[str, dict] = {
     # harvest it (net improves monotonically as the target widens). A maker
     # limit entry at 0.25xATR is a real saving -- cost 0.104 -> 0.070 R -- but
     # closes only a fifth of the gap. This needs sub-4 bps per leg to trade.
+    # DECISION C: the direction filter reads the 1h chart, not the 5m one.
+    #
+    # The live family fires 64% of its entries on the bar the 5m Supertrend
+    # flips, because the %R band is usually already true and the flip is the
+    # last condition to turn. Those flip-bar entries are the losers. Moving
+    # the DIRECTION question to the hourly chart, and leaving the %R band,
+    # the slope requirement and the edge trigger on 5m, is expressed here
+    # with no new spec field: the confirmation timeframe becomes a CONTEXT
+    # timeframe by being SLOWER than the primary. `align_confirm` already
+    # returns the last CLOSED confirmation bar, which is exactly the causal
+    # higher-timeframe read; see spec.StrategySpec.validate.
+    #
+    # scripts/audit_context_direction.py is the acceptance test AND the audit.
+    # It asserts, per symbol, that `align_confirm` equals an independent
+    # causal read, that no chosen context bar closes after the primary bar
+    # it gates, and that no entry fires against the context direction.
+    #
+    # Thin 3, anchored blocks, 4xATR / 1R / 24h, cost gate on:
+    #
+    #                        blk0    blk1    blk2    blk3   +ve   net      n
+    #   live 5m direction   +0.057  +0.036  -0.116  -0.001  2/4  -0.009  591
+    #   THIS (1h context)   +0.113  +0.116  -0.065  +0.092  3/4  +0.070  337
+    #
+    # It survives the audit that killed manual_scalp_st_banded_fade: the top
+    # 3 trades are 15% of net (the fade's were 105%), removing the best ten
+    # still leaves +0.038, and the neighbours AGREE rather than collapsing --
+    # contexts 60m/120m and stops 3.5x-5.0x and holds 12-72h are all net
+    # positive, with 30m and 240m the only weak ones. Exits are 179 target /
+    # 145 stop / 13 time, so it is not a truncation artefact. Bootstrap
+    # P(net>0) = 0.91.
+    #
+    # WHAT THE NUMBERS DO NOT SAY, and this is the part to read twice:
+    #
+    #   symbol    history  live net -> C net    drawdown       share of C's R
+    #   BEATUSD      219d    -0.022 -> +0.012   27.2R -> 18.0R      13%
+    #   AKEUSD        21d    -0.029 -> +0.220    7.7R ->  6.2R      42%
+    #   BANKUSD       21d    +0.145 -> +0.284    8.2R ->  2.1R      46%
+    #
+    # On BEATUSD -- the only symbol with real history, and 75% of the trades
+    # -- this is a DRAWDOWN improvement of a third, not a profit. AKEUSD and
+    # BANKUSD carry 88% of the positive R on 21 days each, and on the pooled
+    # timeline every one of their trades falls in the last block. Deploy it
+    # for the risk reduction; treat the profit as unproven until those two
+    # accumulate history.
+    #
+    # The numbers first recorded for this idea (in the comment beside
+    # manual_scalp_st_banded, and scripts/htf_direction_walkforward.py) are
+    # slightly different because that script builds the hourly frame from the
+    # 5m frame rather than from 1m, inventing 16 hourly bars on BEATUSD, and
+    # applies the edge trigger BEFORE the context gate rather than to the
+    # complete setup. The family follows the live construction on both counts.
+    "manual_scalp_banded_h1dir": dict(
+        desc="%R band and trigger on the primary; Supertrend DIRECTION read from the slower context timeframe",
+        primary=_tf_rules(wpr_rule="banded"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     "manual_scalp_st_banded_fade": dict(
         desc="inverse of manual_scalp_st_banded: fade the 5m ST flip in the lower half of the %R range",
         primary=_tf_rules(supertrend="counter", wpr_rule="banded_fade"),
@@ -497,11 +555,17 @@ def build_spec(family: str, primary_minutes: int,
         confirm_minutes = max(1, primary_minutes // CONFIRM_RATIO)
         if primary_minutes % confirm_minutes:
             confirm_minutes = 1
-    elif confirm_minutes > primary_minutes or primary_minutes % confirm_minutes:
+    elif primary_minutes % confirm_minutes and confirm_minutes % primary_minutes:
+        # The two must TILE one another, in either direction. A faster
+        # confirmation is the original gate; a SLOWER one is a context chart
+        # and is how the higher-timeframe direction source is expressed
+        # (`manual_scalp_banded_h1dir`). Anything that tiles neither way
+        # aligns to a different instant on each bar.
         raise ValueError(
-            f"confirm_minutes={confirm_minutes} must divide and not exceed "
-            f"primary_minutes={primary_minutes}; a confirmation bar that does "
-            f"not tile the primary aligns to a different instant on each bar")
+            f"confirm_minutes={confirm_minutes} and primary_minutes="
+            f"{primary_minutes} must divide one another; a confirmation bar "
+            f"that does not tile the primary aligns to a different instant "
+            f"on each bar")
     spec = StrategySpec(
         name=f"{family}@{primary_minutes}m",
         primary_minutes=primary_minutes,

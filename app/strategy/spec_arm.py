@@ -40,7 +40,15 @@ def warmup_1m_bars(spec: StrategySpec) -> int:
     buffer and the backfill are sized in, and the two differ by a factor of the
     primary timeframe -- 145 bars is 145 minutes at 1m and 24 DAYS at 240m.
     """
-    return spec.warmup_bars * spec.primary_minutes
+    # The SLOWER of the two timeframes sets the requirement. With a 60m
+    # confirmation on a 5m primary the confirmation frame needs 145 hourly
+    # bars, which is 6 days of 1m history, not the 12 hours the primary
+    # alone would ask for. Sizing this off the primary silently starves the
+    # context gate and it never passes warm-up.
+    slowest = spec.primary_minutes
+    if spec.confirm.enabled:
+        slowest = max(slowest, spec.confirm_minutes)
+    return spec.warmup_bars * slowest
 
 
 def evaluate_spec(one_minute: pd.DataFrame, spec: StrategySpec, *,
