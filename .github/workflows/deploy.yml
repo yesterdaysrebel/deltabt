@@ -108,52 +108,65 @@ jobs:
     # #39: the push-triggered deploy failed, and shipping took a hand-run
     # dispatch afterwards.
     #
-    # This waits for any infrastructure run on THIS commit to finish before
-    # anything is built or rolled. It waits on the commit, not the branch: a
-    # run for some other SHA is not ours to wait for. When infrastructure did
-    # not trigger at all -- an app-only change -- there is nothing to wait for
-    # and this returns immediately.
+    # TWO WAITS, AND THE SECOND ONE IS NOT OPTIONAL.
+    #
+    #   1. THIS COMMIT's infrastructure run, if it has one, must have applied
+    #      cleanly before its image is rolled onto the result.
+    #   2. ANY infrastructure run still in flight on master, whatever the
+    #      commit. On 2026-09-04 two pull requests were merged sixteen seconds
+    #      apart: #37 touched only `deltabt/` so it had no infrastructure run
+    #      of its own, sailed past wait (1), and rolled while #42's apply --
+    #      which REPLACES the host -- was still running. A deploy aimed at an
+    #      instance that is being terminated is the failure this job exists to
+    #      prevent, and waiting only on our own SHA does not prevent it.
     name: wait for infrastructure
     runs-on: ubuntu-latest
     steps:
-      - name: block until this commit's infrastructure run is finished
+      - name: block until no infrastructure run can move the ground
         uses: actions/github-script@v7
         with:
           script: |
-            const sha = context.sha;
             const deadline = Date.now() + 45 * 60 * 1000;
             const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+            const list = (params) => github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'infrastructure.yml',
+              per_page: 30,
+              ...params,
+            });
+
             while (true) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'infrastructure.yml',
-                head_sha: sha,
-                per_page: 20,
-              });
-              const mine = runs.data.workflow_runs;
-              if (mine.length === 0) {
-                core.info('no infrastructure run for this commit; nothing to wait for');
+              // (1) our own commit, if infrastructure ran for it at all
+              const mine = (await list({ head_sha: context.sha })).data.workflow_runs;
+              const mineUnfinished = mine.filter(r => r.status !== 'completed');
+              const mineBad = mine.filter(
+                r => r.status === 'completed' && !['success', 'skipped'].includes(r.conclusion));
+              if (mineBad.length) {
+                core.setFailed(
+                  `infrastructure concluded '${mineBad[0].conclusion}' for this commit ` +
+                  `(${mineBad[0].html_url}). Refusing to roll an image onto infrastructure ` +
+                  `that did not apply cleanly.`);
                 return;
               }
-              const unfinished = mine.filter(r => r.status !== 'completed');
-              if (unfinished.length === 0) {
-                const bad = mine.filter(r => !['success', 'skipped'].includes(r.conclusion));
-                if (bad.length) {
-                  core.setFailed(
-                    `infrastructure concluded '${bad[0].conclusion}' for this commit ` +
-                    `(${bad[0].html_url}). Refusing to roll an image onto infrastructure ` +
-                    `that did not apply cleanly.`);
-                  return;
-                }
-                core.info('infrastructure completed successfully');
+
+              // (2) anything else still applying on master, any commit
+              const onMaster = (await list({ branch: 'master' })).data.workflow_runs;
+              const othersInFlight = onMaster.filter(r => r.status !== 'completed');
+
+              if (mineUnfinished.length === 0 && othersInFlight.length === 0) {
+                core.info(mine.length
+                  ? 'this commit\'s infrastructure applied cleanly; nothing else in flight'
+                  : 'no infrastructure run for this commit; nothing else in flight');
                 return;
               }
               if (Date.now() > deadline) {
-                core.setFailed('timed out waiting for the infrastructure run');
+                core.setFailed('timed out waiting for infrastructure to settle');
                 return;
               }
-              core.info(`waiting for ${unfinished.length} infrastructure run(s)...`);
+              core.info(
+                `waiting: ${mineUnfinished.length} for this commit, ` +
+                `${othersInFlight.length} in flight on master`);
               await sleep(20000);
             }
 
@@ -415,12 +428,17 @@ jobs:
         # rolling first guarantees a drift refusal: /readyz never passes and
         # the host script rolls back an image that was fine.
         env:
-          DOC: ${{ vars[matrix.document_var] }}-experiment
+          # THE DEPLOY DOCUMENT'S NAME WITH ITS SUFFIX SWAPPED, not with a
+          # suffix appended. Terraform names these `<stack>-deploy` and
+          # `<stack>-experiment`; appending gives `...-deploy-experiment`,
+          # which does not exist and fails as an IAM AccessDenied on a
+          # document nobody can find. That is what happened on 2026-09-04.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] }}
           ID: ${{ steps.host.outputs.instance_id }}
         run: |
           set -euo pipefail
           CMD=$(aws ssm send-command --region "$AWS_REGION" \
-            --document-name "$DOC" --instance-ids "$ID" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
             --parameters "Action=stop" \
             --comment "gha ${{ github.run_id }} retire" \
             --query 'Command.CommandId' --output text)
@@ -492,13 +510,18 @@ jobs:
         # no experiment id. That is loud and recoverable, and it is better than
         # rolling back an image that passed its own health gate.
         env:
-          DOC: ${{ vars[matrix.document_var] }}-experiment
+          # THE DEPLOY DOCUMENT'S NAME WITH ITS SUFFIX SWAPPED, not with a
+          # suffix appended. Terraform names these `<stack>-deploy` and
+          # `<stack>-experiment`; appending gives `...-deploy-experiment`,
+          # which does not exist and fails as an IAM AccessDenied on a
+          # document nobody can find. That is what happened on 2026-09-04.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] }}
           ID: ${{ steps.host.outputs.instance_id }}
           EXP: ${{ steps.experiment.outputs.id }}
         run: |
           set -euo pipefail
           CMD=$(aws ssm send-command --region "$AWS_REGION" \
-            --document-name "$DOC" --instance-ids "$ID" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
             --parameters "Action=start,ExperimentId=$EXP" \
             --comment "gha ${{ github.run_id }} start" \
             --query 'Command.CommandId' --output text)
