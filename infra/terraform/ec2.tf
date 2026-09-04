@@ -272,7 +272,13 @@ resource "aws_ssm_document" "experiment" {
           case "{{ Action }}" in
             stop)
               echo "[experiment] retiring any running experiment"
-              cli forward-test stop
+              # --reason IS REQUIRED by the CLI and its absence is not a
+              # parse-time error anyone sees until the document runs: the
+              # first real pipeline roll failed here with "the following
+              # arguments are required: --reason", after the host had already
+              # been replaced. The reason is recorded on the experiment row,
+              # so it should say what superseded the run.
+              cli forward-test stop --reason "superseded by a new deploy (run {{ ExperimentId }})"
               ;;
             start)
               ID="{{ ExperimentId }}"

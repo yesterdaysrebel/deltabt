@@ -400,6 +400,31 @@ jobs:
             echo "::warning::no running bot hosts; nothing to do"
             exit 0
           fi
+
+          # WAIT FOR THE HOST TO BE REACHABLE BY SSM BEFORE TALKING TO IT.
+          #
+          # This step runs immediately after an apply that may have REPLACED
+          # the instance, and a freshly booted host takes a minute or two to
+          # register as a managed node. On 2026-09-04 it did not, this step
+          # failed, and the failure cascaded: the deploy's wait job correctly
+          # refused to roll onto a failed infrastructure run, nothing started
+          # the bot -- user_data only ENABLES the unit, the deploy starts it --
+          # and the arm sat down until it was finished by hand.
+          #
+          # The database itself was fine; the step was a no-op that failed on
+          # timing. So wait, and only then decide anything.
+          for id in $ids; do
+            echo "waiting for $id to become an SSM managed node"
+            for _ in $(seq 1 30); do
+              ping=$(aws ssm describe-instance-information --region "$AWS_REGION" \
+                      --filters "Key=InstanceIds,Values=$id" \
+                      --query 'InstanceInformationList[0].PingStatus' --output text 2>/dev/null || echo None)
+              [ "$ping" = "Online" ] && break
+              sleep 10
+            done
+            [ "$ping" = "Online" ] || { echo "::error::$id never became SSM-managed"; exit 1; }
+            echo "  $id online"
+          done
           # THE PARAMETERS GO IN A FILE, NOT ON THE COMMAND LINE. The
           # `--parameters key=value` shorthand splits on commas and cannot
           # carry a value containing quotes, and the command below has both.
