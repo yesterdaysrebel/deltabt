@@ -1,5 +1,28 @@
 """Anchored walk-forward of a higher-timeframe direction source, CAUSAL.
 
+SUPERSEDED. READ THIS BEFORE TRUSTING A NUMBER FROM IT.
+
+This is the exploratory script whose result became the family
+`manual_scalp_banded_h1dir`. Building that family exposed two defects here,
+found by asserting the two implementations agree (they did not):
+
+  * IT BUILDS THE HOURLY FRAME FROM THE 5m FRAME, not from 1m. That skips the
+    completeness rule `harness._resampled` applies, and on BEATUSD invents 16
+    hourly bars out of 5,253 from stretches too thin for the live bot to form
+    a bar at all.
+  * IT APPLIES THE EDGE TRIGGER BEFORE THE CONTEXT GATE -- it triggers on the
+    primary setup and masks by direction afterwards -- so a bar where the
+    primary was already true and only the CONTEXT turned true is missed. The
+    live bot triggers on the complete setup. Two entries out of ~3,000 on
+    BEATUSD.
+
+Neither changes the conclusion (moving the direction to 1h helps the thin
+three) and both change the numbers slightly. `scripts/audit_context_direction.py`
+is the corrected implementation: it follows the LIVE construction, asserts
+alignment against an independent causal read, and its figures are the ones
+recorded in the catalog. Use it. This file is kept because the 2026-09-03
+record refers to it and because the defects are worth being able to see.
+
 Reproduces the numbers recorded beside manual_scalp_st_banded in
 deltabt/catalog.py (2026-09-03). Two earlier attempts at this analysis were
 wrong in opposite directions -- one read the HTF bar containing each 5m bar
