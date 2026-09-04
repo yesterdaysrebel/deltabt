@@ -319,6 +319,59 @@ FAMILIES: dict[str, dict] = {
     # strong-downtrend continuation shorts that a trend follower takes on
     # purpose. The operator's hand-traded style does not, and this family is
     # meant to encode that style.
+    # WHERE THE DIRECTION FILTER LOOKS -- TESTED 2026-09-03, AND THE FIRST TWO
+    # ATTEMPTS WERE WRONG IN OPPOSITE DIRECTIONS.
+    #
+    # The observed failure: on BEATUSD, 02-03 Sep, the rule fired 27 longs
+    # into a -6.9% move, every one with the last CLOSED 1h Supertrend bearish.
+    # A 5m Supertrend at 2.0x flips bullish on every bounce inside a decline,
+    # so "Supertrend agrees" holds on 5m while the bigger picture disagrees.
+    #
+    # ATTEMPT 1 read the HTF bar that CONTAINED each 5m bar (not yet closed):
+    # +36% and 4/4 on all seven. Look-ahead. ATTEMPT 2 "fixed" that with
+    # DatetimeIndex.view/asi8 // 1e9 to get bar opens -- which returns 1 for
+    # every bar on a tz-aware index in this pandas build, so searchsorted hit
+    # the last bar every time and the mask was CONSTANT: 0/4. Not a test.
+    # ATTEMPT 3 takes opens as int(ts.timestamp()) and ASSERTS they are
+    # monotone epoch seconds and the mask is 20-80% bull before any number
+    # is read. Anchored, 4 blocks, ungated, 4xATR/1R:
+    #
+    #                              thin 3 +ve   full    maxDD   all 7 +ve   full
+    #     live: 5m ST + %R            2/4     -6.6%   14.9%      0/4    -60.4%
+    #     ADD  1h ST as 2nd gate      2/4     +1.1%    9.5%      1/4    -28.8%
+    #     MOVE direction -> 15m       3/4     -0.9%   10.6%      0/4    -26.4%
+    #     MOVE direction -> 1h        3/4     +6.6%    8.4%      0/4    -43.2%
+    #     MOVE direction -> 4h        3/4     +7.4%   13.2%      0/4    -44.0%
+    #
+    # MOVING the direction source -- 5m Supertrend removed, %R banded still on
+    # 5m, permission from the last closed 1h or 4h Supertrend -- turns the thin
+    # three positive at a 54-55% win rate with roughly half the drawdown. Every
+    # one of six HTF variants beats the live rule on both return and drawdown
+    # there. All seven stays negative in every variant: the majors' cost
+    # problem is untouched by where direction is read.
+    #
+    # TRUE OUT OF SAMPLE, thin 3, 2026-08-12 -> 09-03 (22 days, no sweep
+    # touched them; 5m from Delta 1m integer-bucketed, HTF bars from Delta
+    # directly, every alignment asserted):
+    #
+    #                          trades   win    exp_r   [95% CI]           return
+    #     live: 5m ST + %R       109    53%   +0.006  [-0.178, +0.181]    +0.2%
+    #     MOVE direction -> 1h    78    55%   +0.064  [-0.164, +0.285]    +2.5%
+    #     MOVE direction -> 4h    95    52%   -0.003  [-0.211, +0.194]    -0.2%
+    #
+    # 1h ranks first out of sample as it did in, with the same +2 points of
+    # win rate; 4h -- best in-sample -- is flat out of sample, which is the
+    # selection premium showing where it should. 78 trades cannot separate
+    # +0.064R from zero. Consistent, not confirmed.
+    #
+    # STILL A SEARCH OVER SIX. The operator named the hypothesis before the
+    # data did, and all six move the same way, which is not what a spike looks
+    # like -- but block 2 (Apr-Jun 2026) is negative for every variant, two of
+    # the three symbols carry 21 days, and this is not yet out of sample.
+    #
+    # Also tested, valid (rulecore only, no HTF arithmetic), none survives:
+    # ST 10/3.0 (1/4, -9.8%), ST held >=3 bars (2/4, -2.1%, baseline's exact
+    # block signature), ST held >=6 (1/4), %R cross up out of -80 (1/4).
     "manual_scalp_st_banded": dict(
         desc="manual_scalp plus Supertrend alignment AND the %R midpoint ceiling",
         primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),
@@ -523,6 +576,52 @@ FAMILIES: dict[str, dict] = {
         confirm=_tf_rules(),
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=2.0, max_stop_pct=0.10),
+    ),
+    # TWO SOLUSD CELLS, NOW CLOSED AS A SELECTION ARTEFACT. Kept so the record
+    # of how they failed stays next to the definitions.
+    #
+    # MISLABELLING, CORRECTED. The first draft of this note called these
+    # "trend_wide_stop at 8x/6x". They are NOT: their confirm gate carries the
+    # FULL stack (ST + DI + ADX>=25 + %R on the confirmation timeframe, copied
+    # from hwpr_v2), whereas trend_wide_stop's confirm is Supertrend only. The
+    # two are different strategies with different hashes, and the difference
+    # was only noticed when the same "cell" gave 4/4 blocks one way and 2/4
+    # the other. A family's name must describe its rules, not its parent.
+    #
+    # WHY THEY WERE ADDED. On SOLUSD, in-sample, trend_wide_stop was positive
+    # in all six wide-stop cells tried (6/8/10xATR x 1.0/1.5R), found in a
+    # ~270-cell search where positive cells are expected rather than
+    # informative. trend_wide_6x15 then held NET-positive in 4/4 anchored
+    # walk-forward blocks (+0.024 +0.027 +0.112 +0.007), which looked like a
+    # real result.
+    #
+    # WHY THEY ARE CLOSED. Five independent tests, 2026-09-03:
+    #   1. spike, not plateau -- every neighbouring stop/target cell is 2-3/4
+    #   2. SOLUSD only -- the exact cell is 1/4 on ETHUSD, XRPUSD and BTCUSD
+    #   3. window-scheme sensitive -- 3/4 on four equal blocks
+    #   4. the selection procedure that picks such cells measures -0.2592R out
+    #      of sample (in-sample +0.1334; selection premium +0.3926)
+    #   5. TRUE out-of-sample, 2026-08-12 -> 09-03, data no sweep touched:
+    #      30 trades, win 43%, exp_r -0.018 [-0.442, +0.397], return -0.3%
+    #
+    # NOT PROMOTED, NOT DEPLOYED, NOT TO BE RETRIED under a different name.
+    "trend_wide_8x": dict(
+        desc="FULL confirm stack (hwpr_v2 gates) at 8xATR, 1R -- closed as artefact",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=8.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
+    "trend_wide_6x15": dict(
+        desc="FULL confirm stack (hwpr_v2 gates) at 6xATR, 1.5R -- closed as artefact",
+        primary=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", di=True, adx_min=25.0,
+                          wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=6.0,
+                  target_r=1.5, max_stop_pct=0.10),
     ),
     "atr_banded_adx": dict(
         desc="the RUNNING arm (atr_banded) plus ADX>=25 on the primary",

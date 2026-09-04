@@ -1,0 +1,48 @@
+{
+  "dataset": "options",
+  "venue": "delta_india",
+  "provenance": "recorder",
+  "manifest_schema_version": 2,
+  "date": "2026-09-02",
+  "first_timestamp": 1788307659,
+  "last_timestamp": 1788393172,
+  "rows": 100994,
+  "unique_contracts": 1183,
+  "unique_batches": 96,
+  "schema_version": 1,
+  "columns": [
+    "snapshot_ts",
+    "exchange_ts",
+    "symbol",
+    "underlying",
+    "mark_price",
+    "spot_price",
+    "best_bid",
+    "best_ask",
+    "bid_size",
+    "ask_size",
+    "mark_iv",
+    "bid_iv",
+    "ask_iv",
+    "delta",
+    "gamma",
+    "vega",
+    "theta",
+    "oi_contracts",
+    "turnover_usd",
+    "volume"
+  ],
+  "dedup_key": [
+    "snapshot_ts",
+    "symbol"
+  ],
+  "file_paths": [
+    "/workspaces/glueops/deltabt/data/quotes/quotes_2026-09-02.parquet"
+  ],
+  "checksums": {
+    "quotes_2026-09-02.parquet": "698ead16cbad5ecaef8f1899ba0af722f0bb840d002c650591894ded0bec580a"
+  },
+  "bytes": 9821128,
+  "collection_process_version": "2026-08-28.1",
+  "generated_at": "2026-09-02T23:52:54.705117+00:00"
+}
