@@ -92,9 +92,9 @@ def test_the_time_stop_matches_the_deployed_one():
 
 
 @pytest.mark.parametrize("minutes,expected_bars", [
-    (5, 288),      # 24h / 5m
-    (60, 24),      # 24h / 1h
-    (240, 20),     # floor of 20 bars, not 6
+    (5, 864),      # 72h / 5m
+    (60, 72),      # 72h / 1h
+    (240, 20),     # floor of 20 bars, not 18
 ])
 def test_the_hold_is_scaled_to_wall_clock_not_bars(minutes, expected_bars):
     """240 BARS is 4 hours at 1m and 40 days at 240m. Scaling is the point."""

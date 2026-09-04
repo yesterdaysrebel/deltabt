@@ -29,11 +29,20 @@ TIMEFRAMES = (1, 5, 15, 30, 60, 240)
 #: 240 BARS is 4 hours at 1m and 40 days at 240m, so an unscaled grid would
 #: compare a scalp against a swing trade and call the difference "timeframe".
 #:
-#: THE SPAN TRACKS THE LIVE BOT, which runs max_hold_seconds = 86400
-#: (infra/terraform/variables.tf). It was 48 here against 24 there, so every
-#: recorded cell gave a position twice as long to recover as the paper trader
-#: ever will. tests/test_exit_parity.py pins the two together.
-HOLD_HOURS = 24
+#: THE SPAN TRACKS THE LIVE BOT, which runs max_hold_seconds = 259200
+#: (infra/terraform/variables.tf). It was 48 here against 24 there once, so
+#: every recorded cell gave a position twice as long to recover as the paper
+#: trader ever will. tests/test_exit_parity.py pins the two together.
+#:
+#: NOW 72, WITH THE MOVE TO A 3R TARGET, and the two belong together: a 3R
+#: target on a 4xATR stop sits 12xATR away, which a position rarely reaches
+#: inside a day, so a 24h cap would quietly make the CAP the exit rather than
+#: the target. Measured at a 3R target, holding 24/48/72h scores
+#: +0.186/+0.251/+0.289 on the live universe.
+#:
+#: EVERY RECORDED SWEEP IN out/sweep/ PREDATES THIS and was run at 24h.
+#: test_recorded_sweeps_are_not_silently_stale() below is what says so.
+HOLD_HOURS = 72
 
 #: Close a position when the primary Supertrend flips against it.
 #:

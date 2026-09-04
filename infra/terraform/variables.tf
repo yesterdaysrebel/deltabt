@@ -140,8 +140,15 @@ variable "max_hold_seconds" {
     the -e list in run.sh, so max_hold_seconds was 0 in every container
     regardless of intent.
 
-    NOW 86400 (24h), because the ATR arm this stack runs is specified with a
-    24-hour time exit. It was 0 while the plumbing was staged out.
+    NOW 259200 (72h), 2026-09-04, together with the move to a 3R target.
+    The two belong together: a 3R target on a 4xATR stop is 12xATR away, and
+    a 24-hour cap converts that into "hold overnight and take whatever" --
+    the cap becomes the exit rather than the target. Measured on the live
+    universe, holding 24h/48h/72h at a 3R target gives +0.186/+0.251/+0.289,
+    and at 72h the exits are 275 stop, 137 target, 14 max_hold, so the target
+    is doing the work and the cap is a backstop.
+
+    It was 86400 (24h) for the 1R arm, where that was the right pairing.
 
     IT IS PART OF RiskConfig, SO IT IS PART OF THE RISK HASH. The experiment
     running here records 0338a386c43d39a4: that config WITH the 24h hold,
@@ -154,7 +161,7 @@ variable "max_hold_seconds" {
     EXPERIMENT and cannot be applied to one already running.
   EOT
   type        = number
-  default     = 86400
+  default     = 259200
 }
 
 # --- access ----------------------------------------------------------------
@@ -765,7 +772,7 @@ variable "stacks" {
     # default resolves the confirmation to 1m and the bot trades a rule
     # nobody measured; app/config/variants.py refuses the bare form for
     # exactly this family rather than let that happen quietly.
-    atr = { variant = "SPEC:manual_scalp_banded_h1dir@5/60", db_name = "deltabt_h1dir" }
+    atr = { variant = "SPEC:manual_scalp_banded_h1dir_t3@5/60", db_name = "deltabt_h1dir" }
   }
 }
 
