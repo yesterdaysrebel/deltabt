@@ -439,31 +439,27 @@ variable "bot_symbols" {
   # nothing red to say so. SOLUSD sat merged-but-unapplied for an hour on
   # 2026-09-04 for exactly this reason.
   #
-  # SOLUSD ADDED 2026-09-04 BY INSTRUCTION, AGAINST THE MEASURED EVIDENCE.
+  # SOLUSD WAS ADDED AND THEN WITHDRAWN, 2026-09-04, both by instruction.
   #
-  # Measured under the family that is actually running
-  # (`manual_scalp_banded_h1dir`, 4xATR/1R/24h, scripts/audit_context_direction.py):
+  # It was merged (#42) but its apply failed on a transient artifact error, so
+  # it never reached a host -- and the decision was then taken to leave the
+  # running arm alone. Reverting it here matters more than it looks: master
+  # was carrying a universe the bot was NOT running, and the next
+  # infrastructure apply for any reason would have replaced the host and
+  # restarted the experiment as a side effect of an unrelated change.
   #
-  #   blk0    blk1    blk2    blk3   +ve   net     gross   n     win
-  #  -0.179  -0.134  -0.088  -0.150  0/4  -0.139  -0.035  793   47%
+  # The evidence, kept because it is the reason not to bring it back casually.
+  # Measured under the family that is running, at BOTH the live exit and the
+  # wider one, so it is not an artefact of the exit setting:
   #
-  # Three things make this different from a symbol that merely underperforms:
+  #             1R / 24h            3R / 72h
+  #   net       -0.139   0/4        -0.129   0/4
+  #   gross     -0.035 (negative BEFORE fees)
   #
-  #   * GROSS IS NEGATIVE (-0.035R). This is not a cost problem that better
-  #     execution could rescue -- the signal points the wrong way on SOLUSD
-  #     before a single fee is charged.
-  #   * It loses in ALL FOUR anchored blocks, including the current regime.
-  #   * No context timeframe repairs it: 30m, 60m, 120m and 240m are all 0/4.
-  #
-  # Total over the archive is -110.3R across 793 trades. At the arm's 0.5%
-  # risk per trade that is roughly half the account. Nothing in the
-  # concentration profile softens it either: removing the ten best trades
-  # makes the average WORSE (-0.153R), which is what a genuinely negative
-  # edge looks like rather than a few bad prints.
-  #
-  # It is here because it was asked for after the evidence was put. Removing
-  # it is one line, and the arm is paper only.
-  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD,SOLUSD"
+  # Losing in all four anchored blocks at both exits, and gross-negative, so
+  # no execution improvement can rescue it. Re-adding it is one line; the
+  # measurement is the argument against, not the effort.
+  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
