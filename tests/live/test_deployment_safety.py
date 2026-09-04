@@ -280,21 +280,53 @@ def test_the_deployed_image_tag_is_never_mutable():
     assert "IMMUTABLE" in (ROOT / "infra" / "terraform" / "ecr.tf").read_text()
 
 
-def test_the_experiment_is_never_started_by_automation():
-    """No workflow, script, or user-data may start a run or mint an id.
+def test_the_experiment_is_started_only_through_the_reviewed_path():
+    """A run may be started by automation, but only from ONE place.
 
-    Starting the forward test is a human go/no-go decision taken after
-    preflight passes. Automation that could start it would make that decision
-    silently, and a run nobody deliberately began is a run nobody vetted.
+    THIS RULE CHANGED ON 2026-09-04, deliberately, and what it protects did
+    not. It used to read "no automation may start a run at all", on the
+    argument that starting one is a human go/no-go after preflight. In
+    practice the human step was a merge, a dispatch, four SSM commands and a
+    hand-edited repository variable -- and every one of those was a place to
+    get it wrong. It went wrong: five service restarts and a stale instance id
+    on 2026-09-04 alone. A ritual performed by hand is not a safety property.
+
+    What actually keeps a run honest is unchanged and is asserted elsewhere:
+    preflight must PASS before `start` is accepted (app/cli.py), the
+    experiment records its git_sha and refuses a container that does not match
+    (bind_experiment), and no order-placement code exists to ship
+    (test_no_live_trading.py).
+
+    So the rule is now about CONTAINMENT: exactly one automated path may start
+    a run -- the experiment SSM document, whose content is reviewed in
+    infra/terraform/ec2.tf. Anything else doing it silently is still a bug.
     """
     started = re.compile(r"forward-test\s+(start|create)")
+    allowed = {"infra/terraform/ec2.tf"}
+    offenders = []
     for path in FILES:
-        text = code(path)
-        match = started.search(text)
-        assert match is None, (
-            f"{path.relative_to(ROOT)} runs '{match.group(0)}'. Starting the "
-            f"experiment must require an explicit human action."
-        )
+        rel = str(path.relative_to(ROOT))
+        if rel in allowed:
+            continue
+        if started.search(code(path)):
+            offenders.append(rel)
+    assert not offenders, (
+        f"{offenders} start the experiment outside the reviewed path. The only "
+        f"automated starter is the experiment SSM document in {sorted(allowed)}."
+    )
+
+
+def test_the_one_allowed_starter_still_gates_on_preflight():
+    """The containment above is worth nothing if that path skips preflight."""
+    doc = (ROOT / "infra" / "terraform" / "ec2.tf").read_text()
+    # Match the INVOCATION, not the prose. The comment above the document
+    # names both commands while explaining the ordering, so a plain substring
+    # search finds the explanation and reports the opposite of the truth.
+    assert "cli forward-test preflight" in doc, (
+        "the experiment document must run preflight before starting a run")
+    pre = doc.index("cli forward-test preflight")
+    start = doc.index("cli forward-test start")
+    assert pre < start, "preflight must run BEFORE forward-test start"
 
 
 def test_the_experiment_scan_catches_a_planted_start(tmp_path):

@@ -13,8 +13,25 @@ Usage:
     python scripts/tf_guard.py tfplan.json
 
 Exit 0 if the plan only creates and updates protected resources, 1 otherwise.
-Set ALLOW_REPLACE=1 to override deliberately -- it is printed loudly so an
-override cannot happen by accident in a log nobody reads.
+
+TWO OVERRIDES, AND THE NARROW ONE IS THE POINT.
+
+    ALLOW_REPLACE=1        permits ANY finding below, the database included. A
+                           blunt instrument, kept for a human on a deliberate
+                           dispatch, and printed loudly.
+
+    ALLOW_REPLACE_TYPES=   comma-separated resource TYPES whose REPLACEMENT
+                           (delete-then-create) is an expected cost and may
+                           proceed unattended. A bare DESTROY of a listed type
+                           is still refused, and any type not listed is still
+                           refused outright.
+
+The narrow form is what lets a merge deploy itself. Replacing the bot host is
+the ordinary consequence of editing user-data or the strategy variant, and
+requiring a person to approve it every time produced either an approval nobody
+read or a change that sat unshipped for days. Destroying the DATABASE is a
+different act, and no automated path can reach it: `aws_db_instance` is not in
+the pipeline's list and must never be added to it.
 """
 
 from __future__ import annotations
@@ -38,11 +55,24 @@ PROTECTED_TYPES = {
 DESTRUCTIVE = {"delete"}
 
 
+def _narrowly_allowed() -> set[str]:
+    """Types this caller says may be replaced without a human.
+
+    Read from the environment rather than hard-coded, because "may a plan
+    replace things" is the wrong question and "which things, in this pipeline"
+    is the right one. The workflow states the answer at the call site; the
+    guard does not decide policy on every caller's behalf.
+    """
+    raw = os.environ.get("ALLOW_REPLACE_TYPES", "")
+    return {t.strip() for t in raw.split(",") if t.strip()}
+
+
 def main(path: str) -> int:
     with open(path) as fh:
         plan = json.load(fh)
 
-    findings = []
+    allowed = _narrowly_allowed()
+    findings, permitted = [], []
     for change in plan.get("resource_changes", []):
         actions = set(change.get("change", {}).get("actions", []))
         if not actions & DESTRUCTIVE:
@@ -52,10 +82,22 @@ def main(path: str) -> int:
             continue
         # "delete"+"create" is a replacement; a bare "delete" is a removal.
         kind = "REPLACE" if "create" in actions else "DESTROY"
+        # A REPLACEMENT of a named type is the expected cost of a config
+        # change and proceeds. A DESTROY never is: nothing in the pipeline
+        # removes a host without putting one back, so a plan that only
+        # deletes one is precisely the plan to stop, listed or not.
+        if kind == "REPLACE" and rtype in allowed:
+            permitted.append((kind, change.get("address", "?"), rtype))
+            continue
         findings.append((kind, change.get("address", "?"), rtype))
 
+    for kind, address, rtype in permitted:
+        print(f"tf_guard: {kind} {address} -- permitted by ALLOW_REPLACE_TYPES")
+        print(f"          ({PROTECTED_TYPES[rtype]})")
+
     if not findings:
-        print("tf_guard: no protected resource is destroyed or replaced.")
+        print("tf_guard: nothing protected is destroyed, and nothing is "
+              "replaced outside the permitted list.")
         return 0
 
     print("=" * 72)
