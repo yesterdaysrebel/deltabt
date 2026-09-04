@@ -245,7 +245,7 @@ jobs:
           # documented cost of the merge-to-deploy pipeline: each stack
           # retires its running experiment and registers a successor. Use
           # only_stack to bring one up without disturbing the other.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_banded_h1dir_t3@5/60","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_t4@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then

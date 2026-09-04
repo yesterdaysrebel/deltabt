@@ -242,3 +242,21 @@ def test_the_live_evaluator_explains_a_clock_refusal(bars):
     assert exp.outcome is Outcome.REJECTED
     assert "entry window" in exp.rejection_reason
     assert exp.detail["entry_hours_utc"] == [18, 24]
+
+
+# ----------------------------------------------------- the other new arm ---
+
+def test_manual_scalp_t4_is_the_original_entry_with_a_4r_target():
+    """Nothing but the target may differ, or 'the operator's original entry,
+    held for the move' is not what the stack runs."""
+    base = build_spec("manual_scalp", 5, 1)
+    t4 = build_spec("manual_scalp_t4", 5, 1)
+    assert t4.target_r == 4.0
+    assert t4.entry_hours_utc is None
+    assert replace(t4, target_r=base.target_r, name=base.name).config_hash == base.config_hash
+
+
+def test_the_original_familys_hash_has_not_moved():
+    """It ran live as MANUAL-SCALP-5M-PAPER-20260831-*; that record must stay
+    comparable."""
+    assert build_spec("manual_scalp", 5, 1).config_hash.startswith("977909932064d543")

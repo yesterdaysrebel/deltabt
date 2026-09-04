@@ -1,0 +1,48 @@
+== 1. EVERY CANDIDATE AS AN ARM  (thin three, 4xATR, cost gate on, hold 72h, 219 days)
+  arm                       net  blocks    n  win     DD  top3          boot 95%  P>0  /wk  | BEAT net blk n | AKE  | BANK
+  %R 5m+1m 3R            +0.140  3.0/4   373  31%  29.4R  20%  [-0.041,+0.321] 0.94 11.9  | +0.155 3.0/4 303 | -0.30 | +0.64
+  st+band 18-24 1.5R     +0.135  2.0/4   164  46%  10.9R  27%  [-0.060,+0.335] 0.91  5.2  | +0.051 2.0/4 132 | +0.16 | +0.84
+  %R only 4R             +0.127  4.0/4   325  26%  40.1R  33%  [-0.101,+0.359] 0.86 10.4  | +0.288 4.0/4 260 | -0.51 | -0.52
+  st+band 18-24 2R       +0.120  4.0/4   158  38%  16.3R  40%  [-0.109,+0.352] 0.85  5.1  | +0.006 3.0/4 128 | +0.11 | +1.17
+  st+band 18-24 1R       +0.114  4.0/4   181  57%  11.0R  18%  [-0.031,+0.260] 0.94  5.8  | +0.075 3.0/4 147 | +0.04 | +0.53
+  st (no band) 3R        +0.103  2.0/4   364  30%  47.4R  28%  [-0.070,+0.293] 0.87 11.6  | +0.113 2.0/4 300 | -0.10 | +0.22
+  %R only 3R             +0.067  2.0/4   387  28%  35.3R  40%  [-0.109,+0.242] 0.76 12.4  | +0.096 2.0/4 313 | +0.01 | -0.09
+  st (no band) 18-24 1R  +0.037  3.0/4   290  53%  16.4R  34%  [-0.084,+0.158] 0.72  9.3  | +0.029 3.0/4 235 | -0.21 | +0.34
+  %R 5m+1m 4R            +0.030  3.0/4   334  23%  39.5R 132%  [-0.174,+0.247] 0.59 10.7  | +0.028 3.0/4 275 | -0.51 | +1.12
+  %R banded 1.5R         +0.021  2.0/4   502  42%  25.5R  51%  [-0.087,+0.131] 0.66 16.1  | +0.025 2.0/4 413 | -0.19 | +0.17
+  st+band 1.5R           +0.008  2.0/4   453  41%  24.8R 151%  [-0.107,+0.124] 0.55 14.5  | -0.016 2.0/4 371 | -0.04 | +0.29
+  st+band 1R             -0.012  2.0/4   587  51%  34.7R   --  [-0.093,+0.070] 0.39 18.8  | -0.030 2.0/4 473 | -0.03 | +0.19
+  %R only 18-24 1R       -0.016  3.0/4   307  51%  25.5R   --  [-0.128,+0.094] 0.40  9.8  | -0.026 3.0/4 246 | +0.08 | -0.03
+  st+band 2R             -0.019  2.0/4   367  34%  36.1R   --  [-0.161,+0.128] 0.40 11.7  | -0.052 1.0/4 298 | -0.23 | +0.46
+  st (no band) 1R        -0.025  2.0/4   851  50%  34.2R   --  [-0.095,+0.042] 0.22 27.2  | -0.019 2.0/4 696 | -0.12 | +0.01
+  %R only 1R             -0.034  1.0/4   892  50%  39.3R   --  [-0.101,+0.032] 0.16 28.5  | -0.011 2.0/4 727 | -0.07 | -0.21
+  %R 5m+1m 1R            -0.058  1.0/4   815  49%  52.0R   --  [-0.130,+0.010] 0.05 26.1  | -0.053 1.0/4 661 | -0.14 | -0.01
+  %R only 18-24 4R       -0.243  0.0/4   200  18%  56.6R   --  [-0.485,+0.015] 0.03  6.4  | -0.194 1.0/4 157 | -0.75 | -0.17
+
+== 2. SELECTION TEST: best candidate on blocks < k, scored on block k
+  k=1: pick 'st (no band) 3R'  train +0.405 -> block 1 -0.220    (next: st+band 18-24 1R +0.365, st (no band) 18-24 1R +0.272)
+  k=2: pick 'st+band 18-24 1R'  train +0.250 -> block 2 +0.113    (next: %R only 4R +0.172, st (no band) 18-24 1R +0.144)
+  k=3: pick 'st+band 18-24 1R'  train +0.204 -> block 3 +0.074    (next: %R only 4R +0.152, st (no band) 18-24 1R +0.132)
+  selection premium over these 18 candidates: +0.298
+  the same test on block-sign count (how many of the k training blocks were positive):
+  k=2: st+band 18-24 1R 2/2 -> blk2 +0.113; %R only 4R 2/2 -> blk2 +0.113; st (no band) 18-24 1R 2/2 -> blk2 +0.107; st+band 18-24 2R 2/2 -> blk2 +0.024
+  k=3: st+band 18-24 1R 3/3 -> blk3 +0.074; %R only 4R 3/3 -> blk3 +0.100; st (no band) 18-24 1R 3/3 -> blk3 -0.027; st+band 18-24 2R 3/3 -> blk3 +0.167
+
+== 3. OVERLAP among the leaders (share of the ROW arm's entries within 1h of a COLUMN arm's entry, same symbol)
+                         %R 5m+1m 3 st+band 18 %R only 4R st+band 18 st+band 18 st (no ban %R only 3R st (no ban
+  %R 5m+1m 3R                    --         8%        42%         8%         9%        48%        53%        15%
+  st+band 18-24 1.5R            18%         --        16%        96%        99%        21%        14%        77%
+  %R only 4R                    49%         8%         --         8%         8%        51%        76%        18%
+  st+band 18-24 2R              18%       100%        17%         --        99%        21%        15%        77%
+  st+band 18-24 1R              18%        90%        15%        87%         --        20%        13%        78%
+  st (no band) 3R               50%        10%        45%        10%        10%         --        57%        21%
+  %R only 3R                    51%         6%        64%         6%         6%        54%         --        18%
+  st (no band) 18-24 1R         20%        45%        20%        44%        50%        27%        24%         --
+
+== 4. WHAT EACH LEADER LOOKS LIKE TO LIVE WITH
+  %R 5m+1m 3R            median trade -1.01R  median hold   5.6h  full losses  69%  longest losing run 18  exits {'stop': 258, 'target': 100, 'max_hold': 15}
+  st+band 18-24 1.5R     median trade -0.93R  median hold   4.5h  full losses  54%  longest losing run  5  exits {'stop': 88, 'target': 75, 'max_hold': 1}
+  %R only 4R             median trade -1.02R  median hold   6.0h  full losses  73%  longest losing run 17  exits {'stop': 241, 'target': 68, 'max_hold': 16}
+  st+band 18-24 2R       median trade -0.96R  median hold   6.0h  full losses  62%  longest losing run 10  exits {'stop': 98, 'target': 58, 'max_hold': 2}
+  st+band 18-24 1R       median trade +0.93R  median hold   2.7h  full losses  43%  longest losing run  5  exits {'target': 103, 'stop': 78}
+  st (no band) 3R        median trade -1.02R  median hold   5.1h  full losses  70%  longest losing run 17  exits {'stop': 255, 'target': 95, 'max_hold': 14}

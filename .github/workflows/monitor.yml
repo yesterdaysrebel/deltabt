@@ -64,7 +64,7 @@ jobs:
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
           - stack: atr
-            variant: SPEC:manual_scalp_banded_h1dir_t3@5/60
+            variant: SPEC:manual_scalp_t4@5
             instance_var: BOT_INSTANCE_ID_ATR
             document_var: SSM_MONITOR_DOCUMENT_ATR
             # 2026-08-27: the stack kept its name and its database and changed
@@ -103,13 +103,18 @@ jobs:
             # Supertrend aligned AND %R banded, on the thin 3 again. NEW
             # database deltabt_stb -- the seven-symbol run is stopped holding
             # majors that are no longer in the universe.
-            strategy_hash: "0ae19f412d693456e53c043fec93994c550af50c4eef885f5c66925ab068c467"
+            # 2026-09-04, later: the 1h-direction arm is withdrawn by
+            # instruction and the stack runs the operator's ORIGINAL entry
+            # (%R alone, no Supertrend) with a 4R target -- a tail harvest.
+            # NEW database deltabt_tail. Still 64 characters: a SPEC arm
+            # reports spec.config_hash in full.
+            strategy_hash: "68a126f7424c4c19fe6842ff678cc5c7a6ff7b688edce6fd6618d66d7dac2d24"
             log_group: /deltabt/paper/atr/bot
 
-          # 2026-09-04: A SECOND CONCURRENT ARM. The 5m Supertrend the atr
-          # stack gave up, %R banded, 1R target, and entries only while the
-          # bar OPENS 18:00-24:00 UTC. It runs BESIDE atr, not instead of it:
-          # the two test different claims and are meant to disagree.
+          # 2026-09-04: A SECOND CONCURRENT ARM. Supertrend aligned + %R
+          # banded on 5m, 1R target, and entries only while the bar OPENS
+          # 18:00-24:00 UTC. It runs BESIDE atr: the two share 15% of their
+          # entries and test different mechanisms, and are meant to disagree.
           #
           # fail-fast is already off above, which matters more with two
           # stacks than with one -- a sick host must not cost the other's

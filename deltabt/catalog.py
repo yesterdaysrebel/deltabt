@@ -459,8 +459,9 @@ FAMILIES: dict[str, dict] = {
     #    pooled figure leans on 21 days of history for two of three symbols.
     #  * NO TRUE OUT OF SAMPLE EXISTS on the thin three: the cache ends
     #    2026-08-12. Item 1 is other symbols, not later data. THIS ARM RUNS TO
-    #    PRODUCE THAT OUT-OF-SAMPLE, beside the 1h arm rather than instead of
-    #    it, and its P&L is a measurement rather than an expectation.
+    #    PRODUCE THAT OUT-OF-SAMPLE, beside `manual_scalp_t4` (chosen with it
+    #    by scripts/two_arms.py; the two share 15% of their entries), and its
+    #    P&L is a measurement rather than an expectation.
     #  * THE MECHANISM IS UNEXPLAINED. 18-24 UTC is the QUIETEST window on
     #    these symbols (BEATUSD 47 bps mean 5m range against 56-60 elsewhere)
     #    and the least entered. It is not the quiet window on the majors, and
@@ -707,6 +708,57 @@ FAMILIES: dict[str, dict] = {
     # SELECTION PREMIUM of +0.1310 that exceeded the +0.0310 effect it was
     # measuring. The table above is the best of five cells chosen in-sample.
     # That is exactly the shape of a result that does not survive.
+    # THE OPERATOR'S ORIGINAL ENTRY, HELD FOR THE MOVE. manual_scalp exactly
+    # -- %R rising above -80, no Supertrend, no ceiling, 4xATR -- with a 4R
+    # target instead of the 1R the hand record took profit at.
+    #
+    # WHY 4R. scripts/original_setup_exit_surface.py, 2026-09-04, thin three,
+    # cost gate on, anchored blocks. The original exit loses; the target is
+    # the only lever that moves it, and it moves it a long way:
+    #
+    #     target/hold     net       +ve    n
+    #     1R / 24h      -0.048      1/4   908     as it was traded
+    #     3R / 72h      +0.067      2/4   387
+    #     4R / 72h      +0.127      4/4   325     <- this family, at the
+    #     4R / 120h     +0.129      4/4   302        deployed 72h hold
+    #     5R / 72h      +0.016      3/4   293
+    #
+    # The 3R-4R x 72h-240h region is positive throughout (+0.09..+0.13); 5R
+    # and 6R fall away, so the target is a point on a ridge, not a plateau
+    # in every direction. Chosen out of block it holds: the best cell on
+    # blocks < 2 and < 3 scored +0.113 and +0.100 on the block it had not
+    # seen (scripts/two_arms.py).
+    #
+    # WHAT THE OPERATOR'S OWN RECORD SAYS. 77 of their 83 hand winners were
+    # taken between 0.5R and 1.5R. The backtest says those entries pay at
+    # 4R: the hand style was cutting the tail that carries the result.
+    #
+    # WHAT IT IS LIKE TO RUN, stated so nobody is surprised: win rate 26%,
+    # median trade a FULL LOSS, 73% of trades lose at least half their risk,
+    # longest losing run 17, drawdown 40R against 11R for the windowed 1R
+    # arm. Top 3 trades are 33% of the profit. This is a tail harvest: most
+    # trades lose one R and a quarter pay four. The live gates that would
+    # have strangled it -- a 3-loss daily breaker, a 10% drawdown halt --
+    # are disabled in variables.tf, and must stay so while this runs, or
+    # the arm is censored into something the backtest never measured.
+    #
+    # PER SYMBOL IT IS BEATUSD. +0.288 4/4 on 260 trades there, bootstrap
+    # [+0.04, +0.56]; AKEUSD -0.51 and BANKUSD -0.52 on 25 and 40 trades over
+    # 21 days. The pooled +0.127 already carries that drag. Longs +0.51,
+    # shorts +0.04 on BEATUSD, positive in the -68% block too -- but a
+    # long-only reading was not declared in advance and is not a finding.
+    #
+    # WHY IT RUNS BESIDE THE WINDOWED ARM. The two share 15% of their
+    # entries and nothing else: one is a 57%-win scalp taken in six hours of
+    # the day and resolved in three, the other a 26%-win hold that needs
+    # days. Whichever one fails, the other is still a test of something.
+    "manual_scalp_t4": dict(
+        desc="manual_scalp with a 4R target: the operator's original entry, held for the move",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=4.0, max_stop_pct=0.10),
+    ),
     "manual_stb_t15": dict(
         desc="manual_scalp_st_banded with a 1.5R target instead of 1R",
         primary=_tf_rules(supertrend="aligned", wpr_rule="banded"),

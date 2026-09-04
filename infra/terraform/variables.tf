@@ -772,58 +772,78 @@ variable "stacks" {
     # default resolves the confirmation to 1m and the bot trades a rule
     # nobody measured; app/config/variants.py refuses the bare form for
     # exactly this family rather than let that happen quietly.
-    atr = { variant = "SPEC:manual_scalp_banded_h1dir_t3@5/60", db_name = "deltabt_h1dir" }
-
-    # 2026-09-04: A SECOND CONCURRENT ARM, BY INSTRUCTION -- "run both arms".
     #
-    # This is not a replacement for `atr` and must not become one. The two
-    # test different claims and are deliberately allowed to disagree:
+    # 2026-09-04, LATER THE SAME DAY: THE 1h DIRECTION ARM IS WITHDRAWN BY
+    # INSTRUCTION. H1DIR-T3-5M-PAPER-20260904-1 ran for about five hours.
     #
-    #   atr    direction from the 1h Supertrend, %R banded on 5m, 3R / 72h.
-    #   hours  the 5m Supertrend the atr arm gave up, %R banded, 1R, and
-    #          entries only while the bar OPENS 18:00-24:00 UTC
-    #          (23:30-05:30 IST).
+    # It was the best-measured arm here: +0.186R per trade, 4/4 anchored
+    # blocks, and the only candidate whose parameter neighbourhood is a
+    # plateau (15 of 16 one-knob variants positive). That is written down
+    # because the decision to stop it was not made on the evidence, and
+    # nothing recorded above is withdrawn. Its record stays in deltabt_h1dir
+    # exactly as it was left, RUNNING experiment row included: the host that
+    # could retire it is replaced by this apply, and the successor stacks
+    # point at fresh databases, so nothing will ever bind there again.
     #
-    # WHY IT IS WORTH AN INSTANCE. On the thin three the same entry rule is
-    # -0.009R per trade across all hours and +0.117R restricted to the
-    # evening, positive in 4 of 4 anchored blocks. The window is a plateau,
-    # not a spike: every evening window is positive (18-22 +0.037 through
-    # 20-24 +0.167) and every other window is negative (00-06 -0.031, 06-12
-    # -0.122, 12-18 -0.126). An independent control on 20 thin perps whose
-    # data runs three weeks past the archive, and which the search never saw,
-    # reproduces it: gross +0.099 (4/4) against -0.026 for the all-hours arm,
-    # better on 18 of 20 symbols.
+    # TWO ARMS REPLACE IT, chosen by scripts/two_arms.py from eighteen
+    # 5-minute candidates put on one footing (same symbols, stop, hold and
+    # gates; every cell measured as an ARM, not as a filter on another arm's
+    # trades). They are the two that (a) are positive in all four anchored
+    # blocks, (b) stay positive when chosen on earlier blocks and scored on
+    # the next, and (c) share only 15% of their entries with each other:
     #
-    # WHY IT RUNS AS PAPER AND ITS P&L IS A MEASUREMENT, NOT AN EXPECTATION.
-    # The bootstrap on the pooled thin three includes zero (+0.117, 95%
-    # [-0.031, +0.260]). The blocks decay (+0.404 -> +0.074). BEATUSD -- the
-    # only symbol with real history -- is +0.078 with its most recent block
-    # NEGATIVE. And no true out-of-sample exists for these symbols at all: the
-    # cached archive ends 2026-08-12, so the control above is other SYMBOLS,
-    # not later data. This arm exists to produce the missing out-of-sample.
-    # deltabt/catalog.py carries the full caveat list including the one that
-    # matters most -- the discovery figure of +0.331 was the in-window subset
-    # of a BUSIER arm's trades and a live run cannot reproduce it.
+    #   hours  SPEC:manual_scalp_st_banded_h18_24@5   +0.114  4/4  n=181
+    #          Supertrend aligned + %R banded on 5m, 1R target, entries
+    #          only while the bar opens 18:00-24:00 UTC. Win 57%, median
+    #          trade +0.93R, drawdown 11R, 5.8 trades/week. A plateau in
+    #          the target (1R/1.5R/2R all 4/4) and in the window (every
+    #          evening window positive, every other window negative).
+    #          Independent control on 20 thin perps the search never saw:
+    #          gross +0.099 4/4 against -0.026 all-hours.
     #
-    # THE VARIANT NEEDS NO `/<confirm>` SUFFIX and must not be given one. This
-    # family gates on the primary timeframe alone; its confirmation rules are
-    # all off, so app/config/variants.py resolves the bare form correctly. The
-    # suffix is only load-bearing for a family whose DIRECTION comes from the
-    # confirmation timeframe, which is the atr stack above.
+    #   atr    SPEC:manual_scalp_t4@5                  +0.127  4/4  n=325
+    #          the operator's ORIGINAL entry (%R alone, no Supertrend) with a
+    #          4R target. Win 26%, median trade a full loss, drawdown 40R,
+    #          10 trades/week: a tail harvest. BEATUSD carries it (+0.288
+    #          4/4); AKEUSD and BANKUSD are negative on 21 days each.
     #
-    # A NEW DATABASE, deltabt_hours, FOR THE REASON EVERY SPLIT ABOVE GIVES:
-    # ux_forward_test_running allows one RUNNING experiment per database and
-    # ux_positions_open_symbol one open position per symbol across the whole
-    # table, so two concurrent arms in one database is not a tidiness question.
-    # It is created by the infrastructure workflow, which discovers every bot
-    # host and has each ensure its own DB_NAME -- no manual step, and no
+    # As one shared account each, live slots, 219 days: hours +10.6% with a
+    # 3.9% maximum drawdown; atr +21.0% with 11.6%. The all-hours control
+    # the windowed arm was found against is -3.8% and 14.4%.
+    #
+    # BOTH BOOTSTRAPS INCLUDE ZERO ([-0.03,+0.26] and [-0.10,+0.36]). They
+    # run to produce out-of-sample that the archive, which ends 2026-08-12,
+    # cannot; their P&L is a measurement, not an expectation. The one thing
+    # this pair can say that a single arm cannot is WHICH of two different
+    # mechanisms survives: a time-of-day effect on a fast exit, or a tail on
+    # a slow one.
+    #
+    # `atr` IS NOW A LEGACY NAME. It has not run the ATR arm since
+    # 2026-08-31. Renaming the stack would destroy and recreate its log group
+    # -- a type scripts/tf_guard.py protects -- so it keeps the name, as v1
+    # did before it. The Variant tag and the daily report say what it runs.
+    #
+    # BOTH GET A FRESH DATABASE. deltabt_manual holds the earlier run of the
+    # %R-alone entry and would be the comparable place for the 4R arm, but it
+    # was left with a RUNNING experiment and open positions, and
+    # ux_forward_test_running allows exactly one RUNNING experiment per
+    # database: the new arm would refuse to bind. That has cost a morning
+    # twice. A fresh database costs nothing and the old rows stay as they
+    # were. The infrastructure workflow creates both, from each host, with no
     # per-stack table to keep in step.
     #
-    # THE 72h HOLD IT INHERITS IS NOT A CHOICE AND CHANGES NOTHING. max_hold_
-    # seconds is global. At a 1R target this arm measures +0.117 at a 24h cap
-    # and +0.114 at 72h, with ONE time-exit in 181 trades. Keeping it global
-    # also keeps one EXPECTED_RISK_HASH valid for both stacks, and leaves the
-    # running arm's user_data byte-identical so this apply cannot replace it.
+    # THE 72h HOLD IS LOAD-BEARING FOR ONE ARM AND IMMATERIAL FOR THE OTHER,
+    # which is what makes one global value legal. The 4R arm needs it: at a
+    # 48h cap the same cell is -0.008 (1/4). The 1R arm does not care:
+    # +0.117 at 24h, +0.114 at 72h, one time-exit in 181 trades. Keeping it
+    # global keeps ONE EXPECTED_RISK_HASH valid for both stacks.
+    #
+    # THE GATES MUST STAY OFF WHILE THE 4R ARM RUNS. A 26%-win arm posts
+    # 17-trade losing runs; a 3-loss daily breaker or a 10% drawdown halt
+    # would censor it into something the backtest never measured. They are
+    # off (max_consecutive_losses 0, max_drawdown_pct 1.0, max_daily_loss_pct
+    # 1.0) and the daily report will show the drawdown that costs.
+    atr   = { variant = "SPEC:manual_scalp_t4@5", db_name = "deltabt_tail" }
     hours = { variant = "SPEC:manual_scalp_st_banded_h18_24@5", db_name = "deltabt_hours" }
   }
 }
