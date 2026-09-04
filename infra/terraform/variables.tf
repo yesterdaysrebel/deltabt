@@ -423,6 +423,22 @@ variable "bot_symbols" {
   # cost/volatility screen does not find more of these. Surviving a screen
   # of 25 is itself a selection, so expect WIFUSD to behave like BEATUSD:
   # near breakeven with materially lower drawdown.
+  # CHANGING THIS FILE ROLLS THE BOT, ON PURPOSE.
+  #
+  # The universe, the variant and the risk knobs below are what the
+  # experiment's config_hash is computed from. Terraform replacing the host is
+  # only half of such a change: the other half is retiring the running
+  # experiment and registering a successor, and that lives in the deploy
+  # workflow. So `infra/terraform/variables.tf` is in deploy.yml's path filter
+  # even though none of it is in the image, and
+  # tests/live/test_identity_paths_trigger_deploy.py fails if it is removed.
+  #
+  # Without that, a universe change applies, the host comes up with a new
+  # identity, and bind_experiment refuses it against a database still holding
+  # the old RUNNING experiment -- a bot that is live and cannot bind, with
+  # nothing red to say so. SOLUSD sat merged-but-unapplied for an hour on
+  # 2026-09-04 for exactly this reason.
+  #
   # SOLUSD ADDED 2026-09-04 BY INSTRUCTION, AGAINST THE MEASURED EVIDENCE.
   #
   # Measured under the family that is actually running

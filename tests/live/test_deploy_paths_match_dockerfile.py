@@ -118,17 +118,41 @@ class TestDeployTriggerCoversTheImage:
         # changing what goes into it.
         assert any(p.startswith("deploy/docker") for p in trigger_paths())
 
+    #: The one path outside the image that MUST roll, and why.
+    #:
+    #: `infra/terraform/variables.tf` holds the universe, the variant and the
+    #: risk knobs -- the inputs the experiment's config_hash is computed from.
+    #: Changing one replaces the host with a NEW identity, and the other half
+    #: of that change (retire the running experiment, register a successor)
+    #: lives in the deploy workflow. Without a roll the new host meets a
+    #: database holding a RUNNING experiment whose hash no longer matches,
+    #: bind_experiment refuses it, and the bot is live and unbound with
+    #: nothing red to say so. SOLUSD sat merged-but-unapplied for an hour on
+    #: 2026-09-04 for exactly this reason.
+    #:
+    #: The rest of infra/ stays excluded: a subnet or an alarm changing does
+    #: not move the experiment's identity.
+    IDENTITY_EXCEPTIONS = {"infra/terraform/variables.tf"}
+
     @pytest.mark.parametrize("never", ["tests/", "scripts/", "out/", "reports/",
                                        "docs/", "infra/", ".github/"])
     def test_paths_outside_the_image_are_not_triggers(self, never):
         root = never.rstrip("/")
         for p in trigger_paths():
-            if p.startswith("!"):
+            if p.startswith("!") or p in self.IDENTITY_EXCEPTIONS:
                 continue
             assert not (p == root or p.startswith(root + "/")), (
                 f"{never} is not copied into the image, so a change there "
                 f"cannot alter what the bot runs -- but it would roll a live "
                 f"experiment and fail on drift.")
+
+    def test_the_identity_exception_is_exactly_one_file(self):
+        """A narrow exception, not a reopened door to all of infra/."""
+        infra_triggers = {p for p in trigger_paths()
+                          if not p.startswith("!") and p.startswith("infra/")}
+        assert infra_triggers == self.IDENTITY_EXCEPTIONS, (
+            f"only {self.IDENTITY_EXCEPTIONS} may trigger a roll from infra/; "
+            f"found {infra_triggers}")
 
     def test_research_runners_are_excluded(self):
         # They ship, since deltabt/ is copied whole, but nothing under app/
