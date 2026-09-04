@@ -38,7 +38,15 @@ from dataclasses import asdict, dataclass, field
 #: candidate %R rules in this repository differ by orders of magnitude in
 #: firing rate, so an unrecognised string must fail loudly rather than fall
 #: back to a default that quietly changes the strategy.
-WPR_RULES = ("variant_a", "cross_levels", "banded", "none")
+#: ``banded_fade``  the ``banded`` conditions with the SIDES SWAPPED: a long
+#:                  requires the banded SHORT condition (upper half, falling)
+#:                  and a short the banded LONG condition (lower half, rising).
+#:                  Exists because on BTC/ETH/SOL/XRP the forward move after a
+#:                  ``banded`` signal is NEGATIVE at 12-96 bars in both halves
+#:                  of 2025-01..2026-08 (scripts/fade_walkforward.py). It is a
+#:                  new vocabulary VALUE rather than a new field so no existing
+#:                  spec's ``config_hash`` moves.
+WPR_RULES = ("variant_a", "cross_levels", "banded", "banded_fade", "none")
 
 #: Entry trigger vocabulary.
 #:
@@ -69,7 +77,10 @@ STOPS = ("leg_extreme", "atr", "fixed_pct")
 #: ``flip``     direction agrees AND changed on this bar. Distinct from
 #:              ``aligned`` in firing rate by orders of magnitude: alignment is
 #:              a level condition true for a whole leg, a flip is one bar.
-SUPERTREND_MODES = ("off", "aligned", "flip")
+#: ``counter``  direction DISAGREES with the trade: a long needs a bearish
+#:              Supertrend, a short a bullish one. Pairs with ``banded_fade``
+#:              to express the exact inverse of ``manual_scalp_st_banded``.
+SUPERTREND_MODES = ("off", "aligned", "flip", "counter")
 
 
 @dataclass(frozen=True)

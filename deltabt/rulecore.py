@@ -146,8 +146,14 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np
         if rules.supertrend == "flip":
             bull &= np.isfinite(dp) & (dp >= 0)
             bear &= np.isfinite(dp) & (dp <= 0)
-        long_ok &= bull
-        short_ok &= bear
+        if rules.supertrend == "counter":
+            # The inverse gate: a long against a bearish Supertrend, a short
+            # against a bullish one. See ``banded_fade`` below for why.
+            long_ok &= bear
+            short_ok &= bull
+        else:
+            long_ok &= bull
+            short_ok &= bear
 
     if rules.di:
         ok = np.isfinite(ti.plus_di) & np.isfinite(ti.minus_di)
@@ -186,6 +192,18 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np
         ok = np.isfinite(w) & np.isfinite(wp)
         long_ok &= ok & (w > rules.wpr_long_level) & (w < mid) & (w > wp)
         short_ok &= ok & (w < rules.wpr_short_level) & (w > mid) & (w < wp)
+    elif rules.wpr_rule == "banded_fade":
+        # ``banded`` with the sides swapped. The SETUP is the same set of
+        # bars, only the label changes: the bar that is a banded LONG setup
+        # is a banded_fade SHORT setup, so an edge trigger fires on exactly
+        # the same bars. With ``supertrend = "counter"`` on the same
+        # timeframe this is the precise inverse of manual_scalp_st_banded,
+        # which is the property tests/test_banded_fade.py asserts.
+        w, wp = ti.wpr, _prev(ti.wpr)
+        mid = 0.5 * (rules.wpr_long_level + rules.wpr_short_level)
+        ok = np.isfinite(w) & np.isfinite(wp)
+        long_ok &= ok & (w < rules.wpr_short_level) & (w > mid) & (w < wp)
+        short_ok &= ok & (w > rules.wpr_long_level) & (w < mid) & (w > wp)
     elif rules.wpr_rule == "cross_levels":
         # Crossed OUT of the band on this bar: long leaves oversold, short
         # leaves overbought. A one-bar event, so this is already edge-like.

@@ -326,6 +326,69 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # THE EXACT INVERSE of manual_scalp_st_banded: same bars, opposite side.
+    #
+    # Found 2026-09-03 while looking for anything that moves GROSS R on the
+    # majors. The forward move in ATR after a manual_scalp_st_banded signal
+    # is negative at 12-96 bars on BTC/ETH/SOL/XRP in both halves of the
+    # archive, and swapping the sides gives gross +0.072 BTC, +0.053 SOL,
+    # +0.076 XRP, each 4/4 anchored blocks (ETH neutral). The same swap is
+    # NEGATIVE on BEATUSD/AKEUSD/BANKUSD, so the two universes want opposite
+    # rules and this is not an engine artefact.
+    #
+    # scripts/fade_walkforward.py, 2026-09-03, archive 2025-01-01..2026-08-12,
+    # anchored quarters, cost gate 0.15 on, GROSS R per trade (net in
+    # brackets). The PRIMARY cell was declared before the sweep ran:
+    #
+    #   fade 4x 1R 24h   BTC 3/4 +0.041   ETH 1/4 -0.015   SOL 3/4 +0.050
+    #                    XRP 4/4 +0.067   POOLED 4/4 +0.037 [net -0.069]
+    #
+    # Sweep stop{4,6,8} x target{1,1.5,2} x hold{24,48}: every one of the 18
+    # cells is gross-positive over the full period and 15 are 4/4. The
+    # selection test (best of 18 on training blocks, scored on the next
+    # block) chose 4x 2R 48h on every split and it HELD: train +0.101 ->
+    # +0.115, +0.107 -> +0.065, +0.093 -> +0.114. Selection premium +0.002,
+    # against +0.1310 for the 2026-08 stop-width sweep. 4x 2R 48h full period:
+    # gross +0.096, net -0.009, n=2676.
+    #
+    # TRUE out-of-sample 2026-08-12 -> 2026-09-03 (scripts/fade_oos.py, Delta
+    # 1m bucketed to 5m, 22 days, NET R, bootstrap 95%):
+    #
+    #   live 4x 1R 24h            n=109  win 39%  -0.310  [-0.495, -0.118]
+    #   fade 4x 1R 24h (primary)  n=109  win 61%  +0.146  [-0.044, +0.336]
+    #   fade 4x 2R 48h (sweep)    n= 81  win 47%  +0.310  [+0.026, +0.626]
+    #
+    # Per symbol OOS the fade is positive on BTC, SOL, XRP and flat on ETH,
+    # matching the archive. 22 days is 22 days: the OOS gross (+0.24) is
+    # several times the archive gross (+0.04), so the window was kind to the
+    # rule and the archive number is the one to plan on. Net at 4x/1R is
+    # still negative on the archive; 4x/2R/48h is net -0.009 there.
+    #
+    # 2026-09-03, LATER THE SAME DAY -- DO NOT TRADE THIS AS IT STANDS.
+    # An independent 108-cell audit (entry mode x stop x target x hold x
+    # trend age) found the fade is NOT net positive in any robust cell:
+    #   * the only net-positive configurations carry NO target and a 48h cap,
+    #     and their entire profit is 3 trades that hit the cap while trending
+    #     (top 3 = 105% of net; drop them and net is 0.000);
+    #   * the hold and stop neighbours are negative on both sides (h480
+    #     -0.036, h576 +0.037, h864 -0.030; 3.5x -0.056, 4x +0.037,
+    #     4.5x -0.033) -- a spike, not a plateau;
+    #   * grid selection premium +0.036 R against a best cell of +0.068 R;
+    #   * BTC is net NEGATIVE (-0.13) and XRP alone is ~94% of the positive R.
+    # What survives is qualitative and worth keeping: the majors DO mean
+    # revert after a YOUNG Supertrend flip taken low in the 140-bar range
+    # (gross by trend age: 0 bars +0.084, 2-3 +0.200, 4-7 +0.184, 16+ -0.006),
+    # the move needs more than 4 hours, and a 1R target is the worst way to
+    # harvest it (net improves monotonically as the target widens). A maker
+    # limit entry at 0.25xATR is a real saving -- cost 0.104 -> 0.070 R -- but
+    # closes only a fifth of the gap. This needs sub-4 bps per leg to trade.
+    "manual_scalp_st_banded_fade": dict(
+        desc="inverse of manual_scalp_st_banded: fade the 5m ST flip in the lower half of the %R range",
+        primary=_tf_rules(supertrend="counter", wpr_rule="banded_fade"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=1.0, max_stop_pct=0.10),
+    ),
     # THE OPERATOR'S ACTUAL SETUP, as stated on 2026-09-01 -- and it is not
     # what manual_scalp or manual_scalp_st encode.
     #
