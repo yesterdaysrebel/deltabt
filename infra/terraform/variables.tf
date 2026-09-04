@@ -423,7 +423,31 @@ variable "bot_symbols" {
   # cost/volatility screen does not find more of these. Surviving a screen
   # of 25 is itself a selection, so expect WIFUSD to behave like BEATUSD:
   # near breakeven with materially lower drawdown.
-  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD"
+  # SOLUSD ADDED 2026-09-04 BY INSTRUCTION, AGAINST THE MEASURED EVIDENCE.
+  #
+  # Measured under the family that is actually running
+  # (`manual_scalp_banded_h1dir`, 4xATR/1R/24h, scripts/audit_context_direction.py):
+  #
+  #   blk0    blk1    blk2    blk3   +ve   net     gross   n     win
+  #  -0.179  -0.134  -0.088  -0.150  0/4  -0.139  -0.035  793   47%
+  #
+  # Three things make this different from a symbol that merely underperforms:
+  #
+  #   * GROSS IS NEGATIVE (-0.035R). This is not a cost problem that better
+  #     execution could rescue -- the signal points the wrong way on SOLUSD
+  #     before a single fee is charged.
+  #   * It loses in ALL FOUR anchored blocks, including the current regime.
+  #   * No context timeframe repairs it: 30m, 60m, 120m and 240m are all 0/4.
+  #
+  # Total over the archive is -110.3R across 793 trades. At the arm's 0.5%
+  # risk per trade that is roughly half the account. Nothing in the
+  # concentration profile softens it either: removing the ten best trades
+  # makes the average WORSE (-0.153R), which is what a genuinely negative
+  # edge looks like rather than a few bad prints.
+  #
+  # It is here because it was asked for after the evidence was put. Removing
+  # it is one line, and the arm is paper only.
+  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD,SOLUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
