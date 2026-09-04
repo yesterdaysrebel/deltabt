@@ -70,3 +70,47 @@ def test_the_document_uses_the_bots_own_environment():
     doc = document()
     for var in ("DELTABOT_SYMBOLS", "DELTABOT_VARIANT", "DELTABOT_MAX_HOLD"):
         assert var in doc, f"{var} is not passed to the one-off container"
+
+
+# --- a stack's FIRST roll, which has nothing to retire ----------------------
+#
+# Added 2026-09-04 with the second stack. The deploy retires before it rolls,
+# so on a host Terraform has just created the stop branch runs before anything
+# has ever started there. Three preconditions fail on such a host and each one
+# aborts the deploy under `set -e`, leaving the new arm down: run.sh has not
+# written /run/deltabt/env, the image tag is still "none", and the CLI exits 1
+# because no experiment is RUNNING.
+
+def test_stop_tolerates_a_host_that_has_never_run_a_container():
+    doc = document()
+    assert "/run/deltabt/env" in doc and "nothing to retire" in doc, (
+        "the stop branch no longer guards a host where run.sh has never run; "
+        "a new stack's first deploy will fail before it rolls")
+
+
+def test_stop_tolerates_an_undeployed_image_tag():
+    doc = document()
+    assert '"$TAG" = "none"' in doc, (
+        "the stop branch no longer guards the pre-deploy image tag; "
+        "`docker run repo:none` fails and aborts the first roll")
+
+
+def test_stop_tolerates_there_being_no_running_experiment():
+    """And it matches on the CLI's words, so this pins them together."""
+    doc = document()
+    message = "no experiment is RUNNING"
+    assert message in CLI.read_text(), (
+        f"app/cli.py no longer prints {message!r} when nothing is running. "
+        f"The experiment document matches on that exact string to tell "
+        f"'nothing to retire' apart from a real failure, and it now cannot.")
+    assert message in doc, (
+        "the stop branch no longer tolerates 'no experiment is RUNNING', so "
+        "the first roll of a new stack fails on an empty database")
+
+
+def test_stop_still_fails_on_a_real_error():
+    """The tolerance must be narrow, or a broken retire ships silently."""
+    doc = document()
+    assert "retire FAILED" in doc and 'exit "$rc"' in doc, (
+        "the stop branch swallows every non-zero exit; a genuine failure to "
+        "retire would then be followed by a roll that cannot bind")

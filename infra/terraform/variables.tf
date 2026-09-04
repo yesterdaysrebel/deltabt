@@ -772,7 +772,79 @@ variable "stacks" {
     # default resolves the confirmation to 1m and the bot trades a rule
     # nobody measured; app/config/variants.py refuses the bare form for
     # exactly this family rather than let that happen quietly.
-    atr = { variant = "SPEC:manual_scalp_banded_h1dir_t3@5/60", db_name = "deltabt_h1dir" }
+    #
+    # 2026-09-04, LATER THE SAME DAY: THE 1h DIRECTION ARM IS WITHDRAWN BY
+    # INSTRUCTION. H1DIR-T3-5M-PAPER-20260904-1 ran for about five hours.
+    #
+    # It was the best-measured arm here: +0.186R per trade, 4/4 anchored
+    # blocks, and the only candidate whose parameter neighbourhood is a
+    # plateau (15 of 16 one-knob variants positive). That is written down
+    # because the decision to stop it was not made on the evidence, and
+    # nothing recorded above is withdrawn. Its record stays in deltabt_h1dir
+    # exactly as it was left, RUNNING experiment row included: the host that
+    # could retire it is replaced by this apply, and the successor stacks
+    # point at fresh databases, so nothing will ever bind there again.
+    #
+    # TWO ARMS REPLACE IT, chosen by scripts/two_arms.py from eighteen
+    # 5-minute candidates put on one footing (same symbols, stop, hold and
+    # gates; every cell measured as an ARM, not as a filter on another arm's
+    # trades). They are the two that (a) are positive in all four anchored
+    # blocks, (b) stay positive when chosen on earlier blocks and scored on
+    # the next, and (c) share only 15% of their entries with each other:
+    #
+    #   hours  SPEC:manual_scalp_st_banded_h18_24@5   +0.114  4/4  n=181
+    #          Supertrend aligned + %R banded on 5m, 1R target, entries
+    #          only while the bar opens 18:00-24:00 UTC. Win 57%, median
+    #          trade +0.93R, drawdown 11R, 5.8 trades/week. A plateau in
+    #          the target (1R/1.5R/2R all 4/4) and in the window (every
+    #          evening window positive, every other window negative).
+    #          Independent control on 20 thin perps the search never saw:
+    #          gross +0.099 4/4 against -0.026 all-hours.
+    #
+    #   atr    SPEC:manual_scalp_t4@5                  +0.127  4/4  n=325
+    #          the operator's ORIGINAL entry (%R alone, no Supertrend) with a
+    #          4R target. Win 26%, median trade a full loss, drawdown 40R,
+    #          10 trades/week: a tail harvest. BEATUSD carries it (+0.288
+    #          4/4); AKEUSD and BANKUSD are negative on 21 days each.
+    #
+    # As one shared account each, live slots, 219 days: hours +10.6% with a
+    # 3.9% maximum drawdown; atr +21.0% with 11.6%. The all-hours control
+    # the windowed arm was found against is -3.8% and 14.4%.
+    #
+    # BOTH BOOTSTRAPS INCLUDE ZERO ([-0.03,+0.26] and [-0.10,+0.36]). They
+    # run to produce out-of-sample that the archive, which ends 2026-08-12,
+    # cannot; their P&L is a measurement, not an expectation. The one thing
+    # this pair can say that a single arm cannot is WHICH of two different
+    # mechanisms survives: a time-of-day effect on a fast exit, or a tail on
+    # a slow one.
+    #
+    # `atr` IS NOW A LEGACY NAME. It has not run the ATR arm since
+    # 2026-08-31. Renaming the stack would destroy and recreate its log group
+    # -- a type scripts/tf_guard.py protects -- so it keeps the name, as v1
+    # did before it. The Variant tag and the daily report say what it runs.
+    #
+    # BOTH GET A FRESH DATABASE. deltabt_manual holds the earlier run of the
+    # %R-alone entry and would be the comparable place for the 4R arm, but it
+    # was left with a RUNNING experiment and open positions, and
+    # ux_forward_test_running allows exactly one RUNNING experiment per
+    # database: the new arm would refuse to bind. That has cost a morning
+    # twice. A fresh database costs nothing and the old rows stay as they
+    # were. The infrastructure workflow creates both, from each host, with no
+    # per-stack table to keep in step.
+    #
+    # THE 72h HOLD IS LOAD-BEARING FOR ONE ARM AND IMMATERIAL FOR THE OTHER,
+    # which is what makes one global value legal. The 4R arm needs it: at a
+    # 48h cap the same cell is -0.008 (1/4). The 1R arm does not care:
+    # +0.117 at 24h, +0.114 at 72h, one time-exit in 181 trades. Keeping it
+    # global keeps ONE EXPECTED_RISK_HASH valid for both stacks.
+    #
+    # THE GATES MUST STAY OFF WHILE THE 4R ARM RUNS. A 26%-win arm posts
+    # 17-trade losing runs; a 3-loss daily breaker or a 10% drawdown halt
+    # would censor it into something the backtest never measured. They are
+    # off (max_consecutive_losses 0, max_drawdown_pct 1.0, max_daily_loss_pct
+    # 1.0) and the daily report will show the drawdown that costs.
+    atr   = { variant = "SPEC:manual_scalp_t4@5", db_name = "deltabt_tail" }
+    hours = { variant = "SPEC:manual_scalp_st_banded_h18_24@5", db_name = "deltabt_hours" }
   }
 }
 

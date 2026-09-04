@@ -1,0 +1,29 @@
+skip volscreen ['index', 'symbol', 'bars', 'stop_bps', 'cost_r', 'px']
+
+== 25 screened thin perps, ungated: the windowed arm against the all-hours arm
+  arm                                gross by pooled block    gross     net   win      n  symbols
+  all hours    -0.029(4770) +0.004(4514) -0.016(4843) +0.010(3993)  2/4  -0.008  -0.255  47%  18120  20
+  18-24 UTC    +0.139(1188) +0.048(1072) +0.055(1209) +0.040( 911)  4/4  +0.073  -0.180  51%   4380  20
+  per symbol: windowed gross > all-hours on 18/20; windowed gross > 0 on 18/20
+  ALTUSD:-0.12/-0.08  BBUSD:+0.18/+0.02  BLURUSD:-0.03/+0.00  ENAUSD:+0.01/-0.02  ETHFIUSD:+0.14/+0.07  IOUSD:+0.07/-0.09  JTOUSD:+0.03/-0.01  LISTAUSD:+0.02/-0.01  MANTAUSD:+0.12/+0.03  MEMEUSD:+0.00/-0.06  NOTUSD:+0.10/-0.03  ONDOUSD:+0.10/-0.04  ORDIUSD:+0.09/+0.02  TAOUSD:+0.05/-0.02  TIAUSD:+0.10/+0.02  TRBUSD:+0.09/+0.02  WIFUSD:+0.24/+0.06  XAIUSD:+0.01/-0.06  ZKUSD:+0.14/-0.05  ZROUSD:+0.15/+0.04
+
+== 25 screened thin perps, gated: the windowed arm against the all-hours arm
+  arm                                gross by pooled block    gross     net   win      n  symbols
+  all hours    -0.072(1916) -0.022(1450) -0.005(2164) +0.008(1116)  1/4  -0.026  -0.127  48%   6646  20
+  18-24 UTC    +0.157( 491) +0.081( 337) +0.063( 526) +0.085( 242)  4/4  +0.099  +0.000  54%   1596  20
+  per symbol: windowed gross > all-hours on 18/20; windowed gross > 0 on 16/20
+  ALTUSD:+0.04/-0.07  BBUSD:+0.11/-0.02  BLURUSD:-0.05/-0.00  ENAUSD:+0.16/-0.02  ETHFIUSD:+0.13/+0.05  IOUSD:+0.08/-0.09  JTOUSD:+0.16/-0.02  LISTAUSD:+0.16/-0.05  MANTAUSD:+0.04/+0.02  MEMEUSD:+0.06/-0.10  NOTUSD:+0.10/-0.02  ONDOUSD:+0.11/+0.00  ORDIUSD:+0.09/+0.01  TAOUSD:-0.01/-0.04  TIAUSD:+0.31/+0.01  TRBUSD:-0.25/-0.09  WIFUSD:+0.24/+0.02  XAIUSD:-0.02/-0.07  ZKUSD:+0.38/-0.00  ZROUSD:+0.09/-0.02
+
+== 25 screened thin perps, ungated: the windowed arm against the all-hours arm
+  arm                                gross by pooled block    gross     net   win      n  symbols
+  all hours    -0.048( 490) -0.148( 512) -0.103( 822) -0.029(1023)  0/4  -0.075  -0.154  45%   2847  5
+  18-24 UTC    -0.002( 156) -0.066( 191) -0.002( 311) +0.021( 368)  1/4  -0.006  -0.095  49%   1026  5
+  per symbol: windowed gross > all-hours on 4/5; windowed gross > 0 on 3/5
+  BLESSUSD:+0.01/-0.12  HUSD:+0.02/-0.03  LABUSD:-0.13/-0.05  SKYAIUSD:-0.02/-0.10  VELVETUSD:+0.07/-0.03
+
+== 25 screened thin perps, gated: the windowed arm against the all-hours arm
+  arm                                gross by pooled block    gross     net   win      n  symbols
+  all hours    -0.038( 406) -0.146( 435) -0.118( 791) -0.037( 953)  0/4  -0.080  -0.141  45%   2585  5
+  18-24 UTC    -0.000( 122) -0.137( 155) -0.017( 299) -0.005( 323)  0/4  -0.031  -0.095  48%    899  5
+  per symbol: windowed gross > all-hours on 4/5; windowed gross > 0 on 2/5
+  BLESSUSD:-0.01/-0.15  HUSD:+0.00/-0.01  LABUSD:-0.13/-0.05  SKYAIUSD:-0.09/-0.12  VELVETUSD:+0.07/-0.03

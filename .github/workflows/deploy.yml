@@ -241,7 +241,11 @@ jobs:
           # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
           # step with infra/terraform/variables.tf so the job title does not
           # announce a strategy the host is not running.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_banded_h1dir_t3@5/60","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          # TWO STACKS SINCE 2026-09-04, and a push rolls BOTH. That is the
+          # documented cost of the merge-to-deploy pipeline: each stack
+          # retires its running experiment and registers a successor. Use
+          # only_stack to bring one up without disturbing the other.
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_t4@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
@@ -454,7 +458,12 @@ jobs:
           # `<stack>-experiment`; appending gives `...-deploy-experiment`,
           # which does not exist and fails as an IAM AccessDenied on a
           # document nobody can find. That is what happened on 2026-09-04.
-          DEPLOY_DOC: ${{ vars[matrix.document_var] }}
+          # The repository variable if it is set, else the name Terraform
+          # gives the document. Deriving it means a NEW stack needs no
+          # repository variable at all -- merge, apply, roll -- and
+          # tests/live/test_document_names_are_derivable.py pins the scheme
+          # against infra/terraform so the fallback cannot rot.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
           ID: ${{ steps.host.outputs.instance_id }}
         run: |
           set -euo pipefail
@@ -480,7 +489,7 @@ jobs:
         run: |
           CMD=$(aws ssm send-command \
             --region "$AWS_REGION" \
-            --document-name "${{ vars[matrix.document_var] }}" \
+            --document-name "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}" \
             --instance-ids "${{ steps.host.outputs.instance_id }}" \
             --parameters "ImageTag=${{ steps.tag.outputs.tag }}" \
             --comment "gha ${{ github.run_id }}" \
@@ -536,7 +545,12 @@ jobs:
           # `<stack>-experiment`; appending gives `...-deploy-experiment`,
           # which does not exist and fails as an IAM AccessDenied on a
           # document nobody can find. That is what happened on 2026-09-04.
-          DEPLOY_DOC: ${{ vars[matrix.document_var] }}
+          # The repository variable if it is set, else the name Terraform
+          # gives the document. Deriving it means a NEW stack needs no
+          # repository variable at all -- merge, apply, roll -- and
+          # tests/live/test_document_names_are_derivable.py pins the scheme
+          # against infra/terraform so the fallback cannot rot.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
           ID: ${{ steps.host.outputs.instance_id }}
           EXP: ${{ steps.experiment.outputs.id }}
         run: |

@@ -255,6 +255,11 @@ class SignalArrays:
     #: Per-bar reasons a true setup produced no entry.
     rejected_stop_pct: np.ndarray
     rejected_leg_truncated: np.ndarray
+    #: The setup fired, and the bar opened outside ``spec.entry_hours_utc``.
+    #: All False when the spec carries no window. Kept for the same reason as
+    #: the two above: "nothing happened" and "the clock refused it" are
+    #: different facts, and the live audit trail should not have to guess.
+    rejected_entry_hours: np.ndarray
     warmup: int
     spec: StrategySpec
     primary: TimeframeIndicators
@@ -325,6 +330,25 @@ def compute(primary: pd.DataFrame, confirm: pd.DataFrame | None,
     fired_long &= ~both
     fired_short &= ~both
 
+    # THE ENTRY WINDOW, APPLIED TO THE TRIGGER AND NOT TO THE SETUP.
+    #
+    # Masking here means a setup that turns true outside the window is simply
+    # not taken. Folding the hours into `gate` instead would make the setup go
+    # FALSE->TRUE at the window boundary and fire every stale setup at the top
+    # of the hour -- a different rule, and not the one measured.
+    #
+    # `pi.time` is the bar OPEN, which is what scripts/five_min_arm_hours.py
+    # bucketed by, so the family reproduces its numbers exactly.
+    outside_hours = np.zeros(n, dtype=bool)
+    if spec.entry_hours_utc is not None:
+        lo, hi = (int(h) for h in spec.entry_hours_utc)
+        hour = (pi.time.astype("int64") % 86_400) // 3_600
+        inside = ((hour >= lo) & (hour < hi) if lo < hi
+                  else (hour >= lo) | (hour < hi))
+        outside_hours = (fired_long | fired_short) & ~inside
+        fired_long &= inside
+        fired_short &= inside
+
     stop_long, stop_short = _stops(pi, spec)
     risk_long = pi.close - stop_long
     risk_short = stop_short - pi.close
@@ -362,6 +386,7 @@ def compute(primary: pd.DataFrame, confirm: pd.DataFrame | None,
         long_setup=long_setup, short_setup=short_setup,
         rejected_stop_pct=rejected_stop_pct,
         rejected_leg_truncated=rejected_leg_truncated,
+        rejected_entry_hours=outside_hours,
         warmup=spec.warmup_bars,
         spec=spec, primary=pi, confirm=ci, confirm_index=cidx,
     )

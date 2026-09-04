@@ -1,0 +1,21 @@
+live gates from variables.tf: {'max_open_positions': 6, 'max_drawdown_pct': 1.0, 'max_daily_loss_pct': 1.0, 'max_consecutive_losses': 0}
+
+arm                   gates                             return  maxDD trades   net R  win halts  rejects (breaker / drawdown / daily-loss)
+st+band 18-24 1R      ungated (live slots)              +10.6%   3.9%    181  +0.114  57%     0  0 / 0 / 0
+st+band 18-24 1R      live, halt terminal               +10.6%   3.9%    181  +0.114  57%     0  0 / 0 / 0
+st+band 18-24 1R      live, operator resumes weekly     +10.6%   3.9%    181  +0.114  57%     0  0 / 0 / 0
+st+band 18-24 2R      ungated (live slots)               +9.5%   7.4%    158  +0.120  38%     0  0 / 0 / 0
+st+band 18-24 2R      live, halt terminal                +9.5%   7.4%    158  +0.120  38%     0  0 / 0 / 0
+st+band 18-24 2R      live, operator resumes weekly      +9.5%   7.4%    158  +0.120  38%     0  0 / 0 / 0
+%R only 4R            ungated (live slots)              +21.0%  11.6%    325  +0.127  26%     0  0 / 0 / 0
+%R only 4R            live, halt terminal               +21.0%  11.6%    325  +0.127  26%     0  0 / 0 / 0
+%R only 4R            live, operator resumes weekly     +21.0%  11.6%    325  +0.127  26%     0  0 / 0 / 0
+%R 5m+1m 3R           ungated (live slots)              +26.8%  14.0%    373  +0.140  31%     0  0 / 0 / 0
+%R 5m+1m 3R           live, halt terminal               +26.8%  14.0%    373  +0.140  31%     0  0 / 0 / 0
+%R 5m+1m 3R           live, operator resumes weekly     +26.8%  14.0%    373  +0.140  31%     0  0 / 0 / 0
+st (no band) 3R       ungated (live slots)              +18.2%  21.5%    364  +0.103  30%     0  0 / 0 / 0
+st (no band) 3R       live, halt terminal               +18.2%  21.5%    364  +0.103  30%     0  0 / 0 / 0
+st (no band) 3R       live, operator resumes weekly     +18.2%  21.5%    364  +0.103  30%     0  0 / 0 / 0
+st+band 1R (control)  ungated (live slots)               -3.8%  14.4%    587  -0.012  51%     0  0 / 0 / 0
+st+band 1R (control)  live, halt terminal                -3.8%  14.4%    587  -0.012  51%     0  0 / 0 / 0
+st+band 1R (control)  live, operator resumes weekly      -3.8%  14.4%    587  -0.012  51%     0  0 / 0 / 0
