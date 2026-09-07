@@ -260,3 +260,34 @@ def test_the_original_familys_hash_has_not_moved():
     """It ran live as MANUAL-SCALP-5M-PAPER-20260831-*; that record must stay
     comparable."""
     assert build_spec("manual_scalp", 5, 1).config_hash.startswith("977909932064d543")
+
+
+# ------------------------------------------ the operator's entry, held to 3R --
+
+def test_manual_scalp_both_t3_is_its_parent_with_only_the_target_moved():
+    """The family's whole claim is that the ENTRY is unchanged and only the
+    exit differs. If anything else drifts, the 1R-vs-3R comparison recorded
+    in the catalog stops being a comparison."""
+    base = build_spec("manual_scalp_both", 5, 1)
+    t3 = build_spec("manual_scalp_both_t3", 5, 1)
+    assert t3.target_r == 3.0 and base.target_r == 1.0
+    assert t3.entry_hours_utc is None
+    assert replace(t3, target_r=base.target_r, name=base.name).config_hash \
+        == base.config_hash
+
+
+def test_it_requires_the_oscillator_on_both_timeframes():
+    """The strict reading of '5 min and 1 min as confirmation'. manual_scalp
+    is the loose one and is a different family."""
+    t3 = build_spec("manual_scalp_both_t3", 5, 1)
+    assert t3.primary.wpr_rule == "variant_a"
+    assert t3.confirm.wpr_rule == "variant_a"
+    assert t3.confirm.enabled, "the 1m confirmation is the point of this family"
+    for rules in (t3.primary, t3.confirm):
+        assert rules.supertrend == "off" and not rules.di and rules.adx_min is None
+
+
+def test_the_parent_hash_has_not_moved():
+    """manual_scalp_both ran in the September ranking; that record must stay
+    comparable to anything measured after."""
+    assert build_spec("manual_scalp_both", 5, 1).config_hash.startswith("9cd8ed95f1a7")

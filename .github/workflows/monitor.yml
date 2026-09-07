@@ -64,7 +64,7 @@ jobs:
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
           - stack: atr
-            variant: SPEC:manual_scalp_t4@5
+            variant: SPEC:manual_scalp_both_t3@5
             instance_var: BOT_INSTANCE_ID_ATR
             document_var: SSM_MONITOR_DOCUMENT_ATR
             # 2026-08-27: the stack kept its name and its database and changed
@@ -108,7 +108,10 @@ jobs:
             # (%R alone, no Supertrend) with a 4R target -- a tail harvest.
             # NEW database deltabt_tail. Still 64 characters: a SPEC arm
             # reports spec.config_hash in full.
-            strategy_hash: "68a126f7424c4c19fe6842ff678cc5c7a6ff7b688edce6fd6618d66d7dac2d24"
+            # 2026-09-07: the 4R arm is replaced by the operator's %R entry on
+            # BOTH timeframes held to 3R. New database deltabt_both. Still 64
+            # characters: a SPEC arm reports spec.config_hash in full.
+            strategy_hash: "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d"
             log_group: /deltabt/paper/atr/bot
 
           # 2026-09-04: A SECOND CONCURRENT ARM. Supertrend aligned + %R
