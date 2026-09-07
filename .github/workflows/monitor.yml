@@ -132,6 +132,28 @@ jobs:
             strategy_hash: "89ed49527806c0e3b6394c4c3fff87cb8d02d6ec450bcb77d5b9068991e065f6"
             log_group: /deltabt/paper/hours/bot
 
+          # 2026-09-07: A THIRD ARM, ADDED WITHOUT DISTURBING THE OTHER TWO.
+          # `atr` enters at the extremes of the range -- 75% of its longs in
+          # the upper half, 63% of its shorts in the lower half -- which the
+          # operator says is not how they trade. This runs the same idea with
+          # the entry they described: %R crossing UP out of -80 on the 5m and
+          # the 1m, no other gate, 3R.
+          #
+          # IT IS SLOW ON PURPOSE: 2.3 trades/week, so most nights this arm's
+          # report will say nothing closed. That is expected and is not a
+          # fault to chase -- the stopping rule in deltabt/catalog.py reviews
+          # at 40 closed trades or 90 days, and 90 days will come first.
+          #
+          # `atr` and `hours` are pinned in deploy.yml, so the merge that adds
+          # this stack rolls THIS HOST ONLY and neither running experiment is
+          # retired.
+          - stack: cross
+            variant: SPEC:manual_scalp_cross_both_t3@5
+            instance_var: BOT_INSTANCE_ID_CROSS
+            document_var: SSM_MONITOR_DOCUMENT_CROSS
+            strategy_hash: "cba6d71185559a1a50f895895139ba2d0d8177d5f9c3fa5d8827219eeb1bb4e7"
+            log_group: /deltabt/paper/cross/bot
+
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.

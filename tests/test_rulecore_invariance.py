@@ -36,8 +36,22 @@ CANDLES = Path("data/candles/BTCUSD/ltp_1m.parquet")
 BARS = 30_000
 #: The live arm's trailing window (app.config.strategy.WINDOW_BARS).
 WINDOW = 1_500
-#: Bars at the tail compared between the two computations.
-TAIL = 300
+#: Bars at the tail compared between the two computations. The FIRST value
+#: that actually fires is used, so a rare family gets a real comparison
+#: instead of a vacuous one.
+#:
+#: 300 was fine while every family fired often. `manual_scalp_cross_both_t3`
+#: requires %R to cross out of the band on the 5m AND the 1m on the same bar,
+#: which happens EIGHT times in 6,001 BTCUSD 5m bars and not once in the last
+#: 300 -- so the comparison below was all-false against all-false, which the
+#: guard at the end of the test correctly refuses. Widening the tail is the
+#: fix; deleting the guard would have been the bug.
+TAILS = (300, 600, 900)
+#: Bars of window that must remain AHEAD of the compared tail. Start
+#: invariance is a claim that Wilder smoothing has forgotten its seed by the
+#: time the comparison starts, so the tail may not eat the warm-up that makes
+#: the claim true.
+MIN_WARMUP = 600
 
 pytestmark = pytest.mark.skipif(
     not CANDLES.exists(), reason="BTCUSD 1m candles not cached")
@@ -69,7 +83,7 @@ def test_start_invariance_the_live_bounded_window(family, one_min):
     """
     spec = build_spec(family, 5)
     primary, confirm = _frames(one_min, spec)
-    if len(primary) < WINDOW + TAIL:
+    if len(primary) < WINDOW + max(TAILS):
         pytest.skip("not enough primary bars for a windowed comparison")
 
     full = rulecore.compute(primary, confirm, spec)
@@ -83,9 +97,21 @@ def test_start_invariance_the_live_bounded_window(family, one_min):
         win_confirm = None
     win = rulecore.compute(win_primary, win_confirm, spec)
 
-    # Compare the last TAIL bars, which sit far past the window's warm-up.
-    f = slice(len(primary) - TAIL, len(primary))
-    w = slice(WINDOW - TAIL, WINDOW)
+    # Compare a tail that sits far past the window's warm-up, widening it
+    # only as far as a rare family needs to fire at all. If nothing fires at
+    # any width the largest is used and the guard below reports it, which is
+    # the honest outcome: the family cannot be shown to be window-safe here.
+    tail = max(t for t in TAILS if WINDOW - t >= MIN_WARMUP)
+    for cand in TAILS:
+        if WINDOW - cand < MIN_WARMUP:
+            break
+        c = slice(WINDOW - cand, WINDOW)
+        if ((win.long_setup[c] | win.short_setup[c]).any()
+                and (win.long_entry[c] | win.short_entry[c]).any()):
+            tail = cand
+            break
+    f = slice(len(primary) - tail, len(primary))
+    w = slice(WINDOW - tail, WINDOW)
 
     np.testing.assert_array_equal(
         win.long_setup[w], full.long_setup[f],
@@ -98,8 +124,9 @@ def test_start_invariance_the_live_bounded_window(family, one_min):
     setups = int((win.long_setup[w] | win.short_setup[w]).sum())
     entries = int((win.long_entry[w] | win.short_entry[w]).sum())
     assert setups > 0 and entries > 0, (
-        f"{family}: nothing fired in the compared tail ({setups} setups, "
-        f"{entries} entries) -- this test would pass on a broken core")
+        f"{family}: nothing fired in the compared tail of {tail} bars "
+        f"({setups} setups, {entries} entries) -- this test would pass on a "
+        f"broken core")
 
     # Entries may legitimately differ only where the window cannot resolve the
     # Supertrend leg, and only in the direction of suppression.

@@ -888,6 +888,45 @@ variable "stacks" {
     # there anyway.
     atr   = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
     hours = { variant = "SPEC:manual_scalp_st_banded_h18_24@5", db_name = "deltabt_hours" }
+
+    # 2026-09-07: A THIRD STACK. `atr` AND `hours` ARE NOT TOUCHED.
+    #
+    # The operator reported `atr` "buying / selling at peak / bottom" and said
+    # their own trading is not that. It is true and structural: `variant_a` is
+    # a floor with no ceiling, so 75% of its longs enter in the upper half of
+    # the 140-bar range and 63% of its shorts in the lower half (373 trades;
+    # both live entries agreed). `cross_levels` enters where they described --
+    # on the bar %R crosses UP out of -80 -- at 0% past the midpoint.
+    #
+    # THE CHOICE WAS NOT TO SWAP BUT TO ADD, because the two arms answer
+    # different questions and neither number separates them: `atr` is +0.140
+    # with a bootstrap crossing zero, `cross` is +0.305 with a bootstrap
+    # crossing zero. Swapping would have thrown away the only arm with a real
+    # sample in the current regime (`atr` is +0.290 on n=164 in block 3) to
+    # buy an entry rule at 2.3 trades/week. Running both costs one t4g.small
+    # and answers both.
+    #
+    # WHY IT DOES NOT DISTURB THE OTHER TWO. Every resource in ec2.tf and
+    # cloudwatch.tf is `for_each = local.stacks` keyed by stack name, and each
+    # instance's user_data renders from its own `each.value`, so a new key
+    # adds resources and changes none. `user_data_replace_on_change` cannot
+    # fire on a host whose user_data is byte-identical. Adding a family to
+    # deltabt/catalog.py does not move any other family's config_hash, so
+    # neither running experiment's strategy identity moves either -- asserted
+    # by tests/live/test_running_arms_are_pinned.py.
+    #
+    # THE REMAINING WAY TO DISTURB THEM IS THE DEPLOY, and it is closed in
+    # .github/workflows/deploy.yml rather than by careful sequencing: a push
+    # to master used to roll EVERY stack, retiring each running experiment and
+    # resetting its risk ledger. That happened to `hours` on 2026-09-07 and
+    # cost its equity curve a seam. Both are now `"pinned": true` in that
+    # workflow's stack table, so an automatic push skips them and only a
+    # deliberate `only_stack=<name>` dispatch can roll them.
+    #
+    # Fresh database. ux_forward_test_running allows one RUNNING experiment
+    # per database, so a new arm needs its own or it refuses to bind.
+    # The stopping rule is in deltabt/catalog.py with the family.
+    cross = { variant = "SPEC:manual_scalp_cross_both_t3@5", db_name = "deltabt_cross" }
   }
 }
 

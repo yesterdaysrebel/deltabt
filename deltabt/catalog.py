@@ -339,6 +339,61 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10),
     ),
+    # THE SAME ARM, ENTERING WHERE THE OPERATOR ACTUALLY ENTERS.
+    #
+    # WHY THIS EXISTS. On 2026-09-07 the operator said the live arm was
+    # "buying / selling at peak / bottom" and that their own trading is not
+    # that. They were right, and it is structural. `variant_a`'s long leg is
+    # `%R > -80 AND rising` -- a FLOOR with no ceiling, so %R = -4, price at
+    # the top of the 140-bar range, is a valid long; the short leg mirrors it
+    # with no floor. Measured over manual_scalp_both_t3's 373 backtest trades:
+    # 75% OF LONGS ENTER IN THE UPPER HALF OF THE RANGE and 63% of shorts in
+    # the lower half, median long %R -25.5 and median short -67.5. Both live
+    # entries agreed (BEATUSD 5m -12.8 / 1m -2.9; AKEUSD 5m -23.8).
+    #
+    # `cross_levels` is the rule that matches the described style: a long
+    # fires on the bar %R crosses UP through -80, leaving oversold, and a
+    # short on the cross DOWN through -20. Median long entry %R -75.8, and
+    # 0% of entries sit past the midpoint.
+    #
+    # WHY NO GATES, AND WHY 5m. 480 cells were measured (scripts/
+    # cross_levels_lab.py): five primary/confirmation timeframe pairs x
+    # confirm %R on/off x Supertrend x DI x ADX>=25 x target {1, 1.5, 3} x
+    # the 18-24 UTC window. NOTHING BEAT THE UNGATED CELL.
+    #   - every gate family has a NEGATIVE median net: none -0.250, ST -0.242,
+    #     DI -0.279, ST+DI -0.281, A25 -0.077, ST+A25 -0.044
+    #   - above 5m the rule dies: 0 of 36 cells with n>=25 is positive, no
+    #     30m cell reaches n=25, and 60m produced SIX trades in 96 cells. A
+    #     crossing is a one-bar event, so widening the bar removes the events.
+    #   - the selection premium is +0.243 / +0.580 / +0.568 at k=1/2/3, larger
+    #     than any effect in the table; at k=2 the table's own pick scores
+    #     -0.441 out of block. The table ranks noise, so the table did not
+    #     choose this.
+    # This cell was chosen because it is the ONLY one of the 480 positive on
+    # all four anchored blocks AND all three symbols:
+    #     +0.305  n=72  2.3/wk  blocks +0.46 +0.75 +0.59 +0.03
+    #
+    # READ THE LAST BLOCK AGAIN. Block 3 is the current regime and it is
+    # +0.03, flat. The bootstrap [-0.102, +0.727] includes zero. This is not
+    # a measured edge; it runs to produce out-of-sample on the operator's own
+    # entry, which no archive contains.
+    #
+    # STOPPING RULE, fixed before the first trade so the weekly report cannot
+    # re-open it:
+    #   - review at 40 CLOSED trades or 90 days, whichever comes first, and
+    #     make no decision before that;
+    #   - stop early ONLY on cumulative -12R or a 20% drawdown from peak;
+    #   - at review it continues only if net R > 0 AND at least 2 of the 3
+    #     symbols are positive.
+    # At 2.3 trades/week the 90-day bound is what will fire first. That slow
+    # rate is the known cost of the rule and is not a reason to loosen it.
+    "manual_scalp_cross_both_t3": dict(
+        desc="the operator's entry LOCATION: %R crossing out of the band on 5m and 1m, 3R",
+        primary=_tf_rules(wpr_rule="cross_levels"),
+        confirm=_tf_rules(wpr_rule="cross_levels"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
     # manual_scalp with a CEILING on %R. `variant_a` is a floor with nothing
     # above it, so a long is valid at %R = -9 -- price at the top of the
     # 140-bar range. The live arm did exactly that on AKEUSD at 2026-09-01
