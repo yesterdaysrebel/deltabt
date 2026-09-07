@@ -153,6 +153,17 @@ jobs:
             document_var: SSM_MONITOR_DOCUMENT_CROSS
             strategy_hash: "cba6d71185559a1a50f895895139ba2d0d8177d5f9c3fa5d8827219eeb1bb4e7"
             log_group: /deltabt/paper/cross/bot
+            # THE ARM'S OWN STOPPING RULE, because `planned_days` cannot carry
+            # it. The experiment document passes a hard-coded `--days 30` for
+            # every stack and the value is stamped into the forward_test row at
+            # registration, so a RUNNING experiment cannot be corrected without
+            # ending it. Left alone, this arm's report would read "day 30/30"
+            # in early October -- indistinguishable from a completed run --
+            # sixty days before the rule it was deployed under says to look.
+            # Set here so the report states the arm's horizon, not the
+            # deployment's. See deltabt/catalog.py for the rule itself.
+            review_days: 90
+            review_trades: 40
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
@@ -207,6 +218,8 @@ jobs:
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --expect-strategy-hash "${{ matrix.strategy_hash }}" \
             --facts-json facts.json \
+            ${{ matrix.review_days && format('--review-days {0}', matrix.review_days) || '' }} \
+            ${{ matrix.review_trades && format('--review-trades {0}', matrix.review_trades) || '' }} \
             ${{ vars.EXPECTED_RISK_HASH && format('--expect-risk-hash {0}', vars.EXPECTED_RISK_HASH) || '' }} \
             ${{ github.event.inputs.day && format('--day {0}', github.event.inputs.day) || '' }} \
             > report.md

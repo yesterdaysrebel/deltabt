@@ -53,6 +53,11 @@ FROZEN_RISK_HASH = "db4ecc872c759c52"
 
 #: Below this, performance numbers are noise. Stated on every report so the
 #: reader is never invited to draw a conclusion the sample cannot support.
+#:
+#: A DEFAULT, NOT THE LAW. An arm whose stopping rule names a different number
+#: passes `--review-trades` and that wins. `cross` reviews at 40, so a report
+#: calling its 30th trade "readable" would contradict the rule the arm was
+#: deployed under.
 MIN_CLOSED_TRADES = 30
 
 #: How old a RUNNING experiment must be before "zero evaluations" is treated as
@@ -588,14 +593,23 @@ def report_body(args, day, now, notes, problems, facts) -> None:
     if running:
         e = running[0]
         started = str(e.get("started_at", ""))[:19]
+        # `planned_days` is stamped into the row at registration and the
+        # experiment document passes a hard-coded 30 for every stack, so it
+        # is the DEPLOYMENT's number, not the arm's. Where the arm's stopping
+        # rule says otherwise, say both -- silently overriding would hide that
+        # the two disagree, and the disagreement is the thing worth seeing.
+        horizon = f"planned {e.get('planned_days')} days"
+        if args.review_days and args.review_days != e.get("planned_days"):
+            horizon += (f" · reviews at {args.review_days} days by the arm's "
+                        f"own stopping rule")
         print(f"**Experiment** `{e.get('experiment_id')}` · {e.get('status')} · "
-              f"started {started}Z · planned {e.get('planned_days')} days\n")
+              f"started {started}Z · {horizon}\n")
         facts["experiment"] = str(e.get("experiment_id"))
         began = parse_ts(str(e.get("started_at", "")))
         if began:
             run_age_seconds = (
                 datetime.datetime.now(datetime.timezone.utc) - began).total_seconds()
-            planned = e.get("planned_days")
+            planned = args.review_days or e.get("planned_days")
             if planned:
                 facts["day_of"] = (f"day {int(run_age_seconds // 86400) + 1}"
                                    f"/{planned}")
@@ -1069,15 +1083,16 @@ def report_body(args, day, now, notes, problems, facts) -> None:
     # here said the same thing every night for a month. What an operator needs
     # is the count and whether it is enough; the reason a small sample proves
     # nothing does not need restating daily.
-    if closed < MIN_CLOSED_TRADES:
-        facts["sample_line"] = (f"{closed}/{MIN_CLOSED_TRADES} closed — "
+    minimum = args.review_trades or MIN_CLOSED_TRADES
+    if closed < minimum:
+        facts["sample_line"] = (f"{closed}/{minimum} closed — "
                                 f"INSUFFICIENT, execution correctness only")
-        print(f"**Sample** {closed} / {MIN_CLOSED_TRADES} closed trades — "
+        print(f"**Sample** {closed} / {minimum} closed trades — "
               f"insufficient for any performance read.\n")
     else:
-        facts["sample_line"] = f"{closed}/{MIN_CLOSED_TRADES} closed — readable"
+        facts["sample_line"] = f"{closed}/{minimum} closed — readable"
         print(f"**Sample** {closed} closed trades — at or above the "
-              f"{MIN_CLOSED_TRADES}-trade minimum.\n")
+              f"{minimum}-trade minimum.\n")
 
     # --- 5. the daily report from the app itself ---------------------------
     report = sec.get("DAILYREPORT", "").strip()
@@ -1344,6 +1359,14 @@ def main() -> int:
     ap.add_argument("--expect-risk-hash", default=None,
                     help=f"risk hash the RUNNING experiment must carry "
                          f"(default {FROZEN_RISK_HASH})")
+    ap.add_argument("--review-days", type=int, default=None,
+                    help="the arm's review horizon in days, from its own "
+                         "stopping rule. Overrides planned_days, which the "
+                         "experiment document hard-codes to 30 for every "
+                         "stack and cannot be changed on a running run.")
+    ap.add_argument("--review-trades", type=int, default=None,
+                    help=f"closed trades the arm's stopping rule reviews at; "
+                         f"overrides the {MIN_CLOSED_TRADES}-trade default.")
     ap.add_argument("--facts-json", default=None,
                     help="also write the headline facts here, for a job that "
                          "compares the concurrent arms")
