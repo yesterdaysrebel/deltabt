@@ -26,6 +26,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -262,16 +263,32 @@ def test_the_sample_gate_uses_the_arms_own_minimum(source):
         "arm with its own minimum gets a mixed message")
 
 
+def _monitor_rows() -> dict[str, dict]:
+    """Parsed as TEXT, the way every other workflow test here does it.
+
+    PyYAML is not a dependency of this project -- it is present in some dev
+    environments and absent from CI, which is exactly the difference that let
+    an earlier version of this test pass locally and fail on the runner.
+    """
+    text = (ROOT / ".github/workflows/monitor.yml").read_text()
+    out = {}
+    for chunk in re.split(r"\n\s+- stack:", text)[1:]:
+        name = chunk.splitlines()[0].strip()
+        out[name] = dict(re.findall(r"^\s+(\w+):\s*\"?([^\"\n]+)\"?\s*$",
+                                    chunk, re.M))
+    return out
+
+
 def test_only_the_arm_that_declares_a_rule_gets_one():
     """atr and hours must keep the behaviour they have; passing a flag for
     them would silently restate a stopping rule nobody wrote."""
-    import yaml
-    wf = yaml.safe_load((ROOT / ".github/workflows/monitor.yml").read_text())
-    rows = {e["stack"]: e for e in wf["jobs"]["report"]["strategy"]["matrix"]["include"]}
-    assert rows["cross"]["review_days"] == 90
-    assert rows["cross"]["review_trades"] == 40
+    rows = _monitor_rows()
+    assert rows["cross"]["review_days"] == "90"
+    assert rows["cross"]["review_trades"] == "40"
     for stack in ("atr", "hours"):
-        assert "review_days" not in rows[stack]
+        assert "review_days" not in rows[stack], (
+            f"{stack} now declares a review horizon; it has no stopping rule "
+            f"written down, so the report would state one nobody chose")
         assert "review_trades" not in rows[stack]
 
 
