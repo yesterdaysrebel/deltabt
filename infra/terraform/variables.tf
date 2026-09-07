@@ -843,7 +843,50 @@ variable "stacks" {
     # would censor it into something the backtest never measured. They are
     # off (max_consecutive_losses 0, max_drawdown_pct 1.0, max_daily_loss_pct
     # 1.0) and the daily report will show the drawdown that costs.
-    atr   = { variant = "SPEC:manual_scalp_t4@5", db_name = "deltabt_tail" }
+    # 2026-09-07: THE 4R ARM IS REPLACED BY THE OPERATOR'S ENTRY ON BOTH
+    # TIMEFRAMES, HELD TO 3R. MANUAL_SCALP_T4-5-20260904-7e1fdb0 ran three
+    # days and closed 8 trades for -8.09R, 0 won.
+    #
+    # THAT RECORD IS NOT WHY IT IS BEING STOPPED, and saying so matters. Eight
+    # trades cannot separate anything: at the arm's measured 26% win rate,
+    # five straight losses on AKEUSD alone has a 53% chance, and 0-for-8
+    # overall about 9%. The arm was performing close to prediction.
+    #
+    # IT IS BEING STOPPED FOR A REASON THE FIRST WEEK MADE VISIBLE. Five of
+    # the eight losses were AKEUSD, where a 4R target needs a 37% move because
+    # the 4xATR stop is ~925bps; the archive reached that target 8% of the
+    # time there and 10% on BANKUSD, against 24% on BEATUSD. Two of the four
+    # symbols in the universe cannot reach the target the arm is built around.
+    # That was in the record before deployment (see the block above) and was
+    # not acted on because bot_symbols is shared between stacks.
+    #
+    # WHAT REPLACES IT is the strict reading of the operator's own description
+    # -- "5 min and 1 min as confirmation" -- with the target moved to 3R:
+    #
+    #     manual_scalp_both  1R (as traded)  -0.058  1/4  n=815
+    #     manual_scalp_both  3R (THIS)       +0.140  3/4  n=373
+    #
+    # Best net of the eighteen candidates ranked on 2026-09-04, and the only
+    # one of them never deployed. Its 3R target is reached on 27% of trades
+    # with 4% ending on the 72h cap, so it is not the wide-stop-and-time-cap
+    # artefact that closed V3 on 2026-09-07.
+    #
+    # READ THE CAVEATS IN deltabt/catalog.py BEFORE READING ANY LIVE NUMBER.
+    # The bootstrap is [-0.041,+0.321] and crosses zero; it is 3 of 4 blocks;
+    # the out-of-block selection test never picked it, which is exactly why
+    # manual_scalp_t4 took this slot in September instead. BEATUSD carries it
+    # (+0.155 on 303 trades) and AKEUSD is -0.30.
+    #
+    # AND IT IS NOT A REPRODUCTION OF HOW THE OPERATOR TRADED. They took 77 of
+    # 83 winners between 0.5R and 1.5R at a six-minute median hold. At their
+    # own 1R exit this entry LOSES. If this arm works, the finding is that the
+    # entries were better than the exit they were paired with.
+    #
+    # A FRESH DATABASE, deltabt_both: deltabt_tail is left holding the 4R
+    # run's 8 closed trades and its 2 open positions exactly as they were,
+    # and ux_forward_test_running would refuse a second RUNNING experiment
+    # there anyway.
+    atr   = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
     hours = { variant = "SPEC:manual_scalp_st_banded_h18_24@5", db_name = "deltabt_hours" }
   }
 }

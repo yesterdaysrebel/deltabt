@@ -280,6 +280,65 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=1.0, max_stop_pct=0.10),
     ),
+    # THE OPERATOR'S OWN ENTRY, ON BOTH TIMEFRAMES, HELD TO 3R.
+    #
+    # manual_scalp_both exactly -- %R variant_a required on the 5m AND the 1m,
+    # no Supertrend, no DI, no ADX, 4xATR stop -- with the target moved from
+    # 1R to 3R and nothing else changed.
+    #
+    # WHY THE ENTRY IS THIS ONE. The operator described trading "5 min and 1
+    # min as confirmation, sometimes just the 1 min". manual_scalp is the
+    # loose reading (5m only); this is the strict one. The absent Supertrend
+    # and DI are not an omission: measured against the operator's own 220
+    # clean hand trades, entries ALIGNED with the Supertrend scored -0.045R
+    # and counter ones -0.145R, so alignment carried information but both
+    # halves lost, and no gate on them was worth its cost in trade count.
+    #
+    # WHY THE TARGET IS NOT THE OPERATOR'S. This is the part to read twice,
+    # because the family's whole result lives here and it is NOT a
+    # reproduction of how the operator traded. 77 of their 83 hand winners
+    # were taken between 0.5R and 1.5R, at a median hold of SIX MINUTES.
+    # Thin three, 4xATR, 72h cap, cost gate on, anchored blocks:
+    #
+    #     target   n     win    net R   +ve   median hold   return
+    #     1.0R    815    49%   -0.058   1/4      2.4h       -21.7%   <- as traded
+    #     1.5R    626    38%   -0.080   0/4      3.3h       -22.8%
+    #     2.0R    499    35%   +0.003   2/4      4.2h        -0.7%
+    #     3.0R    373    31%   +0.140   3/4      5.6h       +26.8%   <- THIS
+    #     4.0R    334    23%   +0.030   3/4      6.4h        +3.0%
+    #
+    # The entry is identical on every row. A 49% win rate at 1R cannot cover
+    # cost; a 31% win rate at 3R can. So if this arm works it is evidence that
+    # the operator's ENTRIES were better than the exit they were paired with,
+    # not that the hand style was profitable -- measured faithfully, at 1R,
+    # it loses 0.058R a trade over 815 trades.
+    #
+    # THE 3R TARGET IS REACHED, which is the objection this family has to
+    # answer and does: 27% of trades exit at target, 69% at stop, and only 4%
+    # on the 72h cap. It is not the wide-stop trap where a cap harvests
+    # positions an unreachable target never closes (scripts/two_arms.py, and
+    # the V3 stop-width study that failed exactly that way).
+    #
+    # WHAT IT MEASURES, AND WHY IT WAS NOT DEPLOYED IN SEPTEMBER. Best net of
+    # the eighteen candidates ranked on 2026-09-04: +0.140, n=373, 11.9
+    # trades/week, drawdown 29.4R, top 3 trades 20% of profit. But its
+    # bootstrap is [-0.041, +0.321] -- it crosses zero -- it is 3 of 4 blocks
+    # rather than 4, and the out-of-block selection test NEVER picked it,
+    # which is why manual_scalp_t4 took the slot instead. Per symbol it is
+    # BEATUSD +0.155 (n=303, 3/4), BANKUSD +0.64 (n=~40), AKEUSD -0.30.
+    #
+    # SIZE AND TRADE COUNT ARE NOT LEVERS ON IT, both measured 2026-09-07:
+    # net R is identical at 0.5%/1%/2%/3% risk (R has size divided out) while
+    # drawdown scales 14% -> 62%; and a daily trade cap makes it strictly
+    # worse (3/day +0.103, 2/day +0.088, 1/day -0.016) because a cap selects
+    # by the clock and discards the better later signals.
+    "manual_scalp_both_t3": dict(
+        desc="the operator's %R entry on 5m AND 1m, held to 3R instead of 1R",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
     # manual_scalp with a CEILING on %R. `variant_a` is a floor with nothing
     # above it, so a long is valid at %R = -9 -- price at the top of the
     # 140-bar range. The live arm did exactly that on AKEUSD at 2026-09-01
