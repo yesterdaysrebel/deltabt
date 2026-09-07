@@ -213,7 +213,7 @@ def test_an_unreadable_facts_file_is_reported_not_swallowed(tmp_path):
 
 def test_the_digest_says_so_when_nothing_traded(tmp_path):
     quiet = dict(CLEAR, closed_today=0, r_today=0.0, closed_line=None)
-    assert "Neither arm closed a trade" in _digest(tmp_path, [quiet]).stdout
+    assert "No arm closed a trade" in _digest(tmp_path, [quiet]).stdout
 
 
 def test_the_workflow_feeds_the_digest_from_the_reports():
@@ -227,3 +227,62 @@ def test_the_workflow_feeds_the_digest_from_the_reports():
         "the digest skips itself when an arm's report failed -- which is "
         "exactly the night it matters")
     assert "needs: report" in digest
+
+# --- each arm is reported against ITS OWN stopping rule --------------------
+#
+# `planned_days` is stamped into the forward_test row at registration and the
+# experiment document hard-codes `--days 30` for every stack, so it records
+# what the DEPLOYMENT assumed, not what the arm's rule says. `cross` reviews at
+# 90 days and 40 trades; left alone its report would have read "day 30/30" in
+# early October, which is indistinguishable from a finished run.
+
+def test_the_report_accepts_an_arms_own_review_horizon(source):
+    for flag in ("--review-days", "--review-trades"):
+        assert flag in source
+
+
+def test_the_review_horizon_overrides_planned_days(source):
+    assert 'args.review_days or e.get("planned_days")' in source, (
+        "day_of no longer prefers the arm's own horizon, so a stack whose "
+        "stopping rule differs from the hard-coded 30 reports the wrong one")
+
+
+def test_a_differing_horizon_is_shown_not_silently_substituted(source):
+    """Both numbers, because the disagreement is the informative part."""
+    assert "reviews at" in source and "planned {e.get('planned_days')} days" in source
+
+
+def test_the_sample_gate_uses_the_arms_own_minimum(source):
+    assert "minimum = args.review_trades or MIN_CLOSED_TRADES" in source
+    tail = source[source.index("minimum = args.review_trades"):]
+    head = tail[:tail.index("# --- 5.")] if "# --- 5." in tail else tail[:800]
+    assert "MIN_CLOSED_TRADES" not in head.replace(
+        "minimum = args.review_trades or MIN_CLOSED_TRADES", ""), (
+        "the sample section still reads the global constant somewhere, so an "
+        "arm with its own minimum gets a mixed message")
+
+
+def test_only_the_arm_that_declares_a_rule_gets_one():
+    """atr and hours must keep the behaviour they have; passing a flag for
+    them would silently restate a stopping rule nobody wrote."""
+    import yaml
+    wf = yaml.safe_load((ROOT / ".github/workflows/monitor.yml").read_text())
+    rows = {e["stack"]: e for e in wf["jobs"]["report"]["strategy"]["matrix"]["include"]}
+    assert rows["cross"]["review_days"] == 90
+    assert rows["cross"]["review_trades"] == 40
+    for stack in ("atr", "hours"):
+        assert "review_days" not in rows[stack]
+        assert "review_trades" not in rows[stack]
+
+
+def test_the_workflow_passes_the_horizon_through():
+    wf = (ROOT / ".github/workflows/monitor.yml").read_text()
+    for flag in ("--review-days", "--review-trades"):
+        assert flag in wf, f"{flag} is declared per stack but never passed"
+
+
+def test_the_digest_does_not_assume_two_arms(source):
+    """It said "both arms" in its own heading while three were running."""
+    digest = _DIGEST.read_text()
+    for phrase in ("both arms", "Both arms", "Neither arm"):
+        assert phrase not in digest

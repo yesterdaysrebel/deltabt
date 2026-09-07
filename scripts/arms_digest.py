@@ -3,10 +3,11 @@
     python3 scripts/arms_digest.py facts/*/facts.json
 
 WHY THIS EXISTS
-    Two arms now run, and the whole reason for running two is that they can be
-    compared. Nothing compared them: each stack produced its own 90-line report
-    and an operator held both in their head, nightly, to answer the only
-    question the pair was set up to answer -- which one is working.
+    Several arms now run, and the whole reason for running more than one is
+    that they can be compared. Nothing compared them: each stack produced its
+    own 90-line report and an operator held all of them in their head,
+    nightly, to answer the only question running them together can answer --
+    which one is working.
 
     It reads the small `facts` file each daily report already writes rather
     than parsing the reports, so the two cannot drift: if a number is not in
@@ -14,7 +15,7 @@ WHY THIS EXISTS
 
 WHAT IT DELIBERATELY DOES NOT DO
     It does not rank the arms, and it does not say one is better. On any given
-    night the sample is far too small for that -- both arms need months, and
+    night the sample is far too small for that -- every arm needs months, and
     the report says so on its own line. This lists them side by side and marks
     which need a human. Drawing the conclusion is the operator's job and the
     numbers to draw it from are in `out/sweep/`, not in one night.
@@ -48,8 +49,10 @@ def render(arms: list[dict]) -> tuple[str, int]:
     need = [a for a in arms if a.get("verdict") != "clear"]
     head = "NEEDS ATTENTION" if need else "ALL CLEAR"
 
-    out = [f"# DeltaBt — both arms — {day} (UTC)\n",
-           f"**{head}** · {len(arms)} arm(s) running\n"]
+    n = len(arms)
+    plural = "arm" if n == 1 else "arms"
+    out = [f"# DeltaBt — {n} {plural} — {day} (UTC)\n",
+           f"**{head}** · {n} {plural} running\n"]
 
     if need:
         for a in need:
@@ -76,14 +79,14 @@ def render(arms: list[dict]) -> tuple[str, int]:
         parts = [f"{a.get('stack')} {a.get('r_today', 0):+.2f}R on "
                  f"{a.get('closed_today')} trade(s)" for a in traded]
         out.append("Today: " + "; ".join(parts) + ".")
-        out.append("One day separates nothing. Both arms need months, and each "
-                   "report says so on its own sample line.\n")
+        out.append("One day separates nothing. Every arm needs months, and "
+                   "each report says so on its own sample line.\n")
     elif traded:
         a = traded[0]
         out.append(f"Only `{a.get('stack')}` closed anything today "
                    f"({a.get('r_today', 0):+.2f}R on {a.get('closed_today')}).\n")
     else:
-        out.append("Neither arm closed a trade today.\n")
+        out.append("No arm closed a trade today.\n")
 
     out.append("Each arm's full report is the artifact of its own job.")
     return "\n".join(out) + "\n", (1 if need else 0)
