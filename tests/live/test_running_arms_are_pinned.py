@@ -105,14 +105,21 @@ def test_the_new_arm_carries_no_gates():
 
 def test_the_running_arms_are_pinned():
     by_stack = {r["stack"]: r for r in _table()}
-    for stack in ("atr", "hours"):
+    for stack in ("atr", "hours", "cross"):
         assert by_stack[stack].get("pinned") is True, (
             f"stack '{stack}' is no longer pinned; the next merge to master "
             f"would retire its running experiment and reset its risk ledger")
 
 
-def test_a_push_rolls_only_the_unpinned_stack():
-    assert _pick(_table()) == ["cross"]
+def test_a_push_rolls_nothing_while_every_arm_is_running():
+    """`cross` joined the pinned set on 2026-09-08, once it was RUNNING.
+
+    It was unpinned for exactly as long as it took to roll the stack up. An
+    empty selection is the correct steady state while all three arms are
+    mid-experiment -- not a misconfiguration -- and the deploy job treats it
+    as success rather than as an invalid matrix.
+    """
+    assert _pick(_table()) == []
 
 
 def test_the_notice_names_what_was_skipped():
