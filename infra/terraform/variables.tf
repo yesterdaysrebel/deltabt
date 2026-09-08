@@ -206,11 +206,28 @@ variable "db_allocated_storage_gb" {
 
 variable "db_backup_retention_days" {
   description = <<-EOT
-    Automated backup retention. The experiment database IS the deliverable of
-    a 30-day run, so retention must outlive the run itself.
+    Automated backup retention, in days.
+
+    7, not 35, and the reason is cost rather than taste. RDS gives free backup
+    storage equal to 100% of allocated storage -- 20 GB here -- and charges
+    ~$0.095/GB-month beyond it. Backup storage grew 2.5 GB/day in the first
+    month against a database that only grew 18 MiB/day, because PITR retains
+    write-ahead log, and WAL is dominated by full-page writes rather than by
+    net data. At 35 days that plateaus near 88 GB, so 68 GB is billable and
+    backups cost more than the storage they protect. At 7 days the whole
+    window is 17.5 GB and fits inside the free allowance.
+
+    Do not set this to 0. It would save nothing -- 7 days is already free --
+    and AWS reboots the instance when this crosses 0 in either direction,
+    while any change between two non-zero values applies with no downtime.
+
+    This is a PAPER TRADING instance; the data is reproducible. If a run ever
+    becomes a deliverable that must outlive its window, take an explicit
+    manual snapshot at the end of it. Do not buy that by raising retention,
+    which pays to keep 35 days of WAL churn in order to keep one day of data.
   EOT
   type        = number
-  default     = 35
+  default     = 7
 }
 
 variable "db_deletion_protection" {

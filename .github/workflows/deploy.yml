@@ -261,13 +261,23 @@ jobs:
           # override. Blank-input dispatches skip pinned stacks too: "roll
           # everything" must not be the easy way to end two experiments.
           #
+          # 2026-09-08: `cross` IS PINNED TOO, so the table is now fully
+          # pinned. It was left unpinned on 2026-09-07 only because it had to
+          # roll once to come up; it bound
+          # MANUAL_SCALP_CROSS_BOTH_T3-5-20260907-298dde0 at 10:45Z and has
+          # been RUNNING since. Leaving it unpinned meant the next merge that
+          # touched any image path would retire that run -- which is the exact
+          # failure this table was added to stop, one day after it was added.
+          # An empty matrix is the correct steady state while all three arms
+          # are mid-experiment; the job below already treats it as success.
+          #
           # A pinned stack therefore sits on an older image than master. That
           # is correct and is the point -- it is running an experiment, and
           # the experiment is the thing being protected. Unpin it when the run
           # ends. Adding a family to deltabt/catalog.py does not move any
           # other family's config_hash, so a pinned host's strategy identity
           # does not drift while it waits.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"},{"stack":"cross","variant":"SPEC:manual_scalp_cross_both_t3@5","pinned":false,"instance_var":"BOT_INSTANCE_ID_CROSS","document_var":"SSM_DEPLOY_DOCUMENT_CROSS"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"},{"stack":"cross","variant":"SPEC:manual_scalp_cross_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_CROSS","document_var":"SSM_DEPLOY_DOCUMENT_CROSS"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
