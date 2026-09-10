@@ -49,11 +49,13 @@ MONITOR = (ROOT / ".github/workflows/monitor.yml").read_text()
 #: family to the catalog must not move either hash: `config_hash` is a digest
 #: of the spec, not of the catalog, and if that ever stops being true a new
 #: family would silently end both experiments through ConfigurationDrift.
+#: 2026-09-10: `hours` and `cross` were retired and their stacks destroyed, so
+#: `atr` is the only arm left whose identity a catalog edit could end. The other
+#: two families stay in the catalog and keep their hashes -- they are simply no
+#: longer bound to a RUNNING experiment, so moving them costs nothing.
 RUNNING_ARMS = {
     "manual_scalp_both_t3":
         "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d",
-    "manual_scalp_st_banded_h18_24":
-        "89ed49527806c0e3b6394c4c3fff87cb8d02d6ec450bcb77d5b9068991e065f6",
 }
 
 
@@ -105,7 +107,7 @@ def test_the_new_arm_carries_no_gates():
 
 def test_the_running_arms_are_pinned():
     by_stack = {r["stack"]: r for r in _table()}
-    for stack in ("atr", "hours", "cross"):
+    for stack in ("atr",):
         assert by_stack[stack].get("pinned") is True, (
             f"stack '{stack}' is no longer pinned; the next merge to master "
             f"would retire its running experiment and reset its risk ledger")
@@ -130,7 +132,8 @@ def test_the_notice_names_what_was_skipped():
 
 # --- 3. the override still works -------------------------------------------
 
-@pytest.mark.parametrize("stack", ["atr", "hours", "cross"])
+@pytest.mark.parametrize("stack", [r["stack"] for r in json.loads(
+    re.search(r"all='(\[.*?\])'", DEPLOY, re.S).group(1))])
 def test_only_stack_can_still_roll_any_stack(stack):
     """Pinning is a guard against ACCIDENT, not a lock."""
     assert _pick(_table(), only=stack) == [stack]

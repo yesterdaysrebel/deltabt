@@ -277,7 +277,7 @@ jobs:
           # ends. Adding a family to deltabt/catalog.py does not move any
           # other family's config_hash, so a pinned host's strategy identity
           # does not drift while it waits.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"hours","variant":"SPEC:manual_scalp_st_banded_h18_24@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_HOURS","document_var":"SSM_DEPLOY_DOCUMENT_HOURS"},{"stack":"cross","variant":"SPEC:manual_scalp_cross_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_CROSS","document_var":"SSM_DEPLOY_DOCUMENT_CROSS"}]'
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
