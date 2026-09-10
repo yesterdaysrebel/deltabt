@@ -903,47 +903,44 @@ variable "stacks" {
     # run's 8 closed trades and its 2 open positions exactly as they were,
     # and ux_forward_test_running would refuse a second RUNNING experiment
     # there anyway.
-    atr   = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
-    hours = { variant = "SPEC:manual_scalp_st_banded_h18_24@5", db_name = "deltabt_hours" }
-
-    # 2026-09-07: A THIRD STACK. `atr` AND `hours` ARE NOT TOUCHED.
+    atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
+    # 2026-09-10: `hours` AND `cross` ARE REMOVED. ONLY `atr` REMAINS.
     #
-    # The operator reported `atr` "buying / selling at peak / bottom" and said
-    # their own trading is not that. It is true and structural: `variant_a` is
-    # a floor with no ceiling, so 75% of its longs enter in the upper half of
-    # the 140-bar range and 63% of its shorts in the lower half (373 trades;
-    # both live entries agreed). `cross_levels` enters where they described --
-    # on the bar %R crosses UP out of -80 -- at 0% past the midpoint.
+    # Both were stopped by operator instruction at day 4 -- `hours` of 30,
+    # `cross` of 90 -- and this apply destroys their hosts, EIPs, SSM
+    # parameters and documents, log groups, metric filters and alarms.
     #
-    # THE CHOICE WAS NOT TO SWAP BUT TO ADD, because the two arms answer
-    # different questions and neither number separates them: `atr` is +0.140
-    # with a bootstrap crossing zero, `cross` is +0.305 with a bootstrap
-    # crossing zero. Swapping would have thrown away the only arm with a real
-    # sample in the current regime (`atr` is +0.290 on n=164 in block 3) to
-    # buy an entry rule at 2.3 trades/week. Running both costs one t4g.small
-    # and answers both.
+    # NEITHER WAS STOPPED ON ITS EVIDENCE, and that is written here rather
+    # than left to a commit message. `hours` was -2.13R over 4 closed trades
+    # and `cross` -2.05R over 2. `cross` carried a stopping rule fixed before
+    # its first trade (deltabt/catalog.py): make no decision before 40 closed
+    # trades or 90 days, and stop early ONLY at cumulative -12R or a 20%
+    # drawdown from peak. It was at -2.05R and 0.98%. The rule existed so a
+    # bad first week could not re-open the decision; the decision was taken
+    # anyway. This is the second arm ended this way, after the 1h-direction
+    # arm on 2026-09-04 -- see the block above, which says the same thing.
     #
-    # WHY IT DOES NOT DISTURB THE OTHER TWO. Every resource in ec2.tf and
-    # cloudwatch.tf is `for_each = local.stacks` keyed by stack name, and each
-    # instance's user_data renders from its own `each.value`, so a new key
-    # adds resources and changes none. `user_data_replace_on_change` cannot
-    # fire on a host whose user_data is byte-identical. Adding a family to
-    # deltabt/catalog.py does not move any other family's config_hash, so
-    # neither running experiment's strategy identity moves either -- asserted
-    # by tests/live/test_running_arms_are_pinned.py.
+    # WHAT SURVIVES. The databases are NOT Terraform-managed: they are created
+    # by scripts/create_stack_database.sh on the shared aws_db_instance, so
+    # deltabt_hours and deltabt_cross keep every trade, signal and experiment
+    # row both arms produced, including the STOPPED forward_test rows carrying
+    # the reason each was ended. `cross` also left AKEUSD pos_6032e28ea6984a62
+    # OPEN on purpose: `forward-test stop` refuses to close positions because
+    # doing so fabricates an exit the strategy never produced, and there is no
+    # other supported path. It is a paper position with nothing marking it.
     #
-    # THE REMAINING WAY TO DISTURB THEM IS THE DEPLOY, and it is closed in
-    # .github/workflows/deploy.yml rather than by careful sequencing: a push
-    # to master used to roll EVERY stack, retiring each running experiment and
-    # resetting its risk ledger. That happened to `hours` on 2026-09-07 and
-    # cost its equity curve a seam. Both are now `"pinned": true` in that
-    # workflow's stack table, so an automatic push skips them and only a
-    # deliberate `only_stack=<name>` dispatch can roll them.
+    # WHY `atr` IS UNDISTURBED. Every per-stack resource is
+    # `for_each = local.stacks` keyed by stack name, so removing two keys
+    # leaves atr's instances with no diff at all. Two SHARED things do change,
+    # both in place and neither destructive: the monitor role's policy in
+    # monitoring.tf shrinks to atr's ARNs, and the dashboard_tunnel_commands
+    # output renumbers atr's local port. The RDS instance, its subnet group,
+    # the VPC and ECR are untouched.
     #
-    # Fresh database. ux_forward_test_running allows one RUNNING experiment
-    # per database, so a new arm needs its own or it refuses to bind.
-    # The stopping rule is in deltabt/catalog.py with the family.
-    cross = { variant = "SPEC:manual_scalp_cross_both_t3@5", db_name = "deltabt_cross" }
+    # tf_guard.py WILL REFUSE THIS PLAN unattended, by design: aws_instance,
+    # aws_eip and aws_cloudwatch_log_group are PROTECTED_TYPES and a bare
+    # delete of one is never automatic. It needs a deliberate
+    # infrastructure.yml dispatch with allow_replace.
   }
 }
 

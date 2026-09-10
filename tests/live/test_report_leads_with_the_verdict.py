@@ -280,12 +280,18 @@ def _monitor_rows() -> dict[str, dict]:
 
 
 def test_only_the_arm_that_declares_a_rule_gets_one():
-    """atr and hours must keep the behaviour they have; passing a flag for
-    them would silently restate a stopping rule nobody wrote."""
+    """An arm without a written stopping rule must not be given one.
+
+    `cross` was the only arm that ever declared a horizon here, and it was
+    retired on 2026-09-10, so the positive half of this test has nothing left
+    to assert against. The negative half is the half that protects anything:
+    passing the flag for an arm with no rule would make the report state a
+    horizon nobody chose. It now covers every stack in the matrix, so it keeps
+    working whether that is one arm or five.
+    """
     rows = _monitor_rows()
-    assert rows["cross"]["review_days"] == "90"
-    assert rows["cross"]["review_trades"] == "40"
-    for stack in ("atr", "hours"):
+    assert rows, "the monitor matrix parsed as empty; every assertion below would pass vacuously"
+    for stack in rows:
         assert "review_days" not in rows[stack], (
             f"{stack} now declares a review horizon; it has no stopping rule "
             f"written down, so the report would state one nobody chose")
