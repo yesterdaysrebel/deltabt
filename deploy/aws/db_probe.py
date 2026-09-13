@@ -106,6 +106,35 @@ async def collect(con) -> dict:
         "where bar_open > now() - interval '24 hours' "
         "and ($1::text is null or experiment_id = $1)", rid)
 
+    # WHY EACH TRADE WAS TAKEN, AND WHAT WAS APPROVED.
+    #
+    # The report could say a trade happened and never say why. Every
+    # APPROVED evaluation carries the conditions that passed, the indicator
+    # readings behind them, and the bracket the risk engine signed off -- see
+    # app/strategy/explanation.py -- and none of it reached the reader. A
+    # forward test whose journal cannot answer "why this one?" is a P&L
+    # statement, not evidence.
+    #
+    # Capped at 40 and trimmed hard: this section is gzipped into an SSM
+    # response with a 24,000-byte ceiling, and `indicators` is unbounded JSON.
+    out["approvals"] = [dict(
+        symbol=r["symbol"],
+        bar_open=str(r["bar_open"]),
+        direction=r["direction"],
+        passed=(r["conditions_passed"] or [])[:6],
+        indicators={k: v for k, v in list((r["indicators"] or {}).items())[:8]},
+        entry=str(r["entry_price"]), stop=str(r["stop_price"]),
+        target=str(r["target_price"]),
+        stop_pct=str(r["stop_distance_pct"]), rr=str(r["reward_risk"]),
+    ) for r in await con.fetch(
+        "select symbol, bar_open, direction, conditions_passed, indicators, "
+        "       entry_price, stop_price, target_price, stop_distance_pct, "
+        "       reward_risk "
+        "from strategy_signals where outcome = 'APPROVED' "
+        "and bar_open > now() - interval '36 hours' "
+        "and ($1::text is null or experiment_id = $1) "
+        "order by bar_open desc limit 40", rid)]
+
     out["closed_trades_total"] = await con.fetchval(
         "select count(*) from positions where status = 'CLOSED' "
         "and ($1::timestamptz is null or opened_at >= $1)", since) or 0

@@ -60,31 +60,44 @@ def render(arms: list[dict]) -> tuple[str, int]:
                 out.append(f"- **{a.get('stack')}**: {p}")
         out.append("")
 
-    out.append("| arm | strategy | day | closed today | open | equity | health |")
-    out.append("|---|---|---|---|---|---|---|")
+    # TODAY AND THE RUN ARE SEPARATE COLUMNS. They used to be one, fed by
+    # facts["closed_line"], which is the EXPERIMENT's total -- so a day on
+    # which one trade closed was reported as thirteen.
+    out.append("| arm | strategy | day | today | this experiment | open "
+               "| equity | health |")
+    out.append("|---|---|---|---|---|---|---|---|")
     for a in arms:
+        n = a.get("day_closed")
+        today = ("nothing closed" if not n else
+                 f"{n} closed · {a.get('day_won', 0)} won · "
+                 f"{a.get('day_r', 0):+.2f}R · {a.get('day_pnl', 0):+,.2f}")
+        if a.get("day_opened"):
+            today += f" · {a['day_opened']} opened"
         out.append(
             f"| `{a.get('stack') or '?'}` "
             f"| {a.get('strategy') or '—'} "
             f"| {a.get('day_of') or '—'} "
-            f"| {a.get('closed_line') or 'none'} "
+            f"| {today} "
+            f"| {a.get('run_line') or 'none'} "
             f"| {a.get('open_line') or 'none'} "
             f"| {a.get('equity_line') or '—'} "
             f"| {a.get('health_line') or '—'} |")
     out.append("")
 
     # The one cross-arm number worth stating, and only when both traded.
-    traded = [a for a in arms if a.get("closed_today")]
+    traded = [a for a in arms if a.get("day_closed")]
     if len(traded) > 1:
-        parts = [f"{a.get('stack')} {a.get('r_today', 0):+.2f}R on "
-                 f"{a.get('closed_today')} trade(s)" for a in traded]
+        parts = [f"{a.get('stack')} {a.get('day_r', 0):+.2f}R "
+                 f"({a.get('day_pnl', 0):+,.2f}) on {a.get('day_closed')} trade(s)"
+                 for a in traded]
         out.append("Today: " + "; ".join(parts) + ".")
         out.append("One day separates nothing. Every arm needs months, and "
                    "each report says so on its own sample line.\n")
     elif traded:
         a = traded[0]
         out.append(f"Only `{a.get('stack')}` closed anything today "
-                   f"({a.get('r_today', 0):+.2f}R on {a.get('closed_today')}).\n")
+                   f"({a.get('day_r', 0):+.2f}R, {a.get('day_pnl', 0):+,.2f}, on "
+                   f"{a.get('day_closed')} trade(s)).\n")
     else:
         out.append("No arm closed a trade today.\n")
 

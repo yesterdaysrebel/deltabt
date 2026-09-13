@@ -59,7 +59,15 @@ FULL_FACTS = {
     "strategy": "manual_scalp_t4@5m@68a126f7",
     "experiment": "MANUAL_SCALP_T4-5-20260904-7e1fdb0",
     "day_of": "day 1/30",
-    "closed_line": "2 · 1 won · +0.40R",
+    # The day's own figures and the experiment's totals are separate rows.
+    # They were one row fed by the experiment's total, so a day on which one
+    # trade closed was reported as the whole run.
+    "day_closed": 1,
+    "day_won": 1,
+    "day_r": 0.40,
+    "day_pnl": 20.0,
+    "day_opened": 2,
+    "run_line": "2 · 1 won · +0.40R",
     "open_line": "1 · AKEUSD SHORT +0.32R",
     "equity_line": "10000.00 · 0.00% from peak",
     "health_line": "readyz healthy · healthz ok",
@@ -91,14 +99,14 @@ def test_a_problem_is_named_in_the_headline_not_only_at_the_bottom(dr):
 
 def test_the_headline_carries_what_moved(dr):
     text = _head(dr, FULL_FACTS, [])
-    for expected in ("closed today", "open now", "equity", "health", "sample"):
+    for expected in ("today", "open now", "equity", "health", "sample"):
         assert expected in text
 
 
 def test_a_quiet_day_shows_no_empty_rows(dr):
     """A row with nothing in it is noise, and most nights are quiet."""
     text = _head(dr, {"health_line": "readyz healthy · healthz ok"}, [])
-    assert "closed today" not in text
+    assert "today" not in text
     assert "open now" not in text
     assert "health" in text
 
@@ -175,10 +183,12 @@ def _digest(tmp_path, arms) -> subprocess.CompletedProcess:
 
 CLEAR = {"stack": "atr", "day": "2026-09-04", "verdict": "clear",
          "strategy": "manual_scalp_t4@5m", "day_of": "day 1/30",
-         "closed_today": 2, "r_today": -1.4, "closed_line": "2 · 0 won · -1.40R"}
+         "day_closed": 2, "day_won": 0, "day_r": -1.4, "day_pnl": -70.0,
+         "run_line": "2 · 0 won · -1.40R"}
 BROKEN = {"stack": "hours", "day": "2026-09-04", "verdict": "attention",
           "problems": ["readyz not ready"], "strategy": "…h18_24@5m",
-          "closed_today": 1, "r_today": 0.98, "closed_line": "1 · 1 won · +0.98R"}
+          "day_closed": 1, "day_won": 1, "day_r": 0.98, "day_pnl": 49.0,
+          "run_line": "1 · 1 won · +0.98R"}
 
 
 def test_the_digest_lists_every_arm(tmp_path):
@@ -213,7 +223,8 @@ def test_an_unreadable_facts_file_is_reported_not_swallowed(tmp_path):
 
 
 def test_the_digest_says_so_when_nothing_traded(tmp_path):
-    quiet = dict(CLEAR, closed_today=0, r_today=0.0, closed_line=None)
+    quiet = dict(CLEAR, day_closed=0, day_won=0, day_r=0.0, day_pnl=0.0,
+                 run_line=None)
     assert "No arm closed a trade" in _digest(tmp_path, [quiet]).stdout
 
 
