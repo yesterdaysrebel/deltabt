@@ -483,46 +483,7 @@ variable "bot_symbols" {
   # Losing in all four anchored blocks at both exits, and gross-negative, so
   # no execution improvement can rescue it. Re-adding it is one line; the
   # measurement is the argument against, not the effort.
-  #
-  # 2026-09-13: ETHUSD AND SOLUSD IN BY INSTRUCTION; AKEUSD, BANKUSD AND
-  # WIFUSD OUT. The operator asked for the running cell on ETH, SOL and BEAT,
-  # was shown the record below, and said to run it anyway. The universe is
-  # theirs to choose; the record is this file's to keep.
-  #
-  # THE MEASUREMENTS ARGUING AGAINST ARE RECORDED AND NOT WITHDRAWN:
-  #
-  #   - SOLUSD was measured under this exact family on 2026-09-04, at both
-  #     exits (see the block above): 3R/72h net -0.129, 0 of 4 anchored
-  #     blocks, gross -0.035 -- negative BEFORE fees. It was added and
-  #     withdrawn the same day on that measurement. Nothing has been measured
-  #     since; it re-enters on instruction alone.
-  #   - ETHUSD has NEVER been measured under manual_scalp_both_t3. Every
-  #     adjacent record points the same way: a 4xATR 5m stop on the majors is
-  #     30-115 bps against BEATUSD's 240-460, so cost_r runs 0.10-0.12 there
-  #     against 0.03-0.04 here, and every portfolio run of this family that
-  #     included majors lost 50-56% while the thin three lost 8. If this run
-  #     works on ETHUSD it is the first evidence anywhere that it does.
-  #   - AKEUSD leaves while it is the run's positive contributor to date
-  #     (+3.79R of the +0.12R total at n=13). That is noise at n=5 and is
-  #     recorded only so the swap stays legible at review time.
-  #   - WIFUSD leaves for a reason that is evidence rather than instruction:
-  #     68 one-minute bars in 24h live and zero setups in seven days. Its
-  #     archive cell was never testable (reports/both_t3_day7_review.md, F1).
-  #
-  # WHAT THIS RUN CAN HONESTLY PRODUCE: the first out-of-sample measurement
-  # of this entry on ETHUSD at any target, and the second on SOLUSD -- data
-  # no archive after 2026-08-12 contains. Its stopping rule is frozen BEFORE
-  # the first bar in docs/m3_stopping_rule.md (PROGRAM_SUMMARY lesson 5),
-  # and the pre-registered expectation there is NET NEGATIVE on the two
-  # majors. If they bleed at the rate the cost law predicts, that is the run
-  # answering the question it was asked, not the run malfunctioning.
-  #
-  # CHANGING THIS ENDS MANUAL_SCALP_BOTH_T3-5-20260907-f8435cf-R2 at roughly
-  # day 8 of its planned 30, at breakeven, with its own review still eight
-  # days out -- the fourth arm ended before its window by instruction, after
-  # the 1h-direction arm (2026-09-04) and `hours` and `cross` (2026-09-10).
-  # Its record stays in deltabt_both exactly as it was left.
-  default = "BEATUSD,ETHUSD,SOLUSD"
+  default = "BEATUSD,AKEUSD,BANKUSD,WIFUSD"
 }
 
 # --- the two concurrent runs -----------------------------------------------
@@ -942,24 +903,7 @@ variable "stacks" {
     # run's 8 closed trades and its 2 open positions exactly as they were,
     # and ux_forward_test_running would refuse a second RUNNING experiment
     # there anyway.
-    # 2026-09-13: THE SAME ARM ON ETH/SOL/BEAT, AND A FRESH DATABASE AGAIN.
-    #
-    # The variant does not move -- SPEC:manual_scalp_both_t3@5, strategy hash
-    # unchanged -- only bot_symbols above, which is identity all the same.
-    # See the 2026-09-13 block on bot_symbols for the instruction and the
-    # objections, which are recorded there and not here so this map stays
-    # about plumbing.
-    #
-    # deltabt_m3 IS THE FIFTH FRESH DATABASE FOR THE SAME REASON AS THE FOUR
-    # BEFORE IT. deltabt_both can hold open AKEUSD or BANKUSD positions at
-    # the moment the host is replaced (an AKEUSD long was open when this was
-    # written), the stop path leaves them alone on purpose, and recover()
-    # correctly refuses to start holding a position outside the configured
-    # universe. The old run's record -- 13+ closed trades and its experiment
-    # row -- stays in deltabt_both exactly as it was left, as h1dir's did in
-    # deltabt_h1dir. The infrastructure workflow ensures the new database on
-    # apply; there is no manual step and no per-stack table to keep in step.
-    atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_m3" }
+    atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
     # 2026-09-10: `hours` AND `cross` ARE REMOVED. ONLY `atr` REMAINS.
     #
     # Both were stopped by operator instruction at day 4 -- `hours` of 30,

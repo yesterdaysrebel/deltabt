@@ -79,7 +79,7 @@ def test_the_committed_universe_is_what_the_bot_should_run():
     block = text[i:text.index("\n}", i)]
     line = next(l for l in block.splitlines() if l.strip().startswith("default"))
     universe = line.split("=", 1)[1].strip().strip('"')
-    assert universe == "BEATUSD,ETHUSD,SOLUSD", (
+    assert universe == "BEATUSD,AKEUSD,BANKUSD,WIFUSD", (
         f"the committed universe is {universe!r}. If that is intended, update "
         f"this test in the same commit -- and remember it ends the running "
         f"experiment and starts a successor.")
