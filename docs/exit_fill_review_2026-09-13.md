@@ -249,3 +249,94 @@ corrected engine, paired, with multiplicity control: breakeven at four threshold
 and with a lock, trailing at three, scale-out at three ladders, adverse cuts at
 three. The fill is where the money was, and fixing the fill is a backtester
 change, not a trading one.
+
+---
+
+# Correction: the addendum's conclusion was wrong
+
+A second blind panel (four reviewers, corrected engine, this file withheld from
+them) overturned the addendum above on its central claim, and found a defect in
+the engine fix itself. Recording it here because the addendum is wrong as it
+stands.
+
+## The defect
+
+`portfolio.py` forced `stop_fill = pos.stop_price` whenever `stop_trigger_ltp`
+fired. That made the option **two changes at once** — a trigger change and a
+no-slippage assumption — and the assumption was doing the work. This is the same
+confound the first panel caught in the original analysis; it was then
+reintroduced in the code written to fix it. Two of the four reviewers found it
+independently. Fixed: the fill now follows `params.stop_fill` like every other
+exit.
+
+## What that changes
+
+Separated properly, on a replay validated against `run_portfolio` to
+**MAE 0.0000R** over 385 trades with 100% exit-reason agreement:
+
+    trigger alone, fill held fixed   +0.021R  [-0.021, +0.063]   null
+    fill alone, trigger held fixed   +0.016R to +0.047R          owns everything
+
+Only 11 of 385 trades differ under an LTP trigger, and the effect is four trades
+where mark and LTP disagree about a touch — three saved targets, one lost. It is
+a target lottery, not loss control, and it **leaves the tail untouched**: six
+trades beyond -1.5R either way, worst -1.77R against -1.97R.
+
+So the addendum's "LTP trigger takes the worst trade from -2.00R to -1.12R" was
+the assumption, not the trigger. Likewise its "bare stop-limit is the only
+variant clearing the multiplicity bar at t=2.60": reproduced, but rejected — it
+rests on six trades and an unverifiable fill assumption, and the second panel's
+paired re-derivation puts the same comparison at +0.053R of which +0.034R is
+three trades flipping stop to target.
+
+## The number that decides the stop-limit question
+
+    mark triggers on 265 trades; LTP never reaches the stop on 41 of them (15.5%)
+    those rest unfilled: median 3 min, mean 94 min, max 1434 min (24 HOURS)
+    worst adverse excursion while unprotected: 2.05R
+
+    assume the limit always fills:   0 trades beyond -1.5R
+    assume it never fills:          25 trades beyond -1.5R, worst -3.07R
+
+**The option spans 0 to 25 tail trades on the fill assumption alone**, and 1m
+candles cannot narrow it. Three estimates of the non-fill rate now exist across
+two panels — ~0%, ~1% and 15.5% — from three models of the same event. The
+15.5% is the most directly measured.
+
+## What the second panel recommends
+
+| reviewer | scope | recommendation |
+|---|---|---|
+| skeptic | is the edge real | none — change nothing |
+| geometry | stop/target/hold/sizing | none; if forced, 5xATR on the tail argument alone |
+| entry | rule, filters, universe | none; 161 cells, best beats chance by less than chance buys |
+| loss-min | Q-B in full | **do not switch the trigger to LTP**; if one change, limit + 5m fallback |
+
+Loss distribution under the options, n=385, paired:
+
+    option                              mean    worst     p5   <-1.5R  total lost
+    mark / market at LTP  (LIVE TODAY) +0.130   -1.967  -1.270    6      -282.3
+    LTP trigger / market at LTP        +0.147   -1.766  -1.276    6      -281.5
+    limit at stop + 5m market fallback +0.154   -1.296  -1.091    0      -272.9
+
+The fallback option is worth **3.3% of money lost, not a rescue**, and its tail
+figure is only as good as the fill assumption above.
+
+## Standing conclusion, revised
+
+Unchanged: every in-flight loss-cutting rule is negative, and the fill model
+rather than any trading rule is where the money was.
+
+Revised: **no execution change is established.** The LTP trigger is a null. The
+stop-limit's benefit is an assumption. The arm's own edge is not significant
+either — +0.127R with a week-cluster interval of [-0.05, +0.31], 82.9% of the
+sample in one symbol, and 84 trades in one 55-day window carrying it; remove that
+window and the arm is +0.03R.
+
+The one direction with region-level support is a **wider stop** — (>=5x) minus
+(<=3x) over 42 matched target/hold cells is +0.174R, CI [+0.059, +0.283] — but no
+single replacement cell survives best-of-336, which buys +0.276R by chance.
+
+AKEUSD is negative in 8 of 9 configurations (-0.241R, n=41) and is 5 of the 13
+live trades. Flagged independently by two reviewers. It is the only candidate
+change that is a subtraction rather than an addition.

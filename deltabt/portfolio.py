@@ -368,14 +368,35 @@ def run_portfolio(
             # When the mark triggers but LTP never reaches the stop, the order
             # sits unfilled and the position stays open -- protection lost,
             # which is exactly the tail this option buys its better fills with.
-            if params.stop_trigger_ltp and hit_stop:
-                stop_fill = pos.stop_price
+            # AN LTP TRIGGER DOES NOT BUY A FILL AT THE STOP, AND FORCING ONE
+            # HERE WAS A DEFECT. LTP reaching the stop says the market traded
+            # there inside that bar; the market order still fills at whatever
+            # last-traded is when it arrives, which can be lower. Hard-coding
+            # the stop price made `stop_trigger_ltp` two changes at once -- a
+            # trigger change AND a no-slippage assumption -- and the assumption
+            # was doing the work: separated, the trigger alone is worth +0.021R
+            # with a confidence interval spanning zero, and it leaves the loss
+            # tail untouched (6 trades beyond -1.5R either way). Two independent
+            # reviewers caught this on 2026-09-13. The fill now follows
+            # params.stop_fill like every other exit.
             if params.stop_limit and hit_stop:
                 reached = (s.ltp_low[i] <= pos.stop_price if pos.side == LONG
                            else s.ltp_high[i] >= pos.stop_price)
                 if reached:
+                    # Correct for a LIMIT specifically: it cannot fill worse
+                    # than its own price. This is the one place the assumption
+                    # is earned rather than assumed.
                     stop_fill = pos.stop_price
                 else:
+                    # Measured on this arm: the mark triggers on 265 trades and
+                    # LTP never reaches the stop on 41 of them (15.5%). Those
+                    # sit unfilled a median 3 minutes, a mean of 94, and once
+                    # for 24 HOURS, with an adverse excursion of 2.05R while
+                    # unprotected. Whether they would really fill decides the
+                    # whole option: assume they always do and the tail is
+                    # empty; assume they never do and it is the worst measured
+                    # (worst -3.07R, 25 trades beyond -1.5R). 1m candles cannot
+                    # tell you which. Pair this with stop_limit_fallback_min.
                     hit_stop = False
 
             exit_price, exit_reason, ambiguous = np.nan, "", False
