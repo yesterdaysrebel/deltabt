@@ -37,6 +37,33 @@ fact is worth less than no criterion.
 Per-symbol reads on fewer than ~40 trades are weather. The verdict section
 applies the rule mechanically so the reader does not have to trust the
 author's mood.
+
+RESULT 2026-09-13 (GitHub Actions run 34780080741, archive rebuilt from the
+public API through 2026-09-13; full report in the run's artifact):
+
+    symbol      net  blocks     n   win      DD  top3        boot 95%  cost/R
+    AKEUSD   -0.196    2/4    77   22%   22.6R   --  [-0.559,+0.178]   0.031
+    BANKUSD  +0.348    2/4    39   36%    7.5R  67%  [-0.248,+0.950]   0.038
+    BEATUSD  +0.119    2/4   359   31%   28.5R  22%  [-0.061,+0.308]   0.037
+    ETHUSD   +0.014    2/4   964   30%   48.7R  68%  [-0.095,+0.127]   0.106
+    SOLUSD   -0.143    0/4  1123   25%  174.0R   --  [-0.239,-0.044]   0.101
+
+    ETH/SOL/BEAT   pooled -0.043 over 2,446 | one account -43.65%, maxDD 60.52%
+    thin 3         pooled +0.087 over   475 | one account +19.58%, maxDD 13.54%
+
+    VERDICT: ETHUSD FAIL, SOLUSD FAIL, drawdown 60.52% vs 13.54% exceeds the
+    1.5x bound => DO NOT DEPLOY, exactly as pre-registered.
+
+    Three things the numbers settle. THE COST LAW LANDED WHERE IT WAS PRICED:
+    ETH 0.106 and SOL 0.101 against the predicted 0.10-0.12, versus
+    0.031-0.038 on the thin symbols. SOLUSD IS NOT AMBIGUOUS: n=1,123, 0/4
+    blocks, and the bootstrap excludes zero on the NEGATIVE side -- the
+    third independent measurement to land there. ETHUSD IS THE INTERESTING
+    NULL: gross is ~+0.12 (net +0.014 plus 0.106 cost), positive -- but 68%
+    of the profit sits in the top 3 of 964 trades, the exact concentration
+    shape that disqualified VELVETUSD, and fees consume all of it anyway.
+    The entry is not wrong on ETH; it is unpayable on ETH, which is the
+    H-Scalp-2 result again at a different timeframe.
 """
 from __future__ import annotations
 

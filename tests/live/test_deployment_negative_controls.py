@@ -622,15 +622,8 @@ class TestBootstrapNeverAdoptsSilently:
         repository grows a second path to production.
         """
         workflows = {p.name for p in (ROOT / ".github" / "workflows").glob("*.yml")}
-        # m3-backtest.yml is a TEMPORARY research workflow (2026-09-13): it
-        # measures the live cell on ETH/SOL/BEAT on a hosted runner because
-        # the driving machine has no route to the exchange API. Read-only
-        # token, no AWS role, no deploy path -- and it is branch-filtered to
-        # the research branch, so it is inert on master. Remove it from this
-        # set in the same commit that deletes the file.
         assert workflows == {"test.yml", "infrastructure.yml", "deploy.yml",
-                             "monitor.yml", "m3-backtest.yml"}, \
-            f"unexpected workflow: {workflows}"
+                             "monitor.yml"}, f"unexpected workflow: {workflows}"
 
         # The intent, asserted directly rather than only via the set above.
         # Comments are stripped: infrastructure.yml documents the bootstrap in
