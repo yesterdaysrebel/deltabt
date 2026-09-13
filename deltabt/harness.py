@@ -125,7 +125,10 @@ def _resampled(data: dict, minutes: int, cache: dict) -> tuple:
         # on 4.8% of 240m bars.
         px = resample_complete(data["ltp"], minutes)
         mk = resample_ohlcv(data["mark"], minutes) if data["mark"] is not None else None
-        tr = resample_tradable(data["ltp"], data["tradable"], minutes)[: len(px)]
+        # Aligned on bar TIME, not by position: resample_complete drops
+        # incomplete buckets and a positional trim slides the mask.
+        tr = resample_tradable(data["ltp"], data["tradable"], minutes,
+                               times=px["time"].to_numpy("int64"))
     cache[key] = (px, mk, tr)
     return cache[key]
 

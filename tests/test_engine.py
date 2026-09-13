@@ -244,8 +244,8 @@ class TestEngine:
         n = 10
         ltp = _bars(n)
         mark = _bars(n)
-        mark.loc[5, "low"] = 59_000.0    # stop at 59,500 hit
-        mark.loc[5, "high"] = 62_000.0   # target at 61,000 also hit
+        mark.loc[5, "low"] = 59_000.0    # stop at 59,500 hit -- stops read MARK
+        ltp.loc[5, "high"] = 62_000.0    # target at 61,000 also hit -- targets read LTP
 
         sig = _flat_signals(n, long_at=2, stop=59_500.0)
         res = run_backtest(ltp, mark, pd.DataFrame(), sig, _params(), BTC)
@@ -260,7 +260,12 @@ class TestEngine:
         n = 10
         ltp = _bars(n)
         mark = _bars(n)
-        mark.loc[5, "high"] = 62_000.0
+        # A resting limit fills when the market TRADES there, so the target is
+        # tested against LTP -- matching paper_broker's `tick.ltp >=
+        # pos.target_price`. Setting the MARK high here instead is what this
+        # test used to do, and it passed only because the engine had the same
+        # confusion: it booked targets at prices that never traded.
+        ltp.loc[5, "high"] = 62_000.0
 
         sig = _flat_signals(n, long_at=2, stop=59_500.0)
         res = run_backtest(ltp, mark, pd.DataFrame(), sig, _params(), BTC)

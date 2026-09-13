@@ -128,28 +128,42 @@ class SymbolCosts:
     #: not have. Do not read a result from this flag as achievable.
     maker_entry: bool = False
 
-    def entry_cost(self, contracts: int, price: float) -> float:
+    def entry_cost(self, contracts: int, price: float, *,
+                   slipped_price: bool = False) -> float:
         """Cost on the way in.
 
         A market entry crosses the spread: taker fee plus modelled slippage.
         A resting limit entry earns the maker rate and, by construction, pays
         no slippage -- it fills at its own price or not at all.
+
+        ``slipped_price=True`` when the CALLER has already moved the fill price
+        by the slippage -- then charging it again here bills it twice. The
+        research backtester fills at the unslipped bar price and carries
+        slippage in the fee, so it leaves this False; the live paper broker
+        calls ``_slip`` on the price first, so it must pass True. It did not,
+        and double-billed every leg of every trade: $5.59 across the first 13
+        trades of MANUAL_SCALP_BOTH_T3-5-20260907, or 0.127R.
         """
         n = self.notional(contracts, price)
         if self.maker_entry:
             return n * self.effective_maker
-        return n * (self.effective_taker + self.slippage_rate)
+        slip = 0.0 if slipped_price else self.slippage_rate
+        return n * (self.effective_taker + slip)
 
-    def exit_cost(self, contracts: int, price: float, *, maker: bool) -> float:
+    def exit_cost(self, contracts: int, price: float, *, maker: bool,
+                  slipped_price: bool = False) -> float:
         """Exit cost.
 
         A limit take-profit rests and earns the maker rate with no slippage; a
         stop converts to a market order and pays taker plus slippage.
+
+        ``slipped_price`` as in ``entry_cost``.
         """
         n = self.notional(contracts, price)
         if maker:
             return n * self.effective_maker
-        return n * (self.effective_taker + self.slippage_rate)
+        slip = 0.0 if slipped_price else self.slippage_rate
+        return n * (self.effective_taker + slip)
 
     def round_trip_rate(self, *, maker_exit: bool = False) -> float:
         """Total cost as a fraction of notional, for the cost-per-R gate."""

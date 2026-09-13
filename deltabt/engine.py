@@ -221,12 +221,13 @@ def run_backtest(
             exit_reason = ""
             ambiguous = False
 
+            # Target on LTP, stop on MARK -- the venue's own split.
             if pos_side == LONG:
                 hit_stop = mark_low[i] <= stop_price
-                hit_target = mark_high[i] >= target_price
+                hit_target = high[i] >= target_price
             else:
                 hit_stop = mark_high[i] >= stop_price
-                hit_target = mark_low[i] <= target_price
+                hit_target = low[i] <= target_price
 
             # WHERE THE STOP FILLS. The trigger above reads MARK; the fill
             # reads LTP, which is what the module docstring always claimed and

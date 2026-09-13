@@ -230,6 +230,13 @@ class StrategyParams:
     #: for same-bar stop/target ordering. Use this to BRACKET a result (0.0 is
     #: the optimistic bound, 1.0 the pessimistic one), never to claim a number.
     #: The realised fills sit ~0.26 of the way across, on n=9.
+    #: Which stop-fill model to use: "at_stop" (historical, and what every
+    #: recorded result in out/ was measured under), "ltp_close" (calibrated on
+    #: the live fills; see portfolio._fill_at_cross) or "fraction" (bracketing,
+    #: via stop_fill_fraction below). Default stays "at_stop" so no recorded
+    #: number silently changes; "ltp_close" is the honest one.
+    stop_fill: str = "at_stop"
+
     stop_fill_fraction: float = 0.0
 
     #: Rest the stop as a LIMIT at the stop price instead of taking market on
