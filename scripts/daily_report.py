@@ -360,6 +360,22 @@ GATE_PROFILES = {
 }
 
 
+def on_utc_day(stamp: object, day: str) -> bool:
+    """Did this IST stamp fall on UTC date ``day``?
+
+    The bot renders every trade timestamp in IST and the report is scoped to a
+    UTC day, so the two must be reconciled before anything can be called
+    "today". IST is UTC+5:30, so a trade closed at 03:00 IST belongs to the
+    PREVIOUS UTC day -- and 10 of this arm's first 13 trades crossed a UTC
+    midnight, which is why nothing day-scoped could be read off the IST strings
+    directly.
+    """
+    t = parse_ist(stamp)
+    if t is None:
+        return False
+    return (t - datetime.timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d") == day
+
+
 def gated_replay(trades: list[dict], day_start: float, profile: dict) -> dict:
     """Which of the day's trades a breaker would have refused, and what was in them.
 
@@ -755,6 +771,109 @@ def report_body(args, day, now, notes, problems, facts) -> None:
             problems.append(f"{sym} is at {r_now:+.2f}R with the position still "
                             f"open — the stop should have triggered by -1R")
 
+    # --- THE DAY'S JOURNAL --------------------------------------------------
+    #
+    # WHAT HAPPENED TODAY, which nothing in this report used to say. The table
+    # below it is the whole EXPERIMENT, and it was labelled "closed today" --
+    # so a reader saw 13 trades and a total for a day on which one trade
+    # closed. /api/trades is scoped to the experiment, not to a day, and the
+    # day has to be cut here from the IST stamps.
+    closed_today = [t for t in done if on_utc_day(t.get("closed_ist"), day)]
+    opened_today = [t for t in trades if on_utc_day(t.get("opened_ist"), day)]
+    still_open_from_today = [t for t in open_now
+                             if on_utc_day(t.get("opened_ist"), day)]
+
+    print(f"## The day: {day}\n")
+    if closed_today:
+        print("| Symbol | Side | Qty | Entered (IST) | Closed (IST) | Held "
+              "| Entry | Exit | R | P&L | Reason |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|")
+        for t in sorted(closed_today, key=lambda x: str(x.get("closed_ist") or "")):
+            rd, qd = num(t.get("r")), num(t.get("quantity"))
+            print(f"| {t.get('symbol', '?')} | {t.get('side', '?')} "
+                  f"| {'—' if qd is None else f'{qd:,.0f}'} "
+                  f"| {ist(t.get('opened_ist'))} | {ist(t.get('closed_ist'))} "
+                  f"| {held(t.get('opened_ist'), t.get('closed_ist'))} "
+                  f"| {fmt(t.get('entry'))} | {fmt(t.get('exit'))} "
+                  f"| {'—' if rd is None else f'{rd:+.3f}R'} "
+                  f"| {fmt(t.get('pnl'), 2)} | {t.get('reason') or '—'} |")
+        print()
+        rs = [num(t.get("r")) for t in closed_today]
+        rs = [r for r in rs if r is not None]
+        ps = [num(t.get("pnl")) for t in closed_today]
+        ps = [x for x in ps if x is not None]
+        won = sum(1 for r in rs if r > 0)
+        by_reason = {}
+        for t in closed_today:
+            k = t.get("reason") or "—"
+            by_reason[k] = by_reason.get(k, 0) + 1
+        print(f"**Closed today** {len(closed_today)} · won {won} · lost "
+              f"{len(rs) - won} · {sum(rs):+.3f}R · {sum(ps):+,.2f} · "
+              + " · ".join(f"{k} {v}" for k, v in sorted(by_reason.items())) + "\n")
+        facts["day_closed"] = len(closed_today)
+        facts["day_won"] = won
+        facts["day_r"] = round(sum(rs), 4)
+        facts["day_pnl"] = round(sum(ps), 2)
+    else:
+        print("**No trade closed today.** The rejection table below says which "
+              "gate was shut; a quiet day that cannot name one is not evidence "
+              "about the strategy.\n")
+        facts["day_closed"] = 0
+        facts["day_won"] = 0
+        facts["day_r"] = 0.0
+        facts["day_pnl"] = 0.0
+
+    print(f"**Opened today** {len(opened_today)}"
+          + (f", of which {len(still_open_from_today)} still open" if still_open_from_today else "")
+          + ".\n")
+    facts["day_opened"] = len(opened_today)
+
+    # --- WHY THOSE ENTRIES, AND WHAT THE RISK ENGINE SIGNED OFF -------------
+    #
+    # An entry with no stated reason is not reviewable. Every APPROVED
+    # evaluation records the conditions that passed, the indicator readings
+    # behind them and the bracket that was approved
+    # (app/strategy/explanation.py); db_probe lifts the last 36 hours of them.
+    #
+    # OLDER DOCUMENT, NO SECTION. The probe and this script deploy separately,
+    # so a report running against a document that predates `approvals` must say
+    # so rather than print an empty heading and imply nothing was approved.
+    approvals = db.get("approvals")
+    if approvals is None:
+        notes.append("no approval detail: the monitor document predates it "
+                     "(terraform apply on infra/terraform refreshes it)")
+    else:
+        today_appr = [a for a in approvals
+                      if str(a.get("bar_open", ""))[:10] == day]
+        if today_appr:
+            print("### Why these were taken\n")
+            print("| Symbol | Side | Bar (UTC) | Conditions that passed "
+                  "| Entry | Stop | Target | Stop % | R:R |")
+            print("|---|---|---|---|---|---|---|---|---|")
+            for a in sorted(today_appr, key=lambda x: str(x.get("bar_open", ""))):
+                side = {1: "LONG", -1: "SHORT"}.get(a.get("direction"), "—")
+                passed = ", ".join(a.get("passed") or []) or "—"
+                sp = num(a.get("stop_pct"))
+                print(f"| {a.get('symbol', '?')} | {side} "
+                      f"| {str(a.get('bar_open', ''))[11:16]} | {passed} "
+                      f"| {fmt(a.get('entry'))} | {fmt(a.get('stop'))} "
+                      f"| {fmt(a.get('target'))} "
+                      f"| {'—' if sp is None else f'{sp:.2f}%'} "
+                      f"| {fmt(a.get('rr'), 2)} |")
+            print()
+            # The readings behind the conditions, for the one a reader will ask
+            # about: an entry whose numbers cannot be reproduced is an anecdote.
+            for a in sorted(today_appr, key=lambda x: str(x.get("bar_open", ""))):
+                ind = a.get("indicators") or {}
+                if ind:
+                    vals = " · ".join(f"{k} {fmt(v, 2)}" for k, v in ind.items())
+                    print(f"- `{a.get('symbol')}` {str(a.get('bar_open',''))[11:16]}: {vals}")
+            print()
+        elif opened_today:
+            notes.append(f"{len(opened_today)} position(s) opened today with no "
+                         f"APPROVED evaluation in the probe window — check the "
+                         f"signal log")
+
     if done:
         # Qty is carried here as well as in the Open table. Without it a
         # closed row cannot be checked against its own P&L: R is normalised by
@@ -763,7 +882,7 @@ def report_body(args, day, now, notes, problems, facts) -> None:
         # spot a sizing fault rather than a market outcome -- is the size
         # itself. /api/trades has always returned it; the table simply dropped
         # it on the floor.
-        print("### Closed\n")
+        print("### Every trade this experiment has closed\n")
         print("| Symbol | Side | Qty | Entered (IST) | Closed (IST) | Held "
               "| Entry | Exit | R | P&L | Reason |")
         print("|---|---|---|---|---|---|---|---|---|---|---|")
@@ -784,10 +903,14 @@ def report_body(args, day, now, notes, problems, facts) -> None:
             wins = sum(1 for r in rs if r > 0)
             print(f"Closed: **{len(rs)}** · won **{wins}** · "
                   f"total **{sum(rs):+.2f}R** · mean **{sum(rs) / len(rs):+.3f}R**\n")
-            facts["closed_line"] = (f"{len(rs)} · {wins} won · {sum(rs):+.2f}R "
-                                    f"(mean {sum(rs) / len(rs):+.3f}R)")
-            facts["closed_today"], facts["won_today"] = len(rs), wins
-            facts["r_today"] = round(sum(rs), 4)
+            # NAMED FOR WHAT THEY ARE. These are the EXPERIMENT's totals, and
+            # they were called closed_today / won_today / r_today -- which the
+            # digest then printed as a day's activity. The day's own figures
+            # are facts["day_*"], cut above.
+            facts["run_line"] = (f"{len(rs)} · {wins} won · {sum(rs):+.2f}R "
+                                 f"(mean {sum(rs) / len(rs):+.3f}R)")
+            facts["run_closed"], facts["run_won"] = len(rs), wins
+            facts["run_r"] = round(sum(rs), 4)
 
     # An open position the risk cap should have prevented is a control failure,
     # not a market outcome, so it is a problem even on a profitable day.
@@ -1321,8 +1444,14 @@ def headline(day, now, args, facts, problems, notes) -> str:
         out.append("")
 
     rows = []
-    if facts.get("closed_line"):
-        rows.append(("closed today", facts["closed_line"]))
+    if facts.get("day_closed") is not None:
+        d = (f"{facts['day_closed']} · {facts['day_won']} won · "
+             f"{facts['day_r']:+.2f}R · {facts['day_pnl']:+,.2f}"
+             if facts["day_closed"] else "nothing closed")
+        rows.append(("today", d))
+        rows.append(("opened today", str(facts.get("day_opened", 0))))
+    if facts.get("run_line"):
+        rows.append(("this experiment", facts["run_line"]))
     if facts.get("open_line"):
         rows.append(("open now", facts["open_line"]))
     if facts.get("equity_line"):
