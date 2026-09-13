@@ -136,6 +136,12 @@ class _Series:
     close: np.ndarray
     mark_high: np.ndarray
     mark_low: np.ndarray
+    #: LTP extremes. Kept because a mark-TRIGGERED stop fills at LAST-TRADED,
+    #: and _prepare used to discard these -- which is the structural reason the
+    #: fill model could not be expressed here at all, whatever the docstrings
+    #: said. Only stop fills read them.
+    ltp_high: np.ndarray
+    ltp_low: np.ndarray
     tradable: np.ndarray
     funding: dict
     last_exit_index: int = -(10 ** 9)
@@ -166,7 +172,7 @@ def _prepare(book: Book) -> _Series:
               if len(time) else np.zeros(0, dtype=np.int64))
     rates = _funding_lookup(book, stamps)
     return _Series(book=book, time=time, close=close, mark_high=mh, mark_low=ml,
-                   tradable=tradable, funding=rates)
+                   ltp_high=high, ltp_low=low, tradable=tradable, funding=rates)
 
 
 def _funding_lookup(book: Book, stamps: np.ndarray) -> dict:
@@ -254,19 +260,46 @@ def run_portfolio(
                 pos.accrued_funding += charge
                 equity -= charge
 
+            trig_low = s.ltp_low if params.stop_trigger_ltp else s.mark_low
+            trig_high = s.ltp_high if params.stop_trigger_ltp else s.mark_high
             if pos.side == LONG:
-                hit_stop = s.mark_low[i] <= pos.stop_price
+                hit_stop = trig_low[i] <= pos.stop_price
                 hit_target = s.mark_high[i] >= pos.target_price
             else:
-                hit_stop = s.mark_high[i] >= pos.stop_price
+                hit_stop = trig_high[i] >= pos.stop_price
                 hit_target = s.mark_low[i] <= pos.target_price
+
+            # WHERE A MARK-TRIGGERED STOP FILLS. The trigger above reads mark;
+            # the fill reads LTP, and booking the stop price itself is why no
+            # backtest here could produce the -1.679R fill on a -1.000R stop
+            # that MANUAL_SCALP_BOTH_T3 took live on 2026-09-12.
+            # stop_fill_fraction=0.0 reproduces that older behaviour exactly.
+            if pos.side == LONG:
+                adverse = min(s.ltp_low[i], pos.stop_price)
+            else:
+                adverse = max(s.ltp_high[i], pos.stop_price)
+            stop_fill = pos.stop_price + params.stop_fill_fraction * (adverse - pos.stop_price)
+
+            # A RESTING LIMIT CANNOT BE FILLED BY A PRICE NOBODY TRADED AT.
+            # When the mark triggers but LTP never reaches the stop, the order
+            # sits unfilled and the position stays open -- protection lost,
+            # which is exactly the tail this option buys its better fills with.
+            if params.stop_trigger_ltp and hit_stop:
+                stop_fill = pos.stop_price
+            if params.stop_limit and hit_stop:
+                reached = (s.ltp_low[i] <= pos.stop_price if pos.side == LONG
+                           else s.ltp_high[i] >= pos.stop_price)
+                if reached:
+                    stop_fill = pos.stop_price
+                else:
+                    hit_stop = False
 
             exit_price, exit_reason, ambiguous = np.nan, "", False
             if hit_stop and hit_target:
                 ambiguous = True
-                exit_price, exit_reason = pos.stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_stop:
-                exit_price, exit_reason = pos.stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_target:
                 exit_price, exit_reason = pos.target_price, "target"
             elif params.exit_on_trend_flip and (
@@ -289,6 +322,17 @@ def run_portfolio(
             elif params.max_hold_bars and (i - pos.entry_index) >= params.max_hold_bars:
                 exit_price, exit_reason = px, "max_hold"
             if not exit_reason:
+                # RATCHET THE STOP, AFTER the exits above have been resolved.
+                # Placed here on purpose: a stop moved on bar i must not be
+                # able to close the position on bar i, which would be reading
+                # the bar's own outcome to decide the bar's own stop.
+                if params.breakeven_at_r is not None:
+                    fav = (px - pos.entry_price) * pos.side / pos.risk_per_unit
+                    if fav >= params.breakeven_at_r:
+                        lock = pos.entry_price + (
+                            pos.side * params.breakeven_lock_r * pos.risk_per_unit)
+                        pos.stop_price = (max(pos.stop_price, lock) if pos.side == LONG
+                                          else min(pos.stop_price, lock))
                 continue
 
             costs = s.book.costs
