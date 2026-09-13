@@ -168,3 +168,84 @@ Breakeven at any threshold; trailing at any k, arming or target; scale-out at an
 ladder; LTP trigger alone; stop-limit without a fallback. Each is negative on n~378
 paired, and the live n=13 evidence that appeared to favour them is length bias plus
 a sample that cannot rank variants.
+
+---
+
+# Addendum: every variant re-run on the corrected engine
+
+§8 step 4, done. All six reviewers measured against a baseline carrying the mask
+misalignment (§3.1), the mark-triggered target (§3.3) and exact-stop fills (§1).
+All three are now fixed (`aa3af26`). This re-runs the whole variant family on the
+corrected engine, **paired** — entries fixed on the engine's own trade list, so a
+variant cannot change which later trades are taken.
+
+Paths walked at 1 minute: stops trigger on MARK, targets and partial take-profits
+are resting limits filling at their own price, market exits fill at that minute's
+LTP close moved adversely by the slippage. The replay reproduces the engine to a
+mean absolute **0.036R** per trade (net +0.1252 replay vs +0.1271 engine, n=385).
+
+Baseline, corrected engine, calibrated fill: **+0.1252R, 3/4 blocks, worst -2.00R,
+5 trades beyond -1.5R.**
+
+    variant                          net       d          95% CI       t  blks  worst  <-1.5  FWER
+    LTP trigger                   +0.161  +0.036  [+0.000,+0.083]  +1.75   4/4  -1.12      0  0.48
+    stop-limit, no fallback       +0.141  +0.015  [+0.006,+0.026]  +2.60   3/4  -1.12      0  0.05
+    stop-limit + 5m fallback      +0.136  +0.010  [+0.001,+0.020]  +1.72   3/4  -1.73      1  0.51
+    stop-limit + 15m fallback     +0.136  +0.010  [+0.000,+0.020]  +1.65   3/4  -1.84      2  0.57
+    breakeven +2.0R               +0.122  -0.003                   -0.12   3/4  -2.00      5  1.00
+    adverse cut 0.75R             +0.100  -0.025                   -0.66   3/4  -1.74      1  1.00
+    breakeven +1.5R               +0.096  -0.029                   -0.84   3/4  -2.00      5  0.99
+    scale 1/2@1.5R                +0.074  -0.051                   -1.72   2/4  -2.00      5  0.52
+    scale 1/3@1R + 1/3@2R         +0.048  -0.077  [-0.137,-0.021]  -2.11   1/4  -2.00      4  0.24
+    scale 1/2@1R                  +0.039  -0.086  [-0.144,-0.034]  -2.47   1/4  -2.00      4  0.08
+    adverse cut 0.50R             +0.037  -0.088  [-0.174,-0.014]  -1.46   2/4  -1.74      1  0.70
+    breakeven +0.5R               +0.011  -0.115                   -1.78   2/4  -1.74      3  0.46
+    breakeven +1R, lock +0.25R    +0.003  -0.122  [-0.219,-0.036]  -2.24   2/4  -2.00      4  0.17
+    breakeven +1.0R               -0.001  -0.126  [-0.229,-0.037]  -2.50   2/4  -2.00      5  0.07
+    trail 1.00R after +1R         -0.045  -0.171  [-0.280,-0.061]  -2.72   1/4  -2.00      4  0.03
+    trail 0.75R after +1R         -0.046  -0.171  [-0.277,-0.067]  -2.70   1/4  -2.00      4  0.03
+    trail 0.50R after +1R         -0.065  -0.190  [-0.293,-0.086]  -2.85   1/4  -2.00      4  0.02
+    adverse cut 0.25R             -0.121  -0.246  [-0.380,-0.107]  -3.03   0/4  -1.74      1  0.01
+
+Studentised max-|t| under a week-level sign-flip null, 18 variants: **2.58**.
+
+## What changed against the panel
+
+1. **The panel's champion does not survive.** `ext-stats` put stop-limit + 5-minute
+   fallback at t=+7.23, FWER < 0.0001, and recommended pre-registering it. On the
+   corrected engine it is **t=+1.72, FWER 0.51** — indistinguishable from noise.
+2. **The variant `ext-exec` rejected is now the best one.** It rejected bare
+   stop-limit for an unbounded tail (non-fills at -6.73, -7.41, -12.00R). Here bare
+   stop-limit has the *tightest* tail of anything tested: worst **-1.12R, zero**
+   trades beyond -1.5R, against the baseline's -2.00R and five. It is also the only
+   variant clearing the multiplicity bar, at **t=2.60 against a 2.58 critical value**
+   — i.e. exactly on the line, at an effect of +0.015R/trade.
+   **This disagreement is unresolved.** At 1m a resting sell-limit at the stop fills
+   whenever the minute's LTP high reaches it, which on this data is nearly always;
+   their model found ~1% never filling. Which is right decides whether this variant
+   has a tail at all, and it cannot be settled from 1m candles.
+3. **The adverse-cut dispute resolves against it.** `ext-exits` had 0.75R at +0.041R,
+   P=0.95; `ext-stats` at +0.019R, FWER 0.91. Paired on the corrected engine it is
+   **-0.025R**, and the aggressive setting is significantly HARMFUL: 0.25R at
+   t=-3.03, FWER 0.01.
+4. **Trailing is upgraded from useless to harmful.** All three settings clear the bar
+   in the negative direction (FWER 0.02-0.03). Breakeven +1.0R and scale 1/2@1R are
+   close behind (FWER 0.07, 0.08).
+
+## Standing conclusion
+
+Nothing here is worth deploying for edge. The largest positive effect that clears
+multiplicity is **+0.015R/trade at exactly the significance boundary**, and its
+mechanism is disputed between two models that 1m data cannot separate.
+
+The tail argument is separate and survives on its own terms: bare stop-limit and
+the LTP trigger both take the worst trade from -2.00R to -1.12R and remove every
+trade beyond -1.5R, at no cost to net R. That is a risk control, and §7's endpoint
+(count of fills worse than a threshold, McNemar) is the right way to test it — not
+a mean-R endpoint, which at these effect sizes needs thousands of trades.
+
+Every loss-cutting mechanism the operator proposed is now measured negative on a
+corrected engine, paired, with multiplicity control: breakeven at four thresholds
+and with a lock, trailing at three, scale-out at three ladders, adverse cuts at
+three. The fill is where the money was, and fixing the fill is a backtester
+change, not a trading one.
