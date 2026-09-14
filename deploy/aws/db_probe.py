@@ -19,6 +19,30 @@ COUNTS = ("forward_test", "strategy_signals", "paper_orders", "paper_fills",
           "positions", "quarantined_fills", "funding_events", "risk_events")
 
 
+def _json(value, fallback):
+    """Parse a jsonb column, which arrives here as TEXT.
+
+    AUDIT FINDING F2 again, in the one place that cannot import the fix:
+    asyncpg returns jsonb as ``str`` unless a codec is registered, and
+    app/persistence/jsonb.py registers one on the bot's pool. This probe is
+    base64-embedded into an SSM document and connects on its own, so it has no
+    codec and no way to import one -- it may import nothing but the standard
+    library and asyncpg.
+
+    Silent until it is not: `[:6]` on a JSON string slices six CHARACTERS and
+    looks like data, while `.items()` raises. The second is what took the whole
+    database section out of the 2026-09-14 report.
+    """
+    if value is None:
+        return fallback
+    if isinstance(value, (str, bytes)):
+        try:
+            return json.loads(value)
+        except (ValueError, TypeError):
+            return fallback
+    return value
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
@@ -121,8 +145,8 @@ async def collect(con) -> dict:
         symbol=r["symbol"],
         bar_open=str(r["bar_open"]),
         direction=r["direction"],
-        passed=(r["conditions_passed"] or [])[:6],
-        indicators={k: v for k, v in list((r["indicators"] or {}).items())[:8]},
+        passed=_json(r["conditions_passed"], [])[:6],
+        indicators=dict(list(_json(r["indicators"], {}).items())[:8]),
         entry=str(r["entry_price"]), stop=str(r["stop_price"]),
         target=str(r["target_price"]),
         stop_pct=str(r["stop_distance_pct"]), rr=str(r["reward_risk"]),

@@ -1068,6 +1068,40 @@ def report_body(args, day, now, notes, problems, facts) -> None:
             f"{'drawdown —' if dd is None else f'{100*dd:.2f}% from peak'} · "
             f"{rs.get('wins')}W/{rs.get('losses')}L all time")
         facts["equity"], facts["drawdown_pct"] = eq, None if dd is None else round(100 * dd, 3)
+
+        # WHOSE MONEY IS THIS? The ledger is ACCOUNT-scoped, not
+        # experiment-scoped, and the difference is not cosmetic.
+        #
+        # `forward-test start` resets the ledger for a new experiment, but open
+        # positions deliberately cross the boundary -- closing them would
+        # fabricate an exit the strategy never produced -- so their P&L lands
+        # in the NEW ledger while the trade itself belongs to the old run.
+        #
+        # On 2026-09-13 that made a losing test look like a winning one.
+        # MANUAL_SCALP_BOTH_T3-5-20260907-f8435cf ran for seven minutes, opened
+        # one position, and was restarted as -R2. That position closed later
+        # the same day for +141.84, landing in R2's ledger. R2's own thirteen
+        # trades came to -35.44, and the report showed +106.40.
+        realised = [num(t.get("pnl")) for t in done]
+        realised = [x for x in realised if x is not None]
+        if realised and eq is not None:
+            mine = sum(realised)
+            inherited = (eq - 10_000.0) - mine
+            print(f"Of that, **{mine:+,.2f}** was made by this experiment's "
+                  f"{len(realised)} closed trade(s).")
+            facts["run_pnl"] = round(mine, 2)
+            # A cent of float noise is not an inherited trade.
+            if abs(inherited) >= 1.0:
+                print(f" **{inherited:+,.2f}** was not: it came from "
+                      f"position(s) opened under an earlier registration and "
+                      f"closed after this one began. The ledger is "
+                      f"account-scoped; scope analysis by `opened_at`.")
+                facts["inherited_pnl"] = round(inherited, 2)
+                notes.append(
+                    f"equity includes {inherited:+,.2f} from a position opened "
+                    f"under a previous registration -- this experiment's own "
+                    f"trades total {mine:+,.2f}")
+            print()
         # The drawdown halt is disabled for these runs, so nothing enforces
         # this number. That is exactly why it is printed.
         if dd is not None and dd >= 0.10:
@@ -1455,7 +1489,13 @@ def headline(day, now, args, facts, problems, notes) -> str:
     if facts.get("open_line"):
         rows.append(("open now", facts["open_line"]))
     if facts.get("equity_line"):
-        rows.append(("equity", facts["equity_line"]))
+        rows.append(("equity (account)", facts["equity_line"]))
+    if facts.get("run_pnl") is not None:
+        line = f"{facts['run_pnl']:+,.2f} realised"
+        if facts.get("inherited_pnl") is not None:
+            line += (f" · {facts['inherited_pnl']:+,.2f} of the account total "
+                     f"is inherited, not this run's")
+        rows.append(("this experiment's P&L", line))
     if facts.get("health_line"):
         rows.append(("health", facts["health_line"]))
     if facts.get("sample_line"):
