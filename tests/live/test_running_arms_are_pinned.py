@@ -72,7 +72,9 @@ def _pick(table: list[dict], only: str = "") -> list[str]:
     if only:
         expr = f'[.[] | select(.stack=="{only}")]'
     else:
-        expr = "[.[] | select(.pinned != true)]"
+        # A push now selects EVERY stack; which of them may actually be rolled
+        # is decided per host by the deploy job's guard, not by this filter.
+        expr = "."
     out = subprocess.run(["jq", "-c", expr], input=json.dumps(table),
                          capture_output=True, text=True, check=True).stdout
     return [r["stack"] for r in json.loads(out)]
@@ -104,28 +106,55 @@ def test_the_new_arm_carries_no_gates():
 
 
 # --- 2. a push skips the running arms --------------------------------------
+#
+# The MECHANISM changed on 2026-09-14 and the guarantee did not. A static
+# `"pinned":true` flag had to be hand-edited twice per experiment, and a stack
+# left pinned after its run ended blocked every deploy silently -- the steady
+# state was "everything pinned, nothing ever ships". The host is now asked at
+# roll time instead. These tests moved with it; what they protect is unchanged.
 
-def test_the_running_arms_are_pinned():
-    by_stack = {r["stack"]: r for r in _table()}
-    for stack in ("atr",):
-        assert by_stack[stack].get("pinned") is True, (
-            f"stack '{stack}' is no longer pinned; the next merge to master "
-            f"would retire its running experiment and reset its risk ledger")
+def test_the_deploy_asks_the_host_before_rolling_it():
+    assert "Action=status" in DEPLOY, (
+        "nothing asks the host whether an experiment is running; a merge "
+        "would retire it and reset its risk ledger")
 
 
-def test_a_push_rolls_nothing_while_every_arm_is_running():
-    """`cross` joined the pinned set on 2026-09-08, once it was RUNNING.
+def test_every_step_that_touches_the_host_is_gated_on_that_answer():
+    """A guard nothing depends on is decoration."""
+    must_be_gated = (
+        "retire the running experiment, on the image still running",
+        "send the deploy command",
+        "start the successor experiment",
+    )
+    for name in must_be_gated:
+        i = DEPLOY.index(f"- name: {name}")
+        window = DEPLOY[i:i + 400]
+        assert "steps.guard.outputs.roll == 'yes'" in window, (
+            f"step {name!r} runs regardless of whether an experiment is "
+            f"RUNNING on the host")
 
-    It was unpinned for exactly as long as it took to roll the stack up. An
-    empty selection is the correct steady state while all three arms are
-    mid-experiment -- not a misconfiguration -- and the deploy job treats it
-    as success rather than as an invalid matrix.
+
+def test_the_guard_fails_closed():
+    """An unreadable host must not be rolled.
+
+    `forward-test status` exits 1 both for 'nothing is running' and for every
+    real failure, so the guard matches the CLI's words rather than its exit
+    code -- the same reasoning the retire step already uses. The default must
+    be 'do not roll', set BEFORE anything can fail.
     """
-    assert _pick(_table()) == []
+    i = DEPLOY.index("- name: may we roll this host?")
+    guard = DEPLOY[i:DEPLOY.index("- name: decide the experiment id")]
+    first = guard.index('echo "roll=no"')
+    assert first < guard.index("send-command"), (
+        "the guard must default to roll=no before it talks to the host, so a "
+        "failure anywhere leaves the experiment protected")
+    assert "no experiment is RUNNING" in guard, (
+        "the guard must match the CLI's own words; its exit code is shared "
+        "with every real failure")
 
 
 def test_the_notice_names_what_was_skipped():
-    assert "pinned, NOT rolled" in DEPLOY and "only_stack=" in DEPLOY, (
+    assert "NOT rolling" in DEPLOY and "only_stack=" in DEPLOY, (
         "a push now silently skips stacks; it must say which and how to "
         "override, or a stack stops being deployed and nobody notices")
 
@@ -139,8 +168,13 @@ def test_only_stack_can_still_roll_any_stack(stack):
     assert _pick(_table(), only=stack) == [stack]
 
 
-def test_pinning_is_overridden_loudly():
-    assert "pinning is overridden" in DEPLOY
+def test_the_override_is_loud_and_skips_the_guard():
+    assert "the running-experiment guard is overridden for it" in DEPLOY
+    i = DEPLOY.index("- name: may we roll this host?")
+    guard = DEPLOY[i:DEPLOY.index("- name: decide the experiment id")]
+    assert "deliberate dispatch" in guard, (
+        "only_stack must bypass the guard -- it IS the deliberate act -- and "
+        "say so, or an operator who meant to roll is silently refused")
 
 
 # --- 4. an all-pinned table must not produce an invalid matrix -------------
@@ -154,8 +188,16 @@ def test_the_roll_job_is_gated_on_a_non_empty_matrix():
     assert "needs.targets.outputs.matrix != '[]'" in cond
 
 
-def test_a_fully_pinned_table_selects_nothing_rather_than_erroring():
-    assert _pick([dict(r, pinned=True) for r in _table()]) == []
+def test_an_empty_table_selects_nothing_rather_than_erroring():
+    """Still reachable, just by a different route.
+
+    A push no longer filters stacks out -- the per-host guard does that later,
+    after the matrix exists -- so the all-pinned path is gone. An empty stack
+    table is the remaining way to reach `matrix.include: []`, which GitHub
+    rejects as INVALID rather than skipping, and the job's `if` must still
+    catch it.
+    """
+    assert _pick([]) == []
 
 
 # --- 5. a pinned stack still gets its daily report -------------------------

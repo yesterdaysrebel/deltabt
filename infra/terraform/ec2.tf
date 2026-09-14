@@ -232,8 +232,8 @@ resource "aws_ssm_document" "experiment" {
     parameters = {
       Action = {
         type          = "String"
-        description   = "stop | start"
-        allowedValues = ["stop", "start"]
+        description   = "stop | start | status"
+        allowedValues = ["stop", "start", "status"]
       }
       ExperimentId = {
         type           = "String"
@@ -270,6 +270,33 @@ resource "aws_ssm_document" "experiment" {
               "$${ECR_REPOSITORY_URL}:$${TAG}" "$@"
           }
           case "{{ Action }}" in
+            status)
+              # READ-ONLY. Exists so the deploy pipeline can decide for itself
+              # whether rolling this host would destroy a run in progress,
+              # instead of a human hand-editing `"pinned":true` in deploy.yml.
+              # That hand-edit IS the failure it was meant to prevent: `hours`
+              # was rolled on 2026-09-07, four days into a 30-day experiment,
+              # by a merge that had nothing to do with it.
+              #
+              # Exit 0 = an experiment is RUNNING here, do not roll.
+              # Exit 1 = nothing is running, rolling is safe.
+              # A never-deployed host reports "safe", which is correct: there
+              # is no run to lose.
+              if [ ! -f /run/deltabt/env ] || [ -z "$${TAG:-}" ] || [ "$TAG" = "none" ]; then
+                echo "[experiment] host has never run a container; nothing to protect"
+                exit 1
+              fi
+              # The CLI already answers exactly this question, and its exit
+              # code is the contract: 0 when an experiment is RUNNING, 1 on
+              # "no experiment is RUNNING". Parsing its prose would be a
+              # second copy of a fact it already states precisely.
+              set +e
+              out="$(cli forward-test status 2>&1)"
+              rc=$?
+              set -e
+              echo "$out"
+              exit $rc
+              ;;
             stop)
               # A STACK'S FIRST ROLL HAS NOTHING TO RETIRE, AND THAT MUST NOT
               # BE AN ERROR. The deploy retires BEFORE it rolls, so on a host
