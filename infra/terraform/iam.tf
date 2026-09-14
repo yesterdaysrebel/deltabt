@@ -61,10 +61,30 @@ resource "aws_iam_role_policy" "instance" {
         Resource = aws_ecr_repository.bot.arn
       },
       {
+        # STILL NEEDED, but only for BOOTSTRAP: create_stack_database.py uses
+        # the master user once, to create the database and the IAM-auth role.
+        # The bot itself no longer reads this -- see the statement below.
         Sid      = "ReadTheDatabasePasswordAndNothingElse"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = aws_db_instance.main.master_user_secret[0].secret_arn
+      },
+      {
+        # HOW THE BOT ACTUALLY AUTHENTICATES NOW.
+        #
+        # An IAM token is minted locally per connection and lasts ~15 minutes,
+        # so there is no stored password to go stale when RDS rotates the
+        # master credential on its own schedule. That rotation used to leave
+        # the cached DSN wrong in a way that broke nothing until the NEXT new
+        # connection -- possibly days later, looking like an unrelated outage.
+        #
+        # The resource id is the DBI RESOURCE id (db-XXXX), not the identifier,
+        # and it is scoped to ONE database user. A token for `deltabt_app`
+        # cannot be used to connect as the master user.
+        Sid      = "ConnectToPostgresAsTheAppRoleOnly"
+        Effect   = "Allow"
+        Action   = ["rds-db:connect"]
+        Resource = "arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.main.resource_id}/${var.db_app_username}"
       },
       {
         Sid    = "ReadWhichImageTagToRun"

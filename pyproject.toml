@@ -36,6 +36,13 @@ live = [
     "asyncpg>=0.29",
     "structlog>=24.1",
     "prometheus-client>=0.20",
+    # DATABASE auth only, and it does not weaken the sentence above. boto3 is
+    # here to mint RDS IAM tokens (app/persistence/db_auth.py) so the bot holds
+    # no database password that can go stale when AWS rotates the master
+    # credential. It is not an exchange SDK, it signs nothing for a venue, and
+    # the IAM policy it acts under grants exactly `rds-db:connect` as one
+    # Postgres role. app/safety.py's boundary is unchanged and still enforced.
+    "boto3>=1.34",
 ]
 
 [project.scripts]

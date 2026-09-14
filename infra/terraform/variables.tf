@@ -198,6 +198,30 @@ variable "db_instance_class" {
   default     = "db.t4g.micro"
 }
 
+variable "db_app_username" {
+  description = <<-EOT
+    The Postgres role the BOT connects as, using an IAM token rather than a
+    password.
+
+    Deliberately not the master user. The master user owns the database and can
+    drop it; the bot needs to read and write its own tables and nothing more.
+    Separating them also means the IAM policy can be scoped to this one role,
+    so a token minted by the instance cannot be used to connect as the owner.
+
+    Created by deploy/aws/create_stack_database.py, which is the one place that
+    still uses the master password:
+
+        CREATE ROLE deltabt_app LOGIN;
+        GRANT rds_iam TO deltabt_app;
+
+    `rds_iam` is what makes Postgres accept the signed token as the password.
+    A role with that grant can ONLY authenticate by token -- it has no password
+    to rotate, which is the entire point.
+  EOT
+  type        = string
+  default     = "deltabt_app"
+}
+
 variable "db_allocated_storage_gb" {
   description = "Measured ~40 MB/day at four symbols, so 20 GB is years."
   type        = number

@@ -24,9 +24,8 @@ if [[ -z "$TAG" || "$TAG" == "none" ]]; then
   exit 90
 fi
 
-# The database password is fetched at START, never stored on disk and never
-# baked into the image. RDS rotates it; this picks up the current value on
-# every restart.
+# Master password: bootstrap only, never on disk, never in the image. The bot
+# authenticates with IAM tokens instead -- app/persistence/db_auth.py.
 SECRET="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
            --secret-id "$DB_SECRET_ARN" --query SecretString --output text)"
 DB_USER="$(printf '%s' "$SECRET" | python3 -c 'import json,sys;print(json.load(sys.stdin)["username"])')"
@@ -47,9 +46,8 @@ docker pull "${ECR_REPOSITORY_URL}:${TAG}"
 
 docker rm -f deltabot >/dev/null 2>&1 || true
 
-# The DSN is written to a root-only file on TMPFS, never to disk and never to
-# `-e`, so it appears neither in `docker inspect` nor in the process table.
-# /run is tmpfs, so a reboot clears it; it is rewritten on every start anyway.
+# DSN goes to a root-only tmpfs file, never to `-e`, so it is in neither
+# `docker inspect` nor the process table. /run clears on reboot; rewritten anyway.
 install -d -m 0700 /run/deltabt
 umask 077
 printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > /run/deltabt/env
@@ -105,6 +103,7 @@ log "container cpu limit: $CPU_LIMIT (host has $(nproc 2>/dev/null || echo '?'))
 
 exec docker run --rm --name deltabot \
   --env-file /run/deltabt/env \
+  -e "DB_IAM_AUTH=${DB_IAM_AUTH:-0}" \
   -e "DELTABOT_SYMBOLS=$DELTABOT_SYMBOLS" \
   -e "DELTABOT_VARIANT=${DELTABOT_VARIANT:-V1}" \
   -e "DELTABOT_MAX_OPEN=${DELTABOT_MAX_OPEN:-1}" \
