@@ -382,6 +382,44 @@ def test_the_secret_name_in_the_workflow_matches_terraform():
         f"{expected!r}, which is what Terraform creates")
 
 
+def test_a_live_stack_can_be_rolled_to_an_explicit_tag():
+    """THE ESCAPE HATCH FOR A HOST TOO BROKEN TO ANSWER FOR ITSELF.
+
+    Both the roll guard and the retire step talk to the image ALREADY RUNNING.
+    On 2026-09-15 that image could not complete a bar, so `forward-test status`
+    and `forward-test stop` each booted it, crash-looped, and never returned --
+    the guard skipped the roll while reporting success, and with `only_stack`
+    forcing past it the retire hung instead. A bot too broken to answer blocked
+    the deploy that would have fixed it.
+
+    A dispatch with an explicit `image_tag` sets the experiment id to 'none',
+    which skips retire and successor, and rolls the image without asking the
+    old one anything.
+
+    THAT PATH WAS DEAD. build-live carried `if: github.event.inputs.image_tag
+    == ''` at JOB level, so a manual tag skipped the whole job; deploy-live
+    requires its `exists` output, and a skipped job reports nothing. The one
+    recovery route a live stack had was disabled by the flag that selects it.
+    """
+    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    header = job[:job.index("    steps:")]
+    assert "if: github.event.inputs.image_tag == ''" not in header, (
+        "build-live skips entirely on a manual tag, so deploy-live sees no "
+        "`exists` output and the live rollback path is dead")
+    # The BUILD steps must still be skipped -- there is nothing to build for a
+    # tag that already exists.
+    assert "github.event.inputs.image_tag == ''" in job[job.index("    steps:"):], (
+        "nothing stops build-live rebuilding on a manual rollback")
+
+    live = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    for step in ("retire the running experiment", "start the successor experiment"):
+        i = live.index(step)
+        cond = live[i:i + 400]
+        assert "id != 'none'" in cond, (
+            f"{step!r} is not skipped on a manual tag, so a rollback would "
+            f"still have to interrogate the image it is replacing")
+
+
 def test_the_live_roll_waits_for_a_credential_rather_than_going_red():
     """The first merge brings up a host that CANNOT have a credential yet.
 
