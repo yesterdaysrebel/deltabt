@@ -196,6 +196,81 @@ jobs:
     # being shipped. Nothing reaches the host without it.
     uses: ./.github/workflows/test.yml
 
+  build-live:
+    # THE LIVE IMAGE, BUILT ONLY IF SOMEWHERE TO PUT IT EXISTS.
+    #
+    # It is a SEPARATE image because the paper image deliberately does not
+    # carry the `live` package -- app/safety.py's boundary is the absence of
+    # order-placement capability, not a runtime toggle -- and a separate ECR
+    # repository because two images in one repository, distinguished only by a
+    # tag convention, is one typo away from rolling a paper host onto a bot
+    # that can place orders.
+    #
+    # SELF-ACTIVATING, AND THAT IS THE POINT. infra/terraform/live.tf creates
+    # that repository only when var.live_stacks has an entry, so today this job
+    # finds nothing and skips with a notice. Nothing here needs editing when a
+    # live stack is added -- which matters because the alternative is a step
+    # somebody has to remember, and this pipeline has already been bitten twice
+    # by exactly that (a risk limit that reached the host but never the
+    # container, and a stack table that drifted from Terraform).
+    name: build and push the live image
+    needs: test
+    if: github.event.inputs.image_tag == ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-build-live-${{ github.run_id }}
+
+      - name: is there a live image repository yet?
+        id: repo
+        run: |
+          set -euo pipefail
+          NAME="${{ vars.ECR_REPOSITORY_LIVE || 'deltabt-live' }}"
+          if aws ecr describe-repositories --repository-names "$NAME" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no $NAME repository; no live stack is configured, so there is nothing to build. This is the expected state until infra/terraform/live.tf has a live_stacks entry."
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+        if: steps.repo.outputs.exists == 'true'
+
+      - name: refuse to rebuild an existing tag
+        if: steps.repo.outputs.exists == 'true'
+        run: |
+          if aws ecr describe-images --repository-name "${{ steps.repo.outputs.name }}" \
+               --image-ids "imageTag=${GITHUB_SHA}" >/dev/null 2>&1; then
+            echo "::notice::${GITHUB_SHA} is already in ECR; skipping the live build."
+            echo "already_built=true" >> "$GITHUB_ENV"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+      - uses: docker/setup-buildx-action@v3
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+
+      - name: build for arm64 and push
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.live
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_DIRTY=0
+          tags: ${{ steps.ecr.outputs.registry }}/${{ steps.repo.outputs.name }}:${{ github.sha }}
+
   targets:
     # WHICH STACKS TO ROLL, DECIDED BEFORE THE MATRIX EXISTS.
     #

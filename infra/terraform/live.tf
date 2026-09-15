@@ -80,6 +80,35 @@ variable "live_venue" {
   }
 }
 
+# THE LIVE IMAGE'S OWN REPOSITORY, created only when a live stack exists.
+#
+# Separate from the paper repository rather than a tag convention inside it:
+# two images in one repository, told apart only by how somebody named the tag,
+# is one typo away from rolling a paper host onto an image that can place
+# orders. The boundary is worth a second repository.
+#
+# .github/workflows/deploy.yml's build-live job checks for this repository and
+# skips when it is absent, so adding a live_stacks entry is the ONLY step --
+# there is no second place to remember to edit. This pipeline has been bitten
+# twice by exactly that kind of forgotten link.
+resource "aws_ecr_repository" "live" {
+  count = length(var.live_stacks) > 0 ? 1 : 0
+
+  name                 = "${local.name}-live"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  lifecycle {
+    # Images are the only durable link between a row in the database and the
+    # code that produced it. Destroying this repository destroys the ability
+    # to say what any past live trade was executed by.
+    prevent_destroy = true
+  }
+}
+
 # Where a live host finds the ARN. run_live.sh derives this parameter's name
 # from the image-tag parameter's prefix rather than reading it from user_data,
 # because adding a variable to that template changes the rendered bytes for
