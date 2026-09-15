@@ -150,9 +150,20 @@ locals {
   #: went unnoticed because paths-ignore meant no deploy ran for three
   #: commits. The `build` job kept working throughout: it declares no
   #: environment, so it matched on the ref subject instead.
+  #: AND IT HAPPENED AGAIN ON 2026-09-15, with `live-deploy`. The live roll
+  #: was given its own environment so a required reviewer could be attached to
+  #: live rolls without gating paper -- a deliberate choice -- and this list
+  #: was not updated with it, so the very first live roll died at
+  #: AssumeRoleWithWebIdentity after the image had built and pushed. Identical
+  #: failure, identical cause, four weeks apart.
+  #:
+  #: tests/live/test_oidc_subjects_cover_environments.py now derives the
+  #: environments from the workflow files and fails if one is missing here, so
+  #: there is no fourth time.
   github_subjects = flatten([for r in local.repo_forms : [
     "repo:${r}:ref:refs/heads/master",
     "repo:${r}:environment:paper",
     "repo:${r}:environment:paper-deploy",
+    "repo:${r}:environment:live-deploy",
   ]])
 }
