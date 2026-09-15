@@ -166,3 +166,45 @@ def test_the_poll_loop_tests_an_event_not_its_truthiness():
 def test_the_intervals_are_sane():
     assert 0 < POLL_SECONDS <= 30, "fills should not wait a minute to be seen"
     assert RECONCILE_SECONDS >= POLL_SECONDS
+
+
+# -- mainnet may not start with the breakers off -----------------------------
+
+def test_mainnet_refuses_to_start_with_the_breakers_disabled(tmp_path):
+    """Wired, not merely available. A guard nothing calls is decoration."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class _Risk:
+        max_drawdown_pct: float = 1.0        # what variables.tf ships today
+        max_daily_loss_pct: float = 1.0
+        max_consecutive_losses: int = 0
+
+    class _Settings:
+        risk = _Risk()
+
+    bot = a_bot(FakeVenue([]))
+    bot.settings = _Settings()
+    bot.venue = "mainnet"
+    assert run(bot.start()) is False
+    assert "circuit breakers off" in bot.recovery_error
+    assert bot.notifier.sent, "a refusal nobody is told about is one nobody fixes"
+
+
+def test_the_kill_switch_stops_an_order_at_the_broker(tmp_path):
+    from live.broker import LiveBroker
+    from live.client import VenueError
+
+    switch = tmp_path / "HALT"
+    b = LiveBroker(object(), product_ids={"BTCUSD": 84}, experiment_id="E",
+                   kill_switch_path=str(switch))
+
+    class _Intent:
+        symbol, side, quantity, order_type = "BTCUSD", 1, 1, "market"
+        limit_price = None
+        stop_price, target_price, risk_per_unit = 1.0, 3.0, 1.0
+        intent_id, signal_key = "i", "k"
+
+    switch.write_text("stop")
+    with pytest.raises(VenueError, match="kill switch"):
+        b.submit_order(_Intent())

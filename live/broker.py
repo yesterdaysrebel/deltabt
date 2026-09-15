@@ -47,6 +47,7 @@ from decimal import Decimal
 from typing import Any
 
 from live.client import AmbiguousWrite, LiveClient, VenueError
+from live.guards import KILL_SWITCH_PATH, kill_switch_engaged
 from live.orders import (STOP_LIMIT_CAP_R, OrderRequest, OrderType, Side,
                          StopTriggerMethod, TimeInForce, client_order_id)
 
@@ -90,12 +91,14 @@ class LiveBroker:
 
     def __init__(self, client: LiveClient, *, product_ids: dict[str, int],
                  experiment_id: str, tick_size: dict[str, Decimal] | None = None,
-                 entry_ttl_seconds: int = 90) -> None:
+                 entry_ttl_seconds: int = 90,
+                 kill_switch_path: str | None = None) -> None:
         self.client = client
         self.product_ids = dict(product_ids)
         self.experiment_id = experiment_id
         self.tick_size = dict(tick_size or {})
         self.entry_ttl_seconds = entry_ttl_seconds
+        self.kill_switch_path = kill_switch_path
         #: symbol -> LivePosition, refreshed by poll(). A CACHE.
         self.positions: dict[str, LivePosition] = {}
         #: client_order_id -> the intent that produced it, for attribution.
@@ -143,6 +146,15 @@ class LiveBroker:
         truth: an intent whose outcome is unknown must reach the caller as an
         exception, because the correct response is to stop and reconcile.
         """
+        # THE LAST GATE BEFORE AN ORDER LEAVES. Checked per order rather than
+        # at start-up, because the point of a kill switch is the trade that
+        # has not happened yet. It stops OPENING only: positions already open
+        # keep their exchange-held brackets, which is the protection that
+        # matters once something has gone wrong enough to reach for this.
+        if kill_switch_engaged(self.kill_switch_path):
+            raise VenueError(
+                f"kill switch engaged ({self.kill_switch_path or KILL_SWITCH_PATH}); "
+                f"not opening {intent.symbol}")
         if intent.symbol in self._suspended:
             raise VenueError(f"{intent.symbol} is suspended; not opening")
         pid = self.product_ids.get(intent.symbol)

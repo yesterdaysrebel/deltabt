@@ -70,9 +70,11 @@ class LiveTradingBot(TradingBot):
     """A TradingBot whose orders reach a real exchange."""
 
     def __init__(self, *args, client: LiveClient, product_ids: dict[str, int],
-                 tick_size=None, **kwargs) -> None:
+                 tick_size=None, venue: str = "testnet",
+                 kill_switch_path: str | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.client = client
+        self.venue = venue
         self.product_ids = dict(product_ids)
         # REPLACE the broker the parent built. Constructing the parent first
         # and overwriting is deliberate: every other attribute it sets up is
@@ -81,11 +83,30 @@ class LiveTradingBot(TradingBot):
         self.broker = LiveBroker(
             client, product_ids=self.product_ids,
             experiment_id=getattr(self, "experiment_id", "") or "unbound",
-            tick_size=tick_size or {})
+            tick_size=tick_size or {},
+            kill_switch_path=kill_switch_path)
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
         self._poll_task: asyncio.Task | None = None
 
     # -- startup -------------------------------------------------------------
+
+    async def start(self) -> bool:
+        """Refuse mainnet outright if the circuit breakers are switched off.
+
+        BEFORE the lock, the database and the experiment binding, because none
+        of those matter if the process must not trade at all. The check is a
+        no-op on testnet -- see live/guards.py for why that exemption is
+        deliberate and why this check exists at all.
+        """
+        from live.guards import GuardError, require_circuit_breakers
+        try:
+            require_circuit_breakers(self.settings.risk, self.venue)
+        except GuardError as exc:
+            log.critical("%s", exc)
+            self.recovery_error = str(exc)
+            await self.notifier.send("REFUSING TO START", str(exc))
+            return False
+        return await super().start()
 
     async def recover(self) -> None:
         """Rebuild from the database, then check the VENUE agrees.
