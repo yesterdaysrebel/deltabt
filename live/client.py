@@ -169,9 +169,36 @@ class LiveClient:
     # -- reads ---------------------------------------------------------------
 
     def get_positions(self) -> list[dict]:
-        """Open positions AS THE VENUE SEES THEM. This is the source of truth."""
-        result = self._read("/v2/positions")
+        """EVERY open position, as the venue sees them. The source of truth.
+
+        `/v2/positions` is the SINGLE-product endpoint and rejects a call with
+        no product_id:
+
+            HTTP 400 bad_schema -- one out of product_id or
+            underlying_asset_symbol is required
+
+        `/v2/positions/margined` is the one that enumerates. The distinction
+        matters more than it reads: reconciliation exists to notice a position
+        we have NO record of, and a per-product query can only ask about
+        products we already know to ask about. Querying symbol by symbol would
+        report "agreed" while an unknown position sat open on a product not in
+        our universe -- the exact blind spot this is supposed to close.
+
+        So this endpoint is not interchangeable with the other one, and
+        get_position() below is deliberately a separate method rather than an
+        optional argument here.
+        """
+        result = self._read("/v2/positions/margined")
+        if result is None:
+            return []
         return result if isinstance(result, list) else [result]
+
+    def get_position(self, product_id: int) -> dict | None:
+        """One product's position. NOT a substitute for get_positions()."""
+        result = self._read("/v2/positions", {"product_id": product_id})
+        if isinstance(result, list):
+            return result[0] if result else None
+        return result or None
 
     def get_open_orders(self, product_id: int | None = None) -> list[dict]:
         params = {"states": "open"}
@@ -196,9 +223,19 @@ class LiveClient:
         but it is only trusted when it finds something. Not finding something
         in the fallback returns None and the caller raises rather than assumes.
         """
+        # THE ID GOES IN THE PATH. `/v2/orders/client-oid` -- the name in the
+        # docs navigation -- is not a route: it matches `/v2/orders/{order_id}`
+        # and the venue rejects it with "Should be an integer, param order_id".
+        # Confirmed on testnet 2026-09-15, then found by probing unauthenticated:
+        # this path answers 401 (exists, needs auth) and every other candidate
+        # spelling 404s.
+        #
+        # The path is part of the signed message, so the id must be in it
+        # before signing -- which sign() handles, since it signs the path it is
+        # given. client_order_id() emits 16 hex characters, so there is nothing
+        # here that needs URL-encoding.
         try:
-            row = self._read("/v2/orders/client-oid",
-                             {"client_oid": client_order_id})
+            row = self._read(f"/v2/orders/client_order_id/{client_order_id}")
         except VenueRejected as exc:
             log.warning("client-oid lookup rejected (%s); falling back to a "
                         "page scan, which can MISS a filled order", exc)

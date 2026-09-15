@@ -84,22 +84,41 @@ def main(argv: list[str]) -> int:
               f"available={b.get('available_balance', '?')}")
 
     step(2, "open positions (the source of truth reconciliation will use)")
-    positions = client.get_positions()
-    print(f"    {len(positions)} position(s)")
-    for p in positions[:5]:
-        print(f"    product={p.get('product_id')} size={p.get('size')} "
-              f"entry={p.get('entry_price')}")
+    # NOT fatal. Steps 4 and 5 are the ones that can only be answered here --
+    # whether an order places, and whether it can be found again afterwards.
+    # Losing those to a positions hiccup wastes the run.
+    try:
+        positions = client.get_positions()
+        print(f"    {len(positions)} position(s)")
+        for p in positions[:5]:
+            print(f"    product={p.get('product_id')} size={p.get('size')} "
+                  f"entry={p.get('entry_price')}")
+    except VenueError as exc:
+        print(f"    *** FAILED: {exc}")
+        print("    *** reconciliation cannot enumerate positions. Continuing, "
+              "because steps 4-5 still need answering -- but this must be "
+              "fixed before anything trades.")
 
     step(3, f"find {symbol} and its mark price")
+    # FILTER BY CONTRACT TYPE. Unfiltered, the first 500 rows on testnet are
+    # all `move_options` and BTCUSD -- which exists, id 84 -- is nowhere in
+    # them. An unfiltered page read reports "not found" for a product that is
+    # live and trading.
+    #
+    # And the key is `id`, not `product_id`. The products endpoint names it
+    # one way; positions, orders and tickers name it the other.
     product = None
-    for row in client._read("/v2/products", {"page_size": 500}) or []:
+    for row in client._read("/v2/products",
+                            {"contract_types": "perpetual_futures",
+                             "page_size": 200}) or []:
         if row.get("symbol") == symbol:
             product = row
             break
     if product is None:
-        print(f"    {symbol} not found on this venue", file=sys.stderr)
+        print(f"    {symbol} is not a live perpetual on this venue",
+              file=sys.stderr)
         return 1
-    pid = int(product["product_id"])
+    pid = int(product["id"])
     tick = Decimal(str(product.get("tick_size") or "0.5"))
     ticker = client._read(f"/v2/tickers/{symbol}") or {}
     mark = Decimal(str(ticker.get("mark_price") or ticker.get("close") or 0))
@@ -123,9 +142,36 @@ def main(argv: list[str]) -> int:
     oid = placed.get("id")
     print(f"    accepted: id={oid} state={placed.get('state')}")
 
+    fell_back = False
     try:
         step(5, "look it up by client_order_id -- THE assumption that matters")
-        found = client.get_order_by_client_id(cid)
+
+        # THE FALLBACK MUST NOT COUNT AS A PASS. On the first testnet run the
+        # dedicated endpoint was rejected, the page scan found the order
+        # anyway -- because it was still resting on page one -- and this script
+        # printed "lookup-by-client-oid works". It did not. The fallback
+        # succeeds precisely in the case that does not matter and fails in the
+        # one that does: a filled order is in paginated history.
+        import logging
+
+        class _CaughtFallback(logging.Handler):
+            def emit(self, record):
+                nonlocal fell_back
+                if "falling back" in record.getMessage():
+                    fell_back = True
+
+        handler = _CaughtFallback()
+        logging.getLogger("live.client").addHandler(handler)
+        try:
+            found = client.get_order_by_client_id(cid)
+        finally:
+            logging.getLogger("live.client").removeHandler(handler)
+
+        if fell_back:
+            print("    *** the dedicated endpoint was REJECTED and this fell "
+                  "back to a page scan. Any result below is from the scan, "
+                  "which cannot see a filled order beyond page one.",
+                  file=sys.stderr)
         if not found:
             print("    *** NOT FOUND. The double-fill protection cannot work: "
                   "after an unobserved write this client would report 'never "
@@ -149,7 +195,15 @@ def main(argv: list[str]) -> int:
     still = [o for o in client.get_open_orders(pid) if str(o.get("id")) == str(oid)]
     print(f"    still open: {len(still)}")
 
-    print("\nsigning, order placement, lookup-by-client-oid and cancel all work.")
+    if fell_back:
+        print("\nsigning, order placement and cancel work. THE LOOKUP DOES "
+              "NOT: it answered from the fallback scan, so an ambiguous write "
+              "cannot be resolved and nothing should trade yet.",
+              file=sys.stderr)
+        return 1
+
+    print("\nsigning, order placement, lookup-by-client_order_id and cancel "
+          "all work.")
     return 0
 
 

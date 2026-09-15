@@ -220,9 +220,11 @@ def test_the_lookup_uses_the_dedicated_endpoint_not_a_list_filter():
         _resp(200, {"result": landed}),
     )
     assert client.place_order(order)["id"] == 12
-    looked_up = [u for _, u in session.sent if "client-oid" in u]
-    assert looked_up, f"lookup did not use /v2/orders/client-oid: {session.sent}"
-    assert f"client_oid={order.client_order_id}" in looked_up[0]
+    looked_up = [u for _, u in session.sent if "client_order_id" in u]
+    assert looked_up, f"lookup did not use the client_order_id route: {session.sent}"
+    # The id goes in the PATH. `/v2/orders/client-oid` is not a route -- it
+    # matches /v2/orders/{order_id} and 400s. Found on testnet 2026-09-15.
+    assert looked_up[0].endswith(f"/v2/orders/client_order_id/{order.client_order_id}")
 
 
 def test_the_page_scan_is_only_a_fallback_and_is_never_trusted_when_empty():
@@ -270,6 +272,28 @@ def test_a_rejection_is_never_retried():
     with pytest.raises(VenueRejected, match="insufficient_margin"):
         client.place_order(an_order())
     assert len(session.posts) == 1
+
+
+def test_listing_positions_uses_the_endpoint_that_enumerates():
+    """REGRESSION, found on testnet 2026-09-15.
+
+    `/v2/positions` is the SINGLE-product endpoint and 400s without a
+    product_id. Reconciliation exists to notice a position we have no record
+    of, so it must enumerate: a per-product query can only ask about products
+    we already know to ask about, and would report "agreed" while an unknown
+    position sat open on a product outside our universe.
+    """
+    client, session = a_client(_resp(200, {"result": []}))
+    client.get_positions()
+    assert "/v2/positions/margined" in session.sent[0][1]
+
+
+def test_a_single_product_position_is_a_separate_call():
+    client, session = a_client(_resp(200, {"result": [{"size": 1}]}))
+    assert client.get_position(27) == {"size": 1}
+    url = session.sent[0][1]
+    assert "/v2/positions?product_id=27" in url
+    assert "margined" not in url
 
 
 def test_reads_are_retried_then_give_up():
