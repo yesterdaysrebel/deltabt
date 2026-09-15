@@ -164,3 +164,95 @@ def find_by_client_order_id(rows, client_order_id: str) -> dict | None:
         if isinstance(row, Mapping) and row.get("client_order_id") == client_order_id:
             return dict(row)
     return None
+
+
+def open_record(*, intent: Mapping[str, Any], venue_entry: Mapping[str, Any],
+                position_uid: str, instance_uid: str, strategy_version: str,
+                equity_before: float, experiment_id: str | None = None,
+                config_hash: str | None = None):
+    """Build the row recorded when a live position opens.
+
+    `intent` is what WE decided (live/broker.py keeps it at submit time);
+    `venue_entry` is entry_facts() off the venue's order-history row.
+
+    ENTRY SLIPPAGE IS RECORDED, NOT INFERRED LATER. It is the difference
+    between the price risk sized against and the price we got, and it is the
+    whole reason planned_r and fill_rr are separate columns -- schema.sql:
+    "They differ by entry slippage, and reporting only one hides the
+    degradation the forward test exists to measure."
+    """
+    from app.persistence.models import PositionRecord
+
+    side = int(intent["side"])
+    entry = float(venue_entry["entry_price"])
+    requested = float(intent.get("entry_reference") or entry)
+    rpu = float(intent["risk_per_unit"])
+    qty = int(venue_entry.get("filled") or intent["quantity"])
+    stop = float(intent["stop_price"])
+    target = float(intent["target_price"])
+
+    # Signed: a long filled ABOVE its reference paid slippage, a short filled
+    # below it did. Unsigned, a favourable fill would read as a cost.
+    entry_slippage = side * (entry - requested)
+
+    planned_r = (abs(target - requested) / rpu) if rpu else None
+    # fill_rr is measured from the ACTUAL entry against the SAME stop, because
+    # the stop is where it is regardless of what we paid to get in.
+    fill_rr = (abs(target - entry) / abs(entry - stop)
+               if entry != stop else None)
+
+    return PositionRecord(
+        position_uid=position_uid,
+        signal_key=str(intent["signal_key"]),
+        instance_uid=instance_uid,
+        symbol=str(intent["symbol"]),
+        side=side,
+        status="OPEN",
+        quantity=qty,
+        entry_price=entry,
+        stop_price=stop,
+        target_price=target,
+        initial_risk=rpu * qty,
+        risk_per_unit=rpu,
+        notional=float(intent.get("notional") or entry * qty),
+        equity_before=equity_before,
+        opened_at=int(venue_entry.get("opened_at") or 0),
+        strategy_version=strategy_version,
+        entry_fee=float(venue_entry.get("entry_fee") or 0.0),
+        requested_entry=requested,
+        planned_r=planned_r,
+        fill_rr=fill_rr,
+        entry_slippage=entry_slippage,
+        experiment_id=experiment_id,
+        config_hash=config_hash,
+    )
+
+
+def apply_close(record, venue_close: Mapping[str, Any]):
+    """Stamp a close onto an open record, in place, and return it.
+
+    R IS COMPUTED ON THE FILLS, not on the planned stop distance: the forward
+    test exists to measure what the arm actually earned, and a stop that filled
+    0.66R past its trigger earned -1.66R however it was planned.
+    """
+    import dataclasses
+
+    exit_px = float(venue_close["exit_price"])
+    pnl = venue_close.get("realized_pnl")
+    closed_at = venue_close.get("closed_at")
+    gross = record.side * (exit_px - record.entry_price) * record.quantity
+
+    return dataclasses.replace(
+        record,
+        status="CLOSED",
+        exit_price=exit_px,
+        exit_fee=float(venue_close.get("exit_fee") or 0.0),
+        realized_pnl=float(pnl) if pnl is not None else None,
+        r_multiple=r_multiple(record.entry_price, exit_px, record.side,
+                              record.risk_per_unit),
+        exit_reason=venue_close.get("exit_reason"),
+        closed_at=closed_at,
+        hold_seconds=((closed_at - record.opened_at)
+                      if closed_at and record.opened_at else None),
+        gross_pnl=gross,
+    )
