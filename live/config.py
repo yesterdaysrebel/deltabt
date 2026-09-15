@@ -46,6 +46,42 @@ ENV_ENV = "DELTA_ENV"
 
 BASE_URLS = {"testnet": TESTNET, "mainnet": MAINNET}
 
+#: THE UNIVERSE DIFFERS BY VENUE, AND NOT BECAUSE ANYONE WANTED IT TO.
+#:
+#: Testnet lists 15 perpetuals and the arm's three are not among them --
+#: BEATUSD, AKEUSD and BANKUSD simply do not exist there. So the testnet run
+#: CANNOT be the experiment; it is a rehearsal of the machinery on whatever
+#: instruments the venue has.
+#:
+#: Be clear about what that does and does not buy. It exercises signing,
+#: ordering, brackets, the poll loop, reconciliation and persistence. It does
+#: NOT exercise the arm, and it does not exercise the conditions the arm
+#: actually trades in: the thin three are illiquid (89.7% empty minutes) and
+#: produced a stop that filled 6.83R past its trigger in a two-minute crash.
+#: BTCUSD will do none of that, and the stop cap will never bind on testnet.
+#:
+#: The first time these three symbols trade through this code will therefore
+#: be on mainnet. That is a real limit of the plan, not a detail.
+VENUE_SYMBOLS = {
+    "testnet": ("BTCUSD", "ETHUSD", "SOLUSD"),
+    "mainnet": ("BEATUSD", "AKEUSD", "BANKUSD"),
+}
+
+
+def symbols_for(env_name: str) -> tuple[str, ...]:
+    name = (env_name or "testnet").strip().lower()
+    if name not in VENUE_SYMBOLS:
+        raise ConfigError(f"no universe defined for venue {name!r}")
+    return VENUE_SYMBOLS[name]
+
+
+def venue_name(env: dict[str, str] | None = None) -> str:
+    src = os.environ if env is None else env
+    name = (src.get(ENV_ENV) or "testnet").strip().lower()
+    if name not in BASE_URLS:
+        raise ConfigError(f"{ENV_ENV}={name!r} is not one of {sorted(BASE_URLS)}")
+    return name
+
 
 class ConfigError(RuntimeError):
     """Never contains a secret."""

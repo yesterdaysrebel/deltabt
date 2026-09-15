@@ -132,3 +132,33 @@ def test_an_unreadable_venue_is_a_config_error_not_a_crash():
 def test_no_symbols_is_refused():
     with pytest.raises(ConfigError, match="no symbols"):
         resolve_products(FakeClient(), [])
+
+
+# -- the universe differs by venue, deliberately -----------------------------
+
+def test_testnet_trades_majors_and_mainnet_trades_the_arm():
+    """The arm's three symbols do not exist on testnet, so the testnet run is
+    a rehearsal of the machinery and not the experiment."""
+    from live.config import symbols_for, venue_name
+    assert symbols_for("testnet") == ("BTCUSD", "ETHUSD", "SOLUSD")
+    assert symbols_for("mainnet") == ("BEATUSD", "AKEUSD", "BANKUSD")
+
+
+def test_the_two_universes_do_not_overlap():
+    """If they did, a result from one could be mistaken for the other."""
+    from live.config import symbols_for
+    assert not set(symbols_for("testnet")) & set(symbols_for("mainnet"))
+
+
+def test_an_unknown_venue_has_no_universe():
+    from live.config import symbols_for
+    with pytest.raises(ConfigError, match="no universe"):
+        symbols_for("staging")
+
+
+def test_venue_name_defaults_to_testnet_and_validates():
+    from live.config import venue_name
+    assert venue_name({}) == "testnet"
+    assert venue_name({"DELTA_ENV": " MAINNET "}) == "mainnet"
+    with pytest.raises(ConfigError, match="not one of"):
+        venue_name({"DELTA_ENV": "mainet"})
