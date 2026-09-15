@@ -118,7 +118,9 @@ class TestDeployTriggerCoversTheImage:
         # changing what goes into it.
         assert any(p.startswith("deploy/docker") for p in trigger_paths())
 
-    #: The one path outside the image that MUST roll, and why.
+    #: The paths outside the image that MUST roll, and why. TWO FILES, and the
+    #: test below still insists the set is exactly these -- the point was never
+    #: "one file", it is that the door does not reopen to all of infra/.
     #:
     #: `infra/terraform/variables.tf` holds the universe, the variant and the
     #: risk knobs -- the inputs the experiment's config_hash is computed from.
@@ -130,9 +132,22 @@ class TestDeployTriggerCoversTheImage:
     #: nothing red to say so. SOLUSD sat merged-but-unapplied for an hour on
     #: 2026-09-04 for exactly this reason.
     #:
+    #: `infra/terraform/live.tf` is the same file for LIVE stacks: live_stacks
+    #: holds the variant, the database and the venue. Added 2026-09-15 with the
+    #: testnet rehearsal stack, BEFORE it cost anything -- the failure mode is
+    #: one step worse there than for variables.tf, because a live stack is
+    #: CREATED by the infrastructure run rather than replaced. infrastructure
+    #: .yml matches `infra/**` and builds the host; with no deploy, no image is
+    #: built, image_tag stays "none", run_live.sh exit 90s, and the host is up,
+    #: billing, alarms green, and not trading -- until somebody next touches
+    #: app/ for an unrelated reason.
+    #:
     #: The rest of infra/ stays excluded: a subnet or an alarm changing does
     #: not move the experiment's identity.
-    IDENTITY_EXCEPTIONS = {"infra/terraform/variables.tf"}
+    IDENTITY_EXCEPTIONS = {
+        "infra/terraform/variables.tf",
+        "infra/terraform/live.tf",
+    }
 
     @pytest.mark.parametrize("never", ["tests/", "scripts/", "out/", "reports/",
                                        "docs/", "infra/", ".github/"])

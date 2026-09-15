@@ -48,7 +48,37 @@ variable "live_stacks" {
     variant = string
     db_name = string
   }))
-  default = {}
+
+  # `tnet` IS THE REHEARSAL, NOT THE EXPERIMENT. It runs the same arm the paper
+  # stack runs, against Delta's TESTNET, on whatever instruments that venue
+  # lists -- BTCUSD, ETHUSD, SOLUSD. The arm's own three do not exist there.
+  #
+  # WHAT IT IS FOR: signing against a real venue over days rather than seconds,
+  # the poll loop, bracket placement, reconciliation after a restart,
+  # persistence into the trade journal, and the roll path on a live host. None
+  # of that has ever run for longer than a smoke test.
+  #
+  # WHAT IT IS NOT FOR: deciding anything about the arm. Measured over 30 days
+  # of 1m candles, the arm trades 2.23x/day across those three symbols and
+  # scores -0.343 / +0.012 / +0.138 net R on BTC / ETH / SOL. Those numbers
+  # are not evidence about BEATUSD and must not be quoted as though they were.
+  #
+  # HOW LONG. At 2.23 trades/day a two-day run yields ~4 round trips, which is
+  # too few to reach a restart-with-position-open or a reconciliation
+  # mismatch. Plan on about a week (~15 trades), which also crosses several UTC
+  # day rolls and so exercises the daily-loss and streak resets.
+  #
+  # EXPECT THE DRAWDOWN HALT TO BE PLAUSIBLE HERE, and let it fire. It is
+  # terminal by design (live/config.py explains why) and the arm is not
+  # profitable on BTCUSD. A halt during the rehearsal is the halt being
+  # validated, not the rehearsal failing -- clear it with
+  # `forward-test resume --yes` and carry on.
+  #
+  # ALONGSIDE THE PAPER STACK. `atr` keeps running and is not touched: it is
+  # the only thing estimating whether the arm has an edge.
+  default = {
+    tnet = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_tnet" }
+  }
 }
 
 variable "live_credential_secret_arn" {

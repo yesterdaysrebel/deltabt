@@ -89,6 +89,23 @@ on:
       # identity. tests/live/test_identity_paths_trigger_deploy.py fails if
       # this entry is removed.
       - 'infra/terraform/variables.tf'
+      # THE SAME FILE, FOR LIVE STACKS -- and the same failure, found before it
+      # happened rather than after.
+      #
+      # live.tf holds the live_stacks map: the variant, the database, and by
+      # extension the venue a live host trades on. It is to a live stack
+      # exactly what variables.tf is to a paper one.
+      #
+      # Without this entry the FIRST merge that adds a live stack strands it.
+      # infrastructure.yml matches `infra/**` and builds the host; nothing here
+      # matches, so no image is built and the image_tag parameter stays "none";
+      # run_live.sh reads "none" and exit 90s. The host sits there costing
+      # money and looking healthy, and the bot starts whenever somebody next
+      # happens to touch app/ -- which is the SOLUSD failure above, repeated.
+      #
+      # Widening the trigger does NOT endanger the paper run: the roll step
+      # refuses any stack with a RUNNING experiment and says so.
+      - 'infra/terraform/live.tf'
   workflow_dispatch:
     inputs:
       image_tag:

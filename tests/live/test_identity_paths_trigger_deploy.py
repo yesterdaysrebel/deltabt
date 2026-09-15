@@ -26,6 +26,7 @@ import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 VARIABLES = "infra/terraform/variables.tf"
+LIVE_TF = "infra/terraform/live.tf"
 
 
 def _paths() -> list[str]:
@@ -45,6 +46,30 @@ def test_the_identity_file_triggers_a_deploy():
         f"and risk settings the experiment's config_hash is computed from, so "
         f"changing it without registering a successor leaves the bot unable "
         f"to bind")
+
+
+def test_the_live_identity_file_triggers_a_deploy():
+    """Same coupling, for live stacks -- asserted BEFORE it cost a run.
+
+    live.tf holds live_stacks: the variant, the database, and by extension the
+    venue. infrastructure.yml matches `infra/**` and will happily build the
+    host; if no deploy runs, no image is built, the image_tag parameter stays
+    "none", and run_live.sh exit 90s. The result is a host that is up, costs
+    money, alarms green -- and is not trading, until somebody next happens to
+    touch app/ for an unrelated reason.
+
+    That is the SOLUSD failure in the module docstring, one file over.
+    """
+    assert LIVE_TF in _paths(), (
+        f"{LIVE_TF} must trigger a deploy: adding a live stack there builds a "
+        f"host whose image would otherwise never be built")
+
+
+def test_the_live_identity_file_really_holds_the_identity():
+    """If these move elsewhere, the path above has to move with them."""
+    text = (ROOT / LIVE_TF).read_text()
+    for knob in ("live_stacks", "live_venue", "live_credential_secret_arn"):
+        assert f'variable "{knob}"' in text, knob
 
 
 def test_the_identity_file_really_holds_the_identity():
