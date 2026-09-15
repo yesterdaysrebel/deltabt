@@ -334,6 +334,11 @@ class PaperBroker:
         self.wpr_exit_short_level = wpr_exit_short_level
         self.orders: dict[str, PaperOrder] = {}
         self.positions: dict[str, PaperPosition] = {}
+        #: COMPLETED stop-fill probes, drained by the runtime. See
+        #: _open_stop_probe for what they are for and why they are not events.
+        self.stop_probes: list[dict] = []
+        #: symbol -> probe still collecting its post-trigger window.
+        self._stop_probes_open: dict[str, dict] = {}
         #: intent_id -> order_uid, so a replayed intent cannot double-fill.
         self._by_intent: dict[str, str] = {}
         self._pending: dict[str, ApprovedOrderIntent] = {}
@@ -759,6 +764,7 @@ class PaperBroker:
         """Advance execution on one tick. Ordering is observed, not inferred."""
         before = len(self.events)
         sym = tick.symbol
+        self._advance_stop_probes(tick)
         if sym not in self.costs:
             return []
 
@@ -813,6 +819,9 @@ class PaperBroker:
                 # opposite sides of entry. If both somehow evaluate true, the
                 # stop wins.
                 px = self._slip(tick.ltp, -pos.side)
+                # BEFORE _close, because _close drops the position and the
+                # probe needs its stop price and risk.
+                self._open_stop_probe(pos, tick, px)
                 self._close(pos, px, ExitReason.STOP_LOSS, tick.ts,
                             tick.ts_us, maker=False)
             elif hit_target:
@@ -828,6 +837,96 @@ class PaperBroker:
                             tick.ts_us, maker=False)
 
         return self.events[before:]
+
+    # -- stop-fill telemetry -------------------------------------------------
+    #
+    # WHAT THIS IS FOR. Delta TRIGGERS a stop on mark and FILLS it at
+    # last-traded. On an illiquid instrument mark lags LTP in a fast move, so
+    # the fill lands past the stop. The live `atr` arm's six BEATUSD stops
+    # filled a mean 0.247R past their trigger -- 1.48R, about a quarter of
+    # everything that arm has made -- while AKEUSD's filled at the stop.
+    #
+    # A stop-LIMIT bounds that, and live/orders.py caps it at 1.5R with the
+    # note "needs tick telemetry before it is taken. Do not tighten this
+    # without that data." This is that telemetry. Measured on the backtest a
+    # 1.2R cap is worth +20.8R over 363 trades -- but only if the limit FILLS,
+    # and a limit that does not fill leaves the position open while price keeps
+    # going. That is the number nobody has: the non-fill rate.
+    #
+    # So each probe records where the stop triggered, where it actually filled,
+    # and then watches LTP for a window afterwards -- which tells us, for each
+    # candidate cap, whether a limit there would have been reachable.
+    #
+    # IT CANNOT CHANGE AN EXIT. Nothing here writes to a position, an order or
+    # an event; it appends to a list the runtime drains. A measurement that can
+    # alter what it measures is not one.
+
+    #: How long to watch LTP after a stop triggers. Long enough to see whether
+    #: a resting limit would have been touched, short enough that the answer is
+    #: about THIS event and not the next move.
+    STOP_PROBE_WINDOW_SECONDS = 60
+
+    #: Caps to answer "would a limit here have filled?", in R from entry.
+    #: Spans the current setting (1.5) down past where the backtest says the
+    #: money is (1.1-1.2).
+    STOP_PROBE_CAPS = (1.1, 1.2, 1.3, 1.5)
+
+    def _open_stop_probe(self, pos, tick, fill_price: float) -> None:
+        """Record a stop the instant it triggers, before the position is gone."""
+        risk = abs(pos.entry_price - pos.stop_price)
+        if risk <= 0:
+            return
+        # Positive = filled WORSE than the stop, in R. This is the quantity the
+        # whole question is about.
+        overshoot_r = (pos.stop_price - fill_price) * pos.side / risk
+        self._stop_probes_open[pos.symbol] = {
+            "symbol": pos.symbol,
+            "position_uid": pos.position_uid,
+            "side": pos.side,
+            "entry_price": pos.entry_price,
+            "stop_price": pos.stop_price,
+            "risk_per_unit": risk,
+            "trigger_mark": tick.mark,
+            "trigger_ltp": tick.ltp,
+            "fill_price": fill_price,
+            "overshoot_r": overshoot_r,
+            "triggered_ts": tick.ts,
+            "window_seconds": self.STOP_PROBE_WINDOW_SECONDS,
+            # Filled in over the window.
+            "ticks_observed": 0,
+            "worst_ltp": tick.ltp,
+            "best_ltp": tick.ltp,
+            # For each cap, whether LTP ever reached a limit resting there.
+            "cap_reachable": {str(c): False for c in self.STOP_PROBE_CAPS},
+        }
+
+    def _advance_stop_probes(self, tick) -> None:
+        """Extend the open probe for this symbol, and close it when due."""
+        probe = self._stop_probes_open.get(tick.symbol)
+        if probe is None:
+            return
+        probe["ticks_observed"] += 1
+        side, entry, risk = probe["side"], probe["entry_price"], probe["risk_per_unit"]
+        # "Worst" means worst FOR THE POSITION that just closed.
+        if side > 0:
+            probe["worst_ltp"] = min(probe["worst_ltp"], tick.ltp)
+            probe["best_ltp"] = max(probe["best_ltp"], tick.ltp)
+        else:
+            probe["worst_ltp"] = max(probe["worst_ltp"], tick.ltp)
+            probe["best_ltp"] = min(probe["best_ltp"], tick.ltp)
+        # A limit capping the loss at c sits c*risk from entry on the losing
+        # side. It is reachable if LTP traded at or beyond it.
+        for c in self.STOP_PROBE_CAPS:
+            level = entry - side * c * risk
+            if (tick.ltp <= level) if side > 0 else (tick.ltp >= level):
+                probe["cap_reachable"][str(c)] = True
+        if (tick.ts - probe["triggered_ts"]) >= probe["window_seconds"]:
+            self.stop_probes.append(self._stop_probes_open.pop(tick.symbol))
+
+    def drain_stop_probes(self) -> list[dict]:
+        """Hand over completed probes. The runtime persists them."""
+        out, self.stop_probes = self.stop_probes, []
+        return out
 
     def close_if_setup_invalidated(self, symbol: str, wpr: float, price: float,
                                    now: int) -> list["BrokerEvent"]:
