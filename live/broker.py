@@ -104,6 +104,7 @@ class LiveBroker:
         #: client_order_id -> the intent that produced it, for attribution.
         self._pending: dict[str, dict] = {}
         self._suspended: set[str] = set()
+        self._entry_cid: dict[str, str] = {}
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
 
     # -- the inert half ------------------------------------------------------
@@ -192,6 +193,10 @@ class LiveBroker:
             stop_trigger_method=StopTriggerMethod.MARK,
             note=intent.signal_key)
 
+        # SYMBOL -> the id of the order that opened it. poll() reports a
+        # position by SYMBOL (the venue does not know our uids), so this is the
+        # link back to what we intended when the fill is finally seen.
+        self._entry_cid[intent.symbol] = cid
         self._pending[cid] = {
             "intent_id": intent.intent_id,
             "signal_key": intent.signal_key,
@@ -301,6 +306,18 @@ class LiveBroker:
 
         self.positions = seen
         return events
+
+    def intent_for(self, symbol: str) -> tuple[str | None, dict | None]:
+        """The (client_order_id, intent facts) that opened `symbol`, if known.
+
+        Returns (None, None) after a restart: `_pending` is in memory, so a
+        position opened by a previous process cannot be attributed from here.
+        The caller must treat that as a fact to record, not a reason to guess
+        -- an unattributed position is exactly what reconciliation refuses to
+        start on, and inventing an intent would hide it.
+        """
+        cid = self._entry_cid.get(symbol)
+        return cid, (self._pending.get(cid) if cid else None)
 
     # -- reads ---------------------------------------------------------------
 

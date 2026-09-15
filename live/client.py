@@ -256,6 +256,20 @@ class LiveClient:
                     return r
         return None
 
+    def order_history(self, product_id: int | None = None,
+                      page_size: int = 20) -> list[dict]:
+        """Recent CLOSED and cancelled orders -- where a filled order goes.
+
+        `get_open_orders` cannot see the order that closed a position, because
+        a filled order is no longer open. This is how an exit is found after
+        the fact, which is the only way to learn WHY a position closed when the
+        venue held the brackets.
+        """
+        params: dict[str, Any] = {"page_size": page_size}
+        if product_id is not None:
+            params["product_ids"] = product_id
+        return self._read("/v2/orders/history", params) or []
+
     def get_balance(self) -> list[dict]:
         result = self._read("/v2/wallet/balances")
         return result if isinstance(result, list) else [result]

@@ -187,6 +187,103 @@ class LiveTradingBot(TradingBot):
         log.info("venue reconciled: %s", result.render())
         return True
 
+    # -- recording what the venue did ----------------------------------------
+
+    async def _persist_open(self, ev) -> None:
+        """Record a position the venue opened.
+
+        The event says only WHICH SYMBOL, because that is all poll() can know
+        -- the venue does not carry our uids. Everything else is fetched: the
+        intent from what we submitted, the fill from the venue's own order row.
+
+        AN UNATTRIBUTED POSITION IS RECORDED AS ONE, NOT GUESSED AT. After a
+        restart `_pending` is empty, so a position opened by a previous process
+        cannot be linked to an intent. Inventing one would hide exactly what
+        reconciliation exists to surface, so this logs CRITICAL and leaves the
+        row unwritten -- the next reconcile then refuses to trade, which is the
+        correct outcome and a visible one.
+        """
+        from live.ledger import entry_facts, find_by_client_order_id, open_record
+
+        symbol = ev.symbol
+        cid, intent = self.broker.intent_for(symbol)
+        if not cid or not intent:
+            await self._event("execution", "UNATTRIBUTED_POSITION",
+                              symbol=symbol, severity="CRITICAL",
+                              payload=dict(ev.payload))
+            log.critical("the venue opened %s and this process cannot say why "
+                         "(no intent in memory -- a restart?). NOT recording a "
+                         "guess; reconciliation will refuse to trade.", symbol)
+            return
+
+        order = self.client.get_order_by_client_id(cid)
+        if order is None:
+            log.error("no venue order for %s (cid=%s); cannot record the entry",
+                      symbol, cid)
+            return
+
+        record = open_record(
+            intent=intent, venue_entry=entry_facts(order),
+            position_uid=cid, instance_uid=self.instance_uid,
+            strategy_version=self.strategy.version,
+            equity_before=self.state.equity,
+            experiment_id=self.experiment_id,
+            config_hash=self.identity.config_hash if self.identity else None)
+
+        if not await self.repo.open_position(record):
+            await self._event("execution", "DUPLICATE_POSITION_REFUSED",
+                              symbol=symbol, severity="CRITICAL",
+                              payload={"position_uid": cid})
+            return
+        self.state.trades_today += 1
+        await self._save_state()
+        await self.notifier.send(
+            f"{self.venue} {'LONG' if record.side > 0 else 'SHORT'} {symbol}",
+            f"entry {record.entry_price} stop {record.stop_price} "
+            f"target {record.target_price} qty {record.quantity}")
+
+    async def _persist_close(self, ev) -> None:
+        """Record a close the venue performed, and WHY it performed it.
+
+        The reason cannot come from memory: with exchange-held brackets the
+        position closes without this process being involved. It is read off the
+        closing order -- see live/ledger.exit_reason.
+        """
+        from live.ledger import apply_close, close_facts
+
+        symbol = ev.symbol
+        open_rows = [p for p in await self.repo.load_open_positions()
+                     if p.symbol == symbol]
+        if not open_rows:
+            log.error("the venue closed %s but no open row exists to close; "
+                      "reconciliation will surface this", symbol)
+            return
+        record = open_rows[0]
+
+        pid = self.product_ids.get(symbol)
+        history = self.client.order_history(pid)
+        # The most recent order that actually moved size is the one that
+        # closed it. Bracket legs are created by the venue and carry no
+        # client_order_id of ours, so they cannot be found by id.
+        closing = next((o for o in history
+                        if str(o.get("state")) == "closed"
+                        and float(o.get("average_fill_price") or 0) > 0), None)
+        if closing is None:
+            log.error("no closing order found for %s; the exit is unrecorded",
+                      symbol)
+            return
+
+        requested = (ev.payload or {}).get("requested_reason")
+        closed = apply_close(record, close_facts(closing, requested=requested))
+        await self.repo.update_position(closed)
+        self.state.apply_close(closed.realized_pnl or 0.0,
+                               closed.closed_at or self.clock.now())
+        await self._save_state()
+        await self.notifier.send(
+            f"{self.venue} closed {symbol} {closed.exit_reason}",
+            f"pnl {closed.realized_pnl:+.4f} "
+            f"({closed.r_multiple:+.2f}R) equity {self.state.equity:.2f}")
+
     # -- the loop the paper bot does not need --------------------------------
 
     async def _poll_loop(self, interval: float = POLL_SECONDS) -> None:
@@ -202,6 +299,13 @@ class LiveTradingBot(TradingBot):
                              ev.kind, ev.symbol, ev.payload)
                     await self._event("broker", ev.kind, symbol=ev.symbol,
                                       payload=ev.payload)
+                    # RECORD IT HERE, not in the inherited drain_broker_events:
+                    # that one reads PaperFill objects out of a queue the
+                    # simulator fills, and nothing fills it here.
+                    if ev.kind == "POSITION_OPENED":
+                        await self._persist_open(ev)
+                    elif ev.kind == "POSITION_CLOSED":
+                        await self._persist_close(ev)
                 since_reconcile += interval
                 if since_reconcile >= RECONCILE_SECONDS:
                     since_reconcile = 0.0

@@ -208,3 +208,117 @@ def test_the_kill_switch_stops_an_order_at_the_broker(tmp_path):
     switch.write_text("stop")
     with pytest.raises(VenueError, match="kill switch"):
         b.submit_order(_Intent())
+
+
+# -- recording what the venue did --------------------------------------------
+
+class _Repo(FakeRepo):
+    def __init__(self, positions=None):
+        super().__init__(positions)
+        self.opened, self.updated, self.accept = [], [], True
+
+    async def open_position(self, rec):
+        self.opened.append(rec)
+        return self.accept
+
+    async def update_position(self, rec):
+        self.updated.append(rec)
+
+
+def _persisting_bot(venue_orders, intent, cid="cid1", ledger=()):
+    bot = a_bot(FakeVenue([]), ledger=ledger)
+    bot.repo = _Repo(list(ledger))
+    bot.instance_uid = "inst"
+    bot.experiment_id = "EXP"
+    bot.identity = None
+    bot.venue = "testnet"
+    bot.product_ids = {"BEATUSD": 27}
+
+    class _Strategy:
+        version = "v1"
+    bot.strategy = _Strategy()
+
+    class _Clock:
+        def now(self):
+            return 1788768600
+    bot.clock = _Clock()
+
+    class _Client:
+        def get_order_by_client_id(self, c):
+            return venue_orders.get(c)
+
+        def order_history(self, pid=None, page_size=20):
+            return venue_orders.get("history", [])
+    bot.client = _Client()
+
+    class _Broker:
+        def intent_for(self, symbol):
+            return (cid, intent) if intent else (None, None)
+    bot.broker = _Broker()
+
+    bot.state.trades_today = 0
+    bot.state.apply_close = lambda *a, **k: None
+    async def _save():
+        pass
+    bot._save_state = _save
+    return bot
+
+
+INTENT = dict(side=1, symbol="BEATUSD", signal_key="k", quantity=1,
+              stop_price=90.0, target_price=130.0, risk_per_unit=10.0,
+              entry_reference=100.0, notional=100.0)
+ENTRY_ORDER = {"id": 1, "client_order_id": "cid1", "average_fill_price": "100.0",
+               "paid_commission": "0.05", "size": 1, "unfilled_size": 0,
+               "created_at": "2026-09-15T06:55:54.630597Z"}
+
+
+def test_an_opened_position_is_recorded_with_the_venue_price():
+    bot = _persisting_bot({"cid1": ENTRY_ORDER}, INTENT)
+    run(bot._persist_open(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    assert len(bot.repo.opened) == 1
+    rec = bot.repo.opened[0]
+    assert rec.entry_price == 100.0 and rec.quantity == 1
+    assert rec.experiment_id == "EXP" and rec.status == "OPEN"
+
+
+def test_a_position_we_cannot_explain_is_not_guessed_at():
+    """After a restart there is no intent in memory. Inventing one would hide
+    exactly what reconciliation exists to surface."""
+    bot = _persisting_bot({}, None)
+    run(bot._persist_open(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    assert bot.repo.opened == []
+    assert any(e[1] == "UNATTRIBUTED_POSITION" and e[2] == "CRITICAL"
+               for e in bot.events)
+
+
+def test_a_close_records_the_reason_the_venue_gives():
+    """A bracket leg closed it; the reason is read off the order, not guessed
+    from the price."""
+    stop_fill = {"id": 2, "state": "closed", "average_fill_price": "90.0",
+                 "paid_commission": "0.05", "stop_order_type": "stop_loss_order",
+                 "updated_at": "2026-09-15T07:55:54.630597Z",
+                 "meta_data": {"pnl": "-10.05"}}
+    opened = _persisting_bot({"cid1": ENTRY_ORDER}, INTENT)
+    run(opened._persist_open(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    rec = opened.repo.opened[0]
+
+    bot = _persisting_bot({"history": [stop_fill]}, INTENT, ledger=[rec])
+    run(bot._persist_close(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    assert len(bot.repo.updated) == 1
+    closed = bot.repo.updated[0]
+    assert closed.exit_reason == "STOP_LOSS"
+    assert closed.status == "CLOSED"
+    assert closed.realized_pnl == -10.05
+    assert closed.r_multiple == pytest.approx(-1.0)
+
+
+def test_a_close_with_no_open_row_is_reported_not_invented():
+    bot = _persisting_bot({"history": []}, INTENT, ledger=[])
+    run(bot._persist_close(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    assert bot.repo.updated == []
+
+
+def test_the_poll_loop_is_what_calls_them():
+    """Wired, not merely defined."""
+    src = inspect.getsource(LiveTradingBot._poll_loop)
+    assert "_persist_open" in src and "_persist_close" in src
