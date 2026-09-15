@@ -109,6 +109,17 @@ class Book:
     costs: SymbolCosts
     mark: pd.DataFrame | None = None
     tradable: np.ndarray | None = None
+    #: 1-MINUTE ltp and mark, used ONLY to resolve where a stop fills.
+    #:
+    #: The primary bars may be 5m or coarser, and a stop's fill price is a
+    #: sub-bar event: mark crosses the stop at some instant and the order fills
+    #: at whatever last-traded is THEN. Resolving that against a 5m close is far
+    #: more pessimistic than the truth. Supplying these lets the fill be read at
+    #: the minute the mark actually crossed, which is the resolution the model
+    #: was calibrated at. Omit them and `stop_fill` falls back to the primary
+    #: bar, which is only honest when the primary IS 1m.
+    fill_ltp: pd.DataFrame | None = None
+    fill_mark: pd.DataFrame | None = None
 
 
 @dataclass
@@ -136,6 +147,19 @@ class _Series:
     close: np.ndarray
     mark_high: np.ndarray
     mark_low: np.ndarray
+    #: LTP extremes. Kept because a mark-TRIGGERED stop fills at LAST-TRADED,
+    #: and _prepare used to discard these -- which is the structural reason the
+    #: fill model could not be expressed here at all, whatever the docstrings
+    #: said. Only stop fills read them.
+    ltp_high: np.ndarray
+    ltp_low: np.ndarray
+    #: 1m fill-resolution arrays, and for each primary bar the [start, end)
+    #: slice of them it spans. All None when the caller supplied no 1m pair.
+    f_close: np.ndarray | None
+    f_mlow: np.ndarray | None
+    f_mhigh: np.ndarray | None
+    f_lo: np.ndarray | None
+    f_hi: np.ndarray | None
     tradable: np.ndarray
     funding: dict
     last_exit_index: int = -(10 ** 9)
@@ -165,8 +189,53 @@ def _prepare(book: Book) -> _Series:
                                  book.costs.funding_interval_seconds)
               if len(time) else np.zeros(0, dtype=np.int64))
     rates = _funding_lookup(book, stamps)
+    f_close = f_mlow = f_mhigh = f_lo = f_hi = None
+    if book.fill_ltp is not None and book.fill_mark is not None and len(time):
+        fl = book.fill_ltp.sort_values("time")
+        ft = fl["time"].to_numpy("int64")
+        fm = book.fill_mark.set_index("time").reindex(ft)
+        f_close = fl["close"].to_numpy("float64")
+        fmh = fm["high"].to_numpy("float64")
+        fml = fm["low"].to_numpy("float64")
+        bad = ~np.isfinite(fmh) | ~np.isfinite(fml)
+        f_mhigh = np.where(bad, fl["high"].to_numpy("float64"), fmh)
+        f_mlow = np.where(bad, fl["low"].to_numpy("float64"), fml)
+        # Each primary bar spans [its open, the next bar's open).
+        step = int(np.min(np.diff(time))) if len(time) > 1 else 60
+        f_lo = np.searchsorted(ft, time, side="left")
+        f_hi = np.searchsorted(ft, time + step, side="left")
+
     return _Series(book=book, time=time, close=close, mark_high=mh, mark_low=ml,
+                   ltp_high=high, ltp_low=low, f_close=f_close, f_mlow=f_mlow,
+                   f_mhigh=f_mhigh, f_lo=f_lo, f_hi=f_hi,
                    tradable=tradable, funding=rates)
+
+
+def _fill_at_cross(s: "_Series", i: int, side: int, stop: float,
+                   slip_rate: float) -> float:
+    """Where a mark-triggered stop fills, read at 1m if 1m is available.
+
+    Walks the minutes inside primary bar ``i`` to the first one whose MARK
+    crosses the stop, and returns that minute's LTP close moved adversely by
+    the slippage. Falls back to the primary bar's own close when no 1m pair was
+    supplied -- honest only when the primary is 1m.
+
+    NOT clamped to the stop. Capping the fill at the stop scores WORSE against
+    the live fills (MAE 0.192R vs 0.127R): a stop that gaps really does fill
+    through, and a model that forbids it cannot produce the tail that makes
+    this arm's drawdown what it is.
+    """
+    px = None
+    if s.f_close is not None:
+        lo, hi = int(s.f_lo[i]), int(s.f_hi[i])
+        if hi > lo:
+            seg = (s.f_mlow[lo:hi] <= stop) if side == LONG else (s.f_mhigh[lo:hi] >= stop)
+            k = int(np.argmax(seg)) if seg.any() else -1
+            if k >= 0:
+                px = float(s.f_close[lo + k])
+    if px is None:
+        px = float(s.close[i])
+    return px * (1.0 - side * slip_rate)
 
 
 def _funding_lookup(book: Book, stamps: np.ndarray) -> dict:
@@ -254,19 +323,88 @@ def run_portfolio(
                 pos.accrued_funding += charge
                 equity -= charge
 
+            trig_low = s.ltp_low if params.stop_trigger_ltp else s.mark_low
+            trig_high = s.ltp_high if params.stop_trigger_ltp else s.mark_high
+            # TARGET READS LTP, STOP READS MARK -- the split the venue makes
+            # and the bot implements (paper_broker.py: `hit_target =
+            # tick.ltp >= pos.target_price`). Testing the target against MARK
+            # books targets at prices that never traded.
             if pos.side == LONG:
-                hit_stop = s.mark_low[i] <= pos.stop_price
-                hit_target = s.mark_high[i] >= pos.target_price
+                hit_stop = trig_low[i] <= pos.stop_price
+                hit_target = s.ltp_high[i] >= pos.target_price
             else:
-                hit_stop = s.mark_high[i] >= pos.stop_price
-                hit_target = s.mark_low[i] <= pos.target_price
+                hit_stop = trig_high[i] >= pos.stop_price
+                hit_target = s.ltp_low[i] <= pos.target_price
+
+            # WHERE A MARK-TRIGGERED STOP FILLS. The trigger above reads mark;
+            # the fill reads LTP, and booking the stop price itself is why no
+            # backtest here could produce the -1.679R fill on a -1.000R stop
+            # that MANUAL_SCALP_BOTH_T3 took live on 2026-09-12.
+            #
+            # Three models, selected by params.stop_fill:
+            #   "at_stop"  the historical behaviour; every recorded result in
+            #              out/ predates this parameter and used it.
+            #   "ltp_close" the calibrated one: the LTP close of the MINUTE the
+            #              mark crossed, plus slippage. Against the nine live
+            #              stop fills of MANUAL_SCALP_BOTH_T3 this scores
+            #              MAE 0.127R, against 0.277R for "at_stop" -- the only
+            #              model of four tried that is better than booking the
+            #              stop. Needs Book.fill_ltp/fill_mark; without them it
+            #              falls back to the primary bar's close, which is only
+            #              honest when the primary is itself 1m.
+            #   "fraction" a bracket: stop_fill_fraction of the way from the
+            #              stop to the trigger bar's adverse LTP extreme.
+            if params.stop_fill == "ltp_close":
+                stop_fill = _fill_at_cross(s, i, pos.side, pos.stop_price,
+                                           s.book.costs.slippage_rate)
+            else:
+                if pos.side == LONG:
+                    adverse = min(s.ltp_low[i], pos.stop_price)
+                else:
+                    adverse = max(s.ltp_high[i], pos.stop_price)
+                stop_fill = pos.stop_price + params.stop_fill_fraction * (adverse - pos.stop_price)
+
+            # A RESTING LIMIT CANNOT BE FILLED BY A PRICE NOBODY TRADED AT.
+            # When the mark triggers but LTP never reaches the stop, the order
+            # sits unfilled and the position stays open -- protection lost,
+            # which is exactly the tail this option buys its better fills with.
+            # AN LTP TRIGGER DOES NOT BUY A FILL AT THE STOP, AND FORCING ONE
+            # HERE WAS A DEFECT. LTP reaching the stop says the market traded
+            # there inside that bar; the market order still fills at whatever
+            # last-traded is when it arrives, which can be lower. Hard-coding
+            # the stop price made `stop_trigger_ltp` two changes at once -- a
+            # trigger change AND a no-slippage assumption -- and the assumption
+            # was doing the work: separated, the trigger alone is worth +0.021R
+            # with a confidence interval spanning zero, and it leaves the loss
+            # tail untouched (6 trades beyond -1.5R either way). Two independent
+            # reviewers caught this on 2026-09-13. The fill now follows
+            # params.stop_fill like every other exit.
+            if params.stop_limit and hit_stop:
+                reached = (s.ltp_low[i] <= pos.stop_price if pos.side == LONG
+                           else s.ltp_high[i] >= pos.stop_price)
+                if reached:
+                    # Correct for a LIMIT specifically: it cannot fill worse
+                    # than its own price. This is the one place the assumption
+                    # is earned rather than assumed.
+                    stop_fill = pos.stop_price
+                else:
+                    # Measured on this arm: the mark triggers on 265 trades and
+                    # LTP never reaches the stop on 41 of them (15.5%). Those
+                    # sit unfilled a median 3 minutes, a mean of 94, and once
+                    # for 24 HOURS, with an adverse excursion of 2.05R while
+                    # unprotected. Whether they would really fill decides the
+                    # whole option: assume they always do and the tail is
+                    # empty; assume they never do and it is the worst measured
+                    # (worst -3.07R, 25 trades beyond -1.5R). 1m candles cannot
+                    # tell you which. Pair this with stop_limit_fallback_min.
+                    hit_stop = False
 
             exit_price, exit_reason, ambiguous = np.nan, "", False
             if hit_stop and hit_target:
                 ambiguous = True
-                exit_price, exit_reason = pos.stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_stop:
-                exit_price, exit_reason = pos.stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_target:
                 exit_price, exit_reason = pos.target_price, "target"
             elif params.exit_on_trend_flip and (
@@ -289,6 +427,17 @@ def run_portfolio(
             elif params.max_hold_bars and (i - pos.entry_index) >= params.max_hold_bars:
                 exit_price, exit_reason = px, "max_hold"
             if not exit_reason:
+                # RATCHET THE STOP, AFTER the exits above have been resolved.
+                # Placed here on purpose: a stop moved on bar i must not be
+                # able to close the position on bar i, which would be reading
+                # the bar's own outcome to decide the bar's own stop.
+                if params.breakeven_at_r is not None:
+                    fav = (px - pos.entry_price) * pos.side / pos.risk_per_unit
+                    if fav >= params.breakeven_at_r:
+                        lock = pos.entry_price + (
+                            pos.side * params.breakeven_lock_r * pos.risk_per_unit)
+                        pos.stop_price = (max(pos.stop_price, lock) if pos.side == LONG
+                                          else min(pos.stop_price, lock))
                 continue
 
             costs = s.book.costs

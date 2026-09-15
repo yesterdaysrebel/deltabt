@@ -207,6 +207,70 @@ class StrategyParams:
     #: this is measured rather than assumed.
     exit_at_adverse_r: float | None = None
 
+    #: WHERE A MARK-TRIGGERED STOP ACTUALLY FILLS, as a fraction of the way
+    #: from the stop price to the trigger bar's adverse LTP extreme.
+    #:
+    #: 0.0 reproduces the historical behaviour: the fill is booked AT the stop.
+    #: That is what every result in out/ was measured under, and it is why the
+    #: module docstring's claim that stops "fill off LTP" was only half true --
+    #: the TRIGGER reads mark, the FILL did not read LTP at all.
+    #:
+    #: IT CANNOT BE CALIBRATED TO A POINT, AND THIS IS NOT A PLACEHOLDER FOR
+    #: ONE. Measured against the nine live stop-outs of
+    #: MANUAL_SCALP_BOTH_T3-5-20260907 (2026-09-13), the three obvious models
+    #: miss the realised fills by 0.21-0.31R PER TRADE:
+    #:
+    #:     fill at the stop        mean -1.000R   |err| 0.314R
+    #:     fill at the bar extreme mean -1.204R   |err| 0.214R
+    #:     mark/LTP basis adjusted mean -0.947R   |err| 0.289R
+    #:     realised               mean -1.054R
+    #:
+    #: The divergence happens INSIDE the minute and Delta serves no sub-minute
+    #: history, so 1m OHLC cannot resolve it -- the same limit already recorded
+    #: for same-bar stop/target ordering. Use this to BRACKET a result (0.0 is
+    #: the optimistic bound, 1.0 the pessimistic one), never to claim a number.
+    #: The realised fills sit ~0.26 of the way across, on n=9.
+    #: Which stop-fill model to use: "at_stop" (historical, and what every
+    #: recorded result in out/ was measured under), "ltp_close" (calibrated on
+    #: the live fills; see portfolio._fill_at_cross) or "fraction" (bracketing,
+    #: via stop_fill_fraction below). Default stays "at_stop" so no recorded
+    #: number silently changes; "ltp_close" is the honest one.
+    stop_fill: str = "at_stop"
+
+    stop_fill_fraction: float = 0.0
+
+    #: Rest the stop as a LIMIT at the stop price instead of taking market on
+    #: trigger. It cannot fill worse than the stop -- and it can fail to fill
+    #: at all, leaving an open position with no protection, which is the whole
+    #: risk. Modelled as: the fill happens only on a bar whose LTP range
+    #: actually reaches the stop; otherwise the position is still open and the
+    #: order is still resting. Live, on the nine stop-outs of 2026-09-13,
+    #: eight filled inside the trigger minute and one never filled.
+    stop_limit: bool = False
+
+    #: Trigger the stop on LAST-TRADED instead of MARK. Delta's default is
+    #: mark; this is the venue setting, not a strategy rule. It cannot fill
+    #: worse than the stop -- the price traded there by definition, which is
+    #: what a mark trigger cannot promise -- and it pays for that by being
+    #: reachable by thin prints that mark ignores.
+    stop_trigger_ltp: bool = False
+
+    #: Move the stop to entry once the trade has closed a bar at least this
+    #: many R in front. None disables it. This is NOT exit_at_adverse_r: that
+    #: one cuts unconditionally from entry, this one only arms after the trade
+    #: has already worked, and answers "do not give a winner back".
+    #:
+    #: EVALUATED AFTER the bar's exits, so a stop tightened on bar i can only
+    #: bind from bar i+1. Doing it before is the same-bar look-ahead that once
+    #: manufactured a +0.482R false positive in this codebase.
+    breakeven_at_r: float | None = None
+
+    #: How much to lock in when ``breakeven_at_r`` arms, in R. 0.0 is a true
+    #: breakeven stop at entry; 0.25 leaves the trade holding a quarter R.
+    #: Costs are NOT covered at 0.0 -- a "breakeven" exit still pays the round
+    #: trip, so it books slightly negative.
+    breakeven_lock_r: float = 0.0
+
     #: Close when %R leaves the band in the ADVERSE direction: a long exits
     #: below ``wpr_exit_long_level``, a short exits above
     #: ``wpr_exit_short_level``. Leaving the band the FAVOURABLE way is the

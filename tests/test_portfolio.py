@@ -45,7 +45,8 @@ def _book(symbol: str, family: str, minutes: int):
     tradable = data["tradable"][: len(primary)] if minutes == 1 else None
     if tradable is None:
         from deltabt.strategy import resample_tradable
-        tradable = resample_tradable(data["ltp"], data["tradable"], minutes)[: len(primary)]
+        tradable = resample_tradable(data["ltp"], data["tradable"], minutes,
+                                     times=primary["time"].to_numpy("int64"))
     confirm = (data["ltp"] if spec.confirm_minutes == 1
                else resample_ohlcv(data["ltp"], spec.confirm_minutes)
                .iloc[:-1].reset_index(drop=True)) if spec.confirm.enabled else None

@@ -111,19 +111,37 @@ def resample_complete(df: pd.DataFrame, minutes: int,
     return out[out["time"].isin(keep)].reset_index(drop=True)
 
 
-def resample_tradable(df: pd.DataFrame, tradable: np.ndarray, minutes: int) -> np.ndarray:
+def resample_tradable(df: pd.DataFrame, tradable: np.ndarray, minutes: int,
+                      times: np.ndarray | None = None) -> np.ndarray:
     """Project a per-1m-bar tradability mask onto resampled bars.
 
     A resampled bar counts as tradable only if *every* constituent minute was.
     Requiring all rather than any is the conservative choice: an aggregate bar
     that spans a halt has a range no order could have been filled across.
+
+    ``times`` ALIGNS THE RESULT TO THE BARS IT WILL BE USED WITH, and passing it
+    is mandatory whenever the frame came from ``resample_complete``.
+
+    This function returns one element per bucket PRESENT IN ``df``. That matches
+    ``resample_ohlcv``, which keeps every bucket, and does NOT match
+    ``resample_complete``, which drops the incomplete ones. Pairing the two and
+    trimming with ``[:len(px)]`` therefore trims from the END while the bars were
+    dropped from the MIDDLE AND THE HEAD, sliding the whole mask against the
+    bars it labels. Measured on the thin three at 5m: 13.3% / 13.9% / 11.1% of
+    BEATUSD / AKEUSD / BANKUSD bars mislabelled, and the arm it was used for
+    moved from +0.110R (2 of 4 blocks) to +0.196R (3 of 4) once aligned --
+    larger than any strategy change ever measured on it.
     """
     if minutes <= 1:
         return np.asarray(tradable, dtype=bool)
     step = 60 * minutes
     bucket = (df["time"].to_numpy(dtype="int64") // step) * step
     s = pd.Series(np.asarray(tradable, dtype=bool)).groupby(bucket).all()
-    return s.to_numpy(dtype=bool)
+    if times is None:
+        return s.to_numpy(dtype=bool)
+    # Absent buckets read as NOT tradable: a bar with no minutes behind it is
+    # not one an order could have been filled on.
+    return s.reindex(np.asarray(times, dtype="int64")).fillna(False).to_numpy(dtype=bool)
 
 
 def _broadcast_confirmed(

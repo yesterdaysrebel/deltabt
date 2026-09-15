@@ -647,7 +647,8 @@ class PaperBroker:
             order.quantity = qty
 
         notional = costs.notional(order.quantity, price)
-        fee = costs.entry_cost(order.quantity, price)
+        # `price` has already been through _slip; see SymbolCosts.entry_cost.
+        fee = costs.entry_cost(order.quantity, price, slipped_price=True)
         slip = abs(price - intent.entry_reference) * order.quantity * costs.contract_value
 
         self.set_status(order, OrderStatus.FILLED)
@@ -706,7 +707,9 @@ class PaperBroker:
     def _close(self, pos: PaperPosition, price: float, reason: ExitReason,
                when: int, tick_us: int | None, *, maker: bool) -> None:
         costs = self.costs[pos.symbol]
-        fee = costs.exit_cost(pos.quantity, price, maker=maker)
+        # Taker exits arrive here already slipped; makers were never slipped.
+        fee = costs.exit_cost(pos.quantity, price, maker=maker,
+                              slipped_price=not maker)
         gross = pos.side * (price - pos.entry_price) * pos.quantity * costs.contract_value
         pnl = gross - pos.entry_fee - fee - pos.funding
 

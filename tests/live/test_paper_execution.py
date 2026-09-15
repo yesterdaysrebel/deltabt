@@ -244,7 +244,14 @@ class TestTriggers:
         pos = list(b.positions.values())[0]
         # Charged on the quantity actually filled, not the one approved.
         notional = BTC.notional(pos.quantity, pos.entry_price)
-        expected = notional * (0.0005 * 1.18 + 0.0002)
+        # SLIPPAGE IS IN THE PRICE, SO IT IS NOT ALSO IN THE FEE. The entry
+        # filled through _slip, which already moved it 2bps against us:
+        assert pos.entry_price == pytest.approx(63_000.0 * 1.0002)
+        # ...so the fee is the taker rate times GST, and nothing else. This
+        # assertion used to read `0.0005 * 1.18 + 0.0002`, which billed the
+        # 2bps a second time -- $5.59 across the first 13 trades of
+        # MANUAL_SCALP_BOTH_T3-5-20260907, or 0.127R.
+        expected = notional * (0.0005 * 1.18)
         assert pos.entry_fee == pytest.approx(expected)
 
 

@@ -393,7 +393,11 @@ class InMemoryRepository(Repository):
                 if (experiment_id is None
                     or getattr(r, "experiment_id", None) == experiment_id)
                 and _both(r.exchange_ts or r.bar_open)]
-        pos = [p for p in self._s["positions"].values() if _both(p.opened_at)]
+        # Opened in the day OR closed in it -- see the SQL above for why.
+        pos = [p for p in self._s["positions"].values()
+               if _both(p.opened_at)
+               or (p.closed_at is not None and _win(p.closed_at)
+                   and _exp_win(p.opened_at))]
         return {
             "experiment": exp,
             "signals": [asdict(r) for r in sigs],
@@ -935,9 +939,17 @@ class PostgresRepository(Repository):
                     "SELECT * FROM paper_fills WHERE "
                     f"{win('exchange_ts', 'created_at')} ORDER BY exchange_ts",
                     lo, hi, elo, ehi),
+                # A POSITION BELONGS TO THE DAY IT OPENED **OR** THE DAY IT
+                # CLOSED. Windowing on opened_at alone drops every trade that
+                # crossed a UTC midnight -- 10 of the first 13 trades of
+                # MANUAL_SCALP_BOTH_T3-5-20260907 did -- so the report showed
+                # "closed 0, net $0.00" on 2026-09-13 while the risk ledger's
+                # daily_pnl was +$44.51 for a position closed that morning.
+                # A day's P&L is made by the exits that happened in it.
                 "positions": await q(
-                    "SELECT * FROM positions WHERE "
-                    f"{win('opened_at', 'opened_at')} ORDER BY opened_at",
+                    "SELECT * FROM positions WHERE ("
+                    f"({win('opened_at', 'opened_at')}) OR "
+                    f"({win('closed_at', 'opened_at')})) ORDER BY opened_at",
                     lo, hi, elo, ehi),
                 "funding": await q(
                     "SELECT * FROM funding_events WHERE "

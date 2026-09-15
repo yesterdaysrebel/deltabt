@@ -221,21 +221,34 @@ def run_backtest(
             exit_reason = ""
             ambiguous = False
 
+            # Target on LTP, stop on MARK -- the venue's own split.
             if pos_side == LONG:
                 hit_stop = mark_low[i] <= stop_price
-                hit_target = mark_high[i] >= target_price
+                hit_target = high[i] >= target_price
             else:
                 hit_stop = mark_high[i] >= stop_price
-                hit_target = mark_low[i] <= target_price
+                hit_target = low[i] <= target_price
+
+            # WHERE THE STOP FILLS. The trigger above reads MARK; the fill
+            # reads LTP, which is what the module docstring always claimed and
+            # the code never did -- it booked the stop price itself, so the
+            # mark/LTP divergence that produced a -1.679R fill on a -1.000R
+            # stop live on 2026-09-12 could not appear in any backtest.
+            # stop_fill_fraction=0.0 keeps that behaviour exactly.
+            if pos_side == LONG:
+                adverse = min(low[i], stop_price)
+            else:
+                adverse = max(high[i], stop_price)
+            stop_fill = stop_price + params.stop_fill_fraction * (adverse - stop_price)
 
             if hit_stop and hit_target:
                 # 1m OHLC cannot order these two events, and there is no
                 # sub-minute history on Delta to check against. Pine assumes
                 # the stop filled first; so do we, and we count it.
                 ambiguous = True
-                exit_price, exit_reason = stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_stop:
-                exit_price, exit_reason = stop_price, "stop"
+                exit_price, exit_reason = stop_fill, "stop"
             elif hit_target:
                 exit_price, exit_reason = target_price, "target"
             elif params.exit_on_trend_flip and (
