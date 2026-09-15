@@ -151,6 +151,29 @@ resource "aws_ssm_parameter" "live_credential_arn" {
   value = var.live_credential_secret_arn != "" ? var.live_credential_secret_arn : "none"
 }
 
+# THE VENUE, AS A PARAMETER RATHER THAN A TEMPLATE VARIABLE.
+#
+# var.live_venue existed, validated its input, and reached nothing: no host
+# ever read it, and DELTA_ENV was set only by run_live.sh's own fallback. A
+# stack declaring `live_venue = "mainnet"` applied cleanly and ran testnet.
+#
+# It is delivered this way for the same reason the credential ARN is: putting
+# it in the user_data template changes the rendered bytes for PAPER stacks,
+# and `user_data_replace_on_change = true` then replaces a host that is
+# mid-experiment, through a feed gap. An SSM parameter costs the template
+# nothing and is already per-stack.
+#
+# run_live.sh REFUSES TO START on anything other than testnet|mainnet rather
+# than defaulting, so a missing or malformed parameter is a host that says so
+# and stops, not a host quietly trading the wrong venue.
+resource "aws_ssm_parameter" "live_venue" {
+  for_each = { for k, s in local.stacks : k => s if s.live }
+
+  name  = "${each.value.ssm_prefix}/delta_env"
+  type  = "String"
+  value = var.live_venue
+}
+
 # A SEPARATE POLICY, NOT A STATEMENT IN THE SHARED ONE. Attached to the same
 # instance role, created only when a secret is configured, and scoped to that
 # one secret: the role can read the credential it trades with and no other
