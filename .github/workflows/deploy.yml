@@ -898,12 +898,16 @@ jobs:
       - id: pick
         env:
           ONLY: ${{ github.event.inputs.only_stack }}
+          ARN: ${{ vars.LIVE_CREDENTIAL_SECRET_ARN }}
         run: |
           set -euo pipefail
           # READ FROM TERRAFORM, not from a table here. See the script.
           picked=$(python3 scripts/live_stacks_matrix.py ${ONLY:+"$ONLY"} || echo '[]')
           if [ -n "${ONLY:-}" ] && [ "$picked" = "[]" ]; then
             echo "::notice::only_stack='$ONLY' is not a live stack; the live deploy has nothing to do"
+          fi
+          if [ -z "${ARN:-}" ] && [ "$picked" != "[]" ]; then
+            echo "::notice::live stacks are configured but LIVE_CREDENTIAL_SECRET_ARN is unset, so deploy-live will skip. The host comes up, reads \"none\", and waits (exit 90, not a crash loop). Create the venue key against the host's EIP, create the secret, set the variable, then dispatch this workflow with only_stack=<stack>."
           fi
           echo "rolling (live): $picked"
           echo "matrix=$picked" >> "$GITHUB_OUTPUT"
@@ -914,12 +918,26 @@ jobs:
     # Same `always()` shape as `deploy`, and the same reason for the last
     # clause: a matrix expanded from an empty array is INVALID rather than
     # empty, and GitHub rejects the workflow instead of skipping the job.
+    #
+    # AND ONLY ONCE A CREDENTIAL IS CONFIGURED. The venue API key must allowlist
+    # the host's IP, the EIP does not exist until the apply, so the secret is
+    # necessarily created AFTER the host. Until then run_live.sh reads "none"
+    # and exit 90s -- which is correct and deliberate, but it means /readyz
+    # never passes, deploy.sh rolls back, and this job would go RED on the very
+    # merge that is supposed to bring the stack up.
+    #
+    # So it skips, loudly, exactly as build-live skips with no repository. The
+    # repository VARIABLE is used rather than the SSM parameter because this
+    # job's role can send one SSM document and read command output, and nothing
+    # else -- and it is the same value that drives Terraform, so the two cannot
+    # disagree.
     if: >-
       always() && needs['build-live'].result == 'success'
       && needs['build-live'].outputs.exists == 'true'
       && needs.test.result == 'success'
       && needs['wait-for-infrastructure'].result == 'success'
       && needs['targets-live'].outputs.matrix != '[]'
+      && vars.LIVE_CREDENTIAL_SECRET_ARN != ''
     runs-on: ubuntu-latest
     # ITS OWN ENVIRONMENT, so a required reviewer can be attached to live rolls
     # without also gating paper. On testnet this is play money and an unattended

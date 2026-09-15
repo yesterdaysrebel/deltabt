@@ -276,6 +276,27 @@ def test_the_live_matrix_matches_the_configured_live_stacks():
         assert r["variant"].startswith("SPEC:"), r
 
 
+def test_the_live_roll_waits_for_a_credential_rather_than_going_red():
+    """The first merge brings up a host that CANNOT have a credential yet.
+
+    The venue key must allowlist the host's IP and the EIP does not exist until
+    the apply, so the secret is necessarily created afterwards. Until then
+    run_live.sh reads "none" and exit 90s -- correct and deliberate, but it
+    means /readyz never passes and deploy.sh rolls back. Without this gate the
+    job would go red on exactly the merge that is meant to stand the stack up,
+    and a red deploy is how a real failure gets ignored later.
+    """
+    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    condition = job[job.index("if:"):job.index("runs-on:")]
+    assert "vars.LIVE_CREDENTIAL_SECRET_ARN != ''" in condition, (
+        "the live roll is not gated on a credential existing; the first merge "
+        "would roll a host that cannot start and fail the run")
+    # And the skip must say why, or it is just an absent job.
+    targets = DEPLOY[DEPLOY.index("  targets-live:"):DEPLOY.index("  deploy-live:")]
+    assert "LIVE_CREDENTIAL_SECRET_ARN is unset" in targets, (
+        "nothing explains why the live deploy did not run")
+
+
 def test_only_stack_may_name_a_live_stack():
     """`only_stack=tnet` is the NORMAL way a live stack is first brought up.
 
