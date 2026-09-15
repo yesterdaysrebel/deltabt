@@ -80,10 +80,26 @@ class LiveTradingBot(TradingBot):
         # and overwriting is deliberate: every other attribute it sets up is
         # wanted, and re-deriving them here would be the copy this class exists
         # to avoid.
+        # THE BAND-EXIT SETTINGS COME FROM WHERE THE PAPER BROKER'S DO.
+        #
+        # The parent has just built a PaperBroker from settings.risk and we are
+        # about to discard it. Reading the same three values keeps the two
+        # brokers configured identically, which is the only thing that makes
+        # "same surface, different physics" mean anything -- a live bot quietly
+        # running a different exit rule from the paper bot is not a rehearsal
+        # of the paper bot.
+        #
+        # settings.RISK, not settings.strategy: these are risk configuration so
+        # that risk_hash covers them (see the note at the PaperBroker
+        # construction in app/runtime/bot.py). Defaulting them here instead
+        # would be a third copy of a value that already exists twice.
         self.broker = LiveBroker(
             client, product_ids=self.product_ids,
             experiment_id=getattr(self, "experiment_id", "") or "unbound",
             tick_size=tick_size or {},
+            exit_on_wpr_band_exit=self.settings.risk.exit_on_wpr_band_exit,
+            wpr_exit_long_level=self.settings.risk.wpr_exit_long_level,
+            wpr_exit_short_level=self.settings.risk.wpr_exit_short_level,
             kill_switch_path=kill_switch_path)
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
         self._poll_task: asyncio.Task | None = None

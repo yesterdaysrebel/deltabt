@@ -44,6 +44,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
+from math import isfinite
 from typing import Any
 
 from live.client import AmbiguousWrite, LiveClient, VenueError
@@ -92,12 +93,18 @@ class LiveBroker:
     def __init__(self, client: LiveClient, *, product_ids: dict[str, int],
                  experiment_id: str, tick_size: dict[str, Decimal] | None = None,
                  entry_ttl_seconds: int = 90,
+                 exit_on_wpr_band_exit: bool = False,
+                 wpr_exit_long_level: float = -80.0,
+                 wpr_exit_short_level: float = -20.0,
                  kill_switch_path: str | None = None) -> None:
         self.client = client
         self.product_ids = dict(product_ids)
         self.experiment_id = experiment_id
         self.tick_size = dict(tick_size or {})
         self.entry_ttl_seconds = entry_ttl_seconds
+        self.exit_on_wpr_band_exit = exit_on_wpr_band_exit
+        self.wpr_exit_long_level = wpr_exit_long_level
+        self.wpr_exit_short_level = wpr_exit_short_level
         self.kill_switch_path = kill_switch_path
         #: symbol -> LivePosition, refreshed by poll(). A CACHE.
         self.positions: dict[str, LivePosition] = {}
@@ -235,6 +242,76 @@ class LiveBroker:
             note=reason)
         log.warning("closing %s at market: %s", symbol, reason)
         return self.client.place_order(order)
+
+    # -- THE BROKER SURFACE TradingBot REQUIRES ------------------------------
+    #
+    # These three exist because the bot calls them, and their absence is how
+    # the first live deploy failed: `AttributeError: 'LiveBroker' object has no
+    # attribute 'close_if_setup_invalidated'`, 1388 times, once per second, on
+    # a host whose /readyz had passed and whose deploy was recorded a success.
+    #
+    # Every unit test drove LiveBroker directly against a FakeClient, so none
+    # of them ever went through TradingBot -- the only caller that reaches
+    # these. A broker is not "the methods it has", it is the surface its driver
+    # calls, and nothing asserted the two matched.
+
+    def close_if_setup_invalidated(self, symbol: str, wpr: float, price: float,
+                                   now: int) -> list[BrokerEvent]:
+        """Close a position whose entry band no longer holds.
+
+        Same rule as PaperBroker: called once per CLOSED primary bar, because
+        %R only updates on a closed bar. ONLY THE ADVERSE SIDE COUNTS -- a long
+        exits below the floor; a long that climbs past the ceiling is winning
+        and is left alone. Backwards, this would close exactly the trades that
+        reach target.
+
+        THE EVENT IS NOT SYNTHESISED HERE. The paper broker closes the position
+        in memory and returns the event; a live close is a market order that
+        may fill at a different price, later, or not at all. poll() sees the
+        position vanish and emits POSITION_CLOSED from what the venue actually
+        did. Returning a fill here would be inventing one.
+        """
+        if not self.exit_on_wpr_band_exit or wpr is None or not isfinite(wpr):
+            return []
+        pos = self.positions.get(symbol)
+        if pos is None or not pos.is_open():
+            return []
+        failed = (wpr < self.wpr_exit_long_level if pos.side > 0
+                  else wpr > self.wpr_exit_short_level)
+        if not failed:
+            return []
+        try:
+            self.close_position(symbol, "setup_invalidated")
+        except VenueError as exc:
+            # Loud, and not fatal: the next bar re-evaluates. Raising here
+            # would take down the bar loop over one rejected order.
+            log.error("could not close %s on setup invalidation: %s", symbol, exc)
+        return []
+
+    def settle_funding(self, symbol: str, now: int, *, rate_percent: float,
+                       mark_price: float, interval: int) -> list[BrokerEvent]:
+        """Nothing. THE VENUE CHARGES FUNDING ON A REAL ACCOUNT.
+
+        PaperBroker computes and books funding because no one else will. Here
+        Delta debits it directly and it arrives in the position's own P&L --
+        live/ledger.py reads the venue's figure. Simulating it as well would
+        count every settlement twice, once in a number we invented and once in
+        the number the exchange actually charged.
+
+        Returning [] rather than raising: the bot calls this on a schedule and
+        a live account is simply not where the answer comes from.
+        """
+        return []
+
+    def mark_funding_charged(self, event_ids) -> None:
+        """Nothing, for the same reason as settle_funding.
+
+        The argument is consumed so a generator is not left unevaluated by a
+        silent no-op -- a caller passing a generator expression would otherwise
+        never run it, which is a different bug wearing this one's clothes.
+        """
+        for _ in event_ids:
+            pass
 
     def expire_stale_entries(self, now: int) -> list[BrokerEvent]:
         """Cancel resting entry orders older than the TTL, at the venue."""
