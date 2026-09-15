@@ -466,10 +466,28 @@ class TestCredentialAndFlagGuards:
         assert self._scan(benign) == [], f"false positive on: {benign!r}"
 
     def test_the_real_deployment_surface_is_clean(self):
+        """The PAPER surface, which is the one the boundary is a claim about.
+
+        test_deployment_safety.LIVE_SURFACE names the files that may reference
+        a venue credential -- a live bot needs a secret, a grant to read it and
+        an env var carrying it. Scanning those here would force this guard to
+        be relaxed generally, which is how a boundary becomes a suggestion.
+        They are scanned by their own stricter check instead: they may NAME a
+        credential and must contain no VALUE.
+        """
         safety = safety_module()
-        assert safety.FILES, "nothing to scan"
-        for path in safety.FILES:
+        assert safety.PAPER_FILES, "nothing to scan"
+        for path in safety.PAPER_FILES:
             assert self._scan(safety.code(path)) == [], path
+
+    def test_the_live_exception_is_small_and_deliberate(self):
+        """If the exception grew to most of the surface, the guard above would
+        be scanning almost nothing while still reporting green."""
+        safety = safety_module()
+        assert len(safety.LIVE_FILES) <= 5, (
+            f"the live-surface exception has grown to {len(safety.LIVE_IDS)} "
+            f"files: {safety.LIVE_IDS}")
+        assert len(safety.PAPER_FILES) > 4 * len(safety.LIVE_FILES)
 
 
 # ===========================================================================

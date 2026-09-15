@@ -41,7 +41,14 @@ def surface_files() -> list[pathlib.Path]:
         if not base.exists():
             continue
         for path in sorted(base.rglob("*")):
-            if not path.is_file() or path.suffix not in SURFACE_SUFFIXES:
+            # DOCKERFILES HAVE NO SUFFIX, and were therefore never scanned.
+            # An image is deployment surface by any reading -- `ENV API_KEY=`
+            # in a layer is a committed credential that ships -- so they are
+            # matched by name. Found on 2026-09-15 by declaring Dockerfile.live
+            # part of the live surface and discovering nothing looked at it.
+            is_dockerfile = path.name.startswith("Dockerfile")
+            if not path.is_file() or (
+                    path.suffix not in SURFACE_SUFFIXES and not is_dockerfile):
                 continue
             if any(part in EXCLUDED or part.startswith(".terraform") for part in path.parts):
                 continue
@@ -49,8 +56,29 @@ def surface_files() -> list[pathlib.Path]:
     return out
 
 
+#: THE ONE DECLARED EXCEPTION TO THE CREDENTIAL SCAN.
+#:
+#: A live-trading bot needs exactly the things this file forbids: a secret, a
+#: grant to read it, and an environment variable carrying it into a container.
+#: Relaxing the scan over infra/ generally to allow that is how a boundary
+#: becomes a suggestion. So the live surface is named here, exhaustively, and
+#: everything NOT in it is scanned exactly as strictly as before.
+#:
+#: These files may NAME a credential. test_the_live_surface_carries_no_actual
+#: _credential below asserts they still contain no VALUE.
+LIVE_SURFACE = {
+    "infra/terraform/live.tf",
+    "deploy/aws/run_live.sh",
+    "deploy/docker/Dockerfile.live",
+}
+
 FILES = surface_files()
 IDS = [str(p.relative_to(ROOT)) for p in FILES]
+
+PAPER_FILES = [p for p in FILES if str(p.relative_to(ROOT)) not in LIVE_SURFACE]
+PAPER_IDS = [str(p.relative_to(ROOT)) for p in PAPER_FILES]
+LIVE_FILES = [p for p in FILES if str(p.relative_to(ROOT)) in LIVE_SURFACE]
+LIVE_IDS = [str(p.relative_to(ROOT)) for p in LIVE_FILES]
 
 
 def code(path: pathlib.Path) -> str:
@@ -98,7 +126,7 @@ EXCHANGE_CREDENTIAL_PATTERNS = [
 ]
 
 
-@pytest.mark.parametrize("path", FILES, ids=IDS)
+@pytest.mark.parametrize("path", PAPER_FILES, ids=PAPER_IDS)
 def test_no_exchange_credential_appears_in_the_deployment_surface(path):
     text = code(path)
     for pattern in CREDENTIAL_PATTERNS + EXCHANGE_CREDENTIAL_PATTERNS:
@@ -182,7 +210,7 @@ INLINE_DSN_PASSWORD = re.compile(
 EPHEMERAL_HOSTS = {"localhost", "127.0.0.1", "postgres", "db", "database", "pg"}
 
 
-@pytest.mark.parametrize("path", FILES, ids=IDS)
+@pytest.mark.parametrize("path", PAPER_FILES, ids=PAPER_IDS)
 def test_no_database_password_is_committed(path):
     text = code(path)
     for match in INLINE_DSN_PASSWORD.finditer(text):
@@ -381,3 +409,71 @@ def test_ec2_alarms_use_the_instance_id():
         # the bug this test exists to catch.
         assert re.search(r"aws_instance\.bot(\[[^\]]+\])?\.id\b", line), line.strip()
         assert ".identifier" not in line, line.strip()
+
+
+# ---------------------------------------------------------------------------
+# The live surface: may NAME a credential, may never CONTAIN one
+# ---------------------------------------------------------------------------
+
+#: A credential VALUE, as opposed to a reference to one. Delta keys are long
+#: opaque strings; an ARN, an environment-variable name and a jq path are not.
+CREDENTIAL_VALUE = re.compile(
+    r"""(?ix)
+    \b(api[_-]?key|api[_-]?secret|delta[_-]?api[_-]?(key|secret))\b
+    \s* [:=] \s*
+    ["']?
+    (?!                         # NOT any of the safe shapes:
+        \$                      #   a shell expansion
+      | \{\{                    #   a template placeholder
+      | \s*$                    #   nothing at all
+      | ["']\s*$                #   an empty string
+      | arn:                    #   an ARN
+      | \w*\)                   #   a function call fragment
+    )
+    [A-Za-z0-9+/=_-]{16,}       # something long enough to BE a key
+    """)
+
+
+def test_the_live_surface_exists_and_is_exactly_what_we_think():
+    """A new file must not join the exception set by accident.
+
+    The whole value of naming the exception is that it is closed. If a file
+    could drift into LIVE_SURFACE, the scan over everything else would quietly
+    stop covering it.
+    """
+    present = {str(p.relative_to(ROOT)) for p in LIVE_FILES}
+    missing = LIVE_SURFACE - present
+    assert not missing, (
+        f"declared live-surface files that do not exist: {sorted(missing)}. "
+        f"Remove them from LIVE_SURFACE rather than leaving a hole in the scan.")
+
+
+@pytest.mark.parametrize("path", LIVE_FILES, ids=LIVE_IDS)
+def test_the_live_surface_carries_no_actual_credential(path):
+    """It may fetch and forward a credential. It may not contain one."""
+    text = code(path)
+    match = CREDENTIAL_VALUE.search(text)
+    assert match is None, (
+        f"{path.relative_to(ROOT)} appears to contain a credential VALUE at "
+        f"{match.group(0)[:40]!r}. The live surface may reference a secret by "
+        f"ARN and forward it from the environment; it must never carry one.")
+
+
+def test_the_value_scan_catches_a_planted_key(tmp_path):
+    """Negative control. A scanner that cannot fail is not evidence."""
+    planted = tmp_path / "evil.sh"
+    planted.write_text('DELTA_API_KEY=Mdd8xQ2vKpLr7nT4wZ9bF1cY6hJ3sA0e\n')
+    assert CREDENTIAL_VALUE.search(planted.read_text())
+
+
+@pytest.mark.parametrize("safe", [
+    'DELTA_API_KEY="$DELTA_API_KEY"',
+    'api_key = arn:aws:secretsmanager:ap-south-1:1234:secret:delta',
+    '-e "DELTA_API_KEY=${DELTA_API_KEY}"',
+    'print(json.load(sys.stdin)["api_key"])',
+    'DELTA_API_SECRET=',
+])
+def test_the_value_scan_permits_references(safe):
+    """Fetching and forwarding must stay legal, or the scan is unusable and
+    somebody will delete it rather than work around it."""
+    assert CREDENTIAL_VALUE.search(safe) is None, safe
