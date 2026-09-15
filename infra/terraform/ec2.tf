@@ -141,7 +141,7 @@ resource "aws_instance" "bot" {
     deploy_sh_b64                = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
     # NOTHING ELSE MAY BE EMBEDDED HERE without removing something first.
     # user_data has a 16,384-byte hard cap and the rendered template passes
-    # its budget check with TWENTY-NINE bytes to spare (tests/live/test_user_data_size).
+    # its budget check with NINE bytes to spare (tests/live/test_user_data_size).
     # That is why the experiment lifecycle is an SSM document above -- document
     # content lives in AWS -- and why the database is created by the
     # infrastructure workflow, which owns the database anyway.
@@ -195,7 +195,7 @@ resource "aws_eip" "bot" {
 # Retiring a run and registering its successor has to happen on the host, in
 # the bot's exact environment. The obvious home is deploy.sh -- but user_data
 # has a 16,384-byte hard cap and the rendered template already passes its
-# budget check with TWENTY-NINE bytes to spare (tests/live/test_user_data_size.py).
+# budget check with NINE bytes to spare (tests/live/test_user_data_size.py).
 # Anything added to a shipped script fails the apply.
 #
 # An SSM document's content lives in AWS, not in user_data, so it costs the
