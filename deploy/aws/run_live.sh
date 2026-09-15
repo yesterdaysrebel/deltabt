@@ -63,22 +63,39 @@ case "$DELTA_ENV" in
 esac
 export DELTA_ENV
 
-# THE CREDENTIAL ARN IS DERIVED, NOT PASSED. Adding a variable to the user_data
-# template would change the rendered bytes for PAPER stacks too, and that
-# replaces their instances. SSM_IMAGE_TAG_PARAM is already in the environment
-# and already per-stack, so its prefix names this stack's parameter space.
-SECRET_PARAM="${SSM_IMAGE_TAG_PARAM%/*}/delta_secret_arn"
-DELTA_SECRET_ARN="$(aws ssm get-parameter --region "$AWS_REGION" \
-                     --name "$SECRET_PARAM" --query Parameter.Value --output text)"
-if [[ -z "$DELTA_SECRET_ARN" || "$DELTA_SECRET_ARN" == "none" ]]; then
-  log "no exchange credentials configured at $SECRET_PARAM; refusing to start"
+# THE CREDENTIAL'S NAME IS DERIVED, NOT PASSED. Adding a variable to the
+# user_data template would change the rendered bytes for PAPER stacks too, and
+# that replaces their instances. SSM_IMAGE_TAG_PARAM is already in the
+# environment and already per-stack, so its prefix names this stack's space.
+#
+# A NAME, NOT AN ARN: the ARN's random suffix exists only once the secret does,
+# so requiring it would force the credential to be created after the
+# infrastructure. `--secret-id` takes either.
+SECRET_PARAM="${SSM_IMAGE_TAG_PARAM%/*}/delta_secret_id"
+DELTA_SECRET_ID="$(aws ssm get-parameter --region "$AWS_REGION" \
+                     --name "$SECRET_PARAM" --query Parameter.Value --output text 2>/dev/null || true)"
+if [[ -z "$DELTA_SECRET_ID" || "$DELTA_SECRET_ID" == "none" ]]; then
+  log "no exchange credential configured at $SECRET_PARAM; refusing to start"
   exit 90
 fi
 
 # Never on disk, never in the image, never in `docker inspect`. Same treatment
 # as the database password, for the same reason.
+#
+# A MISSING SECRET IS AN EXPECTED STATE, NOT A CRASH. The secret is created by
+# an operator, not by Terraform, so between an apply and that happening this
+# lookup legitimately fails. Without the `|| true` the bare command substitution
+# under `set -euo pipefail` exits non-zero, and Restart=always turns a host
+# waiting for its credential into a restart loop -- which is the one failure
+# mode exit 90 exists to avoid.
 DELTA_SECRET="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
-                 --secret-id "$DELTA_SECRET_ARN" --query SecretString --output text)"
+                 --secret-id "$DELTA_SECRET_ID" --query SecretString --output text 2>/dev/null || true)"
+if [[ -z "$DELTA_SECRET" ]]; then
+  log "secret $DELTA_SECRET_ID holds no value yet (or cannot be read); refusing to start"
+  log "create it with: aws secretsmanager create-secret --name $DELTA_SECRET_ID \\"
+  log "  --secret-string '{\"api_key\":\"...\",\"api_secret\":\"...\"}'"
+  exit 90
+fi
 DELTA_API_KEY="$(printf '%s' "$DELTA_SECRET" | python3 -c 'import json,sys;print(json.load(sys.stdin)["api_key"])')"
 DELTA_API_SECRET="$(printf '%s' "$DELTA_SECRET" | python3 -c 'import json,sys;print(json.load(sys.stdin)["api_secret"])')"
 unset DELTA_SECRET

@@ -917,10 +917,12 @@ jobs:
         # can see that a credential exists and still cannot read one; only the
         # instance role has GetSecretValue.
         #
-        # An unpopulated secret is the EXPECTED state between the first apply
-        # and the operator creating the venue key -- the key must allowlist the
-        # host's IP, which does not exist until that apply. So this reports
-        # not-ready and the roll skips; it does not fail.
+        # AN ABSENT OR UNPOPULATED SECRET IS EXPECTED, NOT AN ERROR. Terraform
+        # neither creates nor reads it -- deliberately, so that it can be
+        # created BEFORE the infrastructure and the whole stack come up on one
+        # merge. If the operator has done that, this is ready on the first run;
+        # if not, the roll skips with the command to fix it, and the host waits
+        # at exit 90 rather than crash-looping.
         env:
           SECRET_NAME: deltabt-paper/live/venue-credentials
         run: |
@@ -929,7 +931,7 @@ jobs:
           if ! out=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>&1); then
             case "$out" in
               *ResourceNotFoundException*)
-                echo "::notice::$SECRET_NAME does not exist yet; no live stack has been applied." ;;
+                echo "::notice::$SECRET_NAME does not exist yet, so the live roll will skip. Create the venue API key, then: aws secretsmanager create-secret --name $SECRET_NAME --secret-string '{\"api_key\":\"...\",\"api_secret\":\"...\"}'. The key's IP allowlist can be set afterwards, once the host's EIP exists." ;;
               *)
                 echo "::error::could not inspect $SECRET_NAME: $out"
                 exit 1 ;;
@@ -941,7 +943,7 @@ jobs:
           if printf '%s' "$out" | grep -q 'AWSCURRENT'; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::$SECRET_NAME exists but holds no value, so the live roll will skip. Create the venue API key with the host's EIP allowlisted, then: aws secretsmanager put-secret-value --secret-id $SECRET_NAME --secret-string file://creds.json"
+            echo "::notice::$SECRET_NAME exists but holds no value, so the live roll will skip. aws secretsmanager put-secret-value --secret-id $SECRET_NAME --secret-string file://creds.json"
           fi
 
       - id: pick

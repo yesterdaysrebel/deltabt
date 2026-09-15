@@ -81,40 +81,42 @@ variable "live_stacks" {
   }
 }
 
-# THE CREDENTIAL STORE IS DECLARED HERE, AND ITS VALUE IS NOT.
+# THE CREDENTIAL IS REFERRED TO BY NAME, AND TERRAFORM NEITHER CREATES IT NOR
+# READS IT.
 #
-# This replaces a `live_credential_secret_arn` variable whose value had to be
-# created out of band, pasted into a repository variable, and applied in a
-# SECOND run before the host could start. Three manual steps to communicate a
-# name Terraform is perfectly able to choose for itself.
+# THIS REVERSES A DESIGN FROM EARLIER THE SAME DAY, and the reason is worth
+# recording because the constraint it was built around turned out not to exist.
 #
-# TERRAFORM DECLARES THE CONTAINER; A HUMAN PUTS THE VALUE IN IT. There is no
-# `secret_string` here, so no version is created and nothing about the
-# credential enters Terraform state -- which was the entire reason an ARN was
-# passed rather than a value. The ARN now exists from the first apply, so the
-# IAM grant below is exact from the first apply and the SSM parameter the host
-# reads is correct immediately.
+# The ordering was believed to be forced: the venue API key must allowlist the
+# host's IP, the IP does not exist until the apply, so the key -- and therefore
+# the credential -- could only be created AFTER the infrastructure. Every
+# version of this file so far has been shaped by that: an ARN variable and a
+# second apply, then a Terraform-declared secret and a post-apply
+# put-secret-value plus a push to trigger the roll.
 #
-# WHY THE VALUE CANNOT BE AUTOMATED. Delta has no API for minting an API key --
-# you would need a key to create a key -- and the key must allowlist the host's
-# IP, which does not exist until this apply has run. "Create the key and store
-# it" is therefore irreducibly manual. Everything either side of it is not.
+# Delta lets the IP allowlist be edited after a key is created. So the key can
+# exist first, the secret can exist first, and the whole ordering problem
+# disappears: one merge stands the stack up and starts it, with nothing to do
+# afterwards. The allowlist is then tightened at leisure, while the bot runs.
 #
-# RECOVERY WINDOW 7 DAYS, not the 30-day default: one deleted by mistake should
-# be recoverable, without holding the name for a month and blocking recreation.
-resource "aws_secretsmanager_secret" "live" {
-  count = length(var.live_stacks) > 0 ? 1 : 0
+# BY NAME, NOT BY ARN, because the ARN carries a six-character random suffix
+# that only exists once the secret does -- and requiring it back would
+# reintroduce exactly the round trip this removes. `aws secretsmanager
+# get-secret-value --secret-id` accepts either.
+#
+# THE IAM GRANT USES THAT SUFFIX AS A WILDCARD, `-??????`, which is AWS's own
+# documented pattern for naming a secret you cannot yet resolve. It is not a
+# loosening: two secrets cannot share a name, so this matches at most the one
+# secret, and six `?` is tighter than the `*` usually seen.
+locals {
+  live_credential_name = "${local.name}/live/venue-credentials"
 
-  name        = "${local.name}/live/venue-credentials"
-  description = "Delta venue API credentials for the live stacks"
-
-  recovery_window_in_days = 7
-
-  lifecycle {
-    # The bot cannot trade without this, and recreating it under a new name
-    # would leave the host reading an ARN that no longer resolves.
-    prevent_destroy = true
-  }
+  # Six `?`, one per character of the suffix Secrets Manager appends.
+  live_credential_arn_pattern = join("", [
+    "arn:aws:secretsmanager:${var.aws_region}:",
+    "${data.aws_caller_identity.current.account_id}:secret:",
+    "${local.live_credential_name}-??????",
+  ])
 }
 
 variable "live_venue" {
@@ -164,9 +166,13 @@ resource "aws_ecr_repository" "live" {
 resource "aws_ssm_parameter" "live_credential_arn" {
   for_each = { for k, s in local.stacks : k => s if s.live }
 
-  name  = "${each.value.ssm_prefix}/delta_secret_arn"
+  # THE NAME, NOT THE ARN, and the parameter is named for what it holds. The
+  # ARN's random suffix exists only once the secret does; a name is decidable
+  # in advance, which is what lets the credential be created before the
+  # infrastructure and the whole stack come up on one merge.
+  name  = "${each.value.ssm_prefix}/delta_secret_id"
   type  = "String"
-  value = aws_secretsmanager_secret.live[0].arn
+  value = local.live_credential_name
 }
 
 # THE VENUE, AS A PARAMETER RATHER THAN A TEMPLATE VARIABLE.
@@ -243,7 +249,7 @@ resource "aws_iam_role_policy" "live_ci" {
         Sid      = "SeeWhetherTheCredentialHasBeenSuppliedWithoutReadingIt"
         Effect   = "Allow"
         Action   = ["secretsmanager:DescribeSecret"]
-        Resource = aws_secretsmanager_secret.live[0].arn
+        Resource = local.live_credential_arn_pattern
       },
       {
         # "HAS THIS STACK EVER BEEN DEPLOYED?" -- the image tag is "none" until
@@ -332,7 +338,7 @@ resource "aws_iam_role_policy" "live_credentials" {
       Sid      = "ReadTheVenueCredentialAndNothingElse"
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = aws_secretsmanager_secret.live[0].arn
+      Resource = local.live_credential_arn_pattern
     }]
   })
 }

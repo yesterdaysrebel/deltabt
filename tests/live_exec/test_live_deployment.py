@@ -75,12 +75,17 @@ def test_every_live_resource_is_gated_on_its_own_variable():
         "the live ECR repository is not gated on a live stack existing")
     assert "if s.live" in LIVE_TF, (
         "the live SSM parameter is not filtered to live stacks")
-    # The credential policy was gated on an ARN variable being non-empty. The
-    # secret is now a Terraform resource, so the gate is the same one every
-    # other live resource uses -- and the grant is scoped to that resource
-    # rather than to a string somebody pasted into a repository variable.
-    assert "aws_secretsmanager_secret.live[0].arn" in LIVE_TF, (
-        "the credential policy is not scoped to the declared secret")
+    # The credential grant is scoped to the secret's NAME pattern, because the
+    # secret is created by an operator and its ARN suffix cannot be known in
+    # advance. A pattern is not a loosening -- two secrets cannot share a name,
+    # so it matches at most one -- but `*` would be, so that is checked.
+    assert "local.live_credential_arn_pattern" in LIVE_TF, (
+        "the credential policy is not scoped to the credential's name")
+    assert "-??????" in LIVE_TF, (
+        "the ARN pattern does not pin the suffix length")
+    assert ':secret:*"' not in LIVE_TF and '"*"' not in LIVE_TF.replace(
+        'Resource = "*" # this action does not accept a resource restriction', ""), (
+        "a live grant is scoped to every secret in the account")
     assert LIVE_TF.count("length(var.live_stacks) > 0 ? 1 : 0") >= 4, (
         "not every live resource is gated on a live stack existing")
 
@@ -106,25 +111,30 @@ def test_the_credential_arn_actually_reaches_terraform():
     This was the third time this pipeline shipped a change that reached one
     link of a chain and not the next. The other two are in the header above.
 
-    THE LINK IS NOW GONE RATHER THAN REPAIRED, which is the better fix: the
-    first version of this test asserted that the workflow passed
-    TF_VAR_live_credential_secret_arn. Terraform declares the secret itself, so
-    there is no ARN to communicate, no repository variable to set, and no
-    second apply to remember. A link that does not exist cannot rot.
+    THE LINK IS NOW GONE RATHER THAN REPAIRED, which is the better fix. The
+    first version of this test asserted the workflow passed
+    TF_VAR_live_credential_secret_arn; the second asserted Terraform declared
+    the secret. It now does neither: the credential is referred to by a NAME
+    Terraform can decide without the secret existing, so there is nothing to
+    communicate in either direction. A link that does not exist cannot rot.
     """
     infra = (ROOT / ".github/workflows/infrastructure.yml").read_text()
-    assert 'resource "aws_secretsmanager_secret" "live"' in LIVE_TF, (
-        "Terraform does not declare the credential store, so its ARN must "
-        "again be supplied from outside -- the link that was missing before")
+    assert "live_credential_name" in LIVE_TF, (
+        "nothing names the credential, so its location must again be supplied "
+        "from outside -- the link that was missing before")
     assert "live_credential_secret_arn" not in infra, (
         "the workflow still passes an ARN variable that no longer exists")
-    # NO VERSION IS DECLARED. Terraform writes every attribute it is given into
-    # state in plaintext, so the container may be declared and the value may
-    # not -- that distinction is the whole reason this is shaped this way.
-    block = LIVE_TF[LIVE_TF.index('resource "aws_secretsmanager_secret" "live"'):]
-    block = block[:block.index("\n}\n")]
-    assert "secret_string" not in block, (
-        "a secret VALUE is declared in Terraform; it would be written to state "
+    # TERRAFORM MUST NEITHER CREATE NOR READ IT. A resource would put the
+    # container in state and force it to exist before the credential could;
+    # a data source would fail the apply whenever it does not yet. Either way
+    # the credential's lifecycle stops being the operator's.
+    assert 'resource "aws_secretsmanager_secret"' not in LIVE_TF, (
+        "Terraform manages the credential container, which forces it to exist "
+        "after the infrastructure rather than before")
+    assert 'data "aws_secretsmanager_secret"' not in LIVE_TF, (
+        "Terraform reads the secret, so an apply fails whenever it is absent")
+    assert "secret_string" not in LIVE_TF, (
+        "a secret VALUE appears in Terraform; it would be written to state "
         "in plaintext")
     # And no credential may be handed to Terraform by the workflow either.
     for forbidden in ("DELTA_API_KEY", "DELTA_API_SECRET", "api_secret"):
@@ -318,11 +328,10 @@ def test_the_secret_name_in_the_workflow_matches_terraform():
     default = next(l for l in block.splitlines() if l.strip().startswith("default"))
     environment = default.split("=", 1)[1].strip().strip('"')
 
-    # What Terraform will actually name it.
-    tf_block = LIVE_TF[LIVE_TF.index('resource "aws_secretsmanager_secret" "live"'):]
-    tf_block = tf_block[:tf_block.index("\n}\n")]
-    suffix = next(l for l in tf_block.splitlines() if l.strip().startswith("name"))
-    suffix = suffix.split("=", 1)[1].strip().strip('"')
+    # What Terraform tells the host to look for.
+    line = next(l for l in LIVE_TF.splitlines()
+                if l.strip().startswith("live_credential_name"))
+    suffix = line.split("=", 1)[1].strip().strip('"')
     expected = suffix.replace("${local.name}", f"deltabt-{environment}")
 
     assert f"SECRET_NAME: {expected}" in DEPLOY, (
