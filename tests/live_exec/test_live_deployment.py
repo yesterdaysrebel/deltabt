@@ -276,6 +276,29 @@ def test_the_live_matrix_matches_the_configured_live_stacks():
         assert r["variant"].startswith("SPEC:"), r
 
 
+def test_only_stack_may_name_a_live_stack():
+    """`only_stack=tnet` is the NORMAL way a live stack is first brought up.
+
+    Creating the venue API key needs the host's EIP allowlisted, and the EIP
+    does not exist until the apply -- so the credential secret is necessarily
+    created AFTER the host, and the host then has to be kicked to read it.
+    That kick is a dispatch with only_stack set to the live stack.
+
+    The paper `targets` job used to `exit 1` on any name not in its own table,
+    which made that routine dispatch a red run. Worse, `deploy` is gated on
+    this job's matrix, so the failure would not have explained itself.
+    """
+    job = DEPLOY[DEPLOY.index("  targets:"):DEPLOY.index("  build:")]
+    assert "live_stacks_matrix.py" in job, (
+        "the paper targets job cannot tell a live stack from a typo, so a "
+        "routine live dispatch fails the run")
+    assert "is a LIVE stack" in job
+    # A genuinely unknown name must STILL fail -- silently rolling nothing is
+    # how a deploy that did not happen looks like one that did.
+    assert "matches no paper or live stack" in job
+    assert "exit 1" in job
+
+
 def test_the_live_roll_keeps_the_experiment_guard():
     """Rolling retires the running experiment and resets its sample to zero.
 

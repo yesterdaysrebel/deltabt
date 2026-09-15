@@ -390,7 +390,22 @@ jobs:
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
-              echo "::error::only_stack='$ONLY' matches no stack; nothing would roll"
+              # IT MAY BE A LIVE STACK, and that is not an error here.
+              #
+              # `only_stack=tnet` is the dispatch that kicks a live host after
+              # its credential secret is created -- the normal way a live stack
+              # is brought up, because creating the API key needs the host's
+              # EIP and so cannot happen before the apply. Failing this job on
+              # it would turn the routine path into a red run, and `deploy` is
+              # gated on this job's matrix, so the failure would not even be
+              # self-explanatory. targets-live handles live stacks; this job
+              # steps aside for them.
+              if python3 scripts/live_stacks_matrix.py "$ONLY" >/dev/null 2>&1; then
+                echo "::notice::only_stack='$ONLY' is a LIVE stack; the paper path has nothing to roll (targets-live handles it)"
+                echo "matrix=[]" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::error::only_stack='$ONLY' matches no paper or live stack; nothing would roll"
               exit 1
             fi
             echo "explicit only_stack='$ONLY': the running-experiment guard is overridden for it"
