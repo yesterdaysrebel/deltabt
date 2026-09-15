@@ -45,8 +45,18 @@ def test_the_derivation_produces_the_name_terraform_creates():
     assert out == "deltabt-paper-atr-experiment", out
 
 
-def test_both_experiment_steps_use_the_derivation():
-    """Retire and start are separate steps; one was fixed and one was not."""
+def test_every_experiment_step_uses_the_derivation():
+    """Retire and start are separate steps; one was fixed and one was not.
+
+    The guard step added on 2026-09-14 is a third caller, so this counts uses
+    against callers rather than pinning a literal number: the fault being
+    prevented is ONE of them naming the document a different way, which is how
+    2026-09-04's AccessDenied on `...-deploy-experiment` happened.
+    """
     wf = WORKFLOW.read_text()
-    assert wf.count("${DEPLOY_DOC%-deploy}-experiment") == 2, (
-        "both the retire and the start step must derive the name the same way")
+    derived = wf.count("${DEPLOY_DOC%-deploy}-experiment")
+    callers = wf.count('--parameters "Action=')
+    assert derived == callers, (
+        f"{callers} steps invoke the experiment document but only {derived} "
+        f"derive its name; every one of them must derive it the same way")
+    assert derived >= 3, "expected retire, start and the roll guard"

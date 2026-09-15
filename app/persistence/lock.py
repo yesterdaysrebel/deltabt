@@ -48,7 +48,11 @@ class SingleInstanceLock:
     async def acquire(self) -> bool:
         """Try to take the lock. False means another instance already has it."""
         import asyncpg
-        self._con = await asyncpg.connect(self.dsn)
+        from app.persistence.db_auth import connect_kwargs
+        # The advisory lock is the single-instance guarantee, so it must use
+        # the same auth path as the pool -- a lock connection that cannot be
+        # re-established after a rotation is a bot that cannot restart.
+        self._con = await asyncpg.connect(**connect_kwargs(self.dsn))
         got = await self._con.fetchval("SELECT pg_try_advisory_lock($1)", self.key)
         self.held = bool(got)
         if not self.held:

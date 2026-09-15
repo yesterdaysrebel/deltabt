@@ -241,58 +241,48 @@ jobs:
           # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
           # step with infra/terraform/variables.tf so the job title does not
           # announce a strategy the host is not running.
-          # `pinned` MEANS "AN AUTOMATIC PUSH MUST NOT ROLL THIS STACK".
+          # WHETHER TO ROLL IS ASKED OF THE HOST, NOT DECLARED HERE.
           #
-          # Until 2026-09-07 a push to master rolled EVERY stack. That is not
-          # a tidiness problem: the experiment identity includes git_sha, so
+          # Until 2026-09-07 a push to master rolled EVERY stack. That is not a
+          # tidiness problem: the experiment identity includes git_sha, so
           # rolling a host retires its RUNNING experiment and registers a
-          # successor, which resets the risk ledger to 10,000 and the sample
-          # to zero. It happened to `hours` on 2026-09-07 -- an arm four days
-          # into a 30-day run, rolled by a merge that had nothing to do with
-          # it, losing the continuity of its equity curve. The workflow's own
-          # comment described this as "the documented cost of the
-          # merge-to-deploy pipeline" and told the reader to remember
-          # only_stack. A cost you must remember on every merge is a trap, and
-          # a push event cannot carry only_stack anyway.
+          # successor, resetting the risk ledger to 10,000 and the sample to
+          # zero. It happened to `hours` on 2026-09-07 -- an arm four days into
+          # a 30-day run, rolled by a merge that had nothing to do with it.
           #
-          # So the rule is data now, next to the stack it protects. A pinned
-          # stack is skipped by any automatic push and can only be rolled by a
-          # deliberate `only_stack=<name>` dispatch, which is the explicit
-          # override. Blank-input dispatches skip pinned stacks too: "roll
-          # everything" must not be the easy way to end two experiments.
+          # The fix then was a `"pinned":true` flag on this line. It worked,
+          # and it had two faults. It must be hand-edited twice per experiment,
+          # and a human editing a JSON string inside a shell script is the same
+          # class of mistake it was protecting against. And a stack left pinned
+          # after its run ends blocks every subsequent deploy silently -- the
+          # steady state was "every stack pinned, nothing ever ships".
           #
-          # 2026-09-08: `cross` IS PINNED TOO, so the table is now fully
-          # pinned. It was left unpinned on 2026-09-07 only because it had to
-          # roll once to come up; it bound
-          # MANUAL_SCALP_CROSS_BOTH_T3-5-20260907-298dde0 at 10:45Z and has
-          # been RUNNING since. Leaving it unpinned meant the next merge that
-          # touched any image path would retire that run -- which is the exact
-          # failure this table was added to stop, one day after it was added.
-          # An empty matrix is the correct steady state while all three arms
-          # are mid-experiment; the job below already treats it as success.
+          # So the flag is gone and the question is asked at roll time, in the
+          # deploy job's "may we roll this host?" step: the host is sent
+          # `Action=status` and answers whether an experiment is RUNNING. A
+          # merge now ships everything by default and skips exactly the hosts
+          # where rolling would destroy data -- no edit, and no stack left
+          # pinned by accident. It fails closed: an unreadable host is not
+          # rolled.
           #
-          # A pinned stack therefore sits on an older image than master. That
-          # is correct and is the point -- it is running an experiment, and
-          # the experiment is the thing being protected. Unpin it when the run
-          # ends. Adding a family to deltabt/catalog.py does not move any
-          # other family's config_hash, so a pinned host's strategy identity
-          # does not drift while it waits.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","pinned":true,"instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          # A protected stack therefore sits on an older image than master.
+          # That is correct and is the point. Adding a family to
+          # deltabt/catalog.py does not move any other family's config_hash, so
+          # its strategy identity does not drift while it waits.
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then
               echo "::error::only_stack='$ONLY' matches no stack; nothing would roll"
               exit 1
             fi
-            echo "explicit only_stack='$ONLY': pinning is overridden for it"
+            echo "explicit only_stack='$ONLY': the running-experiment guard is overridden for it"
           else
-            picked=$(printf '%s' "$all" | jq -c '[.[] | select(.pinned != true)]')
-            skipped=$(printf '%s' "$all" | jq -r '[.[] | select(.pinned == true) | .stack] | join(", ")')
-            if [ -n "$skipped" ]; then
-              echo "::notice::pinned, NOT rolled: $skipped -- each is running an experiment. Dispatch deploy.yml with only_stack=<name> to roll one deliberately."
-            fi
+            # Every stack is a candidate now. The deploy job asks each host
+            # whether it may be rolled; see "may we roll this host?".
+            picked="$all"
             if [ "$picked" = "[]" ]; then
-              echo "every stack is pinned; nothing to roll, and that is a success"
+              echo "no stacks defined; nothing to roll, and that is a success"
             fi
           fi
           echo "rolling: $picked"
@@ -465,7 +455,67 @@ jobs:
           echo "instance_id=$ids" >> "$GITHUB_OUTPUT"
           echo "host $ids ($NAME_TAG)" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: may we roll this host?
+        id: guard
+        # THE PIN, DECIDED FROM LIVE STATE INSTEAD OF A HAND-EDITED FLAG.
+        #
+        # Rolling retires the running experiment and resets its sample to
+        # zero. That must not happen by accident -- it happened to `hours` on
+        # 2026-09-07, four days into a 30-day run, via a merge that had nothing
+        # to do with it. The fix at the time was `"pinned":true` in the stack
+        # table, which works but has to be edited by hand twice per experiment,
+        # and a human editing a JSON string in a shell script is the same class
+        # of mistake it was protecting against. A stack left pinned after its
+        # run ends blocks every deploy silently.
+        #
+        # So the host is asked. An explicit dispatch (only_stack) overrides,
+        # because that is already the deliberate act.
+        #
+        # FAILS CLOSED, AND NOT ON THE EXIT CODE. `forward-test status` exits 1
+        # both for "nothing is running" and for every real failure, exactly as
+        # `stop` does, so this matches the CLI's own words the way the retire
+        # step does. Anything unrecognised -- SSM unreachable, host wedged,
+        # timeout -- leaves roll=no and the deploy skips rather than guesses.
+        env:
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
+          ID: ${{ steps.host.outputs.instance_id }}
+          ONLY: ${{ github.event.inputs.only_stack }}
+        run: |
+          set -euo pipefail
+          echo "roll=no" >> "$GITHUB_OUTPUT"
+          if [ -n "${ONLY:-}" ]; then
+            echo "roll=yes" >> "$GITHUB_OUTPUT"
+            echo "::notice::only_stack=$ONLY is a deliberate dispatch; rolling regardless of experiment state"
+            exit 0
+          fi
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
+            --parameters "Action=status" \
+            --comment "gha ${{ github.run_id }} guard" \
+            --query 'Command.CommandId' --output text)
+          st=Pending
+          for _ in $(seq 1 60); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+          out=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                 --command-id "$CMD" --instance-id "$ID" \
+                 --query 'StandardOutputContent' --output text 2>/dev/null || true)
+          echo "$out"
+          case "$out" in
+            *"no experiment is RUNNING"*|*"nothing to protect"*)
+              echo "roll=yes" >> "$GITHUB_OUTPUT"
+              echo "::notice::no experiment is running on ${{ matrix.stack }}; rolling" ;;
+            *)
+              echo "::notice::${{ matrix.stack }} has a RUNNING experiment (or its state could not be read: $st). NOT rolling. End the run, or dispatch deploy.yml with only_stack=${{ matrix.stack }} to roll deliberately."
+              echo "${{ matrix.stack }}: skipped, experiment in progress" >> "$GITHUB_STEP_SUMMARY" ;;
+          esac
+
       - name: decide the experiment id
+        if: steps.guard.outputs.roll == 'yes'
         id: experiment
         # An experiment records the git_sha it began on, so a code change and
         # the run it belongs to are the same decision. Rolling a new image
@@ -495,7 +545,7 @@ jobs:
           echo "experiment \`$id\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: retire the running experiment, on the image still running
-        if: steps.experiment.outputs.id != 'none'
+        if: steps.guard.outputs.roll == 'yes' && steps.experiment.outputs.id != 'none'
         # BEFORE the roll, deliberately. An experiment records its git_sha and
         # bind_experiment() refuses a container carrying a different one, so
         # rolling first guarantees a drift refusal: /readyz never passes and
@@ -533,6 +583,7 @@ jobs:
           [ "$st" = "Success" ] || { echo "::error::could not retire the running experiment"; exit 1; }
 
       - name: send the deploy command
+        if: steps.guard.outputs.roll == 'yes'
         id: send
         run: |
           CMD=$(aws ssm send-command \
@@ -546,6 +597,7 @@ jobs:
           echo "SSM command $CMD"
 
       - name: wait for it, and fail loudly if it did not take
+        if: steps.guard.outputs.roll == 'yes'
         run: |
           CMD="${{ steps.send.outputs.command_id }}"
           ID="${{ steps.host.outputs.instance_id }}"
@@ -578,7 +630,7 @@ jobs:
           [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
 
       - name: start the successor experiment
-        if: steps.experiment.outputs.id != 'none'
+        if: steps.guard.outputs.roll == 'yes' && steps.experiment.outputs.id != 'none'
         # AFTER the roll, so the experiment records the SHA the bot is actually
         # running. The document stops the service, runs preflight, registers
         # the id, restarts and waits for /readyz -- so a green step here means
@@ -635,6 +687,7 @@ jobs:
           echo "experiment \`$EXP\` is running" >> "$GITHUB_STEP_SUMMARY"
 
       - name: what the deploy document reported
+        if: steps.guard.outputs.roll == 'yes'
         # NO second SSM channel. This role's ssm:SendCommand is scoped to the
         # deltabt-paper-deploy document and that instance -- it cannot invoke
         # AWS-RunShellScript, and that is the point: a workflow able to run
@@ -656,6 +709,7 @@ jobs:
           echo "    --expected-sha ${{ steps.tag.outputs.tag }}"
 
       - name: the deployed commit, image and config hash
+        if: steps.guard.outputs.roll == 'yes'
         run: |
           {
             echo '### Provenance'

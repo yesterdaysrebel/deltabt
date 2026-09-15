@@ -68,6 +68,55 @@ else
   echo "created database '$DB_NEW'"
 fi
 
+# THE LOGIN ROLE THE BOT ACTUALLY USES.
+#
+# Not the master user. The bot authenticates with a short-lived IAM token
+# (app/persistence/db_auth.py) rather than a password, so AWS can keep rotating
+# the master credential and nothing caches a value that can go stale -- which
+# used to break the bot at the NEXT new connection, possibly days later,
+# looking like an unrelated outage.
+#
+# This runs here, in the script CI already invokes over SSM after every apply,
+# so enabling IAM auth needs no human step. It is idempotent: roles are
+# cluster-wide, so a second stack finds it present and only re-applies grants,
+# which Postgres treats as a no-op.
+DB_APP_ROLE="${DB_APP_ROLE:-deltabt_app}"
+case "$DB_APP_ROLE" in
+  [a-z_][a-z0-9_]*) ;;
+  *) echo "refusing role '$DB_APP_ROLE': lowercase, digits and underscore only" >&2
+     exit 2 ;;
+esac
+
+if [ -n "$(psql_admin -c "select 1 from pg_roles where rolname = '$DB_APP_ROLE'")" ]; then
+  echo "role '$DB_APP_ROLE' already exists"
+else
+  # LOGIN with no PASSWORD: authentication is by IAM token only.
+  psql_admin -c "CREATE ROLE $DB_APP_ROLE WITH LOGIN"
+  echo "created role '$DB_APP_ROLE'"
+fi
+
+# `rds_iam` is what makes Postgres accept the signed token in place of a
+# password. Without it the bot fails authentication with a password error that
+# gives no hint that the missing grant is the cause.
+psql_admin -c "GRANT rds_iam TO $DB_APP_ROLE"
+psql_admin -c "GRANT CONNECT ON DATABASE $DB_NEW TO $DB_APP_ROLE"
+
+# Schema grants are per-database, so they run against the new database rather
+# than the admin one. CREATE is required because the bot's own migrate() runs
+# schema.sql as CREATE TABLE IF NOT EXISTS on every start. ALTER DEFAULT
+# PRIVILEGES is what stops the NEXT table added to schema.sql being invisible
+# to the bot -- grants on existing tables do not cover tables created later.
+psql_in_new() {
+  psql --host "$DB_HOST" --port "$DB_PORT" --username "$PGUSER" \
+       --dbname "$DB_NEW" --set ON_ERROR_STOP=1 --no-psqlrc --tuples-only "$@"
+}
+psql_in_new -c "GRANT USAGE, CREATE ON SCHEMA public TO $DB_APP_ROLE"
+psql_in_new -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $DB_APP_ROLE"
+psql_in_new -c "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $DB_APP_ROLE"
+psql_in_new -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $DB_APP_ROLE"
+psql_in_new -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO $DB_APP_ROLE"
+echo "'$DB_APP_ROLE' can log in by IAM token and write '$DB_NEW'"
+
 # Prove it is reachable and empty, so a failure here is not discovered later as
 # a bot that cannot start.
 TABLES="$(psql --host "$DB_HOST" --port "$DB_PORT" --username "$PGUSER" \

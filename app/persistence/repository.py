@@ -518,8 +518,14 @@ class PostgresRepository(Repository):
         # `init` runs on EVERY pooled connection. Registering the codecs on a
         # single connection would make behaviour depend on which one a query
         # happened to acquire (audit F2).
+        # connect_kwargs returns {"dsn": ...} unless DB_IAM_AUTH is set, in
+        # which case the password is a CALLABLE that mints a fresh IAM token
+        # per connection. A pooled connection opened an hour from now signs
+        # itself then, so a rotated master password can no longer strand the
+        # pool. See app/persistence/db_auth.py.
+        from app.persistence.db_auth import connect_kwargs
         self._pool = await asyncpg.create_pool(
-            self.dsn, min_size=self._min, max_size=self._max,
+            **connect_kwargs(self.dsn), min_size=self._min, max_size=self._max,
             init=register_codecs,
         )
         await self.migrate()

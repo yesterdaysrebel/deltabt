@@ -24,6 +24,13 @@ resource "aws_db_instance" "main" {
   # into state in plaintext.
   manage_master_user_password = true
 
+  # The bot does NOT use the master password. It connects as `db_app_username`
+  # with a locally-minted IAM token (app/persistence/db_auth.py), so AWS can
+  # keep rotating the master credential and nothing caches anything that can
+  # go stale. Enabling this is a no-op for existing password connections, so
+  # it is safe to apply while the paper experiment is running.
+  iam_database_authentication_enabled = true
+
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db.id]
   publicly_accessible    = false
