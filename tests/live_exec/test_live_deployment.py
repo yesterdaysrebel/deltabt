@@ -45,14 +45,38 @@ def test_the_live_image_goes_to_its_own_repository():
 
 def test_the_workflow_and_terraform_agree_on_the_repository_name():
     """The drift that dispatched rolls at terminated instances was exactly
-    this: two places naming the same thing, and one of them stale."""
-    # Terraform: "${local.name}-live", and local.name is the project prefix
-    # that also produces the paper repository.
+    this: two places naming the same thing, and one of them stale.
+
+    AND THIS TEST FAILED TO CATCH IT, which is the lesson worth keeping. It
+    asserted only that the workflow's fallback ENDED WITH "-live". The
+    fallback was 'deltabt-live'; Terraform creates 'deltabt-paper-live',
+    because local.name is "deltabt-${var.environment}". Both end in "-live",
+    so this passed green while the two names disagreed, and the first live
+    build failed with AccessDenied -- the role is granted on the real
+    repository, so asking about a different name is a permissions error, not a
+    missing one. It read as an IAM bug for two runs.
+
+    A suffix is a property of the name. The name is the thing that has to
+    match, so it is now derived and compared in full.
+    """
     assert '"${local.name}-live"' in LIVE_TF
-    # The workflow's fallback must match that suffix.
+
+    variables = (ROOT / "infra/terraform/variables.tf").read_text()
+    block = variables[variables.index('variable "environment"'):]
+    block = block[:block.index("\n}\n")]
+    default = next(l for l in block.splitlines() if l.strip().startswith("default"))
+    environment = default.split("=", 1)[1].strip().strip('"')
+
+    network = (ROOT / "infra/terraform/network.tf").read_text()
+    assert 'name = "deltabt-${var.environment}"' in network, (
+        "local.name is no longer deltabt-<environment>; this derivation is stale")
+
+    expected = f"deltabt-{environment}-live"
     match = re.search(r"ECR_REPOSITORY_LIVE \|\| '([^']+)'", DEPLOY)
     assert match, "the live build has no repository name fallback"
-    assert match.group(1).endswith("-live"), match.group(1)
+    assert match.group(1) == expected, (
+        f"the workflow looks for {match.group(1)!r}; Terraform creates "
+        f"{expected!r}. A mismatch surfaces as AccessDenied, not NotFound.")
 
 
 def test_every_live_resource_is_gated_on_its_own_variable():

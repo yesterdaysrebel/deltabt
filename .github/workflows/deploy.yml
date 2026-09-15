@@ -272,7 +272,14 @@ jobs:
         id: repo
         run: |
           set -euo pipefail
-          NAME="${{ vars.ECR_REPOSITORY_LIVE || 'deltabt-live' }}"
+          # deltabt-PAPER-live, and the dash-paper is not a typo: Terraform
+          # names it "${local.name}-live" and local.name is
+          # "deltabt-${var.environment}", with environment defaulting to
+          # "paper" account-wide. This fallback read 'deltabt-live' and the
+          # repository is 'deltabt-paper-live', so the lookup asked about a
+          # repository this role has no grant on and came back AccessDenied --
+          # which reads as a permissions bug and is really a name mismatch.
+          NAME="${{ vars.ECR_REPOSITORY_LIVE || 'deltabt-paper-live' }}"
           # ABSENT AND DENIED ARE NOT THE SAME ANSWER, and this swallowed both.
           #
           # `>/dev/null 2>&1` turned every failure into "no live stack is
