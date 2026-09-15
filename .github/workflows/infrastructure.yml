@@ -71,6 +71,7 @@ env:
   # variable yields "", which is the same as before.
   TF_VAR_alarm_email: ${{ vars.ALARM_EMAIL }}
 
+
 jobs:
   safety:
     name: safety boundary
