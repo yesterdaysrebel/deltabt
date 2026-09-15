@@ -35,8 +35,21 @@ locals {
   # The v1 stack's db_name is "" in the variable, meaning "whatever the RDS
   # instance was created with". Resolving it here keeps that indirection out
   # of the template and out of every consumer.
+  # PAPER AND LIVE STACKS IN ONE MAP, tagged so every for_each below gets both
+  # without being rewritten. `live` decides which boot script and which image
+  # a host gets; everything else -- alarms, log groups, documents, the EIP --
+  # is identical and should stay identical, because a live bot that is
+  # monitored differently from the paper bot is a live bot nobody is watching.
+  #
+  # var.live_stacks is EMPTY by default, so this merge is a no-op and the plan
+  # shows nothing until somebody adds an entry.
+  all_stacks = merge(
+    { for k, s in var.stacks : k => merge(s, { live = false }) },
+    { for k, s in var.live_stacks : k => merge(s, { live = true }) },
+  )
+
   stacks = {
-    for k, s in var.stacks : k => merge(s, {
+    for k, s in local.all_stacks : k => merge(s, {
       db_name    = s.db_name != "" ? s.db_name : aws_db_instance.main.db_name
       ssm_prefix = k == local.legacy_stack ? "/deltabt/${var.environment}" : "/deltabt/${var.environment}/${k}"
       log_group  = k == local.legacy_stack ? "/deltabt/${var.environment}/bot" : "/deltabt/${var.environment}/${k}/bot"
@@ -137,8 +150,11 @@ resource "aws_instance" "bot" {
     exit_on_wpr_band_exit        = var.exit_on_wpr_band_exit ? 1 : 0
     wpr_exit_long_level          = var.wpr_exit_long_level
     wpr_exit_short_level         = var.wpr_exit_short_level
-    run_sh_b64                   = base64gzip(file("${path.root}/../../deploy/aws/run.sh"))
-    deploy_sh_b64                = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
+    # PER STACK, AND IDENTICAL FOR PAPER. A paper stack still resolves to
+    # run.sh, so its rendered user_data is byte-for-byte what it was and the
+    # instance is not replaced. Only a live stack gets the other file.
+    run_sh_b64    = base64gzip(file("${path.root}/../../deploy/aws/${each.value.live ? "run_live.sh" : "run.sh"}"))
+    deploy_sh_b64 = base64gzip(file("${path.root}/../../deploy/aws/deploy.sh"))
     # NOTHING ELSE MAY BE EMBEDDED HERE without removing something first.
     # user_data has a 16,384-byte hard cap and the rendered template passes
     # its budget check with NINE bytes to spare (tests/live/test_user_data_size).
