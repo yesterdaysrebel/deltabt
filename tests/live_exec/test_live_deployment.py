@@ -153,6 +153,25 @@ def test_the_build_skips_loudly_rather_than_failing_when_there_is_no_repository(
         "the build steps are not gated on the repository existing")
 
 
+def test_the_live_build_waits_for_the_infrastructure_that_grants_it_access():
+    """It did not, and the first merge with a live stack failed because of it.
+
+    build-live asks ECR whether the live repository exists. Both that
+    repository and the ecr:DescribeRepositories grant that lets it ask are
+    created by the infrastructure apply. Declaring only `needs: test`, it ran
+    four minutes ahead of the apply on 2026-09-15 and got AccessDenied.
+
+    It failed loudly rather than reporting "no live stack is configured" --
+    that part worked -- but a job that cannot succeed on the merge that
+    introduces its own dependencies is ordered wrongly, not merely unlucky.
+    """
+    d = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    needs = next(l for l in d.splitlines() if l.strip().startswith("needs:"))
+    assert "wait-for-infrastructure" in needs, (
+        "build-live does not wait for the apply that creates the repository "
+        "it inspects and grants the permission it inspects it with")
+
+
 def test_the_live_host_is_pointed_at_the_live_repository():
     """It was pointed at the PAPER one, for every stack.
 
