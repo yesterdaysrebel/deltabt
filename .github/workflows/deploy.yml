@@ -266,7 +266,15 @@ jobs:
       tag: ${{ github.sha }}
       repository: ${{ steps.repo.outputs.name }}
       exists: ${{ steps.repo.outputs.exists }}
-    if: github.event.inputs.image_tag == ''
+    # NO JOB-LEVEL image_tag GATE. It used to skip this whole job on a manual
+    # rollback, which quietly disabled the rollback: deploy-live requires
+    # `needs['build-live'].outputs.exists == 'true'`, and a skipped job reports
+    # nothing, so the live roll skipped too. A live stack therefore had NO way
+    # to be rolled to an explicit tag -- the one path a host needs when the
+    # image it is running is too broken to answer for itself.
+    #
+    # The job now always resolves the repository and reports; only the BUILD
+    # steps are gated, because there is nothing to build for a tag that exists.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -316,7 +324,7 @@ jobs:
         if: steps.repo.outputs.exists == 'true'
 
       - name: refuse to rebuild an existing tag
-        if: steps.repo.outputs.exists == 'true'
+        if: steps.repo.outputs.exists == 'true' && github.event.inputs.image_tag == ''
         run: |
           if aws ecr describe-images --repository-name "${{ steps.repo.outputs.name }}" \
                --image-ids "imageTag=${GITHUB_SHA}" >/dev/null 2>&1; then
@@ -325,12 +333,12 @@ jobs:
           fi
 
       - uses: docker/setup-qemu-action@v3
-        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
       - uses: docker/setup-buildx-action@v3
-        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
 
       - name: build for arm64 and push
-        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true'
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -1174,6 +1182,22 @@ jobs:
         # BEFORE the roll. An experiment records its git_sha and
         # bind_experiment() refuses a container carrying a different one, so
         # rolling first guarantees a drift refusal and a pointless rollback.
+        #
+        # THIS STEP CAN DEADLOCK A BROKEN HOST, and the escape is a manual tag.
+        #
+        # It talks to the image ALREADY RUNNING. On 2026-09-15 that image could
+        # not complete a single bar -- LiveBroker was missing three methods --
+        # so `forward-test stop` booted it, crash-looped once a second, and
+        # never returned. The guard above had already failed the same way, for
+        # the same reason, and skipped the roll while reporting success. A bot
+        # too broken to answer for itself blocks the deploy that would fix it.
+        #
+        # `only_stack` overrides the GUARD but not this step, because retiring
+        # is not optional when an experiment really is running. The path that
+        # does work is a dispatch with an explicit `image_tag`: that sets the
+        # experiment id to 'none', skips this step and the successor, and rolls
+        # the image without asking the old one anything. Register the
+        # experiment afterwards, once the new image can answer.
         env:
           DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
           ID: ${{ steps.host.outputs.instance_id }}
