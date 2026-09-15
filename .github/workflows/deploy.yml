@@ -931,7 +931,14 @@ jobs:
           if ! out=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>&1); then
             case "$out" in
               *ResourceNotFoundException*)
-                echo "::notice::$SECRET_NAME does not exist yet, so the live roll will skip. Create the venue API key, then: aws secretsmanager create-secret --name $SECRET_NAME --secret-string '{\"api_key\":\"...\",\"api_secret\":\"...\"}'. The key's IP allowlist can be set afterwards, once the host's EIP exists." ;;
+                # THE FIELD NAMES ARE NOT SPELLED HERE, DELIBERATELY.
+                # test_deployment_safety.py forbids naming an exchange
+                # credential anywhere on the deployment surface except
+                # live.tf, run_live.sh and Dockerfile.live -- and this file is
+                # none of those. Spelling them in a help string cost a red
+                # safety scan; pointing at the file that legitimately carries
+                # them costs nothing and keeps the boundary exact.
+                echo "::notice::$SECRET_NAME does not exist yet, so the live roll will skip. Create the venue API key, then: aws secretsmanager create-secret --name $SECRET_NAME --secret-string file://creds.json -- see deploy/aws/run_live.sh for the two JSON fields it parses. The key's IP allowlist can be set afterwards, once the host's EIP exists." ;;
               *)
                 echo "::error::could not inspect $SECRET_NAME: $out"
                 exit 1 ;;
