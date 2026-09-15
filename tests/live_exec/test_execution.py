@@ -198,10 +198,45 @@ def test_server_error_on_a_write_is_also_treated_as_ambiguous():
     landed = {"id": 11, "state": "closed", "client_order_id": order.client_order_id}
     client, session = a_client(
         _resp(502, {"error": "bad gateway"}),
-        _resp(200, {"result": []}),        # not in open orders...
-        _resp(200, {"result": [landed]}),  # ...but it is in history
+        _resp(200, {"result": landed}),    # found by client-oid, already closed
     )
     assert client.place_order(order)["id"] == 11
+    assert len(session.posts) == 1
+
+
+def test_the_lookup_uses_the_dedicated_endpoint_not_a_list_filter():
+    """REGRESSION. `GET /v2/orders` ignores a client_order_id query parameter.
+
+    Filtering the returned page client-side works for an order still resting
+    and fails for one that filled and closed -- that lives in PAGINATED
+    history, so a one-page scan reports "never arrived" for an order that did
+    land. The caller's next move is deciding whether a position exists, so
+    that is the worst answer available.
+    """
+    order = an_order()
+    landed = {"id": 12, "state": "closed", "client_order_id": order.client_order_id}
+    client, session = a_client(
+        requests.ConnectionError("socket reset"),
+        _resp(200, {"result": landed}),
+    )
+    assert client.place_order(order)["id"] == 12
+    looked_up = [u for _, u in session.sent if "client-oid" in u]
+    assert looked_up, f"lookup did not use /v2/orders/client-oid: {session.sent}"
+    assert f"client_oid={order.client_order_id}" in looked_up[0]
+
+
+def test_the_page_scan_is_only_a_fallback_and_is_never_trusted_when_empty():
+    """If the dedicated endpoint is unavailable a partial answer beats none,
+    but NOT finding the order in one page must not be read as 'never sent'."""
+    order = an_order()
+    client, session = a_client(
+        requests.ConnectionError("socket reset"),
+        _resp(404, {"success": False, "error": "not_found"}),  # client-oid gone
+        _resp(200, {"result": []}),                            # open: empty page
+        _resp(200, {"result": []}),                            # history: empty
+    )
+    with pytest.raises(AmbiguousWrite, match="never arrived"):
+        client.place_order(order)
     assert len(session.posts) == 1
 
 

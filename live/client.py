@@ -182,19 +182,41 @@ class LiveClient:
     def get_order_by_client_id(self, client_order_id: str) -> dict | None:
         """Did this order land? The question that resolves an ambiguous write.
 
-        Looks across live AND historical orders, because an order that filled
-        and closed between our send and our lookup is no longer 'open' -- and
-        reading that as 'never landed' is exactly the double-fill we are
-        avoiding.
+        USE THE DEDICATED ENDPOINT, NOT A FILTER ON THE LIST. `GET /v2/orders`
+        does NOT support `client_order_id` as a query parameter -- it ignores
+        it and returns the first page of open orders. Filtering that page
+        client-side happens to work for an order still resting, and FAILS for
+        the case that matters: an order that filled and closed is in paginated
+        history, so a one-page scan reports "never arrived" for an order that
+        did land. That is the worst answer this function can give, because the
+        caller's next move is to decide whether a position exists.
+
+        The fallback scan is kept for the same reason it is not the primary:
+        if the dedicated endpoint is unavailable, a partial answer beats none,
+        but it is only trusted when it finds something. Not finding something
+        in the fallback returns None and the caller raises rather than assumes.
         """
+        try:
+            row = self._read("/v2/orders/client-oid",
+                             {"client_oid": client_order_id})
+        except VenueRejected as exc:
+            log.warning("client-oid lookup rejected (%s); falling back to a "
+                        "page scan, which can MISS a filled order", exc)
+        else:
+            if isinstance(row, dict) and row:
+                return row
+            if isinstance(row, list) and row:
+                return row[0]
+            return None
+
         for path in ("/v2/orders", "/v2/orders/history"):
             try:
-                rows = self._read(path, {"client_order_id": client_order_id})
+                rows = self._read(path)
             except VenueRejected:
                 continue
-            for row in (rows or []):
-                if isinstance(row, dict) and row.get("client_order_id") == client_order_id:
-                    return row
+            for r in (rows or []):
+                if isinstance(r, dict) and r.get("client_order_id") == client_order_id:
+                    return r
         return None
 
     def get_balance(self) -> list[dict]:
