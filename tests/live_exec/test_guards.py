@@ -113,3 +113,40 @@ def test_breakers_are_reported_when_no_switch_is_set(tmp_path):
     msg = reason_to_refuse(DEPLOYED_TODAY, "mainnet",
                            kill_switch=str(tmp_path / "absent"))
     assert msg and "circuit breakers disabled" in msg
+
+
+# -- the operator's chosen values pass their own gate ------------------------
+
+def test_the_chosen_mainnet_values_would_be_accepted():
+    """The point of choosing them is that mainnet can then start."""
+    from live.config import MAINNET_RISK
+    from live.guards import circuit_breaker_failures
+
+    class _Risk:
+        pass
+    risk = _Risk()
+    for k, v in MAINNET_RISK.items():
+        setattr(risk, k, v)
+    assert circuit_breaker_failures(risk, "mainnet") == []
+
+
+def test_the_chosen_values_are_not_the_disabled_sentinels():
+    from live.config import MAINNET_RISK
+    from live.guards import DISABLED
+    for name, off in DISABLED.items():
+        assert MAINNET_RISK[name] != off, f"{name} is still the off switch"
+
+
+def test_they_are_not_in_the_paper_stacks_terraform():
+    """Editing risk values in variables.tf feeds risk_hash AND user_data, which
+    replaces the paper bot's host and then fails to bind its experiment on
+    drift. The live bot's numbers must not live there."""
+    import pathlib
+    tf = (pathlib.Path(__file__).resolve().parents[2]
+          / "infra/terraform/variables.tf").read_text()
+    for line in tf.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("default") and "0.03" in stripped:
+            raise AssertionError(
+                "the live daily-loss value has been written into the paper "
+                "stack's terraform; that replaces the paper host on apply")
