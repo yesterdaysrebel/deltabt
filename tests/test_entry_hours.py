@@ -67,8 +67,19 @@ def test_a_family_without_a_window_hashes_as_if_the_field_did_not_exist(family):
     spec = build_spec(family, 5, 1)
     if spec.entry_hours_utc is not None:
         pytest.skip("this family carries a window")
+    if spec.ladder_rungs:
+        pytest.skip("this family carries a stop ladder")
     payload = asdict(spec)
     del payload["entry_hours_utc"]
+    # THE SECOND OMITTED DIMENSION, added 2026-09-15. This test reconstructs
+    # the digest as it was BEFORE any omittable field existed, so it has to
+    # drop every such field, not just the first one. Leaving the ladder keys in
+    # made all 42 families fail while the real hashes were in fact unchanged --
+    # the reconstruction was stale, not the implementation, which is worth
+    # saying because the failure looks exactly like the catastrophe this test
+    # is here to catch.
+    del payload["ladder_rungs"]
+    del payload["ladder_cooldown_bars"]
     legacy = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

@@ -186,6 +186,19 @@ class StrategySpec:
     #: Reject a setup whose stop is further than this fraction of price.
     max_stop_pct: float = 0.05
 
+    #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending
+    #: ``(favourable excursion in R, new stop in R from entry)`` pairs; ``()``
+    #: is the absence of the dimension and hashes as though the field did not
+    #: exist, exactly as ``entry_hours_utc = None`` does. See ``_hash_payload``.
+    #:
+    #: It lives on the SPEC and not only in StrategyParams because it changes
+    #: which exits happen, so a result recorded under it is not comparable with
+    #: one recorded without it. The experiment identity has to say which ran.
+    ladder_rungs: tuple[tuple[float, float], ...] = ()
+    #: Bars to wait after a stop the ladder had promoted. 0 uses the normal
+    #: cooldown. Meaningless without ``ladder_rungs`` and refused there.
+    ladder_cooldown_bars: int = 0
+
     #: Hours of the UTC day during which an entry may FIRE, ``(start, end)``
     #: with ``end`` exclusive and 24 meaning midnight. ``None`` -- the default
     #: and what every spec built before 2026-09-04 means -- is every hour.
@@ -240,6 +253,33 @@ class StrategySpec:
                 f"confirmation gate is enabled")
         if self.target_r <= 0:
             raise ValueError(f"target_r must be positive, got {self.target_r}")
+        if self.ladder_rungs:
+            triggers = [t for t, _ in self.ladder_rungs]
+            if triggers != sorted(triggers) or len(set(triggers)) != len(triggers):
+                raise ValueError(
+                    f"ladder_rungs triggers must be strictly ascending, got "
+                    f"{triggers}")
+            if any(t <= 0 for t in triggers):
+                raise ValueError(
+                    "a ladder rung triggering at or below 0R would fire before "
+                    "the trade has gone anywhere")
+            stops = [s for _, s in self.ladder_rungs]
+            if stops != sorted(stops):
+                raise ValueError(
+                    f"ladder_rungs stops must not decrease, or a later rung "
+                    f"would pull the stop back against the position: {stops}")
+            for trig, stop in self.ladder_rungs:
+                if stop >= trig:
+                    raise ValueError(
+                        f"rung ({trig}, {stop}) puts the stop at or beyond the "
+                        f"excursion that triggers it, so it would stop out the "
+                        f"trade that armed it")
+        elif self.ladder_cooldown_bars:
+            raise ValueError(
+                "ladder_cooldown_bars is set with no ladder_rungs, so it can "
+                "never apply; it would also be omitted from config_hash and "
+                "silently make two identical specs look identical while being "
+                "configured differently")
         if self.stop == "fixed_pct" and not 0 < self.stop_pct < 1:
             raise ValueError(f"stop_pct must be in (0, 1), got {self.stop_pct}")
         if self.entry_hours_utc is not None:
@@ -338,6 +378,16 @@ class StrategySpec:
         payload = asdict(self)
         if payload.get("entry_hours_utc") is None:
             payload.pop("entry_hours_utc", None)
+        # THE SECOND ELIGIBLE FIELD, added 2026-09-15 on the same reasoning.
+        # An empty ladder is the absence of the rule, not "a ladder with no
+        # rungs", so a spec without one hashes exactly as it did before this
+        # field existed -- which is what keeps every recorded sweep valid and
+        # keeps the running paper experiment bindable. The cooldown is omitted
+        # with it: `validate` refuses it without rungs, so it cannot silently
+        # distinguish two otherwise identical specs.
+        if not payload.get("ladder_rungs"):
+            payload.pop("ladder_rungs", None)
+            payload.pop("ladder_cooldown_bars", None)
         return payload
 
     @property
