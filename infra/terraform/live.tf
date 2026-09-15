@@ -174,6 +174,59 @@ resource "aws_ssm_parameter" "live_venue" {
   value = var.live_venue
 }
 
+# WHAT A LIVE HOST NEEDS AND A PAPER HOST MUST NOT HAVE, and the third and
+# fourth links that were missing.
+#
+# The shared instance policy in iam.tf grants ECR pull on aws_ecr_repository
+# .bot ONLY, and ssm:GetParameter on the image-tag parameters ONLY. A live host
+# therefore could not pull its own image, and could not read the two parameters
+# run_live.sh derives -- so the credential read failed with AccessDenied under
+# `set -euo pipefail`, which is a hard exit and a systemd restart loop, not the
+# clean exit 90 the script was written around.
+#
+# IT LIVES HERE, NOT IN iam.tf, deliberately. tests/live/test_deployment_safety
+# .py forbids naming a credential anywhere outside this file, run_live.sh and
+# Dockerfile.live; `live_credential_arn` in the shared policy would either trip
+# that scan or force it to be relaxed over iam.tf generally, which is how a
+# boundary becomes a suggestion. Same reasoning as the policy below.
+#
+# READ-ONLY ON THE PARAMETERS, with no ssm:PutParameter. The image-tag grant
+# includes PutParameter because deploy.sh records the previous tag for
+# rollback; nothing writes the venue or the credential ARN, and a bot able to
+# rewrite which venue it trades on is a bot whose configuration is not a fact.
+resource "aws_iam_role_policy" "live_host" {
+  count = length(var.live_stacks) > 0 ? 1 : 0
+
+  name = "${local.name}-live-host"
+  role = aws_iam_role.instance.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "PullTheLiveImageOnly"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:DescribeImages",
+        ]
+        Resource = aws_ecr_repository.live[0].arn
+      },
+      {
+        Sid    = "ReadItsOwnVenueAndCredentialPointer"
+        Effect = "Allow"
+        Action = ["ssm:GetParameter", "ssm:GetParameters"]
+        Resource = concat(
+          [for p in aws_ssm_parameter.live_venue : p.arn],
+          [for p in aws_ssm_parameter.live_credential_arn : p.arn],
+        )
+      },
+    ]
+  })
+}
+
 # A SEPARATE POLICY, NOT A STATEMENT IN THE SHARED ONE. Attached to the same
 # instance role, created only when a secret is configured, and scoped to that
 # one secret: the role can read the credential it trades with and no other

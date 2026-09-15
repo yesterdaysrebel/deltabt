@@ -127,9 +127,21 @@ resource "aws_instance" "bot" {
   }
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region                   = var.aws_region
-    ecr_repository_url           = aws_ecr_repository.bot.repository_url
-    ecr_repository_name          = aws_ecr_repository.bot.name
+    aws_region = var.aws_region
+    # PER STACK, LIKE run_sh_b64 BELOW -- and for the same reason it matters:
+    # a live host pointed at the PAPER repository pulls `<paper>:<live sha>`,
+    # which does not exist, and the bot never starts. This was hardcoded to
+    # .bot for every stack, so the live path could not have worked.
+    #
+    # Paper renders byte-for-byte what it rendered before, so its instance is
+    # not replaced. The [0] is safe because a live stack existing is exactly
+    # the condition that creates the repository.
+    ecr_repository_url = (each.value.live
+      ? aws_ecr_repository.live[0].repository_url
+    : aws_ecr_repository.bot.repository_url)
+    ecr_repository_name = (each.value.live
+      ? aws_ecr_repository.live[0].name
+    : aws_ecr_repository.bot.name)
     db_host                      = aws_db_instance.main.address
     db_port                      = aws_db_instance.main.port
     db_name                      = each.value.db_name

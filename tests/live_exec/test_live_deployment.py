@@ -125,6 +125,74 @@ def test_the_build_skips_loudly_rather_than_failing_when_there_is_no_repository(
         "the build steps are not gated on the repository existing")
 
 
+def test_the_live_host_is_pointed_at_the_live_repository():
+    """It was pointed at the PAPER one, for every stack.
+
+    ec2.tf hardcoded `ecr_repository_url = aws_ecr_repository.bot.repository
+    _url`, so a live host would pull `<paper repo>:<live sha>` -- a tag that
+    exists only in the live repository. The pull fails and the bot never
+    starts, on a host whose alarms are green because the container never came
+    up to be silent.
+    """
+    ec2 = (ROOT / "infra/terraform/ec2.tf").read_text()
+    assert "aws_ecr_repository.live[0].repository_url" in ec2, (
+        "live hosts are not pointed at the live ECR repository")
+    assert "aws_ecr_repository.live[0].name" in ec2, (
+        "deploy.sh's tag pre-check would query the paper repository")
+    # Keyed on the stack being live, not on anything else.
+    assert "each.value.live" in ec2
+
+
+def test_the_live_host_may_pull_its_image_and_read_its_parameters():
+    """The shared instance policy grants NEITHER, and that is not visible.
+
+    iam.tf's ECR grant names aws_ecr_repository.bot only, and its SSM grant
+    names the image-tag parameters only. run_live.sh reads two more parameters
+    and pulls a different repository, so without these the host fails with
+    AccessDenied -- and because the credential read has no `|| true` under
+    `set -euo pipefail`, that is a hard exit and a systemd restart loop rather
+    than the clean exit 90 the script was written around.
+    """
+    assert 'aws_iam_role_policy" "live_host"' in LIVE_TF, (
+        "nothing grants a live host access to its own image or parameters")
+    assert "aws_ecr_repository.live[0].arn" in LIVE_TF
+    assert "aws_ssm_parameter.live_venue" in LIVE_TF
+    assert "aws_ssm_parameter.live_credential_arn" in LIVE_TF
+    # Read-only. A bot that can rewrite which venue it trades on is a bot
+    # whose configuration is not a fact about it.
+    policy = LIVE_TF[LIVE_TF.index('aws_iam_role_policy" "live_host"'):]
+    policy = policy[:policy.index("\n}\n")]
+    assert "ssm:PutParameter" not in policy, (
+        "the live host can overwrite its own venue or credential pointer")
+
+
+def test_the_venue_reaches_the_host():
+    """var.live_venue was declared, validated, and wired to NOTHING.
+
+    `live_venue = "mainnet"` applied cleanly and the host ran testnet, because
+    the only thing setting DELTA_ENV was run_live.sh's own fallback.
+    """
+    assert 'aws_ssm_parameter" "live_venue"' in LIVE_TF, (
+        "live_venue reaches no host; it is a variable that changes nothing")
+    assert "value = var.live_venue" in LIVE_TF
+
+    # WHOLE-LINE COMMENTS STRIPPED, as tests/live/test_deployment_safety.py
+    # does for its own scanners and for the same reason: run_live.sh explains
+    # the fallback it REMOVED, and matching that prose would fail on the
+    # documentation rather than the code. A scanner that fires on its own
+    # explanation teaches people to delete the explanation.
+    run_live = "\n".join(
+        line for line in (ROOT / "deploy/aws/run_live.sh").read_text().splitlines()
+        if not line.lstrip().startswith("#"))
+    assert "delta_env" in run_live, "run_live.sh never reads the venue parameter"
+    # No silent default: an unreadable venue must stop the host, not quietly
+    # become testnet, which is the same lie in a different place.
+    assert "${DELTA_ENV:-testnet}" not in run_live, (
+        "run_live.sh still defaults the venue instead of refusing")
+    assert "testnet|mainnet" in run_live, (
+        "the venue value is not validated before use")
+
+
 def test_the_live_image_is_immutable_and_protected():
     """The image tag is the only durable link between a database row and the
     code that executed the trade."""
