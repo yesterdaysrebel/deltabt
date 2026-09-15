@@ -1,0 +1,80 @@
+# Delta India LIVE trading bot. THIS IMAGE CAN PLACE REAL ORDERS.
+#
+# A SEPARATE IMAGE, AND THAT IS THE WHOLE POINT.
+#
+# The paper image (deploy/docker/Dockerfile) copies `deltabt` and `app` and
+# deliberately NOT `live`, so the paper bot's process cannot import
+# order-placement code at all. That is the property app/safety.py describes:
+#
+#     "A flag-gated live mode is explicitly forbidden: the ABSENCE of the
+#      capability is the boundary, not a runtime toggle."
+#
+# Adding `live` to that image would make the boundary a promise again. So there
+# are two images instead, and tests/live_exec/test_boundary_preserved.py fails
+# if the paper one ever starts copying `live`.
+#
+# Credentials are NOT baked in. They arrive as environment variables at run
+# time (DELTA_API_KEY, DELTA_API_SECRET, DELTA_ENV), exactly as the database
+# DSN does, and nothing here writes them to disk.
+FROM python:3.11-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+FROM base AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends gcc \
+    && rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml README.md ./
+COPY deltabt ./deltabt
+COPY app ./app
+COPY live ./live
+RUN pip install --prefix=/install ".[live]"
+
+FROM base
+
+# The container has no git, and preflight FAILS on an unknown SHA -- a result
+# that cannot be tied to code is not reproducible.
+ARG GIT_SHA=unknown
+ARG GIT_DIRTY=1
+ENV DELTABOT_GIT_SHA=${GIT_SHA} \
+    DELTABOT_GIT_DIRTY=${GIT_DIRTY} \
+    TZ=UTC
+
+COPY --from=builder /install /usr/local
+COPY deltabt ./deltabt
+COPY app ./app
+COPY live ./live
+COPY pyproject.toml ./
+
+ENV NUMBA_CACHE_DIR=/tmp/numba DELTABT_DATA=/tmp/deltabt-data
+
+# /run/deltabt is where the kill switch lives (live/guards.py). It must be
+# writable by somebody with SSM access on the host and READABLE here, so it is
+# mounted from the host rather than created in the image -- a path that exists
+# only inside the container could not be reached to stop the bot.
+RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin bot \
+    && mkdir -p /tmp/numba /run/deltabt && chown -R 10001:10001 /tmp/numba
+USER 10001
+
+# Compile the numba kernels AT BUILD TIME. Cold, the first strategy evaluation
+# blocks the event loop for 3.0s (warm: 1.3ms), and it would otherwise happen
+# on the first live 5m close -- after the bot has declared itself ready.
+RUN python -c "\
+import numpy as np, pandas as pd;\
+from app.strategy.rules import evaluate;\
+from app.config.strategy import FROZEN;\
+n=800; c=63000*np.exp(np.cumsum(np.random.default_rng(0).standard_normal(n)*1e-3));\
+df=pd.DataFrame({'time':np.arange(n)*300,'open':c,'high':c*1.001,'low':c*0.999,'close':c,'volume':np.ones(n)});\
+evaluate(df,df,FROZEN,symbol='WARMUP');\
+print('numba kernels compiled')"
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
+    CMD python -c "import sys,urllib.request; \
+sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=4).status==200 else 1)"
+
+ENTRYPOINT ["python", "-m", "live"]

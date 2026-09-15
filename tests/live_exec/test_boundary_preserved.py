@@ -55,13 +55,42 @@ def test_paper_packages_never_import_live():
         + "\n  ".join(offenders))
 
 
-def test_docker_image_does_not_contain_live():
+def test_the_paper_image_does_not_contain_live():
     """The image is the artifact that actually runs. It must not carry `live/`."""
     dockerfile = (ROOT / "deploy" / "docker" / "Dockerfile").read_text()
     copied = [ln.strip() for ln in dockerfile.splitlines()
               if ln.strip().startswith("COPY")]
     bad = [ln for ln in copied if " live" in f" {ln} " or "/live" in ln]
     assert not bad, f"Dockerfile copies the live package into the bot image: {bad}"
+    assert 'ENTRYPOINT ["python", "-m", "app"]' in dockerfile
+
+
+def test_the_live_image_is_a_SEPARATE_one_that_does_contain_live():
+    """Two images, not one image with a flag.
+
+    Adding `live` to the paper image would make app/safety.py's boundary a
+    promise again instead of a property. This asserts the separation is real
+    and deliberate, so 'simplifying' the two Dockerfiles into one fails here
+    rather than silently arming the paper bot.
+    """
+    live_df = ROOT / "deploy" / "docker" / "Dockerfile.live"
+    assert live_df.exists(), "the live image has no Dockerfile"
+    text = live_df.read_text()
+    assert "COPY live ./live" in text, "the live image does not carry live/"
+    assert 'ENTRYPOINT ["python", "-m", "live"]' in text
+    # And it must not be the same file as the paper one.
+    assert text != (ROOT / "deploy" / "docker" / "Dockerfile").read_text()
+
+
+def test_credentials_are_not_baked_into_the_live_image():
+    """They arrive at run time, like the database DSN, and are never layered."""
+    text = (ROOT / "deploy" / "docker" / "Dockerfile.live").read_text()
+    for name in ("DELTA_API_KEY", "DELTA_API_SECRET"):
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith(("ENV", "ARG")) and name in stripped:
+                raise AssertionError(
+                    f"{name} is baked into the live image at {stripped!r}")
 
 
 def test_packaging_does_not_install_live():
