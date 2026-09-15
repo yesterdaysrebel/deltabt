@@ -200,6 +200,98 @@ def test_the_live_image_is_immutable_and_protected():
     assert "prevent_destroy = true" in LIVE_TF
 
 
+def test_something_actually_deploys_the_live_image():
+    """build-live pushed an image that NOTHING consumed.
+
+    No job declared `needs: build-live`, and `deploy` reads the paper build's
+    tag and vars.ECR_REPOSITORY. So the live image was built, pushed to its own
+    repository, and never deployed by anything -- a pipeline that looked
+    complete because the build step went green.
+    """
+    assert "  deploy-live:" in DEPLOY, "there is no live deploy job"
+    assert "needs['build-live']" in DEPLOY, (
+        "nothing consumes build-live; the live image is built and abandoned")
+    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    # The LIVE repository, not the paper one.
+    assert "needs['build-live'].outputs.repository" in job, (
+        "the live deploy does not use the live repository")
+    assert "vars.ECR_REPOSITORY " not in job and "vars.ECR_REPOSITORY }}" not in job, (
+        "the live deploy reads the PAPER repository variable")
+
+
+def test_build_live_publishes_what_it_built():
+    """An output-less build cannot be consumed, however correct it is."""
+    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    assert "outputs:" in job, "build-live publishes nothing"
+    for name in ("tag:", "repository:", "exists:"):
+        assert name in job, name
+
+
+def test_the_live_repository_check_distinguishes_absent_from_denied():
+    """`2>&1` made AccessDenied indistinguishable from 'not configured yet'.
+
+    The check decided whether to build at all, and treated every failure as the
+    expected empty state -- printing a reassuring notice while the repository
+    existed and the role simply could not see it.
+    """
+    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    assert "RepositoryNotFoundException" in job, (
+        "the repository check cannot tell 'absent' from 'denied'")
+    assert "could not determine whether" in job, (
+        "an unreadable repository does not fail the build loudly")
+
+
+def test_the_live_stack_list_is_not_a_second_table():
+    """The paper table drifted from Terraform and rolled terminated hosts.
+
+    Duplicating that for live stacks would reintroduce the exact failure the
+    live work exists to avoid, so the list is read from live.tf.
+    """
+    assert "scripts/live_stacks_matrix.py" in DEPLOY, (
+        "the live stack list is not derived from Terraform")
+    assert "  targets-live:" in DEPLOY, "there is no live targets job"
+    job = DEPLOY[DEPLOY.index("  targets-live:"):DEPLOY.index("  deploy-live:")]
+    assert '"stack":' not in job, (
+        "targets-live carries a hardcoded stack table, which is what drifted "
+        "for the paper path")
+
+
+def test_the_live_matrix_matches_the_configured_live_stacks():
+    """The parser and Terraform must agree, or the deploy rolls the wrong set."""
+    import json
+    import subprocess
+    import sys
+
+    out = subprocess.run([sys.executable, str(ROOT / "scripts/live_stacks_matrix.py")],
+                         capture_output=True, text=True, check=True).stdout
+    rows = json.loads(out)
+    # Every stack named in live.tf's default block, and no others.
+    block = LIVE_TF[LIVE_TF.index('variable "live_stacks"'):]
+    block = block[block.index("default = {"):]
+    names = {r["stack"] for r in rows}
+    assert names, "the live matrix is empty; nothing would ever be deployed"
+    for name in names:
+        assert f"{name} =" in block, f"{name} is not a live stack in live.tf"
+    for r in rows:
+        assert r["variant"].startswith("SPEC:"), r
+
+
+def test_the_live_roll_keeps_the_experiment_guard():
+    """Rolling retires the running experiment and resets its sample to zero.
+
+    The paper path learned this the hard way when `hours` was rolled four days
+    into a thirty-day run by an unrelated merge. A separate live job means a
+    separate copy of the guard, and a copy that was dropped would be silent.
+    """
+    assert "  deploy-live:" in DEPLOY, "there is no live deploy job to guard"
+    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    assert "no experiment is RUNNING" in job, "the live roll has no guard"
+    assert "roll=no" in job, "the live guard does not fail closed"
+    assert 'Action=stop' in job, "the live roll never retires the experiment"
+    assert "Action=start,ExperimentId=" in job, (
+        "the live roll never registers a successor experiment")
+
+
 def test_the_git_sha_reaches_the_live_image():
     """preflight FAILS on an unknown SHA: a result that cannot be tied to code
     is not reproducible, and the container has no git."""

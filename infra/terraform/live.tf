@@ -174,6 +174,49 @@ resource "aws_ssm_parameter" "live_venue" {
   value = var.live_venue
 }
 
+# WHAT CI NEEDS TO BUILD AND SHIP THE LIVE IMAGE.
+#
+# The deploy role's ECR grant names aws_ecr_repository.bot only, and both build
+# jobs assume that same role -- so build-live could neither see the live
+# repository nor push to it.
+#
+# ITS SSM AND EC2 GRANTS ALREADY COVER A LIVE STACK, and deliberately: they are
+# `for d in aws_ssm_document.deploy` and `for i in aws_instance.bot`, which
+# iterate local.stacks and therefore pick up live stacks with no edit. Only ECR
+# was written against a single repository resource.
+#
+# ecr:DescribeRepositories IS LOAD-BEARING, not incidental. build-live decides
+# whether to build by calling it and treating any failure as "no live stack is
+# configured, nothing to build" -- so without this grant an AccessDenied would
+# read as a designed no-op, printing a reassuring notice, forever. The workflow
+# now distinguishes the two; the grant is what makes the distinction possible.
+resource "aws_iam_role_policy" "live_ci" {
+  count = length(var.live_stacks) > 0 ? 1 : 0
+
+  name = "${local.name}-live-ci"
+  role = aws_iam_role.github_app_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "PushAndInspectTheLiveImageOnly"
+      Effect = "Allow"
+      Action = [
+        "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:PutImage",
+      ]
+      Resource = aws_ecr_repository.live[0].arn
+    }]
+  })
+}
+
 # WHAT A LIVE HOST NEEDS AND A PAPER HOST MUST NOT HAVE, and the third and
 # fourth links that were missing.
 #
