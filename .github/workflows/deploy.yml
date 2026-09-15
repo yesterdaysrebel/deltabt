@@ -62,6 +62,15 @@ on:
     paths:
       - 'app/**'
       - 'deltabt/**'
+      # THE LIVE PACKAGE. Dockerfile.live carries `COPY live ./live`, so a
+      # change here changes the live image exactly as app/ changes the paper
+      # one -- and this was missing until 2026-09-15, when the fix that made
+      # LiveBroker usable at all merged to master, triggered nothing, and left
+      # the broken image running on the host.
+      #
+      # The test that exists to catch this read only the PAPER Dockerfile, so
+      # it had nothing to say about a COPY in the other one. It now reads both.
+      - 'live/**'
       # Offline analysis drivers. They ship, since deltabt/ is copied whole,
       # but nothing under app/ imports a run_*.py. Five were added in a single
       # day of research and each one rolled the bot.
