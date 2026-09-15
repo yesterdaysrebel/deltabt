@@ -75,9 +75,14 @@ def test_every_live_resource_is_gated_on_its_own_variable():
         "the live ECR repository is not gated on a live stack existing")
     assert "if s.live" in LIVE_TF, (
         "the live SSM parameter is not filtered to live stacks")
-    assert 'var.live_credential_secret_arn != "" ? 1 : 0' in LIVE_TF, (
-        "the credential policy is not gated on a credential being configured; "
-        "an empty ARN must grant access to nothing, not to everything")
+    # The credential policy was gated on an ARN variable being non-empty. The
+    # secret is now a Terraform resource, so the gate is the same one every
+    # other live resource uses -- and the grant is scoped to that resource
+    # rather than to a string somebody pasted into a repository variable.
+    assert "aws_secretsmanager_secret.live[0].arn" in LIVE_TF, (
+        "the credential policy is not scoped to the declared secret")
+    assert LIVE_TF.count("length(var.live_stacks) > 0 ? 1 : 0") >= 4, (
+        "not every live resource is gated on a live stack existing")
 
 
 def test_the_venue_defaults_to_testnet():
@@ -98,17 +103,30 @@ def test_the_credential_arn_actually_reaches_terraform():
     is written "none", and the host boots, reads "none" and exit 90s forever,
     which is indistinguishable from a host waiting for its first deploy.
 
-    This is the third time this pipeline has shipped a change that reached one
+    This was the third time this pipeline shipped a change that reached one
     link of a chain and not the next. The other two are in the header above.
+
+    THE LINK IS NOW GONE RATHER THAN REPAIRED, which is the better fix: the
+    first version of this test asserted that the workflow passed
+    TF_VAR_live_credential_secret_arn. Terraform declares the secret itself, so
+    there is no ARN to communicate, no repository variable to set, and no
+    second apply to remember. A link that does not exist cannot rot.
     """
     infra = (ROOT / ".github/workflows/infrastructure.yml").read_text()
-    assert "TF_VAR_live_credential_secret_arn" in infra, (
-        "nothing passes the venue credential ARN to Terraform; a live stack "
-        "would apply with it empty and the host would never trade")
-    assert "vars.LIVE_CREDENTIAL_SECRET_ARN" in infra, (
-        "the ARN is not read from a repository variable")
-    # The VALUE must never be passed, only the ARN: Terraform writes every
-    # variable it is given into state, in plaintext.
+    assert 'resource "aws_secretsmanager_secret" "live"' in LIVE_TF, (
+        "Terraform does not declare the credential store, so its ARN must "
+        "again be supplied from outside -- the link that was missing before")
+    assert "live_credential_secret_arn" not in infra, (
+        "the workflow still passes an ARN variable that no longer exists")
+    # NO VERSION IS DECLARED. Terraform writes every attribute it is given into
+    # state in plaintext, so the container may be declared and the value may
+    # not -- that distinction is the whole reason this is shaped this way.
+    block = LIVE_TF[LIVE_TF.index('resource "aws_secretsmanager_secret" "live"'):]
+    block = block[:block.index("\n}\n")]
+    assert "secret_string" not in block, (
+        "a secret VALUE is declared in Terraform; it would be written to state "
+        "in plaintext")
+    # And no credential may be handed to Terraform by the workflow either.
     for forbidden in ("DELTA_API_KEY", "DELTA_API_SECRET", "api_secret"):
         assert forbidden not in infra, (
             f"{forbidden} appears in the infrastructure workflow; Terraform "
@@ -276,6 +294,42 @@ def test_the_live_matrix_matches_the_configured_live_stacks():
         assert r["variant"].startswith("SPEC:"), r
 
 
+def test_the_secret_name_in_the_workflow_matches_terraform():
+    """A name spelled in two places is the drift this pipeline keeps shipping.
+
+    The readiness check asks Secrets Manager for the credential by NAME, and
+    Terraform decides that name. If they disagree the check gets
+    ResourceNotFoundException, reports "no live stack has been applied", and
+    the roll skips forever on a stack that is entirely ready -- another
+    reassuring notice over a broken link.
+
+    Derived here rather than duplicated: local.name is "deltabt-${var
+    .environment}" (infra/terraform/network.tf) and environment defaults to
+    "paper", so the two halves are checked against their sources.
+    """
+    network = (ROOT / "infra/terraform/network.tf").read_text()
+    assert 'name = "deltabt-${var.environment}"' in network, (
+        "local.name is no longer deltabt-<environment>; the derivation below "
+        "is stale")
+
+    variables = (ROOT / "infra/terraform/variables.tf").read_text()
+    block = variables[variables.index('variable "environment"'):]
+    block = block[:block.index("\n}\n")]
+    default = next(l for l in block.splitlines() if l.strip().startswith("default"))
+    environment = default.split("=", 1)[1].strip().strip('"')
+
+    # What Terraform will actually name it.
+    tf_block = LIVE_TF[LIVE_TF.index('resource "aws_secretsmanager_secret" "live"'):]
+    tf_block = tf_block[:tf_block.index("\n}\n")]
+    suffix = next(l for l in tf_block.splitlines() if l.strip().startswith("name"))
+    suffix = suffix.split("=", 1)[1].strip().strip('"')
+    expected = suffix.replace("${local.name}", f"deltabt-{environment}")
+
+    assert f"SECRET_NAME: {expected}" in DEPLOY, (
+        f"the workflow looks for a secret named something other than "
+        f"{expected!r}, which is what Terraform creates")
+
+
 def test_the_live_roll_waits_for_a_credential_rather_than_going_red():
     """The first merge brings up a host that CANNOT have a credential yet.
 
@@ -288,12 +342,27 @@ def test_the_live_roll_waits_for_a_credential_rather_than_going_red():
     """
     job = DEPLOY[DEPLOY.index("  deploy-live:"):]
     condition = job[job.index("if:"):job.index("runs-on:")]
-    assert "vars.LIVE_CREDENTIAL_SECRET_ARN != ''" in condition, (
+    assert "needs['targets-live'].outputs.ready == 'true'" in condition, (
         "the live roll is not gated on a credential existing; the first merge "
         "would roll a host that cannot start and fail the run")
-    # And the skip must say why, or it is just an absent job.
     targets = DEPLOY[DEPLOY.index("  targets-live:"):DEPLOY.index("  deploy-live:")]
-    assert "LIVE_CREDENTIAL_SECRET_ARN is unset" in targets, (
+    # ASKED OF THE ACCOUNT, NOT OF A VARIABLE. Readiness was a repository
+    # variable a human set after creating the secret by hand; it is now whether
+    # Secrets Manager holds a value, which cannot be forgotten or mistyped.
+    assert "describe-secret" in targets, (
+        "readiness is not determined from the secret itself")
+    assert "AWSCURRENT" in targets, (
+        "nothing distinguishes a declared secret from a populated one")
+    # Metadata only: CI must never be able to read the credential it checks.
+    # COMMENTS STRIPPED -- the step explains that only the instance role holds
+    # GetSecretValue, and matching that prose would fail on the documentation
+    # rather than the code. Same rule tests/live/test_deployment_safety.py uses.
+    code = "\n".join(l for l in targets.splitlines()
+                     if not l.lstrip().startswith("#"))
+    assert "GetSecretValue" not in code and "get-secret-value" not in code, (
+        "the readiness check reads the credential value")
+    # And the skip must say why, or it is just an absent job.
+    assert "holds no value" in targets, (
         "nothing explains why the live deploy did not run")
 
 

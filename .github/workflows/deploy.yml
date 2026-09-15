@@ -893,12 +893,61 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.pick.outputs.matrix }}
+      ready: ${{ steps.credential.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          role-session-name: gha-live-targets-${{ github.run_id }}
+
+      - name: has the venue credential been supplied yet?
+        id: credential
+        # ASKED OF SECRETS MANAGER, not of a repository variable.
+        #
+        # This used to read vars.LIVE_CREDENTIAL_SECRET_ARN, which a human had
+        # to set after creating the secret by hand. Terraform now declares the
+        # secret, so the only open question is whether anybody has put a VALUE
+        # in it -- and that is a fact about the account, not about a variable
+        # somebody remembered to set.
+        #
+        # DescribeSecret returns the version list and no secret material. CI
+        # can see that a credential exists and still cannot read one; only the
+        # instance role has GetSecretValue.
+        #
+        # An unpopulated secret is the EXPECTED state between the first apply
+        # and the operator creating the venue key -- the key must allowlist the
+        # host's IP, which does not exist until that apply. So this reports
+        # not-ready and the roll skips; it does not fail.
+        env:
+          SECRET_NAME: deltabt-paper/live/venue-credentials
+        run: |
+          set -euo pipefail
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          if ! out=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>&1); then
+            case "$out" in
+              *ResourceNotFoundException*)
+                echo "::notice::$SECRET_NAME does not exist yet; no live stack has been applied." ;;
+              *)
+                echo "::error::could not inspect $SECRET_NAME: $out"
+                exit 1 ;;
+            esac
+            exit 0
+          fi
+          # VersionIdsToStages is absent until a value is put; an empty object
+          # is what a declared-but-unpopulated secret returns.
+          if printf '%s' "$out" | grep -q 'AWSCURRENT'; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SECRET_NAME exists but holds no value, so the live roll will skip. Create the venue API key with the host's EIP allowlisted, then: aws secretsmanager put-secret-value --secret-id $SECRET_NAME --secret-string file://creds.json"
+          fi
+
       - id: pick
         env:
           ONLY: ${{ github.event.inputs.only_stack }}
-          ARN: ${{ vars.LIVE_CREDENTIAL_SECRET_ARN }}
+          ARN: ${{ steps.credential.outputs.ready }}
         run: |
           set -euo pipefail
           # READ FROM TERRAFORM, not from a table here. See the script.
@@ -907,7 +956,7 @@ jobs:
             echo "::notice::only_stack='$ONLY' is not a live stack; the live deploy has nothing to do"
           fi
           if [ -z "${ARN:-}" ] && [ "$picked" != "[]" ]; then
-            echo "::notice::live stacks are configured but LIVE_CREDENTIAL_SECRET_ARN is unset, so deploy-live will skip. The host comes up, reads \"none\", and waits (exit 90, not a crash loop). Create the venue key against the host's EIP, create the secret, set the variable, then dispatch this workflow with only_stack=<stack>."
+            echo "::notice::live stacks are configured but the venue credential holds no value, so deploy-live will skip. The host comes up, reads \"none\", and waits (exit 90, not a crash loop). Create the venue key against the host's EIP, create the secret, set the variable, then dispatch this workflow with only_stack=<stack>."
           fi
           echo "rolling (live): $picked"
           echo "matrix=$picked" >> "$GITHUB_OUTPUT"
@@ -927,17 +976,16 @@ jobs:
     # merge that is supposed to bring the stack up.
     #
     # So it skips, loudly, exactly as build-live skips with no repository. The
-    # repository VARIABLE is used rather than the SSM parameter because this
-    # job's role can send one SSM document and read command output, and nothing
-    # else -- and it is the same value that drives Terraform, so the two cannot
-    # disagree.
+    # readiness is decided by asking Secrets Manager whether a value exists --
+    # metadata only, no GetSecretValue -- rather than by a repository variable
+    # somebody had to remember to set.
     if: >-
       always() && needs['build-live'].result == 'success'
       && needs['build-live'].outputs.exists == 'true'
       && needs.test.result == 'success'
       && needs['wait-for-infrastructure'].result == 'success'
       && needs['targets-live'].outputs.matrix != '[]'
-      && vars.LIVE_CREDENTIAL_SECRET_ARN != ''
+      && needs['targets-live'].outputs.ready == 'true'
     runs-on: ubuntu-latest
     # ITS OWN ENVIRONMENT, so a required reviewer can be attached to live rolls
     # without also gating paper. On testnet this is play money and an unattended

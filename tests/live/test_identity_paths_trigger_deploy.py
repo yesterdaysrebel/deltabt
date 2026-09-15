@@ -68,8 +68,12 @@ def test_the_live_identity_file_triggers_a_deploy():
 def test_the_live_identity_file_really_holds_the_identity():
     """If these move elsewhere, the path above has to move with them."""
     text = (ROOT / LIVE_TF).read_text()
-    for knob in ("live_stacks", "live_venue", "live_credential_secret_arn"):
+    for knob in ("live_stacks", "live_venue"):
         assert f'variable "{knob}"' in text, knob
+    # The credential used to be a third variable holding an ARN created out of
+    # band. Terraform now declares the secret itself, so the identity this file
+    # carries includes WHERE the credential lives, not just which venue.
+    assert 'resource "aws_secretsmanager_secret" "live"' in text
 
 
 def test_the_identity_file_really_holds_the_identity():

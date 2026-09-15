@@ -68,6 +68,10 @@ SERVICE_OF = {
     "aws_internet_gateway": "ec2",
     "aws_route_table": "ec2",
     "aws_route_table_association": "ec2",
+    # The live venue credential's CONTAINER. Terraform declares it and never
+    # writes a version, so the apply role needs CreateSecret and no access to
+    # any value -- see infra/terraform/live.tf.
+    "aws_secretsmanager_secret": "secretsmanager",
     "aws_security_group": "ec2",
     "aws_security_group_rule": "ec2",
     "aws_sns_topic": "sns",

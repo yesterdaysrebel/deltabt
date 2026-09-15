@@ -71,21 +71,6 @@ env:
   # variable yields "", which is the same as before.
   TF_VAR_alarm_email: ${{ vars.ALARM_EMAIL }}
 
-  # WHERE THE LIVE BOT'S VENUE CREDENTIAL LIVES. The ARN, never the value --
-  # anything passed as a Terraform variable is written to state in plaintext,
-  # which is why live.tf takes an ARN and the host reads the secret at boot.
-  #
-  # THIS LINE IS THE ONE THAT WAS MISSING. live.tf promises that adding a
-  # `live_stacks` entry is the ONLY edit needed, and every other link keys off
-  # it -- but the ARN arrives from outside Terraform, and without this the
-  # variable defaults to "". That is not a loud failure: the IAM policy gets
-  # count = 0, the SSM parameter is written "none", the host boots, reads
-  # "none" and exit 90s forever, looking exactly like a host waiting for its
-  # first deploy. tests/live_exec/test_live_deployment.py now pins it.
-  #
-  # An unset repository variable yields "", which is the correct state until a
-  # live stack exists.
-  TF_VAR_live_credential_secret_arn: ${{ vars.LIVE_CREDENTIAL_SECRET_ARN }}
 
 jobs:
   safety:

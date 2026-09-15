@@ -81,22 +81,40 @@ variable "live_stacks" {
   }
 }
 
-variable "live_credential_secret_arn" {
-  description = <<-EOT
-    Secrets Manager ARN holding the venue credentials, as
-    {"api_key": "...", "api_secret": "..."}.
+# THE CREDENTIAL STORE IS DECLARED HERE, AND ITS VALUE IS NOT.
+#
+# This replaces a `live_credential_secret_arn` variable whose value had to be
+# created out of band, pasted into a repository variable, and applied in a
+# SECOND run before the host could start. Three manual steps to communicate a
+# name Terraform is perfectly able to choose for itself.
+#
+# TERRAFORM DECLARES THE CONTAINER; A HUMAN PUTS THE VALUE IN IT. There is no
+# `secret_string` here, so no version is created and nothing about the
+# credential enters Terraform state -- which was the entire reason an ARN was
+# passed rather than a value. The ARN now exists from the first apply, so the
+# IAM grant below is exact from the first apply and the SSM parameter the host
+# reads is correct immediately.
+#
+# WHY THE VALUE CANNOT BE AUTOMATED. Delta has no API for minting an API key --
+# you would need a key to create a key -- and the key must allowlist the host's
+# IP, which does not exist until this apply has run. "Create the key and store
+# it" is therefore irreducibly manual. Everything either side of it is not.
+#
+# RECOVERY WINDOW 7 DAYS, not the 30-day default: one deleted by mistake should
+# be recoverable, without holding the name for a month and blocking recreation.
+resource "aws_secretsmanager_secret" "live" {
+  count = length(var.live_stacks) > 0 ? 1 : 0
 
-    THE ARN, NEVER THE VALUE. Anything passed as a Terraform variable is
-    written to state in plaintext -- which is precisely why the database has
-    RDS generate its own credential into Secrets Manager rather than having
-    Terraform generate one. Create the secret out of band, put its ARN here,
-    and the host reads it at boot.
+  name        = "${local.name}/live/venue-credentials"
+  description = "Delta venue API credentials for the live stacks"
 
-    Empty means the grant below covers no resources at all, which is the
-    correct state until a live stack exists.
-  EOT
-  type        = string
-  default     = ""
+  recovery_window_in_days = 7
+
+  lifecycle {
+    # The bot cannot trade without this, and recreating it under a new name
+    # would leave the host reading an ARN that no longer resolves.
+    prevent_destroy = true
+  }
 }
 
 variable "live_venue" {
@@ -148,7 +166,7 @@ resource "aws_ssm_parameter" "live_credential_arn" {
 
   name  = "${each.value.ssm_prefix}/delta_secret_arn"
   type  = "String"
-  value = var.live_credential_secret_arn != "" ? var.live_credential_secret_arn : "none"
+  value = aws_secretsmanager_secret.live[0].arn
 }
 
 # THE VENUE, AS A PARAMETER RATHER THAN A TEMPLATE VARIABLE.
@@ -213,7 +231,34 @@ resource "aws_iam_role_policy" "live_ci" {
         "ecr:PutImage",
       ]
       Resource = aws_ecr_repository.live[0].arn
-    }]
+      },
+      {
+        # METADATA ONLY, AND THAT DISTINCTION IS THE POINT.
+        #
+        # The scheduled bring-up has to answer "has a human put the credential
+        # in yet?" without being able to read it. DescribeSecret returns the
+        # version list and no secret material, so CI can see that a value
+        # exists and still cannot obtain one. GetSecretValue is deliberately
+        # absent: only the instance role has it.
+        Sid      = "SeeWhetherTheCredentialHasBeenSuppliedWithoutReadingIt"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:DescribeSecret"]
+        Resource = aws_secretsmanager_secret.live[0].arn
+      },
+      {
+        # "HAS THIS STACK EVER BEEN DEPLOYED?" -- the image tag is "none" until
+        # the first successful roll, and that is the ONLY condition under which
+        # the scheduled bring-up acts. Anything looser would let a cron restart
+        # an experiment that was deliberately stopped, which is the accident
+        # the roll guard exists to prevent.
+        Sid    = "ReadWhetherALiveStackHasEverBeenDeployed"
+        Effect = "Allow"
+        Action = ["ssm:GetParameter"]
+        Resource = [
+          for k, s in local.stacks : aws_ssm_parameter.image_tag[k].arn if s.live
+        ]
+      },
+    ]
   })
 }
 
@@ -276,7 +321,7 @@ resource "aws_iam_role_policy" "live_host" {
 # secret in the account. `count` rather than a conditional Resource list, so
 # that with nothing configured the policy does not exist at all.
 resource "aws_iam_role_policy" "live_credentials" {
-  count = var.live_credential_secret_arn != "" ? 1 : 0
+  count = length(var.live_stacks) > 0 ? 1 : 0
 
   name = "${local.name}-live-credentials"
   role = aws_iam_role.instance.id
@@ -287,7 +332,7 @@ resource "aws_iam_role_policy" "live_credentials" {
       Sid      = "ReadTheVenueCredentialAndNothingElse"
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = var.live_credential_secret_arn
+      Resource = aws_secretsmanager_secret.live[0].arn
     }]
   })
 }
