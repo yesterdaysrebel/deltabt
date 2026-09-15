@@ -201,6 +201,10 @@ class TradingBot:
         #: means one bot's bars leaking into another's evaluation loop.
         self._pending_bars: list = []
         self._pending_events: list = []
+        #: Completed stop-fill probes awaiting persistence. Separate
+        #: from _pending_events on purpose: these describe our own
+        #: execution model, not something that happened to a position.
+        self._pending_probes: list = []
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
@@ -471,6 +475,19 @@ class TradingBot:
         # for a bar close.
         for ev in self.broker.process_market_event(tick):
             self._pending_events.append(ev)
+        # STOP-FILL TELEMETRY. Drained here rather than emitted as a broker
+        # event because it is a measurement, not something that happened to a
+        # position -- routing it through the event path would put it in the
+        # trade record and let a reader mistake it for an exit.
+        #
+        # getattr, because LiveBroker does not collect these: on a live account
+        # the venue decides the fill and the question this answers is about our
+        # own simulation of that. A missing method must not take down the tick
+        # path, which is the failure that cost the first live deploy.
+        drain = getattr(self.broker, "drain_stop_probes", None)
+        if drain is not None:
+            for probe in drain():
+                self._pending_probes.append(probe)
 
     def _settle_funding(self, symbol: str, now: int) -> None:
         """Charge any settlement market time has just passed.
@@ -841,7 +858,28 @@ class TradingBot:
     # BROKER EVENTS -> PERSISTENCE
     # =================================================================
 
+    async def drain_stop_probes(self) -> None:
+        """Persist stop-fill telemetry as system events.
+
+        A system event rather than a table: the payload is jsonb, the shape is
+        still being learned, and a migration for a measurement that may be
+        answered in a fortnight is a cost with no matching benefit. If it turns
+        out to be permanent it can graduate.
+
+        NEVER RAISES INTO THE TICK PATH. This is instrumentation; losing a
+        sample is a gap in a chart, while an exception here would stop a bot
+        that is otherwise trading correctly.
+        """
+        probes, self._pending_probes = self._pending_probes, []
+        for probe in probes:
+            try:
+                await self._event("execution", "STOP_FILL_PROBE",
+                                  symbol=probe.get("symbol"), payload=probe)
+            except Exception:
+                log.exception("could not record a stop-fill probe")
+
     async def drain_broker_events(self) -> None:
+        await self.drain_stop_probes()
         events, self._pending_events = self._pending_events, []
         for ev in events:
             if ev.kind == "EXIT_ORDER_CREATED":
