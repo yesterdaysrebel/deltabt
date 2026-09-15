@@ -188,6 +188,11 @@ def run_backtest(
     accrued_funding = 0.0
     entry_cost_per_r = 0.0
     last_exit_index = -(10**9)
+    #: Bars the NEXT entry must wait. Set at each exit, because it
+    #: depends on how the position left: a stop the ladder had promoted
+    #: may carry a longer wait than an ordinary one.
+    active_cooldown = params.cooldown_bars
+    stop_promoted = False
 
     # Incremental latch state, used when the gate must clear on position state.
     use_live_latch = (
@@ -315,6 +320,7 @@ def run_backtest(
                     if (pos_side == LONG and promoted > stop_price) or (
                             pos_side == SHORT and promoted < stop_price):
                         stop_price = promoted
+                        stop_promoted = True
 
             if exit_reason:
                 maker = exit_reason == "target"
@@ -371,6 +377,16 @@ def run_backtest(
                 pos_contracts = 0
                 accrued_funding = 0.0
                 last_exit_index = i
+                # A LADDER EXIT IS THE ONE THIS LENGTHENS. An ordinary stop or
+                # target keeps the normal wait: the point is to suppress the
+                # entries the ladder's early exit created, not to change the
+                # entry set generally.
+                active_cooldown = (
+                    params.ladder_cooldown_bars
+                    if (stop_promoted and exit_reason == "stop"
+                        and params.ladder_cooldown_bars)
+                    else params.cooldown_bars)
+                stop_promoted = False
 
         # --- latch state ----------------------------------------------------
         if use_live_latch:
@@ -415,7 +431,7 @@ def run_backtest(
         if not tradable[i]:
             result.rejects["untradable_bar"] += 1
             continue
-        if params.cooldown_bars and (i - last_exit_index) < params.cooldown_bars:
+        if active_cooldown and (i - last_exit_index) < active_cooldown:
             result.rejects["cooldown"] += 1
             continue
 
@@ -467,6 +483,7 @@ def run_backtest(
         entry_price = px
         entry_index = i
         stop_price = stop_px
+        stop_promoted = False
         target_price = costs.round_price(target, direction=1 if side == LONG else -1)
         risk_per_unit = rpu
         entry_fee = costs.entry_cost(contracts, px)

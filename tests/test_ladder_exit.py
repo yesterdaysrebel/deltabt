@@ -143,3 +143,62 @@ class TestAdverseRInteraction:
         assert res.trades[0].exit_reason != "adverse_r", (
             "a trade 2R in front exited on 'adverse_r' because the promoted "
             "stop made the measured risk zero")
+
+
+class TestLadderCooldown:
+    """The cooldown must apply to LADDER exits and nothing else.
+
+    The ladder's measured damage is that it exits early, frees the position
+    slot, and the arm takes trades it would otherwise have held through: 342
+    becomes 917. A cooldown aimed at promoted-stop exits suppresses exactly
+    those. Aimed at every exit it would change the entry set for reasons
+    unrelated to the ladder, and the entry set is the single most violent lever
+    in this system -- the no-ladder baseline moves 65.3R to 3.1R on cooldown
+    length alone.
+    """
+
+    def test_zero_falls_back_to_the_normal_cooldown(self):
+        assert StrategyParams().ladder_cooldown_bars == 0
+
+    def test_a_promoted_stop_uses_the_ladder_cooldown(self):
+        # Entry, promote to breakeven, stop out at breakeven, then a second
+        # entry signal well inside the ladder cooldown.
+        bars = ([(100, 100, 100, 100)] * 2
+                + [(100, 102, 100, 102), (102, 102, 99.0, 99.0)]
+                + [(100, 100, 100, 100)] * 6)
+        df = _frame(bars)
+        n = len(bars)
+        sig = _signals(n, entry_at=1)
+        sig.long_entry[5] = True          # second signal, 2 bars after the exit
+        p = StrategyParams(base_minutes=1, confirm_minutes=5,
+                           max_hold_bars=10_000, exit_on_trend_flip=False,
+                           reward_risk=3.0, ladder_rungs=((1.0, 0.0),),
+                           cooldown_bars=1, ladder_cooldown_bars=50)
+        res = run_backtest(df, df, pd.DataFrame(), sig, p, COSTS,
+                           initial_capital=100_000.0)
+        assert res.rejects["cooldown"] > 0, (
+            "the second entry was not refused; the ladder cooldown did not "
+            "apply to a promoted-stop exit")
+
+    def test_an_ordinary_stop_keeps_the_normal_cooldown(self):
+        """No rung ever fires, so the long ladder cooldown must not apply."""
+        # The LAST bar exists so the second position closes -- only closed
+        # trades are recorded, and an open one is invisible to this assertion.
+        bars = ([(100, 100, 100, 100)] * 2
+                + [(100, 100.1, 98.0, 98.0)]
+                + [(100, 100, 100, 100)] * 6
+                + [(100, 100, 97.0, 97.0)])
+        df = _frame(bars)
+        n = len(bars)
+        sig = _signals(n, entry_at=1)
+        sig.long_entry[5] = True
+        p = StrategyParams(base_minutes=1, confirm_minutes=5,
+                           max_hold_bars=10_000, exit_on_trend_flip=False,
+                           reward_risk=3.0, ladder_rungs=((1.0, 0.0),),
+                           cooldown_bars=1, ladder_cooldown_bars=50)
+        res = run_backtest(df, df, pd.DataFrame(), sig, p, COSTS,
+                           initial_capital=100_000.0)
+        assert len(res.trades) == 2, (
+            f"expected the second entry to be taken after an ordinary stop; "
+            f"got {len(res.trades)} trade(s) and "
+            f"{res.rejects['cooldown']} cooldown rejection(s)")

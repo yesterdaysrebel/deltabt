@@ -243,6 +243,31 @@ class StrategyParams:
     #: bar cannot both promote the stop and be stopped out by the promotion.
     ladder_rungs: tuple[tuple[float, float], ...] = ()
 
+    #: Bars to wait after a stop that the LADDER had promoted, instead of
+    #: ``cooldown_bars``. 0 means use the normal cooldown, which is the
+    #: default and leaves every recorded result unchanged.
+    #:
+    #: WHY IT IS SEPARATE FROM cooldown_bars. The ladder's measured damage is
+    #: not mainly that it exits worse trades, it is that it exits EARLIER: the
+    #: position slot frees, the next signal is taken instead of being held
+    #: through, and 342 trades becomes 917. Each carries cost the arm's
+    #: per-trade edge cannot pay. A cooldown aimed only at promoted-stop exits
+    #: suppresses exactly the trades the ladder created, without lengthening
+    #: the wait after an ordinary stop or target -- which would change the
+    #: entry set for reasons having nothing to do with the ladder.
+    #:
+    #: IT DOES NOT RESCUE THE RULE, and that was measured before this was
+    #: written rather than after. Sweeping the GLOBAL cooldown against the
+    #: operator's 0.5/1/1.5/2 ladder, best ladder result anywhere was +21.1R
+    #: against +70.6R for no ladder at all. What the sweep mostly showed is how
+    #: violent the cooldown lever is on its own: the no-ladder baseline runs
+    #: 65.3R / 70.6R / 15.1R / 9.5R / 3.1R at 10 / 36 / 72 / 144 / 288 bars,
+    #: with no strategy change whatsoever. Differences of ~20R between
+    #: neighbouring cells in that table are the entry-set lottery, not an
+    #: effect, and any cell picked because it favours a hypothesis is a
+    #: selection, not a result.
+    ladder_cooldown_bars: int = 0
+
     #: WHERE A MARK-TRIGGERED STOP ACTUALLY FILLS, as a fraction of the way
     #: from the stop price to the trigger bar's adverse LTP extreme.
     #:
