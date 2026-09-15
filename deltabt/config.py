@@ -207,6 +207,42 @@ class StrategyParams:
     #: this is measured rather than assumed.
     exit_at_adverse_r: float | None = None
 
+    #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending pairs of
+    #: (favourable excursion in R, new stop in R from entry). () disables it,
+    #: which is the default and what every recorded result was measured under.
+    #:
+    #: ((0.5, 0.0), (1.0, 0.5)) means: once the trade has been 0.5R in front,
+    #: the stop moves to breakeven; once 1.0R, to +0.5R. The stop only ever
+    #: moves in the position's favour.
+    #:
+    #: THE EVIDENCE SAYS THIS COSTS MONEY, and it is implemented anyway by
+    #: operator decision on 2026-09-15. Measured over the arm's 342 backtest
+    #: trades on the live universe, against leaving it alone at +65.3R:
+    #:
+    #:   breakeven at +1.0R          +15.0R   -0.147R/trade   t=-2.61
+    #:   ladder 0.5/1/1.5/2           +8.7R   -0.166R/trade   t=-2.11
+    #:   ladder 1/2/3                 +5.9R   -0.174R/trade   t=-2.78
+    #:
+    #: The mechanism is visible in the win rate: the 0.5/1/1.5/2 ladder wins
+    #: MORE often than no ladder (36.5% against 32.2%) and earns a quarter as
+    #: much. This arm's edge is a minority of trades that run to 3R, winners
+    #: retrace a median 1.50R on the way, and a rung tight enough to rescue a
+    #: 1R loser also stops out the winner that dips to +0.9R before running.
+    #: Rescued losers are worth ~1R; killed winners ~3R.
+    #:
+    #: WHAT MOTIVATED IT, because it is a real observation and not a whim: on
+    #: the 19 trades the live `atr` stack had closed by 2026-09-15, losers
+    #: reached a median +0.97R before dying (8 of 10 passed +0.5R), against
+    #: +0.51R for the backtest population. On those 19 trades a breakeven rung
+    #: at 1R turns +6.17R into +11.15R. Ten losers chosen by looking at them is
+    #: how a rule that does not replicate gets built -- but the divergence from
+    #: the backtest is real and unexplained, and worth watching as n grows.
+    #:
+    #: ORDERING WITHIN A BAR IS STOP-FIRST: the stop is tested at the level it
+    #: held when the bar opened, and only then raised by this bar's extreme. A
+    #: bar cannot both promote the stop and be stopped out by the promotion.
+    ladder_rungs: tuple[tuple[float, float], ...] = ()
+
     #: WHERE A MARK-TRIGGERED STOP ACTUALLY FILLS, as a fraction of the way
     #: from the stop price to the trigger bar's adverse LTP extreme.
     #:

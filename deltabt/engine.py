@@ -241,6 +241,17 @@ def run_backtest(
                 adverse = max(high[i], stop_price)
             stop_fill = stop_price + params.stop_fill_fraction * (adverse - stop_price)
 
+            # THE LADDER MOVES THE STOP AFTER THE TEST ABOVE, NEVER BEFORE.
+            #
+            # hit_stop was computed against the level the stop held when this
+            # bar opened. Promoting first would let one bar both raise the stop
+            # and be stopped out by the raise -- the single bar that reached
+            # +1R and came back would book +0.5R instead of the -1R it really
+            # took, which is exactly the flattery this rule is suspected of.
+            #
+            # Deferred to after the exit decision so a bar that exits is
+            # unaffected by its own promotion; see the `if not exit_reason`
+            # block below.
             if hit_stop and hit_target:
                 # 1m OHLC cannot order these two events, and there is no
                 # sub-minute history on Delta to check against. Pine assumes
@@ -256,11 +267,21 @@ def run_backtest(
                 or (pos_side == SHORT and signals.bull_1m[i])
             ):
                 exit_price, exit_reason = px, "trend_flip"
+            # MEASURED AGAINST THE ORIGINAL RISK, NOT THE CURRENT STOP.
+            #
+            # This read (entry_price - stop_price), which equals risk_per_unit
+            # exactly while the stop never moves -- so this is a no-op for
+            # every result recorded before the ladder existed. With a ladder it
+            # is not: once a rung promotes the stop to breakeven that distance
+            # is ZERO, and `adverse >= 0.5 * 0` is true of any adverse move at
+            # all, closing the position the moment it ticks against entry.
+            # Both rules would be on only if somebody enabled them together,
+            # which is precisely when nobody would be looking for this.
             elif params.exit_at_adverse_r is not None and (
                 (pos_side == LONG
-                 and (entry_price - px) >= params.exit_at_adverse_r * (entry_price - stop_price))
+                 and (entry_price - px) >= params.exit_at_adverse_r * risk_per_unit)
                 or (pos_side == SHORT
-                    and (px - entry_price) >= params.exit_at_adverse_r * (stop_price - entry_price))
+                    and (px - entry_price) >= params.exit_at_adverse_r * risk_per_unit)
             ):
                 exit_price, exit_reason = px, "adverse_r"
             elif params.exit_on_wpr_band_exit and np.isfinite(signals.wpr[i]) and (
@@ -270,6 +291,30 @@ def run_backtest(
                 exit_price, exit_reason = px, "wpr_band"
             elif params.max_hold_bars and (i - entry_index) >= params.max_hold_bars:
                 exit_price, exit_reason = px, "max_hold"
+
+            if not exit_reason and params.ladder_rungs:
+                # Promote the stop on this bar's favourable extreme. Runs only
+                # when the position survived the bar, so the stop that was
+                # tested above is always the one the trade actually had.
+                #
+                # The extreme is LTP high/low while the stop triggers on MARK,
+                # which is the venue's own split and is deliberately NOT made
+                # consistent here: the ladder is a decision about how far price
+                # went, and price is LTP.
+                favourable = (
+                    (high[i] - entry_price) if pos_side == LONG
+                    else (entry_price - low[i])
+                ) / risk_per_unit
+                for trigger_r, stop_r in params.ladder_rungs:
+                    if favourable < trigger_r:
+                        continue
+                    promoted = costs.round_price(
+                        entry_price + pos_side * stop_r * risk_per_unit,
+                        direction=-1 if pos_side == LONG else 1)
+                    # Monotone in the position's favour, never against it.
+                    if (pos_side == LONG and promoted > stop_price) or (
+                            pos_side == SHORT and promoted < stop_price):
+                        stop_price = promoted
 
             if exit_reason:
                 maker = exit_reason == "target"
