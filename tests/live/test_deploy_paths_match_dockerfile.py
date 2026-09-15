@@ -24,7 +24,19 @@ import re
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DOCKERFILE = ROOT / "deploy" / "docker" / "Dockerfile"
+#: BOTH IMAGES, and the second one is why this note exists.
+#:
+#: This read only the paper Dockerfile. Dockerfile.live carries `COPY live
+#: ./live` and was never scanned, so when the live package arrived in #58 this
+#: test had nothing to say -- and `live/**` never entered deploy.yml's
+#: allow-list. The consequence surfaced on 2026-09-15: the fix that made
+#: LiveBroker usable at all merged to master and triggered no build, so the
+#: image on the host stayed the broken one. A deploy filter derived from one of
+#: two Dockerfiles is a filter with a hole exactly the size of the other.
+DOCKERFILES = (
+    ROOT / "deploy" / "docker" / "Dockerfile",
+    ROOT / "deploy" / "docker" / "Dockerfile.live",
+)
 WORKFLOW = ROOT / ".github" / "workflows" / "deploy.yml"
 
 #: Copied into the image, deliberately NOT a deploy trigger. Changing it cannot
@@ -34,19 +46,37 @@ DELIBERATE_EXCEPTIONS = {"README.md"}
 
 
 def copy_sources() -> set[str]:
-    """Every local path the Dockerfile copies into the image."""
+    """Every local path EITHER image copies in.
+
+    The union, not the paper image alone: a change to `live/` changes the live
+    image, so it has to roll a live host the same way a change to `app/` rolls
+    a paper one.
+    """
     out: set[str] = set()
-    for line in DOCKERFILE.read_text().splitlines():
-        line = line.strip()
-        if not line.upper().startswith("COPY "):
+    for dockerfile in DOCKERFILES:
+        if not dockerfile.exists():
             continue
-        # `COPY --from=<stage>` moves build artefacts between stages; its
-        # source is inside the builder, not in this repository.
-        if "--from=" in line:
-            continue
-        parts = re.sub(r"^COPY\s+", "", line, flags=re.I).split()
-        out.update(parts[:-1])          # the last token is the destination
+        for line in dockerfile.read_text().splitlines():
+            line = line.strip()
+            if not line.upper().startswith("COPY "):
+                continue
+            # `COPY --from=<stage>` moves build artefacts between stages; its
+            # source is inside the builder, not in this repository.
+            if "--from=" in line:
+                continue
+            parts = re.sub(r"^COPY\s+", "", line, flags=re.I).split()
+            out.update(parts[:-1])      # the last token is the destination
     return out
+
+
+def test_both_dockerfiles_are_scanned():
+    """A scan that silently skipped one is how `live/` went uncovered."""
+    assert len(DOCKERFILES) == 2
+    for d in DOCKERFILES:
+        assert d.exists(), f"{d} is missing; the scan would skip it silently"
+    assert "live" in copy_sources(), (
+        "the live package is not seen as an image input, so a change to it "
+        "would not trigger a build")
 
 
 def trigger_paths() -> list[str]:
