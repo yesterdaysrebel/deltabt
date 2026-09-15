@@ -510,8 +510,19 @@ jobs:
               echo "roll=yes" >> "$GITHUB_OUTPUT"
               echo "::notice::no experiment is running on ${{ matrix.stack }}; rolling" ;;
             *)
-              echo "::notice::${{ matrix.stack }} has a RUNNING experiment (or its state could not be read: $st). NOT rolling. End the run, or dispatch deploy.yml with only_stack=${{ matrix.stack }} to roll deliberately."
-              echo "${{ matrix.stack }}: skipped, experiment in progress" >> "$GITHUB_STEP_SUMMARY" ;;
+              # SAY WHICH OF THE TWO IT WAS. The first version reported both
+              # possibilities in one sentence -- "has a RUNNING experiment (or
+              # its state could not be read: Success)" -- where `Success` is
+              # the SSM command's status, not the experiment's. It reads as
+              # self-contradictory, and this is the line somebody reads when a
+              # deploy silently did not roll.
+              if [ "$st" = "Success" ]; then
+                why="it has a RUNNING experiment"
+              else
+                why="its state could not be read (SSM command: $st)"
+              fi
+              echo "::notice::NOT rolling ${{ matrix.stack }}: $why. End the run, or dispatch deploy.yml with only_stack=${{ matrix.stack }} to roll deliberately."
+              echo "${{ matrix.stack }}: not rolled -- $why" >> "$GITHUB_STEP_SUMMARY" ;;
           esac
 
       - name: decide the experiment id
