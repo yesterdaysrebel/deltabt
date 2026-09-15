@@ -155,6 +155,18 @@ def run_backtest(
     else:
         mark_high, mark_low = high, low
 
+    # WHICH SERIES THE STOP IS TESTED AGAINST. Bound once: "mark" is Delta's
+    # default and every recorded result; "ltp" is the alternative being
+    # measured. An unknown value must fail rather than silently fall back to
+    # the default, because a typo would then look like a completed experiment.
+    if params.stop_trigger == "mark":
+        trig_low, trig_high = mark_low, mark_high
+    elif params.stop_trigger == "ltp":
+        trig_low, trig_high = low, high
+    else:
+        raise ValueError(
+            f"stop_trigger must be 'mark' or 'ltp', got {params.stop_trigger!r}")
+
     if tradable is None:
         tradable = np.ones(n, dtype=bool)
 
@@ -221,12 +233,14 @@ def run_backtest(
             exit_reason = ""
             ambiguous = False
 
-            # Target on LTP, stop on MARK -- the venue's own split.
+            # Target on LTP, stop on MARK -- the venue's own split, unless
+            # params.stop_trigger says otherwise. `trig_low`/`trig_high` are
+            # bound once before the loop so this stays one comparison per bar.
             if pos_side == LONG:
-                hit_stop = mark_low[i] <= stop_price
+                hit_stop = trig_low[i] <= stop_price
                 hit_target = high[i] >= target_price
             else:
-                hit_stop = mark_high[i] >= stop_price
+                hit_stop = trig_high[i] >= stop_price
                 hit_target = low[i] <= target_price
 
             # WHERE THE STOP FILLS. The trigger above reads MARK; the fill

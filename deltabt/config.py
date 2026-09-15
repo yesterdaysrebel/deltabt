@@ -207,6 +207,24 @@ class StrategyParams:
     #: this is measured rather than assumed.
     exit_at_adverse_r: float | None = None
 
+    #: WHICH PRICE THE STOP WATCHES. "mark" reproduces Delta's default and
+    #: every recorded result; "ltp" triggers on last-traded instead.
+    #:
+    #: This is the venue setting live/orders.py calls StopTriggerMethod, and
+    #: the reason it is worth measuring: Delta TRIGGERS on mark and FILLS at
+    #: last-traded, and on an illiquid instrument mark lags LTP in a fast move.
+    #: The live `atr` arm's six BEATUSD stops filled a mean 0.247R PAST their
+    #: trigger -- 1.48R, about a quarter of everything that arm has made --
+    #: while AKEUSD's filled essentially at the stop. A stop that watched LTP
+    #: would fire when price actually got there.
+    #:
+    #: WHAT THIS CAN AND CANNOT SETTLE. At 1m resolution it measures which BAR
+    #: triggers, which is where the lag shows up. It CANNOT measure the fill
+    #: within that bar -- that needs tick data, and it is why
+    #: live/orders.py says not to tighten STOP_LIMIT_CAP_R without telemetry.
+    #: An LTP trigger is also more exposed to a single bad print that mark
+    #: would have smoothed, and that shows up here as extra stops.
+    stop_trigger: str = "mark"
     #: WHERE A MARK-TRIGGERED STOP ACTUALLY FILLS, as a fraction of the way
     #: from the stop price to the trigger bar's adverse LTP extreme.
     #:
