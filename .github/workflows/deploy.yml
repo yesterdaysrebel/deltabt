@@ -231,6 +231,21 @@ jobs:
     # by exactly that (a risk limit that reached the host but never the
     # container, and a stack table that drifted from Terraform).
     name: build and push the live image
+    # WAITS FOR INFRASTRUCTURE, and the first merge with a live stack proved why.
+    #
+    # This job asks ECR whether the live repository exists. Both that repository
+    # AND the ecr:DescribeRepositories grant that lets it ask are created by the
+    # infrastructure apply -- so on the merge that first adds a `live_stacks`
+    # entry, this ran four minutes ahead of the apply and got AccessDenied:
+    #
+    #   User: .../deltabt-paper-github-app-deploy is not authorized to perform:
+    #   ecr:DescribeRepositories on resource: .../deltabt-live
+    #
+    # It failed loudly rather than reporting "no live stack is configured",
+    # which is the check working. But the race is real and would repeat on
+    # every future change that moves those resources, so the job now orders
+    # itself behind the apply the way `deploy` already does.
+    needs: [test, wait-for-infrastructure]
     outputs:
       # WITHOUT THESE NOTHING COULD CONSUME THE BUILD. build-live pushed an
       # image and published nothing, and no job declared `needs: build-live`,
@@ -242,7 +257,6 @@ jobs:
       tag: ${{ github.sha }}
       repository: ${{ steps.repo.outputs.name }}
       exists: ${{ steps.repo.outputs.exists }}
-    needs: test
     if: github.event.inputs.image_tag == ''
     runs-on: ubuntu-latest
     steps:
