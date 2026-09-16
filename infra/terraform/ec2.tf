@@ -184,17 +184,20 @@ resource "aws_instance" "bot" {
   # An accidental `terraform destroy` during a 30-day run ends the run. The
   # database is separately protected; this protects the bot.
   #
-  # IT ALSO BLOCKS REPLACEMENT, WHICH IS WHY IT IS A VARIABLE NOW.
-  # The AWS provider does not clear termination protection before destroying an
-  # instance -- it fails, and `force_destroy` is the documented escape hatch.
-  # Anything that lands in user-data (run.sh, deploy.sh, the symbol list)
-  # forces a replacement, so with this hard-coded true those changes could
-  # never be applied at all.
+  # IT DOES NOT BLOCK REPLACEMENT. This comment used to say it did -- that the
+  # AWS provider refuses to destroy a protected instance, so replacement needed
+  # allow_instance_replacement flipped across two applies. That is no longer
+  # true. On 2026-09-16 tnet had disableApiTermination=True and was replaced
+  # TWICE by two ordinary merges (#76, #77), because anything in user_data --
+  # run.sh, run_live.sh, the template -- forces a replacement and the provider
+  # cleared the protection itself. The comment was trusted, the prediction
+  # built on it ("the apply will fail and change nothing") was wrong.
   #
-  # It cannot be done in ONE apply either: Terraform does not update attributes
-  # on a resource it is replacing, so the destroy still fails. Hence a variable
-  # and two applies -- this one flips the live attribute and changes nothing
-  # else; the next one carries the user-data change.
+  # What actually stops a replacement ending an experiment is the step
+  # "refuse to replace a host that is running an experiment" in
+  # .github/workflows/infrastructure.yml, which asks the host before applying,
+  # and the Replaces-Host check on pull requests. This attribute is kept for
+  # what it still does: stop a console or CLI terminate.
   disable_api_termination = !var.allow_instance_replacement
 
   tags = { Name = "${local.name}-${each.key}", Stack = each.key, Variant = each.value.variant }

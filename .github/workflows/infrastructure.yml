@@ -44,6 +44,14 @@ on:
         required: false
         default: false
         type: boolean
+      replace_hosts:
+        description: >-
+          Comma-separated stacks this apply may replace EVEN THOUGH they are
+          running an experiment (e.g. "tnet"). Names, not a switch: a stack not
+          listed is still refused. Never set on a push.
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -223,13 +231,21 @@ jobs:
         # This runs BEFORE any human sees the plan summary, so a destructive
         # plan cannot be approved by someone skim-reading a green check.
         #
-        # ALLOW_REPLACE IS REACHABLE ONLY FROM A MANUAL DISPATCH. A push can
-        # never set it, so no merge can replace a running host by accident --
-        # replacing one takes a person choosing to, on a specific run, and the
-        # apply is still gated on the protected `paper` environment afterwards.
-        # Before this input existed the guard was unsatisfiable: a legitimate
-        # replacement could only ship by editing the guard, which is precisely
-        # how a safety check becomes something people route around.
+        # ALLOW_REPLACE IS REACHABLE ONLY FROM A MANUAL DISPATCH, and it
+        # governs every type EXCEPT the two listed in ALLOW_REPLACE_TYPES below.
+        #
+        # THIS COMMENT USED TO SAY "no merge can replace a running host by
+        # accident", and that stopped being true twice over: aws_instance is in
+        # ALLOW_REPLACE_TYPES, so a push replaces a host without the flag; and
+        # the apply is no longer gated on the `paper` environment (see the
+        # apply job). On 2026-09-16 two merges replaced tnet, with termination
+        # protection on, and this sentence was part of why nobody expected it.
+        #
+        # The guarantee for a host with a running experiment is now the step
+        # "refuse to replace a host that is running an experiment" in the
+        # apply job, which asks the host; and a pull request that replaces a
+        # host must say so (Replaces-Host). This step still refuses every
+        # other destroy and every replacement outside the narrow list.
         env:
           ALLOW_REPLACE: ${{ (github.event_name == 'workflow_dispatch' && inputs.allow_replace) && '1' || '' }}
           # THE NARROW ALLOWANCE, AND WHY IT IS SAFE TO SET ON A PUSH.
@@ -251,6 +267,26 @@ jobs:
         run: |
           tofu show -json tfplan > tfplan.json
           python3 ../../scripts/tf_guard.py tfplan.json
+
+      - name: find bot hosts this plan replaces
+        # SEE scripts/host_replacements.py. Two merges on 2026-09-16 each
+        # replaced tnet; both plans said so on their pull requests, buried in
+        # plan text nobody read to the end. This puts a replacement at the TOP
+        # of the posted plan, and the last step of this job fails the check if
+        # the PR body does not name the host. It does not fail HERE, so the
+        # plan is still posted for review.
+        id: hosts
+        if: github.event_name == 'pull_request'
+        working-directory: infra/terraform
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set +e
+          python3 ../../scripts/host_replacements.py tfplan.json \
+            --check-announced PR_BODY --report replacements.md
+          echo "unannounced=$?" >> "$GITHUB_OUTPUT"
+          cat replacements.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          exit 0
 
       - name: cost guard -- refuses NAT gateways, load balancers, EKS, autoscalers
         working-directory: infra/terraform
@@ -276,14 +312,23 @@ jobs:
           script: |
             const fs = require('fs');
             let plan = fs.readFileSync('infra/terraform/plan.txt', 'utf8');
+            // A host replacement goes FIRST, above the plan, not inside it.
+            let head = '';
+            try { head = fs.readFileSync('infra/terraform/replacements.md', 'utf8'); } catch (e) {}
             const LIMIT = 60000;
             if (plan.length > LIMIT) plan = plan.slice(0, LIMIT) + '\n... truncated; see the job log ...';
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '#### Terraform plan (`paper`)\n\n```hcl\n' + plan + '\n```',
+              body: head + '#### Terraform plan (`paper`)\n\n```hcl\n' + plan + '\n```',
             });
+
+      - name: a pull request that replaces a host must name it
+        if: github.event_name == 'pull_request' && steps.hosts.outputs.unannounced != '0'
+        run: |
+          echo "::error::this pull request replaces a bot host without a 'Replaces-Host: <stack>' line in its description; see the plan comment"
+          exit 1
 
       - name: keep the plan for the apply job
         if: github.ref == 'refs/heads/master' && steps.plan.outputs.exitcode == '2'
@@ -379,6 +424,97 @@ jobs:
           tofu init -input=false \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: refuse to replace a host that is running an experiment
+        # THE GUARANTEE, as opposed to the announcement on the pull request.
+        #
+        # Replacing a host ends the experiment running on it, and nothing else
+        # prevents that: tf_guard allows aws_instance replacement on purpose,
+        # and termination protection was on for tnet on 2026-09-16 and it was
+        # replaced twice anyway. This asks each host being replaced, through the
+        # SAME experiment document the deploy guard uses, and refuses a host
+        # with a RUNNING experiment.
+        #
+        # FAILS CLOSED. A host that cannot answer is refused too: "could not
+        # tell" is not "nothing running". A host that does not exist has
+        # nothing to protect.
+        #
+        # THE DELIBERATE WAY PAST IT is to end the experiment first -- the host
+        # then answers "no experiment is RUNNING" and this passes on its own --
+        # or to dispatch this workflow with replace_hosts naming the stack. It
+        # names stacks rather than taking a yes/no, because a blanket flag was
+        # tried here before and got approved without being read.
+        if: needs.plan.outputs.changes == '2'
+        working-directory: infra/terraform
+        env:
+          REPLACE_HOSTS: ${{ github.event.inputs.replace_hosts }}
+        run: |
+          set -euo pipefail
+          tofu show -json tfplan > tfplan.json
+          stacks=$(python3 ../../scripts/host_replacements.py tfplan.json --list)
+          if [ -z "$stacks" ]; then
+            echo "this plan replaces no bot host"
+            exit 0
+          fi
+          refused=""
+          for stack in $stacks; do
+            if printf ',%s,' "${REPLACE_HOSTS// /}" | grep -qi ",$stack,"; then
+              echo "::warning::$stack is named in replace_hosts; replacing it regardless of its experiment"
+              continue
+            fi
+            id=$(aws ec2 describe-instances --region "$AWS_REGION" \
+                   --filters "Name=tag:Name,Values=deltabt-paper-$stack" \
+                             "Name=instance-state-name,Values=running,stopped,pending" \
+                   --query 'Reservations[].Instances[].InstanceId' --output text)
+            if [ -z "$id" ]; then
+              echo "$stack: no host exists; nothing to protect"
+              continue
+            fi
+            cmd=$(aws ssm send-command --region "$AWS_REGION" \
+                    --document-name "deltabt-paper-$stack-experiment" \
+                    --instance-ids "$id" --parameters "Action=status" \
+                    --comment "gha ${{ github.run_id }} infra replace guard" \
+                    --query 'Command.CommandId' --output text 2>/dev/null || echo "")
+            st=Unreadable
+            out=""
+            if [ -n "$cmd" ]; then
+              for _ in $(seq 1 60); do
+                st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                       --command-id "$cmd" --instance-id "$id" \
+                       --query Status --output text 2>/dev/null || echo Pending)
+                case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+                sleep 5
+              done
+              out=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                      --command-id "$cmd" --instance-id "$id" \
+                      --query 'StandardOutputContent' --output text 2>/dev/null || true)
+            fi
+            # The CLI's own words, matched exactly as the deploy guard matches
+            # them; `forward-test status` exits 1 both for "nothing running"
+            # and for every real failure, so the exit code cannot decide.
+            case "$out" in
+              *"no experiment is RUNNING"*|*"nothing to protect"*)
+                echo "$stack: no experiment running; replacement allowed" ;;
+              *)
+                if [ "$st" = "Success" ]; then
+                  echo "::error::$stack is RUNNING an experiment; replacing its host would end it"
+                else
+                  echo "::error::$stack could not say whether it is running an experiment (SSM: $st); refusing to replace it"
+                fi
+                refused="$refused $stack" ;;
+            esac
+          done
+          if [ -n "$refused" ]; then
+            {
+              echo "### Apply refused: it would replace a host with a running experiment"
+              echo
+              echo "Refused:$refused"
+              echo
+              echo "End the experiment first, or dispatch this workflow with"
+              echo "\`replace_hosts\` naming the stack."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: apply the reviewed plan, not a fresh one
         if: needs.plan.outputs.changes == '2'
