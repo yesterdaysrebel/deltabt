@@ -24,7 +24,8 @@ from datetime import datetime, timezone
 
 from app.config.settings import Settings
 from app.config.variants import resolve_strategy
-from app.forwardtest.identity import build_identity, execution_params
+from app.forwardtest.identity import (build_identity, execution_params,
+                                      execution_profile)
 from app.forwardtest.preflight import run_preflight
 from app.market_data.backfill import Backfiller
 from app.monitoring.logging import configure
@@ -119,11 +120,14 @@ async def cmd_start(args) -> int:
     # what verifies a running process against this experiment. Constructing it
     # here instead is how the two silently diverged and made every bot refuse
     # to start on an execution_hash it could not reproduce.
+    # PROFILE-AWARE. The live path has a DIFFERENT execution surface, and
+    # writing the paper one into a live experiment is what kept tnet unbound:
+    # the bot could never reproduce an identity describing gates its broker
+    # does not have.
+    exec_values, exec_fields = execution_profile(settings.risk)
     ident = build_identity(
         exp_id, resolve_strategy(), settings.risk,
-        execution_params({**broker_params(settings.risk),
-                          "slippage_bps": settings.risk.slippage_bps},
-                         settings.symbols),
+        execution_params(exec_values, settings.symbols, fields=exec_fields),
         settings.symbols)
     created = await repo.create_experiment(ident, planned_days=args.days)
     if created:
