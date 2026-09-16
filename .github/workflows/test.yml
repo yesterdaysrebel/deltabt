@@ -17,9 +17,12 @@ permissions:
   contents: read
 
 concurrency:
-  # github.workflow resolves to the CALLER's name, so the copy deploy.yml
-  # invokes via workflow_call lands in `test-deploy-<ref>` while the run this
-  # push triggers directly lands in `test-test-<ref>`. Keyed on the ref alone
+  # github.workflow resolves to the CALLER's name, so the copy a deploy
+  # workflow invokes via workflow_call lands in `test-deploy paper-<ref>` (or
+  # `deploy testnet`, `deploy mainnet`) while the run this push triggers
+  # directly lands in `test-test-<ref>`. Since the 2026-09-16 split a push
+  # touching both venues runs the suite three times rather than twice; that is
+  # CI minutes, not a fault, and every group stays distinct. Keyed on the ref alone
   # the two collided, and cancel-in-progress killed the standalone run on
   # every push to master -- so the `test` check was permanently cancelled, and
   # a cancelled deploy took the only surviving test run down with it.

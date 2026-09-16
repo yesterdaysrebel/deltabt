@@ -137,7 +137,8 @@ variable "live_venue" {
 # is one typo away from rolling a paper host onto an image that can place
 # orders. The boundary is worth a second repository.
 #
-# .github/workflows/deploy.yml's build-live job checks for this repository and
+# The build-live job in deploy-testnet.yml and deploy-mainnet.yml checks for
+# this repository and
 # skips when it is absent, so adding a live_stacks entry is the ONLY step --
 # there is no second place to remember to edit. This pipeline has been bitten
 # twice by exactly that kind of forgotten link.

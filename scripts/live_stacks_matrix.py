@@ -2,7 +2,7 @@
 
 WHY THIS EXISTS AND IS NOT A TABLE IN THE WORKFLOW
 
-deploy.yml's paper `targets` job carries a hand-maintained JSON table of
+deploy-paper.yml's `targets` job carries a hand-maintained JSON table of
 stacks. That table has drifted from Terraform before: it once named two hosts
 that had been destroyed, and the workflow dispatched rolls at terminated
 instances. The file header of tests/live_exec/test_live_deployment.py records
