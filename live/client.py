@@ -364,6 +364,41 @@ class LiveClient:
             f"order exists at the venue. It most likely never arrived, but "
             f"this client will not resend it -- the caller must decide.")
 
+    # -- margin and leverage ----------------------------------------------------
+    #
+    # ADDED 2026-09-16, after tnet's first live trades were LIQUIDATED BEFORE
+    # THEIR STOPS. The bot never set leverage, so every order used whatever the
+    # account happened to hold: ETH 100x, SOL 50x, BTC 50x. Liquidation lands
+    # roughly 1/leverage - maintenance_margin from entry -- 0.50% for ETH --
+    # while the strategy's stop sat 0.53-0.66% away. The venue closed the
+    # position at 2415.25; its stop at 2416.2 never had a chance.
+
+    def get_product(self, symbol: str) -> dict:
+        """One product's contract spec: margins, contract_value, max leverage."""
+        return self._read(f"/v2/products/{symbol}") or {}
+
+    def get_wallet_balance(self, asset: str = "USD") -> dict:
+        """The account's balance row for `asset`, or {} if it holds none."""
+        for row in self._read("/v2/wallet/balances") or []:
+            if str(row.get("asset_symbol", "")).upper() == asset.upper():
+                return row
+        return {}
+
+    def get_order_leverage(self, product_id: int) -> float:
+        row = self._read(f"/v2/products/{product_id}/orders/leverage") or {}
+        return float(row.get("leverage") or 0)
+
+    def set_order_leverage(self, product_id: int, leverage: int) -> dict:
+        """Set the leverage NEW orders on this product will use.
+
+        Idempotent -- setting the same value twice is harmless -- and it is not
+        an order, so there is nothing to resolve after an unobserved write: the
+        caller reads it back with get_order_leverage() instead.
+        """
+        path = f"/v2/products/{product_id}/orders/leverage"
+        body = encode_body({"leverage": str(int(leverage))})
+        return self._parse(self._send_once("POST", path, "", body), path)
+
     def cancel_order(self, order_id: int, product_id: int) -> dict:
         """Cancel is idempotent at the venue: cancelling twice is harmless."""
         body = encode_body({"id": order_id, "product_id": product_id})

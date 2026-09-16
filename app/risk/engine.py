@@ -234,8 +234,17 @@ class RiskEngine:
         open_positions: list,
         now: int,
         market_can_trade: bool = True,
+        sizing_equity: float | None = None,
     ) -> RiskDecision:
-        """Apply every limit in a fixed order. First failure wins."""
+        """Apply every limit in a fixed order. First failure wins.
+
+        `sizing_equity`, when given, replaces state.equity for SIZING ONLY: the
+        risk budget, the leverage cap and the leverage check. The live runtime
+        passes the venue's real balance, because tnet sized every trade against
+        an internal 10,000 while its account held $738.78 -- a "0.5%" budget was
+        6.8% of the money that existed. The paper runtime passes nothing, and
+        every paper decision is exactly what it was.
+        """
         cfg = self.cfg
         ev = new_uid("risk")
         passed: list[str] = []
@@ -408,9 +417,12 @@ class RiskEngine:
             return reject(f"no contract specification for {exp.symbol}")
         ok("contract_spec_present")
 
-        risk_amount = state.equity * cfg.risk_per_trade
+        equity = state.equity if sizing_equity is None else sizing_equity
+        if sizing_equity is not None:
+            exp.detail["sizing_equity"] = sizing_equity
+        risk_amount = equity * cfg.risk_per_trade
         units_by_risk = risk_amount / rpu
-        units_by_leverage = (state.equity * cfg.max_leverage) / entry
+        units_by_leverage = (equity * cfg.max_leverage) / entry
         units_by_notional = cfg.max_position_notional / entry
         units = min(units_by_risk, units_by_leverage, units_by_notional)
         quantity = costs.contracts_for(units)
@@ -448,7 +460,7 @@ class RiskEngine:
                 observed=open_notional + notional)
         ok("max_total_notional")
 
-        leverage = notional / state.equity if state.equity > 0 else float("inf")
+        leverage = notional / equity if equity > 0 else float("inf")
         if leverage > cfg.max_leverage + 1e-9:
             return reject(
                 f"leverage {leverage:.2f}x exceeds max_leverage "
