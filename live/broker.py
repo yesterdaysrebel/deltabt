@@ -49,7 +49,7 @@ from typing import Any
 
 from live.client import AmbiguousWrite, LiveClient, VenueError, VenueRejected
 from live.guards import KILL_SWITCH_PATH, kill_switch_engaged
-from app.execution.paper_broker import ENTRY_TTL_SECONDS
+from app.execution.paper_broker import ENTRY_TTL_SECONDS, MAX_ENTRY_DEVIATION
 from app.forwardtest.identity import register_execution_profile
 from live.orders import (STOP_LIMIT_CAP_R, OrderRequest, OrderType, Side,
                          StopTriggerMethod, TimeInForce, client_order_id)
@@ -106,18 +106,22 @@ def _died_unfilled(row) -> bool:
 
 #: THE LIVE EXECUTION SURFACE, declared where it is implemented.
 #:
-#: It is NOT the paper one. max_entry_deviation and min_fill_rr are PaperBroker
-#: concepts about a simulated fill -- refuse an entry that ran away from the
-#: reference, refuse a fill whose realised RR is too low. Live, the venue fills
-#: you; there is nothing to refuse after the fact, and this broker implements
-#: neither. Claiming them in the experiment identity would describe gates that
-#: never fire.
+#: It is NOT the paper one. min_fill_rr is a PaperBroker concept about a
+#: simulated fill, and this broker does not implement it, so it is not claimed.
+#:
+#: max_entry_deviation IS claimed, since 2026-09-16, because the live runtime
+#: now enforces it: a fill further than that from the reference is flattened
+#: the moment the venue reports it. Paper refuses the fill; live cannot refuse
+#: what the venue already did, so it closes it. The first live trade on tnet
+#: sold SOLUSD 2.2R away from its reference on a thin book, beyond its own
+#: stop, and Delta silently dropped both brackets. Recording a gate that fires
+#: is true; recording one that did not was the reason it was left out before.
 #:
 #: These three are what actually governs a live fill: how long an unfilled
 #: entry rests, how far beyond the stop the marketable-limit cap sits, and
 #: which price the VENUE watches to trigger.
 LIVE_EXECUTION_FIELDS = ("entry_ttl_seconds", "stop_limit_cap_r",
-                         "stop_trigger_method")
+                         "stop_trigger_method", "max_entry_deviation")
 
 
 def _live_execution_values(risk) -> dict:
@@ -129,7 +133,8 @@ def _live_execution_values(risk) -> dict:
     """
     return {"entry_ttl_seconds": ENTRY_TTL_SECONDS,
             "stop_limit_cap_r": float(STOP_LIMIT_CAP_R),
-            "stop_trigger_method": StopTriggerMethod.MARK.value}
+            "stop_trigger_method": StopTriggerMethod.MARK.value,
+            "max_entry_deviation": MAX_ENTRY_DEVIATION}
 
 
 register_execution_profile("live", LIVE_EXECUTION_FIELDS,
@@ -187,6 +192,9 @@ class LiveBroker:
         self.experiment_id = experiment_id
         self.tick_size = dict(tick_size or {})
         self.entry_ttl_seconds = entry_ttl_seconds
+        #: See LIVE_EXECUTION_FIELDS. Enforced by live.runtime after the
+        #: fill, in units of the trade's own R.
+        self.max_entry_deviation = MAX_ENTRY_DEVIATION
         #: THE EXECUTION SURFACE THIS BROKER ACTUALLY HAS, recorded on the
         #: instance so the experiment identity reads what the broker received
         #: rather than a constant someone hoped matched. They were equal only
@@ -205,6 +213,10 @@ class LiveBroker:
         self._pending: dict[str, dict] = {}
         self._suspended: set[str] = set()
         self._entry_cid: dict[str, str] = {}
+        #: symbol -> the reason this process asked the venue to close it.
+        #: poll() hands it to POSITION_CLOSED, which live.ledger needs:
+        #: without it a deliberate flatten is recorded as MANUAL_CLOSE.
+        self._closing_reason: dict[str, str] = {}
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
 
     # -- the inert half ------------------------------------------------------
@@ -359,6 +371,29 @@ class LiveBroker:
                 f"with nothing filled")
         return row
 
+    def protective_legs(self, symbol: str) -> dict[str, list[dict]]:
+        """The reduce-only stop-loss and take-profit orders protecting `symbol`.
+
+        Read from PENDING orders: that is where the venue keeps untriggered
+        bracket legs, and get_open_orders() never sees them. Raises VenueError
+        when the venue cannot be read -- a caller must not treat "could not
+        look" as "nothing there".
+        """
+        pid = self.product_ids.get(symbol)
+        rows = self.client.get_pending_orders(pid)
+        out: dict[str, list[dict]] = {"stop_loss": [], "take_profit": []}
+        for row in rows:
+            if pid is not None and row.get("product_id") not in (None, pid):
+                continue
+            if not row.get("reduce_only"):
+                continue
+            kind = row.get("stop_order_type")
+            if kind == "stop_loss_order":
+                out["stop_loss"].append(row)
+            elif kind == "take_profit_order":
+                out["take_profit"].append(row)
+        return out
+
     def close_position(self, symbol: str, reason: str) -> dict:
         """Flatten one position at market, reduce-only.
 
@@ -381,6 +416,7 @@ class LiveBroker:
             reduce_only=True,
             note=reason)
         log.warning("closing %s at market: %s", symbol, reason)
+        self._closing_reason[symbol] = reason
         return self.client.place_order(order)
 
     # -- THE BROKER SURFACE TradingBot REQUIRES ------------------------------
@@ -537,7 +573,10 @@ class LiveBroker:
                 # which the runtime records; this event is the trigger.
                 events.append(BrokerEvent("POSITION_CLOSED", sym, {
                     "side": was.side, "contracts": was.contracts,
-                    "closed_by": "venue"}))
+                    "closed_by": "venue",
+                    # Read by _persist_close; live.ledger uses it only when the
+                    # closing order was not a bracket leg.
+                    "requested_reason": self._closing_reason.pop(sym, None)}))
 
         self.positions = seen
         return events

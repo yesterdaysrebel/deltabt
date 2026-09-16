@@ -228,7 +228,23 @@ class LiveClient:
         return result or None
 
     def get_open_orders(self, product_id: int | None = None) -> list[dict]:
+        """Orders RESTING on the book: `states=open`.
+
+        THIS DOES NOT INCLUDE A POSITION'S STOP-LOSS OR TAKE-PROFIT. Delta
+        holds untriggered stop and bracket legs as `pending`, not `open`. On
+        2026-09-16 this returned nothing for three live positions, two of which
+        were fully protected -- so anything that reads "no open orders" as "no
+        protection" is wrong, and anything that needs the brackets must call
+        get_pending_orders().
+        """
         params = {"states": "open"}
+        if product_id is not None:
+            params["product_id"] = product_id
+        return self._read("/v2/orders", params) or []
+
+    def get_pending_orders(self, product_id: int | None = None) -> list[dict]:
+        """Untriggered stop orders: `states=pending`. Where brackets live."""
+        params = {"states": "pending"}
         if product_id is not None:
             params["product_id"] = product_id
         return self._read("/v2/orders", params) or []

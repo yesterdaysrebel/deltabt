@@ -69,15 +69,22 @@ class TestTheTwoSidesAgree:
 
 
 class TestTheSurfacesAreGenuinelyDifferent:
-    def test_live_does_not_claim_gates_it_does_not_have(self):
-        """The reason this is two profiles and not one shared tuple."""
+    def test_live_claims_exactly_the_gates_it_enforces(self):
+        """The reason this is two profiles and not one shared tuple.
+
+        min_fill_rr is a PaperBroker gate LiveBroker does not implement, so it
+        is not claimed. max_entry_deviation IS claimed since 2026-09-16,
+        because live.runtime now flattens a fill further than that from its
+        reference -- the first live trade on tnet filled 2.2R away, beyond its
+        stop, and lost both brackets. Claiming a gate is correct exactly when
+        something enforces it; tests/live_exec/test_live_order_placement.py
+        asserts the enforcement.
+        """
         live = _live_broker()
-        for absent in ("max_entry_deviation", "min_fill_rr"):
-            assert not hasattr(live, absent), (
-                f"LiveBroker now has {absent}; if it ENFORCES it the field "
-                f"belongs in LIVE_EXECUTION_FIELDS, and if it does not then "
-                f"recording it would describe a gate that never fires")
-            assert absent not in LIVE_EXECUTION_FIELDS
+        assert not hasattr(live, "min_fill_rr")
+        assert "min_fill_rr" not in LIVE_EXECUTION_FIELDS
+        assert hasattr(live, "max_entry_deviation")
+        assert "max_entry_deviation" in LIVE_EXECUTION_FIELDS
 
     def test_the_two_profiles_hash_differently(self):
         s = Settings()
