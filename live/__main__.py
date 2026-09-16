@@ -58,6 +58,11 @@ def load_costs(symbols, slippage_bps: float) -> dict[str, SymbolCosts]:
 
 
 async def main() -> int:
+    # The bot reads execution params off its own broker, but bind_experiment()
+    # compares against what the CLI wrote, so the profile has to be set here
+    # too -- anything that reconstructs it in this process must reconstruct the
+    # LIVE one. See app/forwardtest/identity.execution_profile.
+    os.environ["DELTABOT_EXECUTION_PROFILE"] = "live"
     settings = Settings.from_env()
     configure(settings.log_level)
 
@@ -165,6 +170,11 @@ def cli_entry(argv: list[str]) -> int:
     per-symbol halt thresholds, so fixing the universe fixes both components.
     """
     os.environ["DELTABOT_SYMBOLS"] = ",".join(symbols_for(venue_name()))
+    # AND THE EXECUTION SURFACE, for the same reason. The CLI has no broker, so
+    # it reconstructs the execution params; only this entry point knows they
+    # should be the LIVE ones. main() below sets it too, so the bot that
+    # verifies the experiment and the CLI that wrote it agree.
+    os.environ["DELTABOT_EXECUTION_PROFILE"] = "live"
     from app.cli import main as cli_main
     return cli_main(argv)
 

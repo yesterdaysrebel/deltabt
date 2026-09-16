@@ -49,10 +49,44 @@ from typing import Any
 
 from live.client import AmbiguousWrite, LiveClient, VenueError
 from live.guards import KILL_SWITCH_PATH, kill_switch_engaged
+from app.execution.paper_broker import ENTRY_TTL_SECONDS
+from app.forwardtest.identity import register_execution_profile
 from live.orders import (STOP_LIMIT_CAP_R, OrderRequest, OrderType, Side,
                          StopTriggerMethod, TimeInForce, client_order_id)
 
 log = logging.getLogger(__name__)
+
+
+#: THE LIVE EXECUTION SURFACE, declared where it is implemented.
+#:
+#: It is NOT the paper one. max_entry_deviation and min_fill_rr are PaperBroker
+#: concepts about a simulated fill -- refuse an entry that ran away from the
+#: reference, refuse a fill whose realised RR is too low. Live, the venue fills
+#: you; there is nothing to refuse after the fact, and this broker implements
+#: neither. Claiming them in the experiment identity would describe gates that
+#: never fire.
+#:
+#: These three are what actually governs a live fill: how long an unfilled
+#: entry rests, how far beyond the stop the marketable-limit cap sits, and
+#: which price the VENUE watches to trigger.
+LIVE_EXECUTION_FIELDS = ("entry_ttl_seconds", "stop_limit_cap_r",
+                         "stop_trigger_method")
+
+
+def _live_execution_values(risk) -> dict:
+    """What a LiveBroker will report, reconstructed for the CLI.
+
+    tests/live/test_execution_identity_profiles.py asserts this equals what an
+    actual LiveBroker yields, because a mismatch here is unbindable and shows
+    up four steps later as a drift refusal.
+    """
+    return {"entry_ttl_seconds": ENTRY_TTL_SECONDS,
+            "stop_limit_cap_r": float(STOP_LIMIT_CAP_R),
+            "stop_trigger_method": StopTriggerMethod.MARK.value}
+
+
+register_execution_profile("live", LIVE_EXECUTION_FIELDS,
+                           _live_execution_values)
 
 
 @dataclass
@@ -89,6 +123,10 @@ class LivePosition:
 
 class LiveBroker:
     """Places real orders. Learns their outcome by asking the venue."""
+    #: Which attributes describe this broker in an experiment identity.
+    #: See app/forwardtest/identity.LIVE_EXECUTION_FIELDS.
+    EXECUTION_IDENTITY_FIELDS = LIVE_EXECUTION_FIELDS
+
 
     def __init__(self, client: LiveClient, *, product_ids: dict[str, int],
                  experiment_id: str, tick_size: dict[str, Decimal] | None = None,
@@ -102,6 +140,14 @@ class LiveBroker:
         self.experiment_id = experiment_id
         self.tick_size = dict(tick_size or {})
         self.entry_ttl_seconds = entry_ttl_seconds
+        #: THE EXECUTION SURFACE THIS BROKER ACTUALLY HAS, recorded on the
+        #: instance so the experiment identity reads what the broker received
+        #: rather than a constant someone hoped matched. They were equal only
+        #: by coincidence before: LiveBroker was constructed without
+        #: entry_ttl_seconds at all and fell back to a default that happened to
+        #: be the same 90 the CLI wrote.
+        self.stop_limit_cap_r = float(STOP_LIMIT_CAP_R)
+        self.stop_trigger_method = StopTriggerMethod.MARK.value
         self.exit_on_wpr_band_exit = exit_on_wpr_band_exit
         self.wpr_exit_long_level = wpr_exit_long_level
         self.wpr_exit_short_level = wpr_exit_short_level
@@ -177,7 +223,7 @@ class LiveBroker:
         cap = self._round(
             intent.symbol,
             float(Decimal(str(intent.stop_price))
-                  - Decimal(str(intent.side)) * STOP_LIMIT_CAP_R
+                  - Decimal(str(intent.side)) * Decimal(str(self.stop_limit_cap_r))
                   * Decimal(str(intent.risk_per_unit))))
 
         cid = client_order_id(self.experiment_id, intent.intent_id, "entry")
@@ -197,7 +243,7 @@ class LiveBroker:
             bracket_stop_loss_price=stop,
             bracket_stop_loss_limit_price=cap,
             bracket_take_profit_price=target,
-            stop_trigger_method=StopTriggerMethod.MARK,
+            stop_trigger_method=StopTriggerMethod(self.stop_trigger_method),
             note=intent.signal_key)
 
         # SYMBOL -> the id of the order that opened it. poll() reports a

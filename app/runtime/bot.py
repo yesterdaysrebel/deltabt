@@ -296,14 +296,30 @@ class TradingBot:
                                  f"{self.strategy.version} on {', '.join(self.symbols)}")
         return True
 
+    def _execution_fields(self) -> tuple:
+        """Which attributes describe THIS broker. Paper and live differ."""
+        return getattr(type(self.broker), "EXECUTION_IDENTITY_FIELDS",
+                       EXECUTION_FIELDS)
+
+    def _execution_values(self) -> dict:
+        """Read off the broker, so this cannot report a setting it never got.
+
+        NO getattr DEFAULT. It used to pass None for a missing attribute, which
+        is how a live bot silently claimed max_entry_deviation=None while the
+        CLI wrote 0.25 -- the hashes could never match and tnet could never
+        bind. A broker that does not carry a field it declares is a bug, and
+        should say so here rather than four steps later as a drift refusal.
+        """
+        return {f: (self.settings.risk.slippage_bps if f == "slippage_bps"
+                    else getattr(self.broker, f))
+                for f in self._execution_fields()}
+
     def current_identity(self, experiment_id: str):
         """Identity of the configuration this process is actually running."""
         return build_identity(
             experiment_id, self.strategy, self.settings.risk,
-            execution_params(
-                {f: getattr(self.broker, f, None) if f != "slippage_bps"
-                 else self.settings.risk.slippage_bps for f in EXECUTION_FIELDS},
-                self.symbols),
+            execution_params(self._execution_values(), self.symbols,
+                             fields=self._execution_fields()),
             self.symbols)
 
     async def bind_experiment(self) -> bool:

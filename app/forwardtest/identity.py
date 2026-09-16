@@ -71,8 +71,24 @@ def git_sha() -> tuple[str, bool]:
 EXECUTION_FIELDS = ("entry_ttl_seconds", "max_entry_deviation", "min_fill_rr",
                     "slippage_bps")
 
+#: EXECUTION SURFACES OTHER THAN PAPER, registered by the package that owns
+#: them. app/ MUST NOT import live/ -- tests/live_exec/test_boundary_preserved
+#: calls that the single most important assertion in the repository, because an
+#: app/ that can reach live/ has order-placement capability and every guarantee
+#: in app/safety.py becomes false. So the live surface is DECLARED IN live/ and
+#: registers itself here on import; this module only holds the mechanism.
+_EXTRA_PROFILES: dict = {}
 
-def execution_params(values: dict, symbols) -> dict:
+
+def register_execution_profile(name: str, fields, builder) -> None:
+    """Declare an execution surface. Called from live/, never from app/."""
+    _EXTRA_PROFILES[name] = (tuple(fields), builder)
+
+
+
+
+def execution_params(values: dict, symbols, *,
+                     fields: tuple[str, ...] = EXECUTION_FIELDS) -> dict:
     """THE execution dict. Built here so there is exactly one of it.
 
     It used to be constructed twice -- once in the CLI when an experiment is
@@ -91,11 +107,51 @@ def execution_params(values: dict, symbols) -> dict:
     sides, is what makes "the configuration that ran" checkable at all.
     """
     from app.market_data.market_state import halt_min_run
-    out = {f: values[f] for f in EXECUTION_FIELDS}
+    out = {f: values[f] for f in fields}
     # Sorted so symbol ORDER cannot move the hash, matching how the universe
     # itself is hashed.
     out["halt_min_run"] = {s: halt_min_run(s) for s in sorted(symbols)}
     return out
+
+
+def execution_profile(risk, profile: str | None = None) -> tuple[dict, tuple]:
+    """(values, fields) for the execution surface this process actually has.
+
+    THE CLI SIDE OF THE SAME QUESTION THE BOT ANSWERS OFF ITS BROKER. The bot
+    reads its own broker's attributes, which cannot misreport what that broker
+    received; the CLI has no broker, so it reconstructs the values here. That
+    split has diverged three times, so
+    tests/live/test_execution_identity_profiles.py asserts the two agree for
+    EVERY registered profile rather than trusting that they do.
+
+    WHY THERE IS MORE THAN ONE. max_entry_deviation and min_fill_rr are
+    PaperBroker concepts about a SIMULATED fill. Live, the venue fills you and
+    there is nothing to refuse after the fact -- LiveBroker has neither
+    attribute. The bot read them as None through a getattr default while the
+    CLI wrote the real numbers, so the hashes could never match and the live
+    stack could never bind an experiment:
+
+        execution_hash: 4c2fb0bcda0bb6ea -> f251c6e7a9ceea7a
+
+    Recording gates that never fire would have made that bind, and lied.
+
+    The profile comes from the environment because only the LIVE entry point
+    knows it is live; live/__main__.py sets it for the bot and for the CLI,
+    exactly as it sets the venue universe. A paper host sets nothing, gets the
+    paper profile, and every existing experiment keeps its hash.
+    """
+    prof = profile or os.environ.get("DELTABOT_EXECUTION_PROFILE", "paper")
+    if prof == "paper":
+        from app.execution.paper_broker import broker_params
+        return ({**broker_params(risk), "slippage_bps": risk.slippage_bps},
+                EXECUTION_FIELDS)
+    if prof in _EXTRA_PROFILES:
+        fields, builder = _EXTRA_PROFILES[prof]
+        return (builder(risk), fields)
+    raise ValueError(
+        f"unknown execution profile {prof!r}. Registered: "
+        f"{['paper', *sorted(_EXTRA_PROFILES)]}. A profile is registered by "
+        f"importing the package that owns it.")
 
 
 @dataclass(frozen=True)

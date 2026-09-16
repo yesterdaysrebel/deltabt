@@ -56,6 +56,7 @@ from app.execution.order_state import (
 )
 from app.persistence.models import new_uid
 from app.portfolio.funding import settlements_for_position
+from app.forwardtest.identity import EXECUTION_FIELDS
 from deltabt.costs import SymbolCosts
 
 log = logging.getLogger(__name__)
@@ -281,6 +282,11 @@ def broker_params(risk) -> dict:
 
 class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
+
+    #: Which attributes describe this broker in an experiment identity. The
+    #: live path declares a DIFFERENT set, because it has a different surface;
+    #: see app/forwardtest/identity.LIVE_EXECUTION_FIELDS.
+    EXECUTION_IDENTITY_FIELDS = EXECUTION_FIELDS
 
     def __init__(self, costs: dict[str, SymbolCosts], *, starting_equity: float,
                  slippage_bps: float = 2.0, entry_ttl_seconds: int = 90,
