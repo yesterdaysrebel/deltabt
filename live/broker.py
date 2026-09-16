@@ -499,6 +499,31 @@ class LiveBroker:
                 out["take_profit"].append(row)
         return out
 
+    def _position_key(self, pos: LivePosition) -> str:
+        """What makes THIS position's exit id different from every other's.
+
+        ADDED 2026-09-16. The exit id was keyed on `pos.position_uid or
+        symbol`, and Delta's margined positions carry no uid, so it was keyed
+        on the symbol: tnet's five SOLUSD entry_deviation closes that evening
+        all went out as cid 727639a06bd897e7. The venue accepted each one, but
+        client.place_order resolves a timed-out or 5xx write by looking its cid
+        up -- and would have found the PREVIOUS, filled close, and reported a
+        close that never landed as done, on a position being flattened because
+        it was unsafe.
+
+        In order of preference: the entry order that opened it (known for any
+        position this process opened), the venue's own uid, and otherwise the
+        venue's facts about it -- enough to tell one recovered position from
+        the last one closed on that symbol, and stable across retries.
+        """
+        entry_cid = self._entry_cid.get(pos.symbol)
+        if entry_cid:
+            return entry_cid
+        if pos.position_uid:
+            return pos.position_uid
+        return (f"{pos.symbol}:{pos.side}:{pos.contracts}:"
+                f"{pos.entry_price!r}")
+
     def close_position(self, symbol: str, reason: str) -> dict:
         """Flatten one position at market, reduce-only.
 
@@ -509,7 +534,7 @@ class LiveBroker:
         pos = self.positions.get(symbol)
         if pos is None or not pos.is_open():
             raise VenueError(f"no open position in {symbol} to close")
-        cid = client_order_id(self.experiment_id, pos.position_uid or symbol,
+        cid = client_order_id(self.experiment_id, self._position_key(pos),
                               f"exit:{reason}")
         order = OrderRequest(
             product_id=pos.product_id,
