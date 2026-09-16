@@ -161,9 +161,74 @@ class LiveTradingBot(TradingBot):
         if not await self.reconcile_with_venue(positions):
             return
 
+        await self._release_orphaned_entries()
+
         self._state_loaded = True
         await self._event("recovery", "STATE_RESTORED", payload={
             "open_positions": len(positions), "equity": self.state.equity})
+
+    async def _release_orphaned_entries(self) -> None:
+        """Free exposure slots held by entry orders a previous process owned.
+
+        WHY THIS EXISTS. An entry order row is the exposure reservation, and
+        the process that made it is the only one that knew how to close it
+        out: LiveBroker's `_pending` map lives in memory. When that process
+        dies before the order resolves, the row stays WORKING forever and holds
+        a slot nobody can release. On 2026-09-16 six such rows filled tnet's
+        six slots and it refused every entry for hours, reporting healthy.
+        (Those six had a second cause -- a TypeError that stopped any order
+        reaching the venue -- but any restart can orphan a row.)
+
+        WHEN A ROW IS RELEASED, AND WHEN IT IS NOT. This runs after
+        reconcile_with_venue() has confirmed the ledger's positions match the
+        venue. A row is released only if the venue shows NO open order and NO
+        position on its symbol, because then no position can come of it.
+        Anything on the symbol at the venue leaves the row alone and says so:
+        this process cannot tell which order it was, and freeing the slot
+        would let a second entry open beside something real.
+
+        A venue read failure skips the sweep entirely. The bot then stays as
+        blocked as it was, which is visible; guessing is not.
+        """
+        pending = await self.repo.load_reserving_entry_orders()
+        if not pending:
+            return
+        try:
+            open_orders = self.client.get_open_orders()
+            venue_positions = self.client.get_positions()
+        except VenueError as exc:
+            log.error("could not read the venue to check %d orphaned entry "
+                      "order(s); leaving them held: %s", len(pending), exc)
+            return
+
+        def _sym(row) -> str:
+            pid = row.get("product_id")
+            return (row.get("product_symbol")
+                    or self._symbol_for.get(int(pid) if pid else -1, ""))
+
+        busy = {_sym(r) for r in open_orders}
+        busy |= {_sym(r) for r in venue_positions
+                 if int(round(float(r.get("size") or 0))) != 0}
+
+        for order in pending:
+            if order.symbol in busy:
+                log.warning("entry order %s on %s is unresolved but the venue "
+                            "has activity on that symbol; leaving its slot "
+                            "held", order.order_uid, order.symbol)
+                await self._event("recovery", "ORPHANED_ENTRY_HELD",
+                                  symbol=order.symbol, severity="WARNING",
+                                  payload={"order_uid": order.order_uid,
+                                           "instance_uid": order.instance_uid})
+                continue
+            await self.repo.update_order_status(order.order_uid, "CANCELLED")
+            log.warning("released orphaned entry order %s on %s from instance "
+                        "%s: nothing at the venue on that symbol",
+                        order.order_uid, order.symbol, order.instance_uid)
+            await self._event("recovery", "ORPHANED_ENTRY_RELEASED",
+                              symbol=order.symbol, severity="WARNING",
+                              payload={"order_uid": order.order_uid,
+                                       "instance_uid": order.instance_uid,
+                                       "status_was": order.status})
 
     async def reconcile_with_venue(self, ledger_positions) -> bool:
         """True when the venue and our records agree. Sets recovery_error if not.
@@ -251,6 +316,23 @@ class LiveTradingBot(TradingBot):
                               symbol=symbol, severity="CRITICAL",
                               payload={"position_uid": cid})
             return
+
+        # THE ENTRY ORDER ROW IS THE EXPOSURE RESERVATION, and it has to learn
+        # it filled. Recording the POSITION alone left the row WORKING with no
+        # position_uid, so effective_exposure() counted this trade TWICE while
+        # it was open and ONCE for ever after it closed -- a permanent slot
+        # leak per trade, and a bot that blocks itself after max_open_positions
+        # round trips. PaperBroker closes the row through drain_broker_events;
+        # the live path records fills here instead, so it has to here too.
+        order_uid = intent.get("order_uid")
+        if order_uid:
+            await self.repo.record_order_fill(
+                order_uid, filled_price=record.entry_price,
+                filled_exchange_ts=record.opened_at, position_uid=cid)
+            await self.repo.update_order_status(order_uid, "FILLED")
+        else:
+            log.error("position %s opened with no order row to close out; its "
+                      "exposure slot stays held", symbol)
         self.state.trades_today += 1
         await self._save_state()
         await self.notifier.send(

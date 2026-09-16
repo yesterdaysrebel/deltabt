@@ -108,6 +108,11 @@ class Repository(ABC):
     async def effective_exposure(self) -> int:
         """Open positions plus entry orders that can still become one."""
     @abstractmethod
+    async def load_reserving_entry_orders(self) -> list[OrderRecord]:
+        """The entry orders effective_exposure() counts: not terminal, no
+        position yet. The SAME predicate, so anything that clears a row from
+        this list frees exactly one slot and nothing else."""
+    @abstractmethod
     async def update_order_status(self, order_uid: str, status: str) -> None: ...
     @abstractmethod
     async def resize_order(self, order_uid: str, quantity: int) -> None:
@@ -285,6 +290,11 @@ class InMemoryRepository(Repository):
             if o.purpose == "entry" and o.status in _RESERVING_SQL
             and not o.position_uid)
         return open_pos + reserving
+
+    async def load_reserving_entry_orders(self) -> list[OrderRecord]:
+        return [o for o in self._s["orders"].values()
+                if o.purpose == "entry" and o.status in _RESERVING_SQL
+                and not o.position_uid]
 
     async def reserve_entry_slot(self, rec: OrderRecord,
                                  max_open_positions: int) -> bool:
@@ -715,6 +725,34 @@ class PostgresRepository(Repository):
         async with self._pool.acquire() as con:
             return int(await con.fetchval(self._EXPOSURE_SQL,
                                           list(_TERMINAL_SQL)))
+
+    async def load_reserving_entry_orders(self) -> list[OrderRecord]:
+        # The second half of _EXPOSURE_SQL, row by row. Kept textually beside
+        # it so the two cannot drift: a sweep that listed a different set than
+        # the gate counts would free slots it does not hold, or miss the ones
+        # it does.
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                """SELECT order_uid, idempotency_key, signal_key, instance_uid,
+                          symbol, side, order_type, purpose, quantity,
+                          limit_price, status, equity_before, risk_amount,
+                          position_uid
+                     FROM paper_orders
+                    WHERE purpose = 'entry'
+                      AND status <> ALL($1::text[])
+                      AND position_uid IS NULL
+                    ORDER BY created_at""", list(_TERMINAL_SQL))
+        return [OrderRecord(
+            order_uid=r["order_uid"], idempotency_key=r["idempotency_key"],
+            signal_key=r["signal_key"], instance_uid=r["instance_uid"],
+            symbol=r["symbol"], side=int(r["side"]),
+            order_type=r["order_type"], purpose=r["purpose"],
+            quantity=int(r["quantity"]),
+            limit_price=(float(r["limit_price"])
+                         if r["limit_price"] is not None else None),
+            status=r["status"], equity_before=float(r["equity_before"]),
+            risk_amount=float(r["risk_amount"]),
+            position_uid=r["position_uid"]) for r in rows]
 
     async def reserve_entry_slot(self, r: OrderRecord,
                                  max_open_positions: int) -> bool:

@@ -24,6 +24,12 @@ class FakeRepo:
     async def load_open_positions(self):
         return self._positions
 
+    async def load_reserving_entry_orders(self):
+        # recover() now sweeps orphaned entry orders after reconciling. These
+        # tests are about reconciliation, so there are none to sweep; the
+        # sweep has its own tests in test_live_order_placement.py.
+        return []
+
 
 class FakeNotifier:
     def __init__(self):

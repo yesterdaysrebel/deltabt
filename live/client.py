@@ -51,6 +51,26 @@ REQUESTS_PER_SECOND = 4.0
 class VenueError(RuntimeError):
     """Base for anything the venue told us, or failed to tell us."""
 
+    #: WHETHER A POSITION COULD STILL RESULT FROM THE ORDER THIS CONCERNS.
+    #:
+    #: Not "was anything sent": an IOC entry that reached the venue and
+    #: died unfilled was sent, and still cannot open anything. The runtime
+    #: only needs to know whether exposure can appear later.
+    #:
+    #: The runtime reserves an exposure slot in the database BEFORE it submits,
+    #: and has to decide what to do with that slot when submission raises. It
+    #: may release it only when it KNOWS nothing was placed -- releasing on an
+    #: order that did land lets a second entry open beside it.
+    #:
+    #: It is an attribute rather than an isinstance check because the runtime
+    #: lives in app/, and app/ must never import live/
+    #: (tests/live_exec/test_boundary_preserved.py). So the runtime reads this
+    #: with getattr, and anything that does not declare it -- a plain
+    #: exception, a bug -- is treated as UNKNOWN. False is the safe default:
+    #: a wrongly held slot costs one trade, a wrongly released one can double
+    #: a position.
+    no_position_can_result = False
+
 
 class VenueRejected(VenueError):
     """The venue refused the request and we know it did not act on it.
@@ -59,6 +79,9 @@ class VenueRejected(VenueError):
     and declined -- bad signature, insufficient margin, reduce-only violation,
     size below the lot floor. Retrying sends the same rejection again.
     """
+
+    #: The venue answered and declined, so no position can come of it.
+    no_position_can_result = True
 
     def __init__(self, status: int, path: str, payload: Any) -> None:
         self.status, self.path, self.payload = status, path, payload
@@ -80,6 +103,10 @@ class AmbiguousWrite(VenueError):
     assume either outcome: the correct response is to stop trading and
     reconcile against the venue before doing anything else.
     """
+
+    #: Stated explicitly rather than inherited, because this is the case the
+    #: whole attribute exists for: the order may well be live.
+    no_position_can_result = False
 
 
 @dataclass

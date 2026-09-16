@@ -47,7 +47,7 @@ from decimal import Decimal
 from math import isfinite
 from typing import Any
 
-from live.client import AmbiguousWrite, LiveClient, VenueError
+from live.client import AmbiguousWrite, LiveClient, VenueError, VenueRejected
 from live.guards import KILL_SWITCH_PATH, kill_switch_engaged
 from app.execution.paper_broker import ENTRY_TTL_SECONDS
 from app.forwardtest.identity import register_execution_profile
@@ -55,6 +55,53 @@ from live.orders import (STOP_LIMIT_CAP_R, OrderRequest, OrderType, Side,
                          StopTriggerMethod, TimeInForce, client_order_id)
 
 log = logging.getLogger(__name__)
+
+
+class OpeningRefused(VenueError):
+    """This broker declined to send an order. Nothing left the process.
+
+    Raised for the checks that run BEFORE the venue is contacted -- the kill
+    switch, a suspended symbol, an unknown product. It stays a VenueError so
+    every existing `pytest.raises(VenueError)` and every caller that catches
+    the base still sees it; it only adds that the outcome is KNOWN, so the
+    runtime may release the exposure slot it reserved for this order.
+    """
+
+    no_position_can_result = True
+
+
+class EntryDidNotFill(VenueError):
+    """A market IOC entry reached the venue and died with nothing filled.
+
+    Unlike OpeningRefused an order WAS sent -- but an IOC cannot rest, so once
+    the venue reports it final and unfilled no position can come of it, and
+    the exposure slot reserved for it must be released or it is held forever.
+    poll() will never see a fill to close it out, and expire_stale_entries only
+    looks at orders still open.
+    """
+
+    no_position_can_result = True
+
+
+#: Order states the venue will not move out of. Anything else -- "open",
+#: "pending", or a string not seen before -- is treated as still able to fill,
+#: so the slot stays held. A wrongly held slot costs one trade; a wrongly
+#: released one can open a second position beside a live one.
+_FINAL_STATES = frozenset({"closed", "cancelled"})
+
+
+def _died_unfilled(row) -> bool:
+    """True only when the venue says the order is final AND filled nothing."""
+    if not isinstance(row, dict):
+        return False
+    if str(row.get("state") or "").lower() not in _FINAL_STATES:
+        return False
+    try:
+        size = int(round(float(row.get("size") or 0)))
+        unfilled = int(round(float(row.get("unfilled_size") or 0)))
+    except (TypeError, ValueError):
+        return False              # cannot tell, so do not claim it
+    return size > 0 and unfilled >= size
 
 
 #: THE LIVE EXECUTION SURFACE, declared where it is implemented.
@@ -193,12 +240,26 @@ class LiveBroker:
             return d
         return (d / tick).to_integral_value() * tick
 
-    def submit_order(self, intent, *, now: int | None = None) -> dict:
+    def submit_order(self, intent, *, now: int | None = None,
+                     order_uid: str | None = None) -> dict:
         """Send one risk-approved intent to the venue, with its brackets.
 
         Returns the venue's order row. Raises rather than returning a partial
         truth: an intent whose outcome is unknown must reach the caller as an
         exception, because the correct response is to stop and reconcile.
+
+        `order_uid` IS THE RUNTIME'S DATABASE ROW for this order, and the
+        runtime has always passed it -- PaperBroker takes it. This broker did
+        not, so every live entry raised TypeError after its exposure slot was
+        reserved and before anything reached the venue. tnet leaked all six
+        slots that way on 2026-09-16 and then refused every entry for hours
+        while reporting healthy. It is recorded beside the venue's
+        client_order_id, which stays derived from the intent so a lookup after
+        an ambiguous write still finds it; the two ids are otherwise unrelated,
+        and this is the only place that links them.
+
+        Raised exceptions say whether anything could exist at the venue, via
+        `no_position_can_result` -- see live.client.VenueError.
         """
         # THE LAST GATE BEFORE AN ORDER LEAVES. Checked per order rather than
         # at start-up, because the point of a kill switch is the trade that
@@ -206,14 +267,14 @@ class LiveBroker:
         # keep their exchange-held brackets, which is the protection that
         # matters once something has gone wrong enough to reach for this.
         if kill_switch_engaged(self.kill_switch_path):
-            raise VenueError(
+            raise OpeningRefused(
                 f"kill switch engaged ({self.kill_switch_path or KILL_SWITCH_PATH}); "
                 f"not opening {intent.symbol}")
         if intent.symbol in self._suspended:
-            raise VenueError(f"{intent.symbol} is suspended; not opening")
+            raise OpeningRefused(f"{intent.symbol} is suspended; not opening")
         pid = self.product_ids.get(intent.symbol)
         if pid is None:
-            raise VenueError(f"no product_id known for {intent.symbol}")
+            raise OpeningRefused(f"no product_id known for {intent.symbol}")
 
         side = Side.for_position(intent.side)
         stop = self._round(intent.symbol, intent.stop_price)
@@ -251,6 +312,17 @@ class LiveBroker:
         # link back to what we intended when the fill is finally seen.
         self._entry_cid[intent.symbol] = cid
         self._pending[cid] = {
+            "order_uid": order_uid,
+            # live.ledger.open_record falls back to these. `quantity` is read
+            # whenever the venue's order row reports no filled size, and was
+            # absent, so that path raised KeyError inside the poll loop -- which
+            # swallows it -- leaving a real position unrecorded.
+            "quantity": int(intent.quantity),
+            # OPTIONAL, as open_record already treats it (`.get`): it only
+            # refines the recorded slippage. getattr because not every caller
+            # builds a full ApprovedOrderIntent -- quantity above is required
+            # and already used for the order size, this is not.
+            "entry_reference": getattr(intent, "entry_reference", None),
             "intent_id": intent.intent_id,
             "signal_key": intent.signal_key,
             "symbol": intent.symbol,
@@ -263,7 +335,29 @@ class LiveBroker:
         log.info("submitting %s %s x%d %s (stop %s cap %s target %s)",
                  intent.symbol, side.value, intent.quantity, intent.order_type,
                  stop, cap, target)
-        return self.client.place_order(order)
+        try:
+            row = self.client.place_order(order)
+        except VenueRejected:
+            # The venue declined, so this order will never produce a fill for
+            # poll() to attribute. The bookkeeping above was written BEFORE
+            # sending on purpose -- an ambiguous write may still land and must
+            # be attributable -- so a definite refusal is the one case that has
+            # to take it back out, or the next fill on this symbol is linked to
+            # an order that does not exist.
+            if self._entry_cid.get(intent.symbol) == cid:
+                del self._entry_cid[intent.symbol]
+            self._pending.pop(cid, None)
+            raise
+        if intent.order_type == "market" and _died_unfilled(row):
+            if self._entry_cid.get(intent.symbol) == cid:
+                del self._entry_cid[intent.symbol]
+            self._pending.pop(cid, None)
+            log.warning("%s IOC entry %s was not filled (state %s); nothing "
+                        "opened", intent.symbol, cid, row.get("state"))
+            raise EntryDidNotFill(
+                f"{intent.symbol} market entry {cid} ended {row.get('state')} "
+                f"with nothing filled")
+        return row
 
     def close_position(self, symbol: str, reason: str) -> dict:
         """Flatten one position at market, reduce-only.
@@ -378,8 +472,26 @@ class LiveBroker:
             except VenueError as exc:
                 log.error("could not cancel stale entry %s: %s", row.get("id"), exc)
                 continue
+            # THE RUNTIME PERSISTS THIS BY order_uid, and indexes the key
+            # unconditionally. It used to be absent, which was harmless only
+            # because no live order had ever reached the venue; the first stale
+            # limit entry would have raised KeyError in the bar loop after
+            # already cancelling at the venue, losing the status update and
+            # leaking the slot. Unknown after a restart -- `_pending` is memory
+            # -- in which case the event is not emitted rather than emitted
+            # half-formed; the startup orphan sweep owns that case.
+            cid = row.get("client_order_id")
+            order_uid = (self._pending.get(cid) or {}).get("order_uid")
+            if not order_uid:
+                log.warning("cancelled stale entry %s (cid %s) with no known "
+                            "order row; not reporting it", row.get("id"), cid)
+                continue
+            self._pending.pop(cid, None)
+            if self._entry_cid.get(sym) == cid:
+                del self._entry_cid[sym]
             events.append(BrokerEvent("ORDER_CANCELLED", sym,
-                                      {"order_id": row.get("id"), "age": age}))
+                                      {"order_uid": order_uid,
+                                       "order_id": row.get("id"), "age": age}))
         return events
 
     # -- learning what happened ---------------------------------------------
