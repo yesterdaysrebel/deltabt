@@ -117,28 +117,25 @@ def test_stop_still_fails_on_a_real_error():
 
 
 
-def test_retire_stops_the_service_before_running_the_cli():
-    """Otherwise the running bot's advisory lock makes retire impossible.
+def test_retire_leaves_the_service_running():
+    """Retire must NOT take the bot down to run a database update.
 
-    `cli` runs a SECOND bot instance, and the bot holds a Postgres advisory
-    lock so that only one ever runs. With the service up that second instance
-    exits with "another bot instance holds the advisory lock; refusing to
-    start" -- which is NOT the benign "no experiment is RUNNING" the stop
-    branch matches, so it falls through to "retire FAILED" and the deploy
-    stops.
+    This asserts the opposite of what it did on 2026-09-15, and the reversal
+    is the point. The observation then was correct -- `cli` really did start a
+    second bot -- but the cause was diagnosed as advisory-lock contention. It
+    was not. live/__main__.py discarded argv instead of dispatching to the
+    CLI, so `forward-test stop` had never been a CLI call at all; stopping the
+    service merely cleared the lock and let that second bot start cleanly and
+    run forever. On 2026-09-16 the tnet retire hung for 40 minutes with the
+    real bot stopped, and the deploy timed out behind it.
 
-    `start` has always stopped the service first. `stop` never did, and the
-    asymmetry only surfaces on a host whose bot is UP and whose retire actually
-    reaches the CLI -- which is exactly the tnet stack on 2026-09-15: healthy
-    bot, nothing to retire, and binding an experiment impossible because the
-    step that runs first could not run at all.
+    With the entry point dispatching, the CLI exits in about a second, and the
+    bot has no reason to be stopped. `start` still stops it, legitimately: an
+    unbound bot has to restart to pick up the experiment it was just given.
     """
     doc = (ROOT / "infra/terraform/ec2.tf").read_text()
     stop = doc[doc.index("[experiment] retiring any running experiment"):]
     stop = stop[:stop.index("            start)")]
-    assert "systemctl stop deltabt.service" in stop, (
-        "retire runs the CLI while the bot still holds the advisory lock")
-    # And it must come back up: this document is also run by hand to retire a
-    # run, where leaving the bot down would be worse than the bug being fixed.
-    assert "systemctl start deltabt.service" in stop, (
-        "retire stops the bot and never restarts it")
+    assert "systemctl stop deltabt.service" not in stop, (
+        "retire stops the bot; a CLI that hangs then leaves it down, which is "
+        "exactly the 2026-09-16 tnet outage")

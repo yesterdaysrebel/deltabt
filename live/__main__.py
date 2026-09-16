@@ -29,6 +29,7 @@ import contextlib
 import logging
 import signal
 import sys
+from dataclasses import replace
 
 import uvicorn
 
@@ -72,6 +73,16 @@ async def main() -> int:
     # rather than trading a smaller universe than the run claims.
     symbols = symbols_for(venue)
     products = resolve_products(client, symbols)
+
+    # AND IT HAS TO REACH THE BOT. TradingBot reads settings.symbols, so
+    # resolving the venue universe here and threading it only into costs,
+    # product ids and tick sizes left the two halves disagreeing: the tnet
+    # host inherits DELTABOT_SYMBOLS=BEATUSD,... from the shared paper
+    # user_data, so it warmed and subscribed to the PAPER universe while
+    # holding testnet ids for BTC/ETH/SOL. Nothing caught it -- every health
+    # check was green -- and the first entry would have died in the broker
+    # with "no product_id known for BEATUSD". The venue wins, always.
+    settings = replace(settings, symbols=tuple(symbols))
 
     strategy = resolve_strategy()
     log.info("starting", extra={"venue": venue, "symbols": list(symbols),
@@ -129,4 +140,15 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    # SUBCOMMANDS GO THROUGH THE CLI; a bare `python -m live` runs the bot.
+    # This block is not decoration -- without it argv is silently DISCARDED
+    # and `python -m live forward-test stop ...` starts a full trading bot
+    # that never exits. On 2026-09-16 that hung the tnet retire step for 40
+    # minutes while the real bot sat stopped, because the experiment document
+    # stops the service before calling the CLI. The paper entry point has had
+    # this dispatch all along; the live one was written to the same shape and
+    # this was the piece that got left out.
+    if len(sys.argv) > 1:
+        from app.cli import main as cli_main
+        sys.exit(cli_main(sys.argv[1:]))
     sys.exit(asyncio.run(main()))
