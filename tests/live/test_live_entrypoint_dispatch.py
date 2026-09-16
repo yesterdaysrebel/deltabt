@@ -112,3 +112,54 @@ def test_source_applies_the_override_before_constructing_the_bot():
     assert override < construct, (
         "settings.symbols is overridden after the bot is built, so the bot "
         "still holds the un-overridden universe")
+
+
+class TestCliSeesTheVenueUniverse:
+    """The CLI registers the experiment the bot must then match.
+
+    They derive the universe from different places, and on a live host they
+    disagreed: DELTABOT_SYMBOLS is inherited from the shared PAPER user_data,
+    so `forward-test start` wrote down the paper universe and the bot -- which
+    takes the venue's -- refused the experiment on drift and crash-looped.
+    """
+
+    def test_dispatch_overrides_the_env_with_the_venue_universe(self, monkeypatch):
+        import live.__main__ as entry
+        from live.config import VENUE_SYMBOLS
+
+        monkeypatch.setenv("DELTABOT_SYMBOLS", "BEATUSD,AKEUSD,BANKUSD,WIFUSD")
+        monkeypatch.setenv("DELTA_ENV", "testnet")
+
+        seen = {}
+
+        def fake_cli(argv):
+            from app.config.settings import Settings
+            seen["symbols"] = Settings.from_env().symbols
+            seen["argv"] = argv
+            return 0
+
+        monkeypatch.setattr("app.cli.main", fake_cli)
+        assert entry.cli_entry(["forward-test", "status"]) == 0
+        assert seen["argv"] == ["forward-test", "status"]
+        assert seen["symbols"] == tuple(VENUE_SYMBOLS["testnet"]), (
+            "the CLI built Settings from the paper universe, so any experiment "
+            "it registers names symbols the bot will never trade")
+
+    def test_the_cli_and_the_bot_agree_on_the_universe(self, monkeypatch):
+        """Stated as the invariant that actually matters, not as a detail."""
+        import live.__main__ as entry
+        from app.config.settings import Settings
+        from live.config import symbols_for
+
+        monkeypatch.setenv("DELTABOT_SYMBOLS", "BEATUSD,AKEUSD")
+        for venue in ("testnet", "mainnet"):
+            monkeypatch.setenv("DELTA_ENV", venue)
+            captured = {}
+            monkeypatch.setattr(
+                "app.cli.main",
+                lambda argv, c=captured: c.setdefault(
+                    "cli", Settings.from_env().symbols) and 0 or 0)
+            entry.cli_entry(["forward-test", "status"])
+            # What main() would hand the bot, from live/__main__.py.
+            bot = tuple(symbols_for(venue))
+            assert captured["cli"] == bot, venue
