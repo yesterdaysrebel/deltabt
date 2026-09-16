@@ -97,6 +97,13 @@ class FakeVenue:
                    "contract_value": "0.001"}
     available_usd = 10_000.0
 
+    #: The touch every market entry meets (LiveBroker._refuse_if_book_dislocated).
+    #: Defaults to the reference this file's intents use: a healthy book.
+    touch: float = 75_000.0
+
+    def get_ticker(self, symbol):
+        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)}}
+
     def get_product(self, symbol):
         return dict(self.margin_spec)
 

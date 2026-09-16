@@ -44,6 +44,13 @@ class FakeClient:
     # Leverage is chosen and confirmed per entry since 2026-09-16.
     leverage: dict = {}
 
+    #: The touch every market entry meets (LiveBroker._refuse_if_book_dislocated).
+    #: Defaults to the reference this file's intents use: a healthy book.
+    touch: float = 0.0929214 + 0.0097
+
+    def get_ticker(self, symbol):
+        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)}}
+
     def get_product(self, symbol):
         return {"initial_margin": "2", "maintenance_margin": "1",
                 "contract_value": "1"}
@@ -122,6 +129,7 @@ def test_the_stop_cap_sits_beyond_the_stop_in_the_losing_direction(side, cmp):
     backwards puts the cap between entry and stop, where it would refuse every
     fill and leave the position unprotected."""
     b, client = a_broker()
+    client.touch = FakeIntent(side=side).entry_reference
     b.submit_order(FakeIntent(side=side))
     p = client.placed[0].to_payload()
     stop = Decimal(p["bracket_stop_loss_price"])

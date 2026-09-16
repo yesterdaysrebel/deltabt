@@ -69,6 +69,7 @@ def eth_short_intent(bot):
     object.__setattr__(i, "stop_price", 2416.2)
     object.__setattr__(i, "risk_per_unit", 12.8)
     object.__setattr__(i, "quantity", 392)
+    bot.client.touch = 2403.4               # a book at the reference
     return exp, decision
 
 

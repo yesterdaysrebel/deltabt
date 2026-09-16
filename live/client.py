@@ -373,6 +373,10 @@ class LiveClient:
     # while the strategy's stop sat 0.53-0.66% away. The venue closed the
     # position at 2415.25; its stop at 2416.2 never had a chance.
 
+    def get_ticker(self, symbol: str) -> dict:
+        """One product's ticker: mark, spot, and `quotes` (best_bid/best_ask)."""
+        return self._read(f"/v2/tickers/{symbol}") or {}
+
     def get_product(self, symbol: str) -> dict:
         """One product's contract spec: margins, contract_value, max leverage."""
         return self._read(f"/v2/products/{symbol}") or {}
