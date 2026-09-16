@@ -293,6 +293,53 @@ class LiveBroker:
             self._margin_specs[symbol] = (im, mm, cv)
         return self._margin_specs[symbol]
 
+    def _refuse_if_book_dislocated(self, intent) -> None:
+        """Refuse a market entry the book cannot fill near its reference.
+
+        ADDED 2026-09-16. tnet's SOLUSD book sat ~1.4% above the price the
+        signals are computed from. Every SOL entry filled 1.2-1.5R from its
+        reference, and _flatten_if_entry_invalid closed it seconds later: five
+        round trips in forty minutes, each paying the spread and fees to learn
+        what the book already showed before the order was sent.
+
+        This is the same limit, applied to the touch the order will meet --
+        the best ask for a buy, the best bid for a sell -- and the same
+        beyond-the-stop rule. It cannot replace the fill check: a market order
+        walks the book past the touch. It only stops sending orders that are
+        certain to be closed.
+
+        Fails closed: a ticker that cannot be read, or that has no quote on
+        the side the order needs, refuses the entry. Nothing has been sent, so
+        the runtime releases the exposure slot. Limit entries are not checked:
+        their price already bounds the fill.
+        """
+        if intent.order_type != "market":
+            return
+        symbol = intent.symbol
+        ref = getattr(intent, "entry_reference", None)
+        rpu = float(getattr(intent, "risk_per_unit", 0) or 0)
+        if not ref or rpu <= 0:
+            raise OpeningRefused(f"{symbol}: no entry reference or risk per unit "
+                                 f"to check the book against")
+        ref = float(ref)
+        side = "best_ask" if intent.side > 0 else "best_bid"
+        try:
+            quotes = (self.client.get_ticker(symbol) or {}).get("quotes") or {}
+            touch = float(quotes.get(side) or 0)
+        except (VenueError, TypeError, ValueError) as exc:
+            raise OpeningRefused(f"{symbol}: cannot read the book ({exc})") from exc
+        if touch <= 0:
+            raise OpeningRefused(f"{symbol}: the book has no {side}; not opening")
+
+        stop = float(intent.stop_price)
+        beyond = (intent.side > 0 and touch <= stop) or (intent.side < 0 and touch >= stop)
+        dev = abs(touch - ref) / rpu
+        limit = float(self.max_entry_deviation or 0)
+        if beyond or (limit > 0 and dev > limit):
+            raise OpeningRefused(
+                f"{symbol}: book {side} {touch:g} is {dev:.2f}R from reference "
+                f"{ref:g} (limit {limit:g}R{', beyond the stop' if beyond else ''})")
+
     def _set_safe_leverage(self, intent, pid: int) -> int:
         """Choose, set and confirm the leverage for this entry, or refuse it.
 
@@ -390,6 +437,7 @@ class LiveBroker:
         pid = self.product_ids.get(intent.symbol)
         if pid is None:
             raise OpeningRefused(f"no product_id known for {intent.symbol}")
+        self._refuse_if_book_dislocated(intent)
         leverage = self._set_safe_leverage(intent, pid)
 
         side = Side.for_position(intent.side)
