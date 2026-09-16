@@ -264,6 +264,28 @@ resource "aws_iam_role_policy" "live_ci" {
           for k, s in local.stacks : aws_ssm_parameter.image_tag[k].arn if s.live
         ]
       },
+      {
+        # WHICH VENUE A HOST IS ON, so the deploy pipeline can refuse to roll
+        # one that is not its own.
+        #
+        # var.live_venue is a SINGLE GLOBAL, not a per-stack property, so the
+        # stack named `tnet` becomes a MAINNET bot the moment somebody edits it
+        # and nothing in the stack table looks different. deploy-testnet.yml
+        # and deploy-mainnet.yml therefore check this parameter -- the one
+        # run_live.sh itself reads -- BEFORE touching the host.
+        #
+        # The grant was missing when that check shipped on 2026-09-16 and the
+        # first testnet dispatch failed on it. It failed CLOSED, which is the
+        # designed behaviour: an unreadable venue is refused, not assumed, so
+        # a bound experiment was never at risk. Read-only, and the value is
+        # not a secret -- it is the literal string "testnet" or "mainnet".
+        Sid    = "ReadWhichVenueAHostIsOn"
+        Effect = "Allow"
+        Action = ["ssm:GetParameter"]
+        Resource = [
+          for k, s in local.stacks : aws_ssm_parameter.live_venue[k].arn if s.live
+        ]
+      },
     ]
   })
 }
