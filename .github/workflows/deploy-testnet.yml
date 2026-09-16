@@ -10,10 +10,10 @@ name: deploy testnet
 # THIS WORKFLOW CAN PLACE REAL ORDERS. On testnet that is play money, and the
 # only thing making it play money is the venue parameter on the host.
 # var.live_venue is a SINGLE GLOBAL, not a per-stack property, so the stack
-# named `tnet` becomes a mainnet bot the moment somebody edits it and nothing
+# named `tnet` becomes a prod bot the moment somebody edits it and nothing
 # in the stack table would look different. _roll.yml therefore reads the venue
 # from the HOST's own parameter and refuses anything that is not testnet,
-# BEFORE it touches the host. Mainnet has its own file and its own environment.
+# BEFORE it touches the host. Prod has its own file and its own environment.
 #
 # The roll sequence is shared with paper; see the note at the top of _roll.yml.
 
@@ -375,7 +375,7 @@ jobs:
       image_tag: ${{ github.event.inputs.image_tag || needs['build-live'].outputs.tag }}
       # A LITERAL, DELIBERATELY -- see the note in deploy-paper.yml. On testnet
       # this environment has no required reviewer: it is play money and an
-      # unattended roll is fine. Mainnet uses a different one.
+      # unattended roll is fine. Prod uses a different one.
       environment: live-deploy
       ecr_repository: ${{ needs['build-live'].outputs.repository }}
       venue: testnet

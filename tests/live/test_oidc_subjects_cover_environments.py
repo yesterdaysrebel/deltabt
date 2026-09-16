@@ -79,11 +79,11 @@ def test_the_scan_finds_the_environments_that_are_actually_there():
     # empty this test.
     assert "paper-deploy" in names, found
     assert "live-deploy" in names, found
-    # Added with the split. `mainnet-deploy` is declared by a workflow nothing
+    # Added with the split. `prod-deploy` is declared by a workflow nothing
     # has run yet, which is precisely when a missing trust subject goes
     # unnoticed -- the 2026-08-19 failure hid behind paths-ignore for three
     # commits for the same reason.
-    assert "mainnet-deploy" in names, found
+    assert "prod-deploy" in names, found
 
 
 def test_a_reusable_environment_is_fed_a_literal():

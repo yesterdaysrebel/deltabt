@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from live.client import MAINNET, TESTNET
+from live.client import PROD, TESTNET
 from live.config import (ConfigError, client_from_env, product_ids,
                          resolve_products, tick_sizes)
 
@@ -38,14 +38,14 @@ class FakeClient:
 # -- the switch --------------------------------------------------------------
 
 def test_testnet_is_the_default():
-    """Reaching mainnet must never be something a default did."""
+    """Reaching prod must never be something a default did."""
     assert client_from_env(dict(CREDS)).base_url == TESTNET
-    assert client_from_env(dict(CREDS)).is_mainnet is False
+    assert client_from_env(dict(CREDS)).is_prod is False
 
 
-def test_mainnet_requires_saying_so():
-    c = client_from_env(dict(CREDS, DELTA_ENV="mainnet"))
-    assert c.base_url == MAINNET and c.is_mainnet
+def test_prod_requires_saying_so():
+    c = client_from_env(dict(CREDS, DELTA_ENV="prod"))
+    assert c.base_url == PROD and c.is_prod
 
 
 def test_the_venue_is_a_name_not_a_url():
@@ -56,8 +56,8 @@ def test_the_venue_is_a_name_not_a_url():
     with pytest.raises(ConfigError, match="not one of"):
         client_from_env(dict(CREDS, DELTA_ENV="mainet"))   # a real typo
     # Surrounding whitespace IS forgiven -- it comes from an env file, not from
-    # a decision -- and must still reach mainnet rather than failing obscurely.
-    assert client_from_env(dict(CREDS, DELTA_ENV=" mainnet ")).is_mainnet
+    # a decision -- and must still reach prod rather than failing obscurely.
+    assert client_from_env(dict(CREDS, DELTA_ENV=" prod ")).is_prod
 
 
 @pytest.mark.parametrize("env", [
@@ -80,7 +80,7 @@ def test_the_error_never_contains_the_secret():
 
 def test_ids_come_from_the_venue_the_credentials_point_at():
     """THE reason this module exists. BTCUSD is product 84 on testnet and not
-    necessarily on mainnet; a configured id would silently trade the wrong
+    necessarily on prod; a configured id would silently trade the wrong
     instrument after the endpoint changed."""
     got = resolve_products(FakeClient(), ["BTCUSD"])
     assert got["BTCUSD"].product_id == 84
@@ -136,18 +136,18 @@ def test_no_symbols_is_refused():
 
 # -- the universe differs by venue, deliberately -----------------------------
 
-def test_testnet_trades_majors_and_mainnet_trades_the_arm():
+def test_testnet_trades_majors_and_prod_trades_the_arm():
     """The arm's three symbols do not exist on testnet, so the testnet run is
     a rehearsal of the machinery and not the experiment."""
     from live.config import symbols_for, venue_name
     assert symbols_for("testnet") == ("BTCUSD", "ETHUSD", "SOLUSD")
-    assert symbols_for("mainnet") == ("BEATUSD", "AKEUSD", "BANKUSD")
+    assert symbols_for("prod") == ("BEATUSD", "AKEUSD", "BANKUSD")
 
 
 def test_the_two_universes_do_not_overlap():
     """If they did, a result from one could be mistaken for the other."""
     from live.config import symbols_for
-    assert not set(symbols_for("testnet")) & set(symbols_for("mainnet"))
+    assert not set(symbols_for("testnet")) & set(symbols_for("prod"))
 
 
 def test_an_unknown_venue_has_no_universe():
@@ -159,6 +159,43 @@ def test_an_unknown_venue_has_no_universe():
 def test_venue_name_defaults_to_testnet_and_validates():
     from live.config import venue_name
     assert venue_name({}) == "testnet"
-    assert venue_name({"DELTA_ENV": " MAINNET "}) == "mainnet"
+    assert venue_name({"DELTA_ENV": " PROD "}) == "prod"
     with pytest.raises(ConfigError, match="not one of"):
         venue_name({"DELTA_ENV": "mainet"})
+
+
+# --- the rename, 2026-09-16: "mainnet" is now "prod" ------------------------
+
+def test_the_old_venue_name_is_refused_rather_than_aliased():
+    """A stale DELTA_ENV=mainnet must stop the bot, not quietly keep working.
+
+    An alias would leave two spellings of real money in circulation, and the
+    next comparison written against one of them is the next fail-open guard.
+    Refusing turns a missed rename into a host that says so and stops.
+    """
+    from live.config import BASE_URLS, VENUE_SYMBOLS, ConfigError, venue_name
+    assert set(BASE_URLS) == {"testnet", "prod"}
+    assert set(VENUE_SYMBOLS) == {"testnet", "prod"}
+    with pytest.raises(ConfigError):
+        venue_name({"DELTA_ENV": "mainnet"})
+    assert venue_name({"DELTA_ENV": "prod"}) == "prod"
+
+
+def test_every_place_that_validates_the_venue_agrees_on_the_names():
+    """Four independent statements of the allowed venues. A rename that missed
+    one leaves a host that Terraform accepts and run_live.sh refuses -- or the
+    reverse, which is worse."""
+    import pathlib
+    import re
+    root = pathlib.Path(__file__).resolve().parents[2]
+    run_live = (root / "deploy/aws/run_live.sh").read_text()
+    live_tf = (root / "infra/terraform/live.tf").read_text()
+
+    assert re.search(r"^\s*testnet\|prod\)\s*;;", run_live, re.M), (
+        "run_live.sh does not accept exactly testnet|prod")
+    assert 'contains(["testnet", "prod"], var.live_venue)' in live_tf, (
+        "Terraform's live_venue validation does not accept exactly testnet|prod")
+    for text, where in ((run_live, "run_live.sh"), (live_tf, "live.tf")):
+        code = "\n".join(l for l in text.splitlines()
+                         if not l.lstrip().startswith("#"))
+        assert "mainnet" not in code, f"{where} still uses mainnet outside a comment"

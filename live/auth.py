@@ -72,7 +72,7 @@ class Credentials:
 
     key: str
     secret: str
-    #: Human label for logs -- "mainnet", "testnet", "readonly". Not sent.
+    #: Human label for logs -- "prod", "testnet", "readonly". Not sent.
     label: str = "unlabelled"
 
     def __post_init__(self) -> None:

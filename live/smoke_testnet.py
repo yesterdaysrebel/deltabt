@@ -29,11 +29,11 @@ drives PaperBroker and cannot import this package, by design.
 
 SAFETY
 
-Refuses to run against mainnet. Places ONE order, the minimum size, priced far
+Refuses to run against prod. Places ONE order, the minimum size, priced far
 enough from the market that it should rest rather than fill, and cancels it.
 If anything fails mid-way the order id is printed so it can be cancelled by
 hand -- an orphaned resting order on testnet is harmless, but leaving one
-silently is the habit that becomes expensive on mainnet.
+silently is the habit that becomes expensive on prod.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ import sys
 from decimal import Decimal
 
 from live.auth import Credentials
-from live.client import MAINNET, TESTNET, LiveClient, VenueError
+from live.client import PROD, TESTNET, LiveClient, VenueError
 from live.orders import (OrderRequest, OrderType, Side, TimeInForce,
                          client_order_id)
 
@@ -67,7 +67,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     base = os.environ.get("DELTA_BASE_URL", TESTNET)
-    if base == MAINNET or "testnet" not in base:
+    if base == PROD or "testnet" not in base:
         print(f"refusing to smoke-test against {base!r}: testnet only.\n"
               "This script places a real order.", file=sys.stderr)
         return 2

@@ -305,5 +305,5 @@ def test_reads_are_retried_then_give_up():
 
 def test_client_defaults_to_testnet_and_says_so():
     client = LiveClient(CREDS)
-    assert not client.is_mainnet
+    assert not client.is_prod
     assert "testsecret" not in repr(client)

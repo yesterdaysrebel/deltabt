@@ -39,7 +39,7 @@ from live.orders import OrderRequest
 
 log = logging.getLogger(__name__)
 
-MAINNET = "https://api.india.delta.exchange"
+PROD = "https://api.india.delta.exchange"
 TESTNET = "https://cdn-ind.testnet.deltaex.org"
 
 #: Conservative. The venue publishes higher, but an execution client has no
@@ -131,7 +131,7 @@ class LiveClient:
                  timeout: float = 10.0, max_retries: int = 4,
                  per_second: float = REQUESTS_PER_SECOND,
                  session: requests.Session | None = None) -> None:
-        # Default is TESTNET on purpose. Reaching mainnet is an explicit act.
+        # Default is TESTNET on purpose. Reaching prod is an explicit act.
         self.credentials = credentials
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -140,12 +140,12 @@ class LiveClient:
         self._session = session or requests.Session()
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
-        net = "MAINNET" if self.base_url == MAINNET else self.base_url
+        net = "PROD" if self.base_url == PROD else self.base_url
         return f"LiveClient({net}, key={redact(self.credentials.key)})"
 
     @property
-    def is_mainnet(self) -> bool:
-        return self.base_url == MAINNET
+    def is_prod(self) -> bool:
+        return self.base_url == PROD
 
     # -- transport -----------------------------------------------------------
 
@@ -315,7 +315,7 @@ class LiveClient:
         log.info("placing %s %s x%d on product %s (cid=%s)%s",
                  order.order_type.value, order.side.value, order.size,
                  order.product_id, order.client_order_id,
-                 " [MAINNET]" if self.is_mainnet else "")
+                 " [PROD]" if self.is_prod else "")
         try:
             resp = self._send_once("POST", path, "", body)
         except requests.RequestException as exc:

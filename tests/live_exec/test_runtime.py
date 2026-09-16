@@ -174,9 +174,9 @@ def test_the_intervals_are_sane():
     assert RECONCILE_SECONDS >= POLL_SECONDS
 
 
-# -- mainnet may not start with the breakers off -----------------------------
+# -- prod may not start with the breakers off -----------------------------
 
-def test_mainnet_refuses_to_start_with_the_breakers_disabled(tmp_path):
+def test_prod_refuses_to_start_with_the_breakers_disabled(tmp_path):
     """Wired, not merely available. A guard nothing calls is decoration."""
     from dataclasses import dataclass
 
@@ -191,7 +191,7 @@ def test_mainnet_refuses_to_start_with_the_breakers_disabled(tmp_path):
 
     bot = a_bot(FakeVenue([]))
     bot.settings = _Settings()
-    bot.venue = "mainnet"
+    bot.venue = "prod"
     assert run(bot.start()) is False
     assert "circuit breakers off" in bot.recovery_error
     assert bot.notifier.sent, "a refusal nobody is told about is one nobody fixes"

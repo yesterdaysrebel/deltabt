@@ -1,7 +1,7 @@
 """The deploy pipeline's files, found rather than named.
 
 WHY THIS EXISTS. `deploy.yml` was split into deploy-paper.yml,
-deploy-testnet.yml, deploy-mainnet.yml and the shared _roll.yml on 2026-09-16.
+deploy-testnet.yml, deploy-prod.yml and the shared _roll.yml on 2026-09-16.
 Every test that read the pipeline read it BY NAME, so the split would have
 turned each of them into a FileNotFoundError at best and, had they used a glob,
 into a test that passes because it found nothing at worst.

@@ -12,7 +12,7 @@ WHAT IT DOES THAT THE PAPER ENTRY POINT DOES NOT
                                               wrong instrument after a switch
     picks the universe from the venue          the arm's symbols do not exist
                                               on testnet
-    announces MAINNET loudly                   a log line nobody can miss in a
+    announces PROD loudly                   a log line nobody can miss in a
                                               scrollback
 
 EXIT 1 ON A REFUSED START is the important behaviour, and it is inherited: the
@@ -68,9 +68,9 @@ async def main() -> int:
 
     venue = venue_name()
     client = client_from_env()
-    if client.is_mainnet:
+    if client.is_prod:
         log.warning("=" * 62)
-        log.warning("MAINNET. Orders from this process spend real money.")
+        log.warning("PROD. Orders from this process spend real money.")
         log.warning("=" * 62)
 
     # THE UNIVERSE COMES FROM THE VENUE, NOT FROM Settings. The arm's three

@@ -140,7 +140,7 @@ def test_every_live_resource_is_gated_on_its_own_variable():
 
 
 def test_the_venue_defaults_to_testnet():
-    """Reaching mainnet must be a deliberate edit, not a default."""
+    """Reaching prod must be a deliberate edit, not a default."""
     block = LIVE_TF[LIVE_TF.index('variable "live_venue"'):]
     block = block[:block.index("\n}\n")]
     assert 'default     = "testnet"' in block, block
@@ -195,7 +195,7 @@ def test_the_credential_arn_actually_reaches_terraform():
 def test_the_build_skips_loudly_rather_than_failing_when_there_is_no_repository():
     """Today there is no live repository. That is the expected state, not a
     broken build, and the run must say which."""
-    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    job = _job(TESTNET_WF, "build-live")
     assert "describe-repositories" in job
     assert "no live stack is configured" in job
     assert "exists == 'true'" in job, (
@@ -214,7 +214,7 @@ def test_the_live_build_waits_for_the_infrastructure_that_grants_it_access():
     that part worked -- but a job that cannot succeed on the merge that
     introduces its own dependencies is ordered wrongly, not merely unlucky.
     """
-    d = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    d = _job(TESTNET_WF, "build-live")
     needs = next(l for l in d.splitlines() if l.strip().startswith("needs:"))
     assert "wait-for-infrastructure" in needs, (
         "build-live does not wait for the apply that creates the repository "
@@ -265,7 +265,8 @@ def test_the_live_host_may_pull_its_image_and_read_its_parameters():
 def test_the_venue_reaches_the_host():
     """var.live_venue was declared, validated, and wired to NOTHING.
 
-    `live_venue = "mainnet"` applied cleanly and the host ran testnet, because
+    `live_venue = "mainnet"` (now "prod") applied cleanly and the host ran
+    testnet, because
     the only thing setting DELTA_ENV was run_live.sh's own fallback.
     """
     assert 'aws_ssm_parameter" "live_venue"' in LIVE_TF, (
@@ -285,7 +286,7 @@ def test_the_venue_reaches_the_host():
     # become testnet, which is the same lie in a different place.
     assert "${DELTA_ENV:-testnet}" not in run_live, (
         "run_live.sh still defaults the venue instead of refusing")
-    assert "testnet|mainnet" in run_live, (
+    assert "testnet|prod" in run_live, (
         "the venue value is not validated before use")
 
 
@@ -317,7 +318,7 @@ def test_something_actually_deploys_the_live_image():
 
 def test_build_live_publishes_what_it_built():
     """An output-less build cannot be consumed, however correct it is."""
-    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    job = _job(TESTNET_WF, "build-live")
     assert "outputs:" in job, "build-live publishes nothing"
     for name in ("tag:", "repository:", "exists:"):
         assert name in job, name
@@ -330,7 +331,7 @@ def test_the_live_repository_check_distinguishes_absent_from_denied():
     expected empty state -- printing a reassuring notice while the repository
     existed and the role simply could not see it.
     """
-    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    job = _job(TESTNET_WF, "build-live")
     assert "RepositoryNotFoundException" in job, (
         "the repository check cannot tell 'absent' from 'denied'")
     assert "could not determine whether" in job, (
@@ -426,7 +427,7 @@ def test_a_live_stack_can_be_rolled_to_an_explicit_tag():
     requires its `exists` output, and a skipped job reports nothing. The one
     recovery route a live stack had was disabled by the flag that selects it.
     """
-    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    job = _job(TESTNET_WF, "build-live")
     header = job[:job.index("    steps:")]
     assert "if: github.event.inputs.image_tag == ''" not in header, (
         "build-live skips entirely on a manual tag, so deploy-live sees no "
@@ -525,5 +526,5 @@ def test_the_live_roll_keeps_the_experiment_guard():
 def test_the_git_sha_reaches_the_live_image():
     """preflight FAILS on an unknown SHA: a result that cannot be tied to code
     is not reproducible, and the container has no git."""
-    job = DEPLOY[DEPLOY.index("  build-live:"):DEPLOY.index("  targets:")]
+    job = _job(TESTNET_WF, "build-live")
     assert "GIT_SHA=${{ github.sha }}" in job

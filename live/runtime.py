@@ -107,7 +107,7 @@ class LiveTradingBot(TradingBot):
     # -- startup -------------------------------------------------------------
 
     async def start(self) -> bool:
-        """Refuse mainnet outright if the circuit breakers are switched off.
+        """Refuse prod outright if the circuit breakers are switched off.
 
         BEFORE the lock, the database and the experiment binding, because none
         of those matter if the process must not trade at all. The check is a

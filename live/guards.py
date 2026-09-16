@@ -1,4 +1,4 @@
-"""What mainnet requires that a paper run does not.
+"""What prod requires that a paper run does not.
 
 WHY THIS MODULE EXISTS, IN THE CODEBASE'S OWN WORDS
 
@@ -23,7 +23,7 @@ WHAT IT DOES NOT DO: PICK YOUR NUMBERS
 
 It refuses the DISABLED SENTINEL, not a value it dislikes. 1.0 drawdown means
 "equity would have to reach zero"; 0 consecutive losses means "never halt".
-Those are off switches, and off is what mainnet may not be. Whether the halt
+Those are off switches, and off is what prod may not be. Whether the halt
 belongs at 5% or 15% is a judgement about capital, and the code has no standing
 to make it -- only to insist the judgement was made.
 
@@ -68,8 +68,17 @@ def circuit_breaker_failures(risk, venue: str) -> list[str]:
     Testnet is deliberately exempt: it is a rehearsal of the machinery on
     instruments the arm does not trade, and halting it early would only cut
     the rehearsal short.
+
+    EXEMPT ONLY WHAT IS NAMED TESTNET. This used to read `!= "mainnet": return
+    []`, which exempted EVERYTHING that was not that exact string -- testnet,
+    but also a typo, an empty value, and any new name. It was safe only because
+    nothing else could set the venue. Renaming "mainnet" to "prod" on
+    2026-09-16 is exactly the change that would have broken it: miss this one
+    comparison and a prod host silently skips its circuit breakers, while
+    every other file agrees it is spending real money. So the exemption is now
+    the explicit, positive case, and anything else must have its breakers on.
     """
-    if (venue or "").strip().lower() != "mainnet":
+    if (venue or "").strip().lower() == "testnet":
         return []
 
     bad: list[str] = []
@@ -87,7 +96,7 @@ def circuit_breaker_failures(risk, venue: str) -> list[str]:
 
 
 def require_circuit_breakers(risk, venue: str) -> None:
-    """Raise unless mainnet has its three breakers switched on."""
+    """Raise unless prod has its three breakers switched on."""
     bad = circuit_breaker_failures(risk, venue)
     if not bad:
         return
