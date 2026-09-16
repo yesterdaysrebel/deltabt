@@ -65,6 +65,17 @@ POLL_SECONDS = 5.0
 #: opens WHILE running, which is the one nobody is watching for.
 RECONCILE_SECONDS = 300.0
 
+#: How long after a position opens its stop-loss must exist at the venue.
+#: Delta creates bracket legs when the entry fills, and poll() learns of the
+#: position a moment later, so checking on the very first sighting could race
+#: the venue and flatten a correctly protected trade. Three polls.
+BRACKET_GRACE_SECONDS = 15.0
+
+#: If the venue cannot be read for this long after the grace, say so loudly.
+#: It does not flatten on an unreadable venue: the close would need that same
+#: venue, and closing a protected position during an outage is its own harm.
+BRACKET_ALERT_SECONDS = 120.0
+
 
 class LiveTradingBot(TradingBot):
     """A TradingBot whose orders reach a real exchange."""
@@ -163,6 +174,14 @@ class LiveTradingBot(TradingBot):
 
         await self._release_orphaned_entries()
 
+        # A POSITION OPENED BY A PREVIOUS PROCESS IS CHECKED TOO. Reconciliation
+        # has just confirmed it exists at the venue; it has not confirmed it is
+        # protected there. This is what catches a position left unprotected
+        # before this check existed -- tnet's SOLUSD short of 2026-09-16 would
+        # be flattened by the first process to run this.
+        for p in positions:
+            self._schedule_bracket_check(p.symbol)
+
         self._state_loaded = True
         await self._event("recovery", "STATE_RESTORED", payload={
             "open_positions": len(positions), "equity": self.state.equity})
@@ -246,9 +265,18 @@ class LiveTradingBot(TradingBot):
             await self.notifier.send("RECONCILIATION FAILED", self.recovery_error)
             return False
 
+        # `quantity`, NOT `contracts`. PositionRecord has never had a
+        # `contracts` field -- that is LivePosition's name -- so this raised
+        # AttributeError on the first restart with an open position in the
+        # ledger, and recover() died every start after: a crash loop while
+        # holding positions. It went unseen because tests/live_exec/
+        # test_runtime.py fed it a fake with a `contracts` attribute, and the
+        # only live process that ever ran started with an empty ledger. Found
+        # 2026-09-16 by a test that recovers from the real InMemoryRepository,
+        # with tnet holding three positions it could not have restarted with.
         ours = [{"symbol": p.symbol,
                  "size": (1 if str(getattr(p, "side", "")).upper()
-                          in {"LONG", "BUY", "1"} else -1) * int(p.contracts)}
+                          in {"LONG", "BUY", "1"} else -1) * int(p.quantity)}
                 for p in ledger_positions]
         result = reconcile(venue, ours, symbol_for=self._symbol_for)
         if not result.ok:
@@ -333,12 +361,130 @@ class LiveTradingBot(TradingBot):
         else:
             log.error("position %s opened with no order row to close out; its "
                       "exposure slot stays held", symbol)
+
+        if await self._flatten_if_entry_invalid(symbol, record, intent):
+            return
+        self._schedule_bracket_check(symbol)
         self.state.trades_today += 1
         await self._save_state()
         await self.notifier.send(
             f"{self.venue} {'LONG' if record.side > 0 else 'SHORT'} {symbol}",
             f"entry {record.entry_price} stop {record.stop_price} "
             f"target {record.target_price} qty {record.quantity}")
+
+    # -- protecting what is open ----------------------------------------------
+    #
+    # WHY THIS EXISTS. The first live trades on tnet, 2026-09-16: SOLUSD was
+    # approved at 97.299 with its stop at 97.8215 and target 95.7314 -- and a
+    # market sell on a thin testnet book filled at 98.463, 2.2R from the
+    # reference and BEYOND ITS OWN STOP. Delta silently dropped both bracket
+    # legs, because a buy-stop below a short's entry is on the wrong side. So a
+    # 95-contract short sat open with no stop-loss and no take-profit, while
+    # the ledger recorded a stop of 97.8215 as if it were protected. Nothing
+    # alerted. BTCUSD and ETHUSD, filled within a tick of their references, had
+    # both legs.
+    #
+    # Two checks, and one action for both. A position that is unprotected, or
+    # whose fill no longer matches the geometry risk approved, is CLOSED. It is
+    # the one remedy that does not require this process to invent a new stop
+    # price the risk engine never saw.
+
+    def _bracket_checks(self) -> dict[str, float]:
+        """symbol -> loop time at which its stop-loss must exist.
+
+        Created on first use: several harnesses build this class with __new__.
+        """
+        return self.__dict__.setdefault("_bracket_due", {})
+
+    def _flattening(self) -> set[str]:
+        return self.__dict__.setdefault("_flattening_set", set())
+
+    def _schedule_bracket_check(self, symbol: str, *, now: float | None = None) -> None:
+        t = asyncio.get_event_loop().time() if now is None else now
+        self._bracket_checks()[symbol] = t + BRACKET_GRACE_SECONDS
+
+    async def _flatten(self, symbol: str, reason: str, detail: dict) -> None:
+        """Close `symbol` at market, reduce-only, once, and say why loudly."""
+        if symbol in self._flattening():
+            return
+        self._flattening().add(symbol)
+        self._bracket_checks().pop(symbol, None)
+        await self._event("execution", "POSITION_FLATTENED_UNSAFE", symbol=symbol,
+                          severity="CRITICAL",
+                          payload={"reason": reason, **detail})
+        await self.notifier.send(f"{self.venue} FLATTENING {symbol}: {reason}",
+                                 str(detail))
+        try:
+            self.broker.close_position(symbol, reason)
+        except VenueError as exc:
+            # Leave it marked so the next poll does not hammer the venue; the
+            # event above already says the position needed closing.
+            log.critical("could not flatten %s (%s): %s", symbol, reason, exc)
+            await self._event("execution", "FLATTEN_FAILED", symbol=symbol,
+                              severity="CRITICAL",
+                              payload={"reason": reason, "error": str(exc)})
+
+    async def _flatten_if_entry_invalid(self, symbol: str, record, intent) -> bool:
+        """True if the fill broke the geometry risk approved, and it was closed.
+
+        The paper broker refuses a fill more than max_entry_deviation R from
+        the reference (app/execution/paper_broker._entry_blocked). The venue
+        cannot be refused after it has filled, so the live equivalent is to
+        close. A fill BEYOND the stop is closed regardless of the reference:
+        its stop is on the wrong side, so the venue will not hold it.
+        """
+        entry = float(record.entry_price)
+        side = int(intent["side"])
+        stop = float(intent["stop_price"])
+        rpu = float(intent.get("risk_per_unit") or 0)
+        ref = intent.get("entry_reference")
+
+        beyond = (side > 0 and entry <= stop) or (side < 0 and entry >= stop)
+        dev = (abs(entry - float(ref)) / rpu) if (ref is not None and rpu > 0) else None
+        limit = float(getattr(self.broker, "max_entry_deviation", 0) or 0)
+        too_far = dev is not None and limit > 0 and dev > limit
+        if not (beyond or too_far):
+            return False
+
+        await self._flatten(symbol, "entry_deviation", {
+            "entry_price": entry, "entry_reference": ref, "stop_price": stop,
+            "deviation_r": round(dev, 3) if dev is not None else None,
+            "limit_r": limit, "beyond_stop": beyond})
+        return True
+
+    async def _verify_brackets(self, now: float | None = None) -> None:
+        """Flatten any position whose stop-loss is not held at the venue."""
+        due = self._bracket_checks()
+        if not due or not self.__dict__.get("_polled_once"):
+            return
+        t = asyncio.get_event_loop().time() if now is None else now
+        for symbol, deadline in list(due.items()):
+            if t < deadline:
+                continue
+            if symbol not in self.broker.positions:
+                due.pop(symbol, None)          # already closed; nothing to protect
+                continue
+            try:
+                legs = self.broker.protective_legs(symbol)
+            except VenueError as exc:
+                if t >= deadline + BRACKET_ALERT_SECONDS:
+                    await self._event("execution", "PROTECTION_UNVERIFIABLE",
+                                      symbol=symbol, severity="CRITICAL",
+                                      payload={"error": str(exc)})
+                    # Push the deadline on so this alerts periodically rather
+                    # than every poll.
+                    due[symbol] = t
+                continue
+            if not legs["stop_loss"]:
+                await self._flatten(symbol, "unprotected", {
+                    "stop_loss_legs": 0,
+                    "take_profit_legs": len(legs["take_profit"])})
+                continue
+            due.pop(symbol, None)
+            if not legs["take_profit"]:
+                await self._event("execution", "TAKE_PROFIT_MISSING",
+                                  symbol=symbol, severity="WARNING",
+                                  payload={"stop_loss_legs": len(legs["stop_loss"])})
 
     async def _persist_close(self, ev) -> None:
         """Record a close the venue performed, and WHY it performed it.
@@ -404,6 +550,14 @@ class LiveTradingBot(TradingBot):
                         await self._persist_open(ev)
                     elif ev.kind == "POSITION_CLOSED":
                         await self._persist_close(ev)
+                        self._flattening().discard(ev.symbol)
+                        self._bracket_checks().pop(ev.symbol, None)
+                # Only after a poll has succeeded does broker.positions describe
+                # the venue. Before that, "not in positions" means "not looked
+                # yet", and a startup-scheduled check would drop the very
+                # position it exists to protect.
+                self.__dict__["_polled_once"] = True
+                await self._verify_brackets()
                 since_reconcile += interval
                 if since_reconcile >= RECONCILE_SECONDS:
                     since_reconcile = 0.0

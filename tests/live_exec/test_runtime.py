@@ -51,8 +51,17 @@ class FakeVenue:
 
 
 class Ledger:
-    def __init__(self, symbol, contracts, side="LONG"):
-        self.symbol, self.contracts, self.side = symbol, contracts, side
+    """Shaped like app.persistence.models.PositionRecord, which is what
+    recover() actually passes: `quantity` and an integer side.
+
+    It used to carry `contracts` and "LONG"/"SHORT" -- LivePosition's shape,
+    not the ledger's -- so reconcile_with_venue() read a field the real record
+    does not have, every test passed, and the first live restart with an open
+    position would have crashed. A fake that disagrees with the thing it stands
+    in for is how that stayed hidden.
+    """
+    def __init__(self, symbol, quantity, side=1):
+        self.symbol, self.quantity, self.side = symbol, quantity, side
         self.position_uid = f"uid-{symbol}"
 
 
@@ -121,9 +130,9 @@ def test_a_matching_ledger_reconciles():
 
 def test_a_short_in_the_ledger_is_compared_as_a_short():
     bot = a_bot(FakeVenue([{"product_symbol": "BEATUSD", "size": -565}]))
-    assert run(bot.reconcile_with_venue([Ledger("BEATUSD", 565, "SHORT")])) is True
+    assert run(bot.reconcile_with_venue([Ledger("BEATUSD", 565, -1)])) is True
     bot2 = a_bot(FakeVenue([{"product_symbol": "BEATUSD", "size": -565}]))
-    assert run(bot2.reconcile_with_venue([Ledger("BEATUSD", 565, "LONG")])) is False
+    assert run(bot2.reconcile_with_venue([Ledger("BEATUSD", 565, 1)])) is False
 
 
 def test_a_venue_we_cannot_read_also_refuses_to_start():
