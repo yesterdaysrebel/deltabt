@@ -349,27 +349,16 @@ resource "aws_ssm_document" "experiment" {
               echo "[experiment] retiring any running experiment"
               # STOP THE SERVICE FIRST, exactly as `start` below does.
               #
-              # `cli` runs a SECOND bot instance, and the bot takes a Postgres
-              # advisory lock to guarantee there is only ever one. With the
-              # service up, that second instance exits with "another bot
-              # instance holds the advisory lock; refusing to start" -- which
-              # is not the one benign string matched below, so the case falls
-              # through to "retire FAILED" and the whole deploy stops.
-              #
-              # That is what happened to the tnet stack on 2026-09-15: the bot
-              # was healthy, there was no experiment to retire, and binding one
-              # was impossible because the step that runs first could not run
-              # at all. `start` has always stopped the service; `stop` never
-              # did, and the asymmetry only shows on a host whose bot is up AND
-              # whose retire actually reaches the CLI.
-              #
-              # The service is restarted immediately afterwards, whatever the
-              # outcome. A deploy restarts it again a moment later, which is
-              # harmless -- but this document is also run by hand to retire a
-              # run, and leaving the bot down after that would be a far worse
-              # failure than the one being fixed.
-              systemctl stop deltabt.service
-              sleep 5
+              # THE SERVICE STAYS UP HERE, deliberately. An earlier fix
+              # stopped it first, on the theory that `cli` was being refused
+              # the bot's Postgres advisory lock. The symptom was real -- the
+              # live image DID start a second bot -- but the cause was that
+              # live/__main__.py discarded argv instead of dispatching to the
+              # CLI, so stopping the service only let that second bot start
+              # cleanly and run forever. The 2026-09-16 tnet retire hung for
+              # 40 minutes with the real bot stopped. The entry point now
+              # dispatches, the CLI exits in a second, and taking the bot
+              # down to run a database update buys nothing.
               # --reason IS REQUIRED by the CLI and its absence is not a
               # parse-time error anyone sees until the document runs: the
               # first real pipeline roll failed here with "the following
@@ -380,7 +369,6 @@ resource "aws_ssm_document" "experiment" {
               out="$(cli forward-test stop --reason "superseded by a new deploy (run {{ ExperimentId }})" 2>&1)"
               rc=$?
               set -e
-              systemctl start deltabt.service || true
               echo "$out"
               # "nothing was running" is the ONE non-zero exit that is not a
               # problem, and it is matched on the CLI's own words rather than
