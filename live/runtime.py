@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from types import SimpleNamespace
 
 from app.runtime.bot import STATE_KEY, TradingBot
 from app.risk.engine import RiskState
@@ -79,6 +80,20 @@ BRACKET_ALERT_SECONDS = 120.0
 #: How long a venue balance read is reused for sizing. Several symbols close on
 #: the same 5m bar; one read serves them, a stale one does not survive a trade.
 BALANCE_TTL_SECONDS = 20.0
+
+
+def _closing_order(history) -> dict | None:
+    """The order that closed a position: the most recent one that moved size.
+
+    ONE SELECTION, used both by _persist_close and by the startup check that
+    decides whether a vanished position may be recorded. If those two picked
+    different orders, startup could validate one order and record another.
+    Bracket legs are created by the venue and carry no client_order_id of ours,
+    so the close cannot be found by id.
+    """
+    return next((o for o in history or []
+                 if str(o.get("state")) == "closed"
+                 and float(o.get("average_fill_price") or 0) > 0), None)
 
 
 class LiveTradingBot(TradingBot):
@@ -173,6 +188,9 @@ class LiveTradingBot(TradingBot):
                                   severity="CRITICAL", payload={"symbol": p.symbol})
                 return
 
+        if await self._record_proven_vanished_closes(positions):
+            positions = await self.repo.load_open_positions()
+
         if not await self.reconcile_with_venue(positions):
             return
 
@@ -252,6 +270,90 @@ class LiveTradingBot(TradingBot):
                               payload={"order_uid": order.order_uid,
                                        "instance_uid": order.instance_uid,
                                        "status_was": order.status})
+
+    async def _record_proven_vanished_closes(self, ledger_positions) -> int:
+        """Record a close that happened while nothing was watching -- if the
+        venue proves it. Returns how many were recorded.
+
+        WHY THIS EXISTS. 2026-09-16, 15:24 UTC: tnet's startup protection check
+        flattened an ETH short and a SOL long whose stops sat beyond
+        liquidation. Six seconds later the deploy stopped the service to
+        register the next experiment -- 1ms after the ETH close was observed,
+        before either was written to the ledger. Every start after that found
+        the ledger holding two positions the venue did not, and reconciliation
+        refused to trade: 95 restarts, until the exits were recorded by hand.
+        A liquidation during a deploy, or a bracket firing while the host
+        reboots, lands in the same place.
+
+        WHAT COUNTS AS PROOF. Reconciliation refuses a vanished position
+        because recording a guessed exit would corrupt the forward test. So
+        this records ONLY what the venue's own order history establishes: the
+        closing order (see _closing_order) must be on the opposite side, fill
+        the position's whole size, be reduce-only, and have been placed after
+        the position opened. Anything short of that is left alone, and
+        reconciliation refuses exactly as before.
+
+        A venue that cannot be read records nothing.
+        """
+        try:
+            held = {}
+            for row in self.client.get_positions():
+                sym = row.get("product_symbol") or self._symbol_for.get(
+                    int(row.get("product_id") or 0), "")
+                held[sym] = held.get(sym, 0) + int(round(float(row.get("size") or 0)))
+        except VenueError as exc:
+            log.error("could not read venue positions to check for vanished "
+                      "closes; recording none: %s", exc)
+            return 0
+
+        from live.ledger import parse_venue_time
+
+        recorded = 0
+        for p in ledger_positions:
+            if held.get(p.symbol, 0) != 0:
+                continue                         # still held: not vanished
+            pid = self.product_ids.get(p.symbol)
+            if pid is None:
+                continue
+            try:
+                closing = _closing_order(self.client.order_history(pid))
+            except VenueError as exc:
+                log.error("could not read %s order history: %s", p.symbol, exc)
+                continue
+
+            side = 1 if str(getattr(p, "side", "")).upper() in {"LONG", "BUY", "1"} else -1
+            want_side = "sell" if side > 0 else "buy"
+            reasons = []
+            if closing is None:
+                reasons.append("no closed order with a fill")
+            else:
+                if str(closing.get("side", "")).lower() != want_side:
+                    reasons.append(f"side {closing.get('side')} does not close a "
+                                   f"{'long' if side > 0 else 'short'}")
+                filled = int(round(float(closing.get("size") or 0)
+                                   - float(closing.get("unfilled_size") or 0)))
+                if filled != int(p.quantity):
+                    reasons.append(f"filled {filled}, position is {p.quantity}")
+                if not closing.get("reduce_only"):
+                    reasons.append("not reduce-only")
+                when = parse_venue_time(closing.get("created_at"))
+                if when is None or when < int(p.opened_at):
+                    reasons.append("placed before the position opened")
+            if reasons:
+                log.warning("%s vanished and its close is not proven (%s); "
+                            "leaving it for reconciliation", p.symbol,
+                            "; ".join(reasons))
+                continue
+
+            await self._event("recovery", "VANISHED_POSITION_RECORDED",
+                              symbol=p.symbol, severity="WARNING", payload={
+                                  "quantity": int(p.quantity), "side": side,
+                                  "closing_side": closing.get("side"),
+                                  "fill": closing.get("average_fill_price"),
+                                  "closed_at": closing.get("created_at")})
+            await self._persist_close(SimpleNamespace(symbol=p.symbol, payload={}))
+            recorded += 1
+        return recorded
 
     async def reconcile_with_venue(self, ledger_positions) -> bool:
         """True when the venue and our records agree. Sets recovery_error if not.
@@ -557,13 +659,7 @@ class LiveTradingBot(TradingBot):
         record = open_rows[0]
 
         pid = self.product_ids.get(symbol)
-        history = self.client.order_history(pid)
-        # The most recent order that actually moved size is the one that
-        # closed it. Bracket legs are created by the venue and carry no
-        # client_order_id of ours, so they cannot be found by id.
-        closing = next((o for o in history
-                        if str(o.get("state")) == "closed"
-                        and float(o.get("average_fill_price") or 0) > 0), None)
+        closing = _closing_order(self.client.order_history(pid))
         if closing is None:
             log.error("no closing order found for %s; the exit is unrecorded",
                       symbol)
@@ -575,10 +671,18 @@ class LiveTradingBot(TradingBot):
         self.state.apply_close(closed.realized_pnl or 0.0,
                                closed.closed_at or self.clock.now())
         await self._save_state()
+        # FORMATTED DEFENSIVELY. The close is already recorded by this point;
+        # a notification must not be able to undo that by raising. A closing
+        # order without meta_data.pnl leaves realized_pnl and r_multiple None,
+        # and formatting None with `:+.4f` raised TypeError -- which inside
+        # recover() is a startup crash, the loop the vanished-close recording
+        # exists to end.
+        pnl = (f"{closed.realized_pnl:+.4f}" if closed.realized_pnl is not None
+               else "unknown")
+        r = f"{closed.r_multiple:+.2f}R" if closed.r_multiple is not None else "?R"
         await self.notifier.send(
             f"{self.venue} closed {symbol} {closed.exit_reason}",
-            f"pnl {closed.realized_pnl:+.4f} "
-            f"({closed.r_multiple:+.2f}R) equity {self.state.equity:.2f}")
+            f"pnl {pnl} ({r}) equity {self.state.equity:.2f}")
 
     # -- the loop the paper bot does not need --------------------------------
 
