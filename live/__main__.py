@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 import sys
 from dataclasses import replace
@@ -139,6 +140,35 @@ async def main() -> int:
     return 0
 
 
+def cli_entry(argv: list[str]) -> int:
+    """Hand a subcommand to the CLI, with the VENUE's universe in the env.
+
+    THE CLI AND THE BOT MUST AGREE ON WHAT IS BEING TRADED, and they derive it
+    from different places: the bot takes the venue universe (main() above),
+    while app/cli.py builds an experiment from Settings, which reads
+    DELTABOT_SYMBOLS. On a live host that variable is inherited from the shared
+    PAPER user_data, so `forward-test start` registered an experiment naming
+    BEATUSD/AKEUSD/BANKUSD/WIFUSD and the bot then refused it:
+
+        configuration drift in LIVE-MANUAL_SCALP_BOTH_T3-5-20260916-5583102:
+        execution_hash: aa1d4a152189e1c5 -> f251c6e7a9ceea7a;
+        symbols: ['AKEUSD','BANKUSD','BEATUSD','WIFUSD']
+              -> ['BTCUSD','ETHUSD','SOLUSD']
+
+    The guard was RIGHT -- the experiment was unusable, and the bot crash-looped
+    rather than trade under an identity it could not reproduce. Overriding the
+    variable here is what makes the two sides reproduce each other, and it is
+    done at this boundary so app/cli.py stays venue-agnostic and the paper
+    stacks are untouched.
+
+    execution_hash moves with it because execution_params() hashes the
+    per-symbol halt thresholds, so fixing the universe fixes both components.
+    """
+    os.environ["DELTABOT_SYMBOLS"] = ",".join(symbols_for(venue_name()))
+    from app.cli import main as cli_main
+    return cli_main(argv)
+
+
 if __name__ == "__main__":
     # SUBCOMMANDS GO THROUGH THE CLI; a bare `python -m live` runs the bot.
     # This block is not decoration -- without it argv is silently DISCARDED
@@ -149,6 +179,5 @@ if __name__ == "__main__":
     # this dispatch all along; the live one was written to the same shape and
     # this was the piece that got left out.
     if len(sys.argv) > 1:
-        from app.cli import main as cli_main
-        sys.exit(cli_main(sys.argv[1:]))
+        sys.exit(cli_entry(sys.argv[1:]))
     sys.exit(asyncio.run(main()))
