@@ -1,0 +1,369 @@
+name: deploy mainnet
+
+# LIFECYCLE STAGE 3 of 3: APPLICATION, for LIVE stacks on MAINNET.
+#
+# THIS SPENDS REAL MONEY.
+#
+# It is its own file so that reaching mainnet is a DELIBERATE ACT rather than
+# the side effect of editing a variable. Three things make that true and none
+# of them is a comment:
+#
+#   1. MANUAL DISPATCH ONLY. There is no `push:` trigger, so no merge can
+#      reach mainnet however many paths it touches.
+#   2. ITS OWN ENVIRONMENT, `mainnet-deploy`, so a required reviewer attaches
+#      here without gating paper or testnet. That is a GitHub setting and
+#      deliberately not a file here, because a control a commit can remove is
+#      not a control. infra/terraform/github_oidc.tf must trust the subject
+#      `repo:<org>/<repo>:environment:mainnet-deploy` or every run dies at the
+#      credentials step with an error naming neither -- see
+#      tests/live/test_oidc_subjects_cover_environments.py for the two times
+#      that has already happened.
+#   3. _roll.yml READS THE VENUE FROM THE HOST and refuses anything that is not
+#      mainnet, before it touches it. var.live_venue is a single global, so a
+#      stack is only "mainnet" because that parameter says so; this workflow
+#      trusts the host, not the table.
+#
+# NOTHING IS WIRED TO MAINNET TODAY. var.live_venue defaults to "testnet" and
+# every live stack follows it, so a dispatch here finds no host on mainnet and
+# refuses. That is the intended resting state, and it is a real check rather
+# than an empty one: the day somebody flips the variable, this starts working
+# and deploy-testnet.yml starts refusing the same host.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Existing tag to roll back to. Leave empty to build this commit."
+        required: false
+        type: string
+      only_stack:
+        description: "Roll ONE stack instead of all of them."
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-mainnet
+  cancel-in-progress: false
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+jobs:
+  wait-for-infrastructure:
+    # ORDERING, WHICH IS THE WHOLE REASON A MERGE USED TO NEED A SECOND PUSH.
+    #
+    # Both workflows trigger on the same push. Terraform may REPLACE the host
+    # -- a changed variant or user-data always does -- so a deploy that starts
+    # at the same moment aims SSM at an instance that is about to be
+    # terminated, and fails. That is exactly what happened on the merge of
+    # #39: the push-triggered deploy failed, and shipping took a hand-run
+    # dispatch afterwards.
+    #
+    # TWO WAITS, AND THE SECOND ONE IS NOT OPTIONAL.
+    #
+    #   1. THIS COMMIT's infrastructure run, if it has one, must have applied
+    #      cleanly before its image is rolled onto the result.
+    #   2. ANY infrastructure run still in flight on master, whatever the
+    #      commit. On 2026-09-04 two pull requests were merged sixteen seconds
+    #      apart: #37 touched only `deltabt/` so it had no infrastructure run
+    #      of its own, sailed past wait (1), and rolled while #42's apply --
+    #      which REPLACES the host -- was still running. A deploy aimed at an
+    #      instance that is being terminated is the failure this job exists to
+    #      prevent, and waiting only on our own SHA does not prevent it.
+    name: wait for infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: block until no infrastructure run can move the ground
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deadline = Date.now() + 45 * 60 * 1000;
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+            const list = (params) => github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'infrastructure.yml',
+              per_page: 30,
+              ...params,
+            });
+
+            while (true) {
+              // (1) our own commit, if infrastructure ran for it at all
+              const mine = (await list({ head_sha: context.sha })).data.workflow_runs;
+              const mineUnfinished = mine.filter(r => r.status !== 'completed');
+              const mineBad = mine.filter(
+                r => r.status === 'completed' && !['success', 'skipped'].includes(r.conclusion));
+              if (mineBad.length) {
+                core.setFailed(
+                  `infrastructure concluded '${mineBad[0].conclusion}' for this commit ` +
+                  `(${mineBad[0].html_url}). Refusing to roll an image onto infrastructure ` +
+                  `that did not apply cleanly.`);
+                return;
+              }
+
+              // (2) anything else still applying on master, any commit
+              const onMaster = (await list({ branch: 'master' })).data.workflow_runs;
+              const othersInFlight = onMaster.filter(r => r.status !== 'completed');
+
+              if (mineUnfinished.length === 0 && othersInFlight.length === 0) {
+                core.info(mine.length
+                  ? 'this commit\'s infrastructure applied cleanly; nothing else in flight'
+                  : 'no infrastructure run for this commit; nothing else in flight');
+                return;
+              }
+              if (Date.now() > deadline) {
+                core.setFailed('timed out waiting for infrastructure to settle');
+                return;
+              }
+              core.info(
+                `waiting: ${mineUnfinished.length} for this commit, ` +
+                `${othersInFlight.length} in flight on master`);
+              await sleep(20000);
+            }
+
+  test:
+    # The whole suite, including the paper-only AST scan, on the exact commit
+    # being shipped. Nothing reaches the host without it.
+    uses: ./.github/workflows/test.yml
+
+  build-live:
+    # THE LIVE IMAGE, BUILT ONLY IF SOMEWHERE TO PUT IT EXISTS.
+    #
+    # It is a SEPARATE image because the paper image deliberately does not
+    # carry the `live` package -- app/safety.py's boundary is the absence of
+    # order-placement capability, not a runtime toggle -- and a separate ECR
+    # repository because two images in one repository, distinguished only by a
+    # tag convention, is one typo away from rolling a paper host onto a bot
+    # that can place orders.
+    #
+    # SELF-ACTIVATING, AND THAT IS THE POINT. infra/terraform/live.tf creates
+    # that repository only when var.live_stacks has an entry, so today this job
+    # finds nothing and skips with a notice. Nothing here needs editing when a
+    # live stack is added -- which matters because the alternative is a step
+    # somebody has to remember, and this pipeline has already been bitten twice
+    # by exactly that (a risk limit that reached the host but never the
+    # container, and a stack table that drifted from Terraform).
+    name: build and push the live image
+    # WAITS FOR INFRASTRUCTURE, and the first merge with a live stack proved why.
+    #
+    # This job asks ECR whether the live repository exists. Both that repository
+    # AND the ecr:DescribeRepositories grant that lets it ask are created by the
+    # infrastructure apply -- so on the merge that first adds a `live_stacks`
+    # entry, this ran four minutes ahead of the apply and got AccessDenied:
+    #
+    #   User: .../deltabt-paper-github-app-deploy is not authorized to perform:
+    #   ecr:DescribeRepositories on resource: .../deltabt-live
+    #
+    # It failed loudly rather than reporting "no live stack is configured",
+    # which is the check working. But the race is real and would repeat on
+    # every future change that moves those resources, so the job now orders
+    # itself behind the apply the way `deploy` already does.
+    needs: [test, wait-for-infrastructure]
+    outputs:
+      # WITHOUT THESE NOTHING COULD CONSUME THE BUILD. build-live pushed an
+      # image and published nothing, and no job declared `needs: build-live`,
+      # so the live image was built, stored, and never deployed by anything.
+      #
+      # The tag is the commit SHA, which is what the build step below actually
+      # pushes -- and it must be, because preflight FAILS on an unknown SHA and
+      # the container has no git.
+      tag: ${{ github.sha }}
+      repository: ${{ steps.repo.outputs.name }}
+      exists: ${{ steps.repo.outputs.exists }}
+    # NO JOB-LEVEL image_tag GATE. It used to skip this whole job on a manual
+    # rollback, which quietly disabled the rollback: deploy-live requires
+    # `needs['build-live'].outputs.exists == 'true'`, and a skipped job reports
+    # nothing, so the live roll skipped too. A live stack therefore had NO way
+    # to be rolled to an explicit tag -- the one path a host needs when the
+    # image it is running is too broken to answer for itself.
+    #
+    # The job now always resolves the repository and reports; only the BUILD
+    # steps are gated, because there is nothing to build for a tag that exists.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-build-live-${{ github.run_id }}
+
+      - name: is there a live image repository yet?
+        id: repo
+        run: |
+          set -euo pipefail
+          # deltabt-PAPER-live, and the dash-paper is not a typo: Terraform
+          # names it "${local.name}-live" and local.name is
+          # "deltabt-${var.environment}", with environment defaulting to
+          # "paper" account-wide. This fallback read 'deltabt-live' and the
+          # repository is 'deltabt-paper-live', so the lookup asked about a
+          # repository this role has no grant on and came back AccessDenied --
+          # which reads as a permissions bug and is really a name mismatch.
+          NAME="${{ vars.ECR_REPOSITORY_LIVE || 'deltabt-paper-live' }}"
+          # ABSENT AND DENIED ARE NOT THE SAME ANSWER, and this swallowed both.
+          #
+          # `>/dev/null 2>&1` turned every failure into "no live stack is
+          # configured, nothing to build" -- including AccessDenied, which is
+          # exactly what this role returned until live.tf granted it
+          # ecr:DescribeRepositories. The repository could then exist and the
+          # build would skip forever, printing a reassuring notice each time.
+          # A step that reports the expected state on a degraded path is worse
+          # than one that fails.
+          err=$(aws ecr describe-repositories --repository-names "$NAME" 2>&1 >/dev/null) && rc=0 || rc=$?
+          if [ "${rc:-0}" -eq 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$err" | grep -q 'RepositoryNotFoundException'; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no $NAME repository; no live stack is configured, so there is nothing to build. This is the expected state until infra/terraform/live.tf has a live_stacks entry."
+          else
+            echo "::error::could not determine whether $NAME exists: $err"
+            echo "This is NOT the 'no live stack is configured' case, and treating it as one would skip the build silently."
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+        if: steps.repo.outputs.exists == 'true'
+
+      - name: refuse to rebuild an existing tag
+        if: steps.repo.outputs.exists == 'true' && github.event.inputs.image_tag == ''
+        run: |
+          if aws ecr describe-images --repository-name "${{ steps.repo.outputs.name }}" \
+               --image-ids "imageTag=${GITHUB_SHA}" >/dev/null 2>&1; then
+            echo "::notice::${GITHUB_SHA} is already in ECR; skipping the live build."
+            echo "already_built=true" >> "$GITHUB_ENV"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
+      - uses: docker/setup-buildx-action@v3
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
+
+      - name: build for arm64 and push
+        if: steps.repo.outputs.exists == 'true' && env.already_built != 'true' && github.event.inputs.image_tag == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.live
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_DIRTY=0
+          tags: ${{ steps.ecr.outputs.registry }}/${{ steps.repo.outputs.name }}:${{ github.sha }}
+
+  targets-live:
+    name: choose live stacks
+    needs: build-live
+    if: needs['build-live'].outputs.exists == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      ready: ${{ steps.credential.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          role-session-name: gha-live-targets-${{ github.run_id }}
+
+      - name: has the venue credential been supplied yet?
+        id: credential
+        # ASKED OF SECRETS MANAGER, not of a repository variable.
+        #
+        # This used to read vars.LIVE_CREDENTIAL_SECRET_ARN, which a human had
+        # to set after creating the secret by hand. Terraform now declares the
+        # secret, so the only open question is whether anybody has put a VALUE
+        # in it -- and that is a fact about the account, not about a variable
+        # somebody remembered to set.
+        #
+        # DescribeSecret returns the version list and no secret material. CI
+        # can see that a credential exists and still cannot read one; only the
+        # instance role has GetSecretValue.
+        #
+        # AN ABSENT OR UNPOPULATED SECRET IS EXPECTED, NOT AN ERROR. Terraform
+        # neither creates nor reads it -- deliberately, so that it can be
+        # created BEFORE the infrastructure and the whole stack come up on one
+        # merge. If the operator has done that, this is ready on the first run;
+        # if not, the roll skips with the command to fix it, and the host waits
+        # at exit 90 rather than crash-looping.
+        env:
+          SECRET_NAME: deltabt-paper/live/venue-credentials
+        run: |
+          set -euo pipefail
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          if ! out=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>&1); then
+            case "$out" in
+              *ResourceNotFoundException*)
+                # THE FIELD NAMES ARE NOT SPELLED HERE, DELIBERATELY.
+                # test_deployment_safety.py forbids naming an exchange
+                # credential anywhere on the deployment surface except
+                # live.tf, run_live.sh and Dockerfile.live -- and this file is
+                # none of those. Spelling them in a help string cost a red
+                # safety scan; pointing at the file that legitimately carries
+                # them costs nothing and keeps the boundary exact.
+                echo "::notice::$SECRET_NAME does not exist yet, so the live roll will skip. Create the venue API key, then: aws secretsmanager create-secret --name $SECRET_NAME --secret-string file://creds.json -- see deploy/aws/run_live.sh for the two JSON fields it parses. The key's IP allowlist can be set afterwards, once the host's EIP exists." ;;
+              *)
+                echo "::error::could not inspect $SECRET_NAME: $out"
+                exit 1 ;;
+            esac
+            exit 0
+          fi
+          # VersionIdsToStages is absent until a value is put; an empty object
+          # is what a declared-but-unpopulated secret returns.
+          if printf '%s' "$out" | grep -q 'AWSCURRENT'; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SECRET_NAME exists but holds no value, so the live roll will skip. aws secretsmanager put-secret-value --secret-id $SECRET_NAME --secret-string file://creds.json"
+          fi
+
+      - id: pick
+        env:
+          ONLY: ${{ github.event.inputs.only_stack }}
+          ARN: ${{ steps.credential.outputs.ready }}
+        run: |
+          set -euo pipefail
+          # READ FROM TERRAFORM, not from a table here. See the script.
+          picked=$(python3 scripts/live_stacks_matrix.py ${ONLY:+"$ONLY"} || echo '[]')
+          if [ -n "${ONLY:-}" ] && [ "$picked" = "[]" ]; then
+            echo "::notice::only_stack='$ONLY' is not a live stack; the live deploy has nothing to do"
+          fi
+          if [ -z "${ARN:-}" ] && [ "$picked" != "[]" ]; then
+            echo "::notice::live stacks are configured but the venue credential holds no value, so deploy-live will skip. The host comes up, reads \"none\", and waits (exit 90, not a crash loop). Create the venue key against the host's EIP, create the secret, set the variable, then dispatch this workflow with only_stack=<stack>."
+          fi
+          echo "rolling (live): $picked"
+          echo "matrix=$picked" >> "$GITHUB_OUTPUT"
+
+
+  roll:
+    needs: [test, build-live, targets-live, wait-for-infrastructure]
+    if: >-
+      always() && needs['build-live'].result == 'success'
+      && needs['build-live'].outputs.exists == 'true'
+      && needs.test.result == 'success'
+      && needs['wait-for-infrastructure'].result == 'success'
+      && needs['targets-live'].outputs.matrix != '[]'
+      && needs['targets-live'].outputs.ready == 'true'
+    uses: ./.github/workflows/_roll.yml
+    with:
+      matrix: ${{ needs['targets-live'].outputs.matrix }}
+      image_tag: ${{ github.event.inputs.image_tag || needs['build-live'].outputs.tag }}
+      # A LITERAL, DELIBERATELY -- the OIDC test reads it from here, and this
+      # is the one environment that should carry a required reviewer.
+      environment: mainnet-deploy
+      ecr_repository: ${{ needs['build-live'].outputs.repository }}
+      venue: mainnet
+      expect_venue: mainnet
+      live: true
+      id_prefix: "LIVE-"
+      slug_max: 52
+      only_stack: ${{ github.event.inputs.only_stack }}
+      manual_tag: ${{ github.event.inputs.image_tag }}

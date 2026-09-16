@@ -34,7 +34,13 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 VARIABLES = ROOT / "infra/terraform/variables.tf"
-DEPLOY = ROOT / ".github/workflows/deploy.yml"
+#: The paper stack table lives in deploy-paper.yml since the 2026-09-16 split.
+#: Named rather than globbed: this test is about ONE table, the paper one, and
+#: a glob that quietly matched the testnet caller instead would compare the
+#: wrong list against variables.tf and still look green.
+from tests.deploy_workflows import named as _named
+
+DEPLOY = _named("deploy-paper")
 MONITOR = ROOT / ".github/workflows/monitor.yml"
 
 
@@ -52,7 +58,7 @@ def _terraform_stacks() -> dict[str, dict]:
 
 def _deploy_table() -> dict[str, dict]:
     m = re.search(r"all='(\[.*?\])'", DEPLOY.read_text(), re.S)
-    assert m, "deploy.yml no longer has an `all=' stack table"
+    assert m, f"{DEPLOY.name} no longer has an `all=' stack table"
     return {r["stack"]: r for r in json.loads(m.group(1))}
 
 
@@ -70,7 +76,7 @@ def _monitor_matrix() -> dict[str, dict]:
 def test_the_three_tables_name_the_same_stacks():
     tf, dep, mon = _terraform_stacks(), _deploy_table(), _monitor_matrix()
     assert set(tf) == set(dep), (
-        f"variables.tf has {sorted(tf)} but deploy.yml has {sorted(dep)}")
+        f"variables.tf has {sorted(tf)} but {DEPLOY.name} has {sorted(dep)}")
     assert set(tf) == set(mon), (
         f"variables.tf has {sorted(tf)} but monitor.yml has {sorted(mon)}")
 

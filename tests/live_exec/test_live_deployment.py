@@ -18,7 +18,32 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DEPLOY = (ROOT / ".github/workflows/deploy.yml").read_text()
+from tests.deploy_workflows import text as _deploy_text
+
+DEPLOY = _deploy_text()
+
+#: THE SPLIT, 2026-09-16. deploy.yml became one caller per venue plus the
+#: shared _roll.yml. `DEPLOY` above is all of them concatenated, which is right
+#: for "does the pipeline mention X" but wrong for "what does THIS job do" --
+#: there are three `roll:` jobs now, so indexing into the concatenation would
+#: silently read whichever came first. These name the file they mean.
+from tests.deploy_workflows import ROLL as _ROLL_PATH
+from tests.deploy_workflows import named as _named
+
+PAPER_WF = _named("deploy-paper").read_text()
+TESTNET_WF = _named("deploy-testnet").read_text()
+ROLL_WF = _ROLL_PATH.read_text()
+
+
+def _job(text: str, name: str) -> str:
+    """One job's body, from `  <name>:` to the next top-level job."""
+    start = text.index(f"\n  {name}:")
+    rest = text[start + 1:]
+    nxt = [i for i in (rest.find(f"\n  {n}:") for n in
+                       ("wait-for-infrastructure", "test", "build", "build-live",
+                        "targets", "targets-live", "roll"))
+           if i > 0]
+    return rest[:min(nxt)] if nxt else rest
 LIVE_TF = (ROOT / "infra/terraform/live.tf").read_text()
 
 
@@ -37,7 +62,7 @@ def test_the_live_image_goes_to_its_own_repository():
     # The paper build must not have been repointed at it. Note the job order in
     # this file is test -> build-live -> targets -> build -> deploy; YAML job
     # order does not affect execution, which `needs` decides.
-    paper_build = DEPLOY[DEPLOY.index("  build:"):DEPLOY.index("  deploy:")]
+    paper_build = _job(PAPER_WF, "build")
     assert paper_build, "could not locate the paper build job"
     assert "Dockerfile.live" not in paper_build
     assert "file: deploy/docker/Dockerfile\n" in paper_build
@@ -279,10 +304,10 @@ def test_something_actually_deploys_the_live_image():
     repository, and never deployed by anything -- a pipeline that looked
     complete because the build step went green.
     """
-    assert "  deploy-live:" in DEPLOY, "there is no live deploy job"
-    assert "needs['build-live']" in DEPLOY, (
+    assert "  roll:" in TESTNET_WF, "deploy-testnet.yml has no roll job"
+    assert "needs['build-live']" in TESTNET_WF, (
         "nothing consumes build-live; the live image is built and abandoned")
-    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    job = _job(TESTNET_WF, "roll")
     # The LIVE repository, not the paper one.
     assert "needs['build-live'].outputs.repository" in job, (
         "the live deploy does not use the live repository")
@@ -320,8 +345,8 @@ def test_the_live_stack_list_is_not_a_second_table():
     """
     assert "scripts/live_stacks_matrix.py" in DEPLOY, (
         "the live stack list is not derived from Terraform")
-    assert "  targets-live:" in DEPLOY, "there is no live targets job"
-    job = DEPLOY[DEPLOY.index("  targets-live:"):DEPLOY.index("  deploy-live:")]
+    assert "  targets-live:" in TESTNET_WF, "there is no live targets job"
+    job = _job(TESTNET_WF, "targets-live")
     assert '"stack":' not in job, (
         "targets-live carries a hardcoded stack table, which is what drifted "
         "for the paper path")
@@ -411,7 +436,7 @@ def test_a_live_stack_can_be_rolled_to_an_explicit_tag():
     assert "github.event.inputs.image_tag == ''" in job[job.index("    steps:"):], (
         "nothing stops build-live rebuilding on a manual rollback")
 
-    live = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    live = ROLL_WF
     for step in ("retire the running experiment", "start the successor experiment"):
         i = live.index(step)
         cond = live[i:i + 400]
@@ -430,12 +455,12 @@ def test_the_live_roll_waits_for_a_credential_rather_than_going_red():
     job would go red on exactly the merge that is meant to stand the stack up,
     and a red deploy is how a real failure gets ignored later.
     """
-    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
-    condition = job[job.index("if:"):job.index("runs-on:")]
+    job = _job(TESTNET_WF, "roll")
+    condition = job[job.index("if:"):job.index("uses:")]
     assert "needs['targets-live'].outputs.ready == 'true'" in condition, (
         "the live roll is not gated on a credential existing; the first merge "
         "would roll a host that cannot start and fail the run")
-    targets = DEPLOY[DEPLOY.index("  targets-live:"):DEPLOY.index("  deploy-live:")]
+    targets = _job(TESTNET_WF, "targets-live")
     # ASKED OF THE ACCOUNT, NOT OF A VARIABLE. Readiness was a repository
     # variable a human set after creating the secret by hand; it is now whether
     # Secrets Manager holds a value, which cannot be forgotten or mistyped.
@@ -468,7 +493,7 @@ def test_only_stack_may_name_a_live_stack():
     which made that routine dispatch a red run. Worse, `deploy` is gated on
     this job's matrix, so the failure would not have explained itself.
     """
-    job = DEPLOY[DEPLOY.index("  targets:"):DEPLOY.index("  build:")]
+    job = _job(PAPER_WF, "targets")
     assert "live_stacks_matrix.py" in job, (
         "the paper targets job cannot tell a live stack from a typo, so a "
         "routine live dispatch fails the run")
@@ -486,8 +511,10 @@ def test_the_live_roll_keeps_the_experiment_guard():
     into a thirty-day run by an unrelated merge. A separate live job means a
     separate copy of the guard, and a copy that was dropped would be silent.
     """
-    assert "  deploy-live:" in DEPLOY, "there is no live deploy job to guard"
-    job = DEPLOY[DEPLOY.index("  deploy-live:"):]
+    # SHARED WITH PAPER SINCE THE SPLIT, which is the point: the guard used
+    # to exist twice and a dropped copy would have been silent. It now lives in
+    # _roll.yml, and deploy-testnet.yml reaching it is asserted above.
+    job = ROLL_WF
     assert "no experiment is RUNNING" in job, "the live roll has no guard"
     assert "roll=no" in job, "the live guard does not fail closed"
     assert 'Action=stop' in job, "the live roll never retires the experiment"

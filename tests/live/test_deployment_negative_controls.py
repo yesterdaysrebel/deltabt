@@ -41,6 +41,10 @@ import sys
 
 import pytest
 
+#: The deploy pipeline, which is four files since the 2026-09-16 split.
+#: The helper refuses an empty set, so these assertions cannot go vacuous.
+from tests.deploy_workflows import text as _deploy_text
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
@@ -204,7 +208,7 @@ class TestBrokenImageRollsBack:
         assert "systemctl stop deltabt.service" in tail
 
     def test_the_deploy_workflow_fails_when_the_host_command_fails(self):
-        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        workflow = _deploy_text()
         assert "::error::deploy $STATUS" in workflow
         assert "verify_deployment.py" in workflow
 
@@ -327,7 +331,7 @@ class TestMutableTag:
             (ROOT / "infra" / "terraform" / "ecr.tf").read_text()
 
     def test_the_deploy_workflow_tags_with_the_git_sha(self):
-        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        workflow = _deploy_text()
         assert "tag=${GITHUB_SHA}" in workflow
         assert not re.search(r":latest\b", workflow)
 
@@ -640,8 +644,16 @@ class TestBootstrapNeverAdoptsSilently:
         repository grows a second path to production.
         """
         workflows = {p.name for p in (ROOT / ".github" / "workflows").glob("*.yml")}
-        assert workflows == {"test.yml", "infrastructure.yml", "deploy.yml",
-                             "monitor.yml"}, f"unexpected workflow: {workflows}"
+        # deploy.yml became four files on 2026-09-16: one caller per venue and
+        # the shared roll sequence they all call. The split was to give each
+        # venue its own concurrency group and its own environment -- a hung
+        # live roll used to sit in front of paper in the same run -- and NOT to
+        # add a second path to production. _roll.yml has no triggers at all;
+        # deploy-mainnet.yml has no `push:`.
+        assert workflows == {"test.yml", "infrastructure.yml", "monitor.yml",
+                             "deploy-paper.yml", "deploy-testnet.yml",
+                             "deploy-mainnet.yml", "_roll.yml"}, \
+            f"unexpected workflow: {workflows}"
 
         # The intent, asserted directly rather than only via the set above.
         # Comments are stripped: infrastructure.yml documents the bootstrap in

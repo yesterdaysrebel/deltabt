@@ -37,7 +37,17 @@ DOCKERFILES = (
     ROOT / "deploy" / "docker" / "Dockerfile",
     ROOT / "deploy" / "docker" / "Dockerfile.live",
 )
-WORKFLOW = ROOT / ".github" / "workflows" / "deploy.yml"
+#: EVERY WORKFLOW WITH A PUSH TRIGGER, not one file.
+#:
+#: deploy.yml became deploy-paper.yml and deploy-testnet.yml on 2026-09-16
+#: (plus deploy-mainnet.yml, which has no push trigger by design). The image is
+#: covered by the UNION of their allow-lists: `app/` rolls both, `live/` rolls
+#: only the testnet one. Reading a single file after the split would have made
+#: every assertion below pass against half the pipeline -- the same hole,
+#: exactly the size of the other file, that let `live/**` go missing before.
+from tests.deploy_workflows import entry_points as _entry_points
+
+WORKFLOWS = [p for p in _entry_points() if "\n  push:\n" in p.read_text()]
 
 #: Copied into the image, deliberately NOT a deploy trigger. Changing it cannot
 #: change what the container does, and rolling a live experiment to ship a
@@ -93,11 +103,24 @@ def trigger_paths() -> list[str]:
     returning a short list, because a silently-empty result would make every
     assertion below pass vacuously.
     """
-    lines = WORKFLOW.read_text().splitlines()
+    assert WORKFLOWS, (
+        "no deploy workflow has a `push:` trigger, so nothing rolls on a "
+        "merge. Either the pipeline was renamed or the triggers are gone; "
+        "without this the union below would be empty and every assertion "
+        "would pass by checking nothing.")
+    out: list[str] = []
+    for wf in WORKFLOWS:
+        out.extend(_trigger_paths_of(wf))
+    return out
+
+
+def _trigger_paths_of(workflow) -> list[str]:
+    """The `paths:` list of one workflow's push trigger."""
+    lines = workflow.read_text().splitlines()
     try:
         i = next(n for n, l in enumerate(lines) if l.rstrip() == "  push:")
     except StopIteration:                                   # pragma: no cover
-        raise AssertionError("deploy.yml has no `push:` trigger")
+        raise AssertionError(f"{workflow.name} has no `push:` trigger")
 
     key = None
     for n in range(i + 1, len(lines)):

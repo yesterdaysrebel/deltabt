@@ -1,0 +1,548 @@
+name: roll stacks
+
+# THE ROLL SEQUENCE, ONCE.
+#
+# It used to exist twice: `deploy` for paper hosts and `deploy-live` for live
+# ones, 410 and 320 lines, and 93% of the shared steps were byte-identical.
+# The 7% that differed was labels -- "live retire" against "retire" -- plus the
+# experiment-id prefix. Nothing in that difference justified two copies of the
+# guard, the retire, the drift-aware wait and the successor registration.
+#
+# TWO COPIES OF ONE FACT IS THE FAILURE THIS REPOSITORY KEEPS HAVING. On
+# 2026-09-16 alone it appeared three times in the identity path: the universe
+# the bot traded against the one the CLI recorded, the execution params the bot
+# read against the ones the CLI wrote, and the venue symbols against the host's
+# env. app/execution/paper_broker.broker_params carries the same scar. A
+# deploy pipeline in two halves that must stay in step is the same shape, and
+# the halves had already drifted -- `st=Pending` exists in one retire loop and
+# not the other, harmlessly, which is exactly how the harmful ones start.
+#
+# WHAT IS STILL PER-VENUE is passed in: which ECR repository holds the image,
+# which environment gates the job, what the experiment id is prefixed with, and
+# whether the live-only venue check runs.
+#
+# ENVIRONMENT IS AN INPUT, AND THAT COSTS SOMETHING. `environment:` here reads
+# `${{ inputs.environment }}`, which the literal regex in
+# tests/live/test_oidc_subjects_cover_environments.py cannot see. That test
+# exists because a missing OIDC trust subject has broken every roll TWICE and
+# names neither the workflow nor the environment when it does. It now follows
+# the `uses:` indirection and reads the environment out of each CALLER's
+# `with:` block, so the property survives the extraction. If you add a caller,
+# it must pass a literal there.
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: "JSON array of stacks to roll, from the caller's chooser."
+        required: true
+        type: string
+      image_tag:
+        description: "The resolved tag to deploy. The caller decides it."
+        required: true
+        type: string
+      environment:
+        description: >-
+          The GitHub environment gating this roll. MUST be a literal in the
+          caller's `with:` -- the OIDC test reads it from there.
+        required: true
+        type: string
+      ecr_repository:
+        description: "Which ECR repository holds the image."
+        required: true
+        type: string
+      venue:
+        description: "paper | testnet | mainnet. Labels SSM commands and the job."
+        required: true
+        type: string
+      id_prefix:
+        description: >-
+          Prefixed to the experiment id. A live run and a paper run of the same
+          arm on the same day would otherwise be told apart only by which
+          database they landed in.
+        required: false
+        default: ""
+        type: string
+      slug_max:
+        description: >-
+          Characters of the variant slug kept in the experiment id. 60 bare and
+          52 behind "LIVE-" -- the values the pre-split workflow used, carried
+          over unchanged so that no running experiment's id would move. They do
+          not add up (52 + 5 is 57, not 60) and no reason for that is recorded
+          anywhere; it is left alone because this feeds the id a result is read
+          back by, and renaming runs to tidy a harmless asymmetry is not worth
+          it.
+        required: false
+        default: 60
+        type: number
+      only_stack:
+        description: "Set when this roll came from a deliberate dispatch."
+        required: false
+        default: ""
+        type: string
+      manual_tag:
+        description: >-
+          Non-empty when rolling back to an explicit tag, which sets the
+          experiment id to 'none' and leaves the running experiment alone.
+        required: false
+        default: ""
+        type: string
+      live:
+        description: "True for a venue-trading stack. Gates the venue check."
+        required: false
+        default: false
+        type: boolean
+      expect_venue:
+        description: >-
+          The venue this workflow is allowed to roll, checked against the
+          HOST's own SSM parameter before anything is touched. Live only.
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+jobs:
+  roll:
+    name: "roll ${{ inputs.venue }} ${{ matrix.stack }} (${{ matrix.variant }})"
+    runs-on: ubuntu-latest
+    # A LITERAL IN THE CALLER, an expression here. See the note above.
+    environment: ${{ inputs.environment }}
+    # ONE JOB PER HOST, AND fail-fast IS OFF.
+    #
+    # The hosts run different experiments against different databases. If one
+    # refuses the image on configuration drift, that says nothing about the
+    # others, and cancelling a sibling mid-roll would leave it on neither the
+    # old image nor the new one. Each rolls, verifies and rolls itself back
+    # independently.
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include: ${{ fromJSON(inputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-roll-${{ github.run_id }}
+
+      - id: tag
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          [ -n "$TAG" ] || { echo "no image tag resolved"; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying $TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: confirm the image exists before touching the host
+        # NOT a full infrastructure preflight. This job authenticates as
+        # deltabt-paper-github-app-deploy, which can push one ECR repository
+        # and invoke one SSM document -- and nothing else. Asserting that IAM,
+        # the state bucket and RDS are all well-formed would require read
+        # access this role must not have, and widening it to satisfy a check
+        # would dissolve the separation the check exists to protect.
+        #
+        # The infrastructure workflow runs `aws_preflight.py --phase
+        # application` with the role that legitimately can, after every apply.
+        run: |
+          aws ecr describe-images --region "$AWS_REGION" \
+            --repository-name "${{ inputs.ecr_repository }}" \
+            --image-ids "imageTag=${{ steps.tag.outputs.tag }}" \
+            --query 'imageDetails[0].{digest:imageDigest,pushed:imagePushedAt}' --output json
+
+      - name: warn if a forward test is running
+        # Not a hard block: a genuine bug fix during a run is sometimes
+        # necessary. But it must be a conscious act, and the log must record
+        # that the code changed underneath a running experiment -- otherwise
+        # the results describe two different systems wearing one name.
+        run: |
+          echo "::warning::If a forward test is RUNNING, this changes the code underneath it."
+          echo "::warning::Per docs/operations.md that means: stop the experiment, deploy, start a NEW experiment id."
+
+      - name: find the host
+        id: host
+        # DISCOVERED, NOT CONFIGURED. The repository variable this replaces
+        # went stale on every instance replacement -- five times -- and each
+        # time the deploy aimed SSM at a terminated host and failed in a way
+        # that looks like a broken deploy rather than a stale string. The tag
+        # is set by Terraform and cannot drift from the instance it names.
+        env:
+          NAME_TAG: deltabt-paper-${{ matrix.stack }}
+        run: |
+          set -euo pipefail
+          ids=$(aws ec2 describe-instances --region "$AWS_REGION" \
+            --filters "Name=tag:Name,Values=$NAME_TAG" \
+                      "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          n=$(printf '%s\n' $ids | grep -c . || true)
+          if [ "$n" -ne 1 ]; then
+            echo "::error::expected exactly one running host tagged $NAME_TAG, found $n: $ids"
+            echo "Two would mean a replacement left an orphan and a deploy could roll the wrong one."
+            exit 1
+          fi
+          echo "instance_id=$ids" >> "$GITHUB_OUTPUT"
+          echo "host $ids ($NAME_TAG)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: the host must be on the venue this workflow is for
+        if: inputs.live && inputs.expect_venue != '' && steps.host.outputs.instance_id != ''
+        # BEFORE THE ROLL, NOT IN THE SUMMARY AFTER IT.
+        #
+        # var.live_venue is ONE GLOBAL VARIABLE, not a per-stack property, so
+        # the stack named `tnet` becomes a MAINNET bot the moment somebody
+        # edits it -- the name says testnet and the orders are real. Nothing
+        # about the stack table would look different.
+        #
+        # Splitting this pipeline by venue is only meaningful if each half
+        # refuses the other's hosts, and the only trustworthy source for that
+        # is the parameter the HOST ITSELF reads (run_live.sh), not a table in
+        # this repository. An unreadable parameter fails closed.
+        env:
+          SSM_PARAM: /deltabt/paper/${{ matrix.stack }}/delta_env
+          EXPECT: ${{ inputs.expect_venue }}
+        run: |
+          set -euo pipefail
+          VENUE=$(aws ssm get-parameter --region "$AWS_REGION" \
+                   --name "$SSM_PARAM" --query Parameter.Value --output text \
+                   2>/dev/null || echo "")
+          if [ -z "$VENUE" ]; then
+            echo "::error::$SSM_PARAM is unreadable, so this host's venue cannot be established. Refusing to roll."
+            exit 1
+          fi
+          if [ "$VENUE" != "$EXPECT" ]; then
+            echo "::error::${{ matrix.stack }} is on venue '$VENUE' but this workflow rolls '$EXPECT'. Use the workflow for '$VENUE'."
+            exit 1
+          fi
+          echo "::notice::${{ matrix.stack }} confirmed on '$VENUE'"
+
+      - name: may we roll this host?
+        id: guard
+        # THE PIN, DECIDED FROM LIVE STATE INSTEAD OF A HAND-EDITED FLAG.
+        #
+        # Rolling retires the running experiment and resets its sample to
+        # zero. That must not happen by accident -- it happened to `hours` on
+        # 2026-09-07, four days into a 30-day run, via a merge that had nothing
+        # to do with it. The fix at the time was `"pinned":true` in the stack
+        # table, which works but has to be edited by hand twice per experiment,
+        # and a human editing a JSON string in a shell script is the same class
+        # of mistake it was protecting against. A stack left pinned after its
+        # run ends blocks every deploy silently.
+        #
+        # So the host is asked. An explicit dispatch (only_stack) overrides,
+        # because that is already the deliberate act.
+        #
+        # FAILS CLOSED, AND NOT ON THE EXIT CODE. `forward-test status` exits 1
+        # both for "nothing is running" and for every real failure, exactly as
+        # `stop` does, so this matches the CLI's own words the way the retire
+        # step does. Anything unrecognised -- SSM unreachable, host wedged,
+        # timeout -- leaves roll=no and the deploy skips rather than guesses.
+        env:
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
+          ID: ${{ steps.host.outputs.instance_id }}
+          ONLY: ${{ inputs.only_stack }}
+        run: |
+          set -euo pipefail
+          echo "roll=no" >> "$GITHUB_OUTPUT"
+          if [ -n "${ONLY:-}" ]; then
+            echo "roll=yes" >> "$GITHUB_OUTPUT"
+            echo "::notice::only_stack=$ONLY is a deliberate dispatch; rolling regardless of experiment state"
+            exit 0
+          fi
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
+            --parameters "Action=status" \
+            --comment "gha ${{ github.run_id }} ${{ inputs.venue }} guard" \
+            --query 'Command.CommandId' --output text)
+          st=Pending
+          for _ in $(seq 1 60); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+          out=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                 --command-id "$CMD" --instance-id "$ID" \
+                 --query 'StandardOutputContent' --output text 2>/dev/null || true)
+          echo "$out"
+          case "$out" in
+            *"no experiment is RUNNING"*|*"nothing to protect"*)
+              echo "roll=yes" >> "$GITHUB_OUTPUT"
+              echo "::notice::no experiment is running on ${{ matrix.stack }}; rolling" ;;
+            *)
+              # SAY WHICH OF THE TWO IT WAS. The first version reported both
+              # possibilities in one sentence -- "has a RUNNING experiment (or
+              # its state could not be read: Success)" -- where `Success` is
+              # the SSM command's status, not the experiment's. It reads as
+              # self-contradictory, and this is the line somebody reads when a
+              # deploy silently did not roll.
+              if [ "$st" = "Success" ]; then
+                why="it has a RUNNING experiment"
+              else
+                why="its state could not be read (SSM command: $st)"
+              fi
+              echo "::notice::NOT rolling ${{ matrix.stack }}: $why. End the run, or dispatch deploy.yml with only_stack=${{ matrix.stack }} to roll deliberately."
+              echo "${{ matrix.stack }}: not rolled -- $why" >> "$GITHUB_STEP_SUMMARY" ;;
+          esac
+
+      - name: decide the experiment id
+        if: steps.guard.outputs.roll == 'yes'
+        id: experiment
+        # An experiment records the git_sha it began on, so a code change and
+        # the run it belongs to are the same decision. Rolling a new image
+        # under a RUNNING experiment is refused by bind_experiment, and
+        # rightly: one id would then describe two programs.
+        #
+        # So a normal deploy retires the running experiment and registers a
+        # successor named for the variant, the date and this commit. A manual
+        # rollback passes an explicit image_tag and deliberately does NOT --
+        # the point of a rollback is to get back to what was running, not to
+        # reset the sample to zero.
+        env:
+          MANUAL_TAG: ${{ inputs.manual_tag }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TAG:-}" ]; then
+            echo "id=none" >> "$GITHUB_OUTPUT"
+            echo "::notice::rollback to an explicit tag: experiments left untouched"
+            exit 0
+          fi
+          slug=$(printf '%s' "$VARIANT" \
+                 | sed 's|^SPEC:||; s|@|-|g; s|/|-|g; s|[^A-Za-z0-9._-]|-|g' \
+                 | tr '[:lower:]' '[:upper:]' | cut -c1-${{ inputs.slug_max }})
+          id="${{ inputs.id_prefix }}${slug}-$(date -u +%Y%m%d)-${GITHUB_SHA:0:7}"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "experiment \`$id\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: retire the running experiment, on the image still running
+        if: steps.guard.outputs.roll == 'yes' && steps.experiment.outputs.id != 'none'
+        # BEFORE the roll, deliberately. An experiment records its git_sha and
+        # bind_experiment() refuses a container carrying a different one, so
+        # rolling first guarantees a drift refusal: /readyz never passes and
+        # the host script rolls back an image that was fine.
+        env:
+          # THE DEPLOY DOCUMENT'S NAME WITH ITS SUFFIX SWAPPED, not with a
+          # suffix appended. Terraform names these `<stack>-deploy` and
+          # `<stack>-experiment`; appending gives `...-deploy-experiment`,
+          # which does not exist and fails as an IAM AccessDenied on a
+          # document nobody can find. That is what happened on 2026-09-04.
+          # The repository variable if it is set, else the name Terraform
+          # gives the document. Deriving it means a NEW stack needs no
+          # repository variable at all -- merge, apply, roll -- and
+          # tests/live/test_document_names_are_derivable.py pins the scheme
+          # against infra/terraform so the fallback cannot rot.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
+          ID: ${{ steps.host.outputs.instance_id }}
+        run: |
+          set -euo pipefail
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
+            --parameters "Action=stop" \
+            --comment "gha ${{ github.run_id }} ${{ inputs.venue }} retire" \
+            --query 'Command.CommandId' --output text)
+          for _ in $(seq 1 60); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD" --instance-id "$ID" \
+            --query 'StandardOutputContent' --output text || true
+          [ "$st" = "Success" ] || { echo "::error::could not retire the running experiment"; exit 1; }
+
+      - name: send the deploy command
+        if: steps.guard.outputs.roll == 'yes'
+        id: send
+        run: |
+          CMD=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}" \
+            --instance-ids "${{ steps.host.outputs.instance_id }}" \
+            --parameters "ImageTag=${{ steps.tag.outputs.tag }}" \
+            --comment "gha ${{ github.run_id }} ${{ inputs.venue }}" \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=$CMD" >> "$GITHUB_OUTPUT"
+          echo "SSM command $CMD"
+
+      - name: wait for it, and fail loudly if it did not take
+        if: steps.guard.outputs.roll == 'yes'
+        run: |
+          CMD="${{ steps.send.outputs.command_id }}"
+          ID="${{ steps.host.outputs.instance_id }}"
+          # The host script allows up to 900s for readiness plus the same again
+          # for a rollback, so this waits longer than that before giving up.
+          for _ in $(seq 1 190); do
+            STATUS=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                       --command-id "$CMD" --instance-id "$ID" \
+                       --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Success) echo "deploy succeeded"; break ;;
+              Failed|Cancelled|TimedOut) echo "::error::deploy $STATUS"; FAILED=1; break ;;
+            esac
+            sleep 20
+          done
+          echo '### Host output' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD" --instance-id "$ID" \
+            --query 'StandardOutputContent' --output text | tail -80 \
+            >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${FAILED:-0}" = "1" ]; then
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardErrorContent' --output text || true
+            echo "::error::The host rolls back automatically. Verify with /readyz before deploying again."
+            exit 1
+          fi
+          [ "$STATUS" = "Success" ] || { echo "::error::timed out waiting for the host"; exit 1; }
+
+      - name: start the successor experiment
+        if: steps.guard.outputs.roll == 'yes' && steps.experiment.outputs.id != 'none'
+        # AFTER the roll, so the experiment records the SHA the bot is actually
+        # running. The document stops the service, runs preflight, registers
+        # the id, restarts and waits for /readyz -- so a green step here means
+        # the bot is live AND bound, not merely that a row was written.
+        #
+        # A failure leaves a healthy bot running UNBOUND: its decisions carry
+        # no experiment id. That is loud and recoverable, and it is better than
+        # rolling back an image that passed its own health gate.
+        env:
+          # THE DEPLOY DOCUMENT'S NAME WITH ITS SUFFIX SWAPPED, not with a
+          # suffix appended. Terraform names these `<stack>-deploy` and
+          # `<stack>-experiment`; appending gives `...-deploy-experiment`,
+          # which does not exist and fails as an IAM AccessDenied on a
+          # document nobody can find. That is what happened on 2026-09-04.
+          # The repository variable if it is set, else the name Terraform
+          # gives the document. Deriving it means a NEW stack needs no
+          # repository variable at all -- merge, apply, roll -- and
+          # tests/live/test_document_names_are_derivable.py pins the scheme
+          # against infra/terraform so the fallback cannot rot.
+          DEPLOY_DOC: ${{ vars[matrix.document_var] || format('deltabt-paper-{0}-deploy', matrix.stack) }}
+          ID: ${{ steps.host.outputs.instance_id }}
+          EXP: ${{ steps.experiment.outputs.id }}
+        run: |
+          set -euo pipefail
+          CMD=$(aws ssm send-command --region "$AWS_REGION" \
+            --document-name "${DEPLOY_DOC%-deploy}-experiment" --instance-ids "$ID" \
+            --parameters "Action=start,ExperimentId=$EXP" \
+            --comment "gha ${{ github.run_id }} ${{ inputs.venue }} start" \
+            --query 'Command.CommandId' --output text)
+          st=Pending
+          for _ in $(seq 1 120); do
+            st=$(aws ssm get-command-invocation --region "$AWS_REGION" \
+                  --command-id "$CMD" --instance-id "$ID" \
+                  --query Status --output text 2>/dev/null || echo Pending)
+            case "$st" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 10
+          done
+          {
+            echo '### Experiment'
+            echo '```'
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardOutputContent' --output text | tail -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$st" != "Success" ]; then
+            aws ssm get-command-invocation --region "$AWS_REGION" \
+              --command-id "$CMD" --instance-id "$ID" \
+              --query 'StandardErrorContent' --output text || true
+            echo "::error::THE IMAGE IS DEPLOYED AND HEALTHY, BUT NO EXPERIMENT IS RUNNING."
+            echo "::error::The bot is live and unbound. Fix the cause, then re-run this workflow."
+            exit 1
+          fi
+          echo "experiment \`$EXP\` is running" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: what the deploy document reported
+        if: steps.guard.outputs.roll == 'yes'
+        # NO second SSM channel. This role's ssm:SendCommand is scoped to the
+        # deltabt-paper-deploy document and that instance -- it cannot invoke
+        # AWS-RunShellScript, and that is the point: a workflow able to run
+        # arbitrary shell on the bot host is a workflow able to do anything to
+        # the experiment. An earlier version of this step reached for
+        # AWS-RunShellScript and was correctly denied.
+        #
+        # The verification therefore lives in the two places that can do it
+        # without widening anything:
+        #   * deploy.sh, on the host, which gates on /readyz and rolls back to
+        #     the previous tag by itself if the new image does not come up;
+        #   * scripts/verify_deployment.py, run by an operator, which checks
+        #     the AWS side too (one instance, the silence alarm, log delivery).
+        run: |
+          echo "The host script gated on /readyz and did not roll back."
+          echo "Operator verification (14 checks, read-only):"
+          echo "  AWS_PROFILE=... python3 scripts/verify_deployment.py \\"
+          echo "    --instance-id ${{ steps.host.outputs.instance_id }} --region $AWS_REGION \\"
+          echo "    --expected-sha ${{ steps.tag.outputs.tag }}"
+
+      - name: the deployed commit, image and config hash
+        if: steps.guard.outputs.roll == 'yes'
+        run: |
+          {
+            echo '### Provenance'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| commit | \`${{ github.sha }}\` |"
+            echo "| image | \`${{ steps.tag.outputs.tag }}\` |"
+            echo "| strategy_config_hash | \`$(python3 -c "from app.config.strategy import StrategyConfig; print(StrategyConfig().config_hash)")\` |"
+            echo
+            echo "**Successful infrastructure deployment does not create an"
+            echo "experiment and does not start paper trading.** Starting the"
+            echo "forward test is a deliberate human action taken after the"
+            echo "application preflight passes -- docs/aws_deployment.md section 13."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # THE LIVE DEPLOY PATH.
+  #
+  # A SEPARATE JOB, NOT A GENERALISATION OF `deploy`, by operator decision on
+  # 2026-09-15. Generalising would have been less code and would have exercised
+  # one path twice; it would also have meant editing the job that rolls the
+  # paper bot while the paper bot is nine days into a thirty-day experiment
+  # that is the only thing measuring whether the arm has an edge. The cost of
+  # this choice is the duplication below, and duplication is what let the
+  # paper stack table drift from Terraform and dispatch rolls at terminated
+  # instances -- so the ONE thing not duplicated is the stack list, which is
+  # read from infra/terraform/live.tf by scripts/live_stacks_matrix.py.
+  #
+  # Before this existed, build-live pushed an image that nothing consumed: no
+  # job declared `needs: build-live`, and `deploy` reads the paper build's tag
+  # and the paper repository. The live image was built, stored, and never
+  # deployed.
+  # ---------------------------------------------------------------------------
+
+      - name: which venue this host is on
+        if: inputs.live && steps.guard.outputs.roll == 'yes'
+        # THE ONE FACT A LIVE DEPLOY SUMMARY MUST CARRY. The venue is read from
+        # the SSM parameter the HOST itself reads, not from a workflow input,
+        # so the summary cannot claim a venue the bot is not on.
+        env:
+          SSM_PARAM: /deltabt/paper/${{ matrix.stack }}/delta_env
+        run: |
+          set -euo pipefail
+          VENUE=$(aws ssm get-parameter --region "$AWS_REGION" \
+                   --name "$SSM_PARAM" --query Parameter.Value --output text \
+                   2>/dev/null || echo "UNREADABLE")
+          {
+            echo '### Live provenance'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| commit | \`${{ github.sha }}\` |"
+            echo "| image | \`${{ steps.tag.outputs.tag }}\` |"
+            echo "| repository | \`${{ inputs.ecr_repository }}\` |"
+            echo "| venue | \`$VENUE\` |"
+            echo
+            echo "**This host can place real orders.** On testnet that is play"
+            echo "money; the venue above is the only thing that distinguishes"
+            echo "the two, and it comes from the host's own parameter."
+          } >> "$GITHUB_STEP_SUMMARY"
