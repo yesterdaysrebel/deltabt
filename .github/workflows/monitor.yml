@@ -114,6 +114,28 @@ jobs:
             strategy_hash: "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d"
             log_group: /deltabt/paper/atr/bot
 
+          # --- THE TWO EXIT ARMS, 2026-09-16 --------------------------------
+          #
+          # Same entry rule, timeframes, stop geometry, target, universe and
+          # risk config as `atr`; one behavioural field each. Both ungated, as
+          # atr is, so the three are comparable.
+          #
+          # 64 CHARACTERS, for the reason recorded above: a SPEC arm reports
+          # spec.config_hash in full, and a 16-char pin could never match.
+          - stack: ladder
+            variant: SPEC:manual_scalp_both_t3_ladder@5
+            instance_var: BOT_INSTANCE_ID_LADDER
+            document_var: SSM_MONITOR_DOCUMENT_LADDER
+            strategy_hash: "2e8bd25296855d2cd28019bc6cb753f0ce231e3597cf8f30d3eedec5f7faf02d"
+            log_group: /deltabt/paper/ladder/bot
+
+          - stack: ltp
+            variant: SPEC:manual_scalp_both_t3_ltp@5
+            instance_var: BOT_INSTANCE_ID_LTP
+            document_var: SSM_MONITOR_DOCUMENT_LTP
+            strategy_hash: "3847e632b1075ade5a2d8384b8b026839d87edc5c5f2b6a1062387f9b4d9fee0"
+            log_group: /deltabt/paper/ltp/bot
+
           # 2026-09-10: `hours` AND `cross` ARE RETIRED, AND ONLY `atr` REMAINS.
           #
           # Both were stopped by operator instruction at day 4 -- `hours` of 30,

@@ -186,6 +186,42 @@ class StrategySpec:
     #: Reject a setup whose stop is further than this fraction of price.
     max_stop_pct: float = 0.05
 
+    #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending
+    #: ``(favourable excursion in R, new stop in R from entry)`` pairs; ``()``
+    #: is the absence of the dimension and hashes as though the field did not
+    #: exist, exactly as ``entry_hours_utc = None`` does. See ``_hash_payload``.
+    #:
+    #: It lives on the SPEC and not only in StrategyParams because it changes
+    #: which exits happen, so a result recorded under it is not comparable with
+    #: one recorded without it. The experiment identity has to say which ran.
+    #:
+    #: NO ladder_cooldown_bars HERE. The backtest engine has one; the paper
+    #: execution path has no cooldown for it to lengthen -- every gate is off
+    #: on these hosts by instruction -- and a spec field the executor silently
+    #: ignores is the exact failure class that let tnet trade the wrong
+    #: universe for six hours. Add it with the code that honours it.
+    ladder_rungs: tuple[tuple[float, float], ...] = ()
+
+    #: WHICH PRICE THE STOP WATCHES: "mark" (Delta's default, and every result
+    #: recorded before 2026-09-16) or "ltp". Omitted from the hash at "mark",
+    #: like ``ladder_rungs``.
+    #:
+    #: IT IS REALLY AN EXECUTION SETTING -- Delta's own StopTriggerMethod, not
+    #: a signal rule -- and it is on the spec for a delivery reason, recorded
+    #: here so nobody reads it as a claim about strategy. Execution config
+    #: reaches a host through user_data; user_data is shared across paper
+    #: stacks and carries user_data_replace_on_change, so adding a variable for
+    #: this would replace the instance running the live experiment. The variant
+    #: string is already per stack and costs no user_data bytes.
+    #:
+    #: WHY IT IS WORTH AN ARM. Delta TRIGGERS on mark and FILLS at last-traded.
+    #: On an illiquid instrument mark lags LTP in a fast move, so the fill
+    #: lands past the stop: the live arm's six BEATUSD stops filled a mean
+    #: 0.247R past their trigger, about a quarter of everything that arm made.
+    #: An LTP trigger fires when price actually got there, and pays for it by
+    #: being reachable by thin prints that mark would have smoothed.
+    stop_trigger: str = "mark"
+
     #: Hours of the UTC day during which an entry may FIRE, ``(start, end)``
     #: with ``end`` exclusive and 24 meaning midnight. ``None`` -- the default
     #: and what every spec built before 2026-09-04 means -- is every hour.
@@ -240,6 +276,30 @@ class StrategySpec:
                 f"confirmation gate is enabled")
         if self.target_r <= 0:
             raise ValueError(f"target_r must be positive, got {self.target_r}")
+        if self.stop_trigger not in ("mark", "ltp"):
+            raise ValueError(
+                f"stop_trigger must be 'mark' or 'ltp', got {self.stop_trigger!r}")
+        if self.ladder_rungs:
+            triggers = [t for t, _ in self.ladder_rungs]
+            if triggers != sorted(triggers) or len(set(triggers)) != len(triggers):
+                raise ValueError(
+                    f"ladder_rungs triggers must be strictly ascending, got "
+                    f"{triggers}")
+            if any(t <= 0 for t in triggers):
+                raise ValueError(
+                    "a ladder rung triggering at or below 0R would fire before "
+                    "the trade has gone anywhere")
+            stops = [s for _, s in self.ladder_rungs]
+            if stops != sorted(stops):
+                raise ValueError(
+                    f"ladder_rungs stops must not decrease, or a later rung "
+                    f"would pull the stop back against the position: {stops}")
+            for trig, stop in self.ladder_rungs:
+                if stop >= trig:
+                    raise ValueError(
+                        f"rung ({trig}, {stop}) puts the stop at or beyond the "
+                        f"excursion that triggers it, so it would stop out the "
+                        f"trade that armed it")
         if self.stop == "fixed_pct" and not 0 < self.stop_pct < 1:
             raise ValueError(f"stop_pct must be in (0, 1), got {self.stop_pct}")
         if self.entry_hours_utc is not None:
@@ -338,6 +398,15 @@ class StrategySpec:
         payload = asdict(self)
         if payload.get("entry_hours_utc") is None:
             payload.pop("entry_hours_utc", None)
+        # THE SECOND ELIGIBLE FIELD, added 2026-09-16 on the same reasoning.
+        # An empty ladder is the ABSENCE of the rule, not "a ladder with no
+        # rungs", so a spec without one hashes exactly as it did before this
+        # field existed. That is what keeps every recorded sweep valid and the
+        # running paper experiment bindable.
+        if not payload.get("ladder_rungs"):
+            payload.pop("ladder_rungs", None)
+        if payload.get("stop_trigger") == "mark":
+            payload.pop("stop_trigger", None)
         return payload
 
     @property
