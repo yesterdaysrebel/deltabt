@@ -23,6 +23,10 @@ import pytest
 
 from app.safety import FORBIDDEN_CREDENTIAL_NAMES, FORBIDDEN_FLAGS, FORBIDDEN_ORDER_METHODS
 
+#: The deploy pipeline, which is four files since the 2026-09-16 split.
+#: The helper refuses an empty set, so these assertions cannot go vacuous.
+from tests.deploy_workflows import text as _deploy_text
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 #: Everything that describes or performs a deployment.
@@ -302,7 +306,7 @@ def test_the_deployed_image_tag_is_never_mutable():
     forward test. The image tag is the only durable link between a row in the
     database and the code that produced it, so it must be the git SHA.
     """
-    deploy = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+    deploy = _deploy_text()
     assert not re.search(r":latest\b", deploy), \
         "deploy.yml must never push or deploy a mutable tag"
     assert "IMMUTABLE" in (ROOT / "infra" / "terraform" / "ecr.tf").read_text()

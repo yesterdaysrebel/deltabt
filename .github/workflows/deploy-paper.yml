@@ -1,0 +1,340 @@
+name: deploy paper
+
+# LIFECYCLE STAGE 3 of 3: APPLICATION, for the PAPER stacks.
+#
+# Split out of the single `deploy` workflow on 2026-09-16. It used to roll
+# paper and live in one run, behind one concurrency group, so a live roll that
+# hung -- and one hung for forty minutes that morning -- sat in front of paper
+# and made "the deploy is stuck" a question nobody could answer from the run
+# list. Three workflows, three concurrency groups, three answers.
+#
+# The roll sequence itself lives in _roll.yml and is shared. See the note at
+# the top of that file for why it is not copied per venue.
+#
+# The image tag is ALWAYS the git SHA. Never `latest`. A forward test whose
+# results cannot be tied to an exact commit is not a forward test.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'app/**'
+      - 'deltabt/**'
+      # Offline analysis drivers. They ship, since deltabt/ is copied whole,
+      # but nothing under app/ imports a run_*.py. Five were added in a single
+      # day of research and each one rolled the bot.
+      - '!deltabt/research/run_*.py'
+      - 'deploy/docker/**'
+      - 'pyproject.toml'
+      # NOT PART OF THE IMAGE, AND IT STILL HAS TO ROLL. This file holds the
+      # universe, the variant and the risk knobs -- the things config_hash is
+      # computed FROM. Change one and Terraform replaces the host with a
+      # different identity; without this entry no deploy runs, no successor
+      # experiment is registered, and the new host cannot bind. That is
+      # exactly what stranded SOLUSD on 2026-09-04.
+      # tests/live/test_identity_paths_trigger_deploy.py fails if it goes.
+      - 'infra/terraform/variables.tf'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Existing tag to roll back to. Leave empty to build this commit."
+        required: false
+        type: string
+      only_stack:
+        description: >-
+          Roll ONE stack instead of all of them. Blank rolls every stack.
+          A push cannot use this, so bringing a new arm up without disturbing
+          an established one means dispatching manually: a push-triggered
+          deploy rolls every stack, and any stack with a RUNNING experiment
+          refuses the new SHA on drift, rolls itself back and goes red.
+        required: false
+        type: string
+
+
+concurrency:
+  # ONE ROLL AT A TIME, PER VENUE. Two concurrent SSM deploys would fight over
+  # the same systemd unit and the rollback tag -- but a paper roll and a live
+  # roll touch different hosts and have no reason to queue behind each other.
+  group: deploy-paper
+  cancel-in-progress: false
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+jobs:
+  wait-for-infrastructure:
+    # ORDERING, WHICH IS THE WHOLE REASON A MERGE USED TO NEED A SECOND PUSH.
+    #
+    # Both workflows trigger on the same push. Terraform may REPLACE the host
+    # -- a changed variant or user-data always does -- so a deploy that starts
+    # at the same moment aims SSM at an instance that is about to be
+    # terminated, and fails. That is exactly what happened on the merge of
+    # #39: the push-triggered deploy failed, and shipping took a hand-run
+    # dispatch afterwards.
+    #
+    # TWO WAITS, AND THE SECOND ONE IS NOT OPTIONAL.
+    #
+    #   1. THIS COMMIT's infrastructure run, if it has one, must have applied
+    #      cleanly before its image is rolled onto the result.
+    #   2. ANY infrastructure run still in flight on master, whatever the
+    #      commit. On 2026-09-04 two pull requests were merged sixteen seconds
+    #      apart: #37 touched only `deltabt/` so it had no infrastructure run
+    #      of its own, sailed past wait (1), and rolled while #42's apply --
+    #      which REPLACES the host -- was still running. A deploy aimed at an
+    #      instance that is being terminated is the failure this job exists to
+    #      prevent, and waiting only on our own SHA does not prevent it.
+    name: wait for infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: block until no infrastructure run can move the ground
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deadline = Date.now() + 45 * 60 * 1000;
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+            const list = (params) => github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'infrastructure.yml',
+              per_page: 30,
+              ...params,
+            });
+
+            while (true) {
+              // (1) our own commit, if infrastructure ran for it at all
+              const mine = (await list({ head_sha: context.sha })).data.workflow_runs;
+              const mineUnfinished = mine.filter(r => r.status !== 'completed');
+              const mineBad = mine.filter(
+                r => r.status === 'completed' && !['success', 'skipped'].includes(r.conclusion));
+              if (mineBad.length) {
+                core.setFailed(
+                  `infrastructure concluded '${mineBad[0].conclusion}' for this commit ` +
+                  `(${mineBad[0].html_url}). Refusing to roll an image onto infrastructure ` +
+                  `that did not apply cleanly.`);
+                return;
+              }
+
+              // (2) anything else still applying on master, any commit
+              const onMaster = (await list({ branch: 'master' })).data.workflow_runs;
+              const othersInFlight = onMaster.filter(r => r.status !== 'completed');
+
+              if (mineUnfinished.length === 0 && othersInFlight.length === 0) {
+                core.info(mine.length
+                  ? 'this commit\'s infrastructure applied cleanly; nothing else in flight'
+                  : 'no infrastructure run for this commit; nothing else in flight');
+                return;
+              }
+              if (Date.now() > deadline) {
+                core.setFailed('timed out waiting for infrastructure to settle');
+                return;
+              }
+              core.info(
+                `waiting: ${mineUnfinished.length} for this commit, ` +
+                `${othersInFlight.length} in flight on master`);
+              await sleep(20000);
+            }
+
+  test:
+    # The whole suite, including the paper-only AST scan, on the exact commit
+    # being shipped. Nothing reaches the host without it.
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: build and push
+    needs: test
+    if: github.event.inputs.image_tag == ''
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-build-${{ github.run_id }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - id: meta
+        run: echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: refuse to rebuild an existing tag
+        # ECR is configured with IMMUTABLE tags, so a push would fail anyway.
+        # Failing here makes the reason obvious instead of surfacing as an
+        # opaque registry error.
+        run: |
+          if aws ecr describe-images --repository-name "${{ vars.ECR_REPOSITORY || 'deltabt' }}" \
+               --image-ids "imageTag=${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::notice::${{ steps.meta.outputs.tag }} is already in ECR; skipping the build."
+            echo "already_built=true" >> "$GITHUB_ENV"
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+        if: env.already_built != 'true'
+      - uses: docker/setup-buildx-action@v3
+        if: env.already_built != 'true'
+
+      - name: build for arm64 and push
+        if: env.already_built != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          # The host is Graviton. Building the same architecture it runs on is
+          # also what makes the numba kernels baked at build time usable.
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'deltabt' }}:${{ steps.meta.outputs.tag }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_DIRTY=0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  targets:
+    # WHICH STACKS TO ROLL, DECIDED BEFORE THE MATRIX EXISTS.
+    #
+    # only_stack cannot be applied in the deploy job's `if`: the matrix context
+    # is not available there -- available contexts for jobs.<id>.if are github,
+    # needs, vars and inputs, and nothing else. Referencing matrix.stack there
+    # does not evaluate false, it makes the whole WORKFLOW invalid, and GitHub
+    # rejects it before creating a single job. Learned by doing it.
+    #
+    # So the filter runs where the list is still data. Emitting JSON that the
+    # deploy job expands with fromJSON is the supported way to vary a matrix,
+    # and it keeps the stack table in one place.
+    name: choose stacks
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pick
+        env:
+          ONLY: ${{ github.event.inputs.only_stack }}
+        run: |
+          set -euo pipefail
+          # THIS TABLE IS A SECOND COPY OF THE TERRAFORM STACKS MAP, AND IT
+          # DRIFTED. v3 and v4 were removed from infra/terraform/variables.tf
+          # on 2026-08-25 and their hosts terminated, but this line still named
+          # them -- so the merge that added v5 dispatched a roll at two
+          # instance ids that no longer exist, and `only_stack=v5` would have
+          # been rejected as matching no stack.
+          #
+          # Nothing here can detect that on its own: the deploy role can read
+          # one ECR repository and invoke one SSM document, so it cannot query
+          # Terraform state to derive this list. The table stays hand-written,
+          # which means adding or removing a stack is THREE edits --
+          # variables.tf, here, and monitor.yml.
+          #
+          # `instance_var` IS DEAD AND IS KEPT ONLY AS A LABEL. The host is now
+          # discovered by its Name tag at roll time (see "find the host"),
+          # because the repository variable it used to name went stale on every
+          # instance replacement -- five times -- and each stale value aimed
+          # SSM at a terminated host.
+          # `variant` here is a LABEL for the job name only; the running arm is
+          # set by DELTABOT_VARIANT from user_data, not by this table. Kept in
+          # step with infra/terraform/variables.tf so the job title does not
+          # announce a strategy the host is not running.
+          # WHETHER TO ROLL IS ASKED OF THE HOST, NOT DECLARED HERE.
+          #
+          # Until 2026-09-07 a push to master rolled EVERY stack. That is not a
+          # tidiness problem: the experiment identity includes git_sha, so
+          # rolling a host retires its RUNNING experiment and registers a
+          # successor, resetting the risk ledger to 10,000 and the sample to
+          # zero. It happened to `hours` on 2026-09-07 -- an arm four days into
+          # a 30-day run, rolled by a merge that had nothing to do with it.
+          #
+          # The fix then was a `"pinned":true` flag on this line. It worked,
+          # and it had two faults. It must be hand-edited twice per experiment,
+          # and a human editing a JSON string inside a shell script is the same
+          # class of mistake it was protecting against. And a stack left pinned
+          # after its run ends blocks every subsequent deploy silently -- the
+          # steady state was "every stack pinned, nothing ever ships".
+          #
+          # So the flag is gone and the question is asked at roll time, in the
+          # deploy job's "may we roll this host?" step: the host is sent
+          # `Action=status` and answers whether an experiment is RUNNING. A
+          # merge now ships everything by default and skips exactly the hosts
+          # where rolling would destroy data -- no edit, and no stack left
+          # pinned by accident. It fails closed: an unreadable host is not
+          # rolled.
+          #
+          # A protected stack therefore sits on an older image than master.
+          # That is correct and is the point. Adding a family to
+          # deltabt/catalog.py does not move any other family's config_hash, so
+          # its strategy identity does not drift while it waits.
+          # THREE EDITS PER STACK: variables.tf, here, and monitor.yml.
+          # tests/live/test_stack_table_consistency.py fails if they disagree.
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"ladder","variant":"SPEC:manual_scalp_both_t3_ladder@5","instance_var":"BOT_INSTANCE_ID_LADDER","document_var":"SSM_DEPLOY_DOCUMENT_LADDER"},{"stack":"ltp","variant":"SPEC:manual_scalp_both_t3_ltp@5","instance_var":"BOT_INSTANCE_ID_LTP","document_var":"SSM_DEPLOY_DOCUMENT_LTP"}]'
+          if [ -n "${ONLY:-}" ]; then
+            picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
+            if [ "$picked" = "[]" ]; then
+              # IT MAY BE A LIVE STACK, and that is not an error here.
+              #
+              # `only_stack=tnet` is the dispatch that kicks a live host after
+              # its credential secret is created -- the normal way a live stack
+              # is brought up, because creating the API key needs the host's
+              # EIP and so cannot happen before the apply. Failing this job on
+              # it would turn the routine path into a red run, and `deploy` is
+              # gated on this job's matrix, so the failure would not even be
+              # self-explanatory. targets-live handles live stacks; this job
+              # steps aside for them.
+              if python3 scripts/live_stacks_matrix.py "$ONLY" >/dev/null 2>&1; then
+                echo "::notice::only_stack='$ONLY' is a LIVE stack; the paper path has nothing to roll (targets-live handles it)"
+                echo "matrix=[]" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::error::only_stack='$ONLY' matches no paper or live stack; nothing would roll"
+              exit 1
+            fi
+            echo "explicit only_stack='$ONLY': the running-experiment guard is overridden for it"
+          else
+            # Every stack is a candidate now. The deploy job asks each host
+            # whether it may be rolled; see "may we roll this host?".
+            picked="$all"
+            if [ "$picked" = "[]" ]; then
+              echo "no stacks defined; nothing to roll, and that is a success"
+            fi
+          fi
+          echo "rolling: $picked"
+          echo "matrix=$picked" >> "$GITHUB_OUTPUT"
+
+
+  roll:
+    needs: [test, build, targets, wait-for-infrastructure]
+    # `always()` so a manual rollback (which skips `build`) still runs, but the
+    # build must not have FAILED, and infrastructure must not have failed
+    # either -- rolling an image onto a half-applied stack is how a deploy ends
+    # up pointing at a terminated host.
+    #
+    # The last clause is not defensive noise. `matrix.include` expanded from an
+    # empty array is not an empty matrix, it is an INVALID one, and GitHub
+    # rejects the workflow rather than skipping the job. That is reachable the
+    # moment every stack is pinned -- the normal state once each arm is
+    # mid-experiment -- so without it a routine push would go red for having
+    # correctly decided to roll nothing.
+    if: >-
+      always() && needs.build.result != 'failure'
+      && needs.test.result == 'success'
+      && needs.wait-for-infrastructure.result == 'success'
+      && needs.targets.outputs.matrix != '[]'
+    uses: ./.github/workflows/_roll.yml
+    with:
+      matrix: ${{ needs.targets.outputs.matrix }}
+      image_tag: ${{ github.event.inputs.image_tag || needs.build.outputs.tag }}
+      # A LITERAL, DELIBERATELY. tests/live/test_oidc_subjects_cover_environments
+      # reads the environment out of this block; an expression here would make
+      # that test blind, and a missing OIDC subject has broken every roll twice.
+      environment: paper-deploy
+      ecr_repository: ${{ vars.ECR_REPOSITORY || 'deltabt' }}
+      venue: paper
+      only_stack: ${{ github.event.inputs.only_stack }}
+      manual_tag: ${{ github.event.inputs.image_tag }}

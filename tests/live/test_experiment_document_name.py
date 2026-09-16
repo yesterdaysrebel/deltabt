@@ -14,7 +14,9 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-WORKFLOW = ROOT / ".github/workflows/deploy.yml"
+#: The whole deploy pipeline, four files since the 2026-09-16 split. The
+#: derivation lives in _roll.yml now; reading only a caller would find nothing.
+from tests.deploy_workflows import text as _deploy_text
 EC2 = ROOT / "infra/terraform/ec2.tf"
 
 
@@ -26,7 +28,7 @@ def test_terraform_names_the_two_documents_as_siblings():
 
 
 def test_the_workflow_swaps_the_suffix_rather_than_appending():
-    wf = WORKFLOW.read_text()
+    wf = _deploy_text()
     assert "${DEPLOY_DOC%-deploy}-experiment" in wf, (
         "the workflow must derive the experiment document by replacing the "
         "'-deploy' suffix, not by appending to it")
@@ -53,7 +55,7 @@ def test_every_experiment_step_uses_the_derivation():
     prevented is ONE of them naming the document a different way, which is how
     2026-09-04's AccessDenied on `...-deploy-experiment` happened.
     """
-    wf = WORKFLOW.read_text()
+    wf = _deploy_text()
     derived = wf.count("${DEPLOY_DOC%-deploy}-experiment")
     callers = wf.count('--parameters "Action=')
     assert derived == callers, (

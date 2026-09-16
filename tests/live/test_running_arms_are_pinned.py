@@ -42,7 +42,11 @@ import pytest
 from deltabt.catalog import build_spec
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DEPLOY = (ROOT / ".github/workflows/deploy.yml").read_text()
+from tests.deploy_workflows import text as _deploy_text
+
+#: The whole deploy pipeline. It is four files since the 2026-09-16 split,
+#: and the helper refuses to return an empty set so this cannot go vacuous.
+DEPLOY = _deploy_text()
 MONITOR = (ROOT / ".github/workflows/monitor.yml").read_text()
 
 #: The arms that were RUNNING when the `cross` stack was added. Adding a
@@ -183,9 +187,23 @@ def test_the_roll_job_is_gated_on_a_non_empty_matrix():
     """`matrix.include: []` is INVALID, not empty: GitHub rejects the whole
     workflow rather than skipping the job. Reachable as soon as every stack is
     pinned, which is the normal state once each arm is mid-experiment."""
-    job = DEPLOY[DEPLOY.index("\n  deploy:"):]
-    cond = job[:job.index("runs-on:")]
-    assert "needs.targets.outputs.matrix != '[]'" in cond
+    # The roll job is called `roll:` and lives in each caller since the
+    # 2026-09-16 split; the gate is on the CALLER, because a reusable workflow
+    # cannot see the caller's `needs`. Every caller must carry it: an invalid
+    # matrix rejects the whole workflow, so one ungated caller is one venue
+    # that goes red for correctly deciding to roll nothing.
+    from tests.deploy_workflows import entry_points
+    gated = 0
+    for path in entry_points():
+        text = path.read_text()
+        if "\n  roll:" not in text:
+            continue
+        job = text[text.index("\n  roll:"):]
+        cond = job[:job.index("uses:")]
+        assert "outputs.matrix != '[]'" in cond, (
+            f"{path.name}'s roll job is not gated on a non-empty matrix")
+        gated += 1
+    assert gated, "no caller has a `roll:` job, so this asserted nothing"
 
 
 def test_an_empty_table_selects_nothing_rather_than_erroring():

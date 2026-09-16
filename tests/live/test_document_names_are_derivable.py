@@ -31,7 +31,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 EC2 = (ROOT / "infra/terraform/ec2.tf").read_text()
 MONITORING = (ROOT / "infra/terraform/monitoring.tf").read_text()
 NETWORK = (ROOT / "infra/terraform/network.tf").read_text()
-DEPLOY = (ROOT / ".github/workflows/deploy.yml").read_text()
+from tests.deploy_workflows import text as _deploy_text
+
+DEPLOY = _deploy_text()
 MONITOR = (ROOT / ".github/workflows/monitor.yml").read_text()
 
 
