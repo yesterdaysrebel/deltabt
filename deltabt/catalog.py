@@ -366,6 +366,13 @@ FAMILIES: dict[str, dict] = {
     # backtest population. Ten losers chosen by looking at them is how a rule
     # that does not replicate gets built -- but the divergence is real and
     # unexplained, and forward-testing it is how it gets settled.
+    #
+    # RUNS TO 2026-09-30 by operator instruction, a 14-day read. That is ~24
+    # trades per arm at the backtest's 11.9/week, against the ~350 needed to
+    # resolve -0.166R/trade at 80% power -- so the P&L comparison will be
+    # UNDECIDED and is not what to read. Read the MECHANISM instead: how often
+    # a rung arms, and whether promoted stops cut trades that reached target.
+    # See infra/terraform/variables.tf for the full stopping rule.
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),

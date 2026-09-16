@@ -948,11 +948,30 @@ variable "stacks" {
     # not explain -- losers on the live arm reached a median +0.97R before
     # dying, against +0.51R in the backtest.
     #
-    # READ-OUT HORIZON. atr fills roughly 2 trades a day, so seven days is
-    # ~50 trades per arm. The ladder effect measured above needs several
-    # hundred to separate from noise at that size, so a 7-day read will very
-    # likely be UNDECIDED -- which must be written down now rather than
-    # argued about later, exactly as docs/v5_stopping_rule.md had to be.
+    # STOPPING RULE, FIXED BEFORE THE FIRST BAR: run to 2026-09-30 and read
+    # then. Set by the operator on 2026-09-16, which makes it a 14-day run.
+    #
+    # EXPECT UNDECIDED, and that is written down now rather than argued about
+    # at the end -- the mistake docs/v5_stopping_rule.md was written to stop
+    # being repeated. Two independent rate estimates, both far short:
+    #
+    #   backtest    11.9 trades/week (n=373, recorded above)  -> ~24 per arm
+    #   live        2 fills in the first 8.4h of the atr run  -> ~80 per arm
+    #
+    # The live figure rests on TWO events and its interval is enormous, so the
+    # backtest rate is the one to plan against; the conclusion is the same
+    # either way. The ladder effect measured above is -0.166R/trade with
+    # SE ~0.079 (t = -2.11 over 342 trades). Detecting that at 80% power needs
+    # roughly 350 trades per arm. At 24, or even at 80, this run cannot
+    # separate the arms on P&L.
+    #
+    # SO READ IT FOR MECHANISM, NOT FOR P&L. What 14 days CAN answer, because
+    # these are counts rather than differences of means:
+    #   - how often a ladder rung actually arms (stop_promoted on the position)
+    #   - whether promoted stops exit trades that would have reached target
+    #   - for the LTP arm, how far stops fill past their trigger against the
+    #     mark-triggered baseline -- the 0.247R overshoot is the thing it is
+    #     aimed at, and that is measurable per trade, not per sample.
     #
     # NEITHER DATABASE EXISTS YET. Terraform builds the RDS instance but has
     # no sub-resource for a database inside one, so these names must be
