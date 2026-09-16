@@ -177,3 +177,56 @@ def test_callers_supply_every_required_input():
         assert not missing, (
             f"{path.name} omits required input(s) {sorted(missing)} of "
             f"_roll.yml")
+
+
+# --- the roll must be ALLOWED to read what it reads -------------------------
+
+def test_the_ci_role_can_read_every_ssm_parameter_the_roll_reads():
+    """A plan proves what would change, never whether the principal may.
+
+    The venue gate shipped reading /deltabt/paper/<stack>/delta_env while the
+    live CI role was granted ssm:GetParameter on the image-tag parameters ONLY.
+    The first testnet dispatch failed on it. It failed CLOSED -- an unreadable
+    venue is refused rather than assumed -- so nothing was rolled, but the run
+    was red for a permission rather than for anything about the deploy.
+
+    Same shape as tests/live/test_deploy_role_covers_stack.py,
+    test_env_forwarding.py and test_alarm_delivery.py: a value correct in one
+    file and never delivered to the thing that consumes it.
+    """
+    roll = ROLL.read_text()
+    live_tf = (ROLL.parents[2] / "infra/terraform/live.tf").read_text()
+
+    # Parameter suffixes the roll reads, e.g. "delta_env" from
+    # `SSM_PARAM: /deltabt/paper/${{ matrix.stack }}/delta_env`.
+    suffixes = set(re.findall(
+        r"SSM_PARAM:\s*/\S*?/\$\{\{\s*matrix\.stack\s*\}\}/(\w+)", roll))
+    assert suffixes, (
+        "no SSM parameter reads found in _roll.yml. Either the venue gate is "
+        "gone or this parse is wrong; either way it would assert nothing.")
+
+    # Which aws_ssm_parameter resources the live CI role may read.
+    policy = live_tf[live_tf.index('resource "aws_iam_role_policy" "live_ci"'):]
+    policy = policy[:policy.index("\n# ")] if "\n# " in policy else policy
+    granted_resources = set(re.findall(r"aws_ssm_parameter\.(\w+)\[", policy))
+    assert granted_resources, "the live CI role is granted no SSM parameters"
+
+    # Each resource's parameter name, to learn which suffix it covers. The
+    # definitions are spread across live.tf and ec2.tf -- searching only the
+    # file the POLICY lives in would report "granted: []" for a parameter that
+    # is in fact granted, and fail a future read for the wrong reason.
+    tf_dir = ROLL.parents[2] / "infra/terraform"
+    all_tf = "\n".join(f.read_text() for f in sorted(tf_dir.glob("*.tf")))
+    granted_suffixes = set()
+    for res in granted_resources:
+        m = re.search(rf'resource "aws_ssm_parameter" "{res}" \{{'
+                      rf'(?:.|\n)*?name\s*=\s*"[^"]*?/(\w+)"', all_tf)
+        assert m, f"the policy grants aws_ssm_parameter.{res}, which is not declared"
+        granted_suffixes.add(m.group(1))
+
+    missing = suffixes - granted_suffixes
+    assert not missing, (
+        f"_roll.yml reads SSM parameter(s) ending {sorted(missing)} that the "
+        f"live CI role is not granted. The step fails closed, so nothing is "
+        f"rolled -- but the run goes red for a permission rather than for "
+        f"anything about the deploy. Granted: {sorted(granted_suffixes)}.")
