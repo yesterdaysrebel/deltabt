@@ -76,6 +76,10 @@ BRACKET_GRACE_SECONDS = 15.0
 #: venue, and closing a protected position during an outage is its own harm.
 BRACKET_ALERT_SECONDS = 120.0
 
+#: How long a venue balance read is reused for sizing. Several symbols close on
+#: the same 5m bar; one read serves them, a stale one does not survive a trade.
+BALANCE_TTL_SECONDS = 20.0
+
 
 class LiveTradingBot(TradingBot):
     """A TradingBot whose orders reach a real exchange."""
@@ -389,6 +393,32 @@ class LiveTradingBot(TradingBot):
     # the one remedy that does not require this process to invent a new stop
     # price the risk engine never saw.
 
+    def _sizing_equity(self) -> float | None:
+        """min(internal equity, the venue's USD balance), or 0 if unreadable.
+
+        WHY MIN. The internal ledger starts every experiment at 10,000; the
+        tnet account held $738.78. Sizing from the ledger made a 0.5% risk
+        budget 6.8% of the real account. Sizing from the venue alone would let
+        a large account oversize an experiment planned at 10,000. The smaller
+        of the two is right in both directions.
+
+        FAILS CLOSED. An unreadable balance sizes at zero, so the entry rounds
+        to no contracts and is refused -- never the internal 10,000 by default.
+        """
+        cache = self.__dict__.get("_balance_cache")
+        t = asyncio.get_event_loop().time()
+        if cache and t - cache[0] < BALANCE_TTL_SECONDS:
+            venue = cache[1]
+        else:
+            try:
+                venue = float(self.client.get_wallet_balance("USD")
+                              .get("balance") or 0)
+            except VenueError as exc:
+                log.critical("could not read the venue balance; sizing at zero: %s", exc)
+                return 0.0
+            self.__dict__["_balance_cache"] = (t, venue)
+        return min(float(self.state.equity), venue)
+
     def _bracket_checks(self) -> dict[str, float]:
         """symbol -> loop time at which its stop-loss must exist.
 
@@ -480,6 +510,28 @@ class LiveTradingBot(TradingBot):
                     "stop_loss_legs": 0,
                     "take_profit_legs": len(legs["take_profit"])})
                 continue
+
+            # A STOP THE VENUE WILL LIQUIDATE BEFORE IS NOT PROTECTION. tnet's
+            # ETH short had a stop at 2416.2 and was liquidated at 2415.25; its
+            # stop leg existed the whole time. The leg that fires first is the
+            # one nearest the entry, so that is the one compared.
+            pos = self.broker.positions[symbol]
+            liq = float(getattr(pos, "liquidation_price", 0) or 0)
+            stops = [float(o.get("stop_price") or 0) for o in legs["stop_loss"]]
+            stops = [x for x in stops if x > 0]
+            if liq <= 0 or not stops:
+                await self._event("execution", "LIQUIDATION_UNVERIFIABLE",
+                                  symbol=symbol, severity="WARNING",
+                                  payload={"liquidation_price": liq,
+                                           "stop_prices": stops})
+            else:
+                first = max(stops) if pos.side > 0 else min(stops)
+                beyond = (pos.side > 0 and first <= liq) or (pos.side < 0 and first >= liq)
+                if beyond:
+                    await self._flatten(symbol, "stop_beyond_liquidation", {
+                        "stop_price": first, "liquidation_price": liq,
+                        "side": pos.side})
+                    continue
             due.pop(symbol, None)
             if not legs["take_profit"]:
                 await self._event("execution", "TAKE_PROFIT_MISSING",

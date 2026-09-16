@@ -92,6 +92,25 @@ class FakeVenue:
     def cancel_order(self, order_id, product_id):
         return {"id": order_id}
 
+    # -- margin and leverage (see LiveBroker._set_safe_leverage) --
+    margin_spec = {"initial_margin": "1", "maintenance_margin": "0.5",
+                   "contract_value": "0.001"}
+    available_usd = 10_000.0
+
+    def get_product(self, symbol):
+        return dict(self.margin_spec)
+
+    def get_wallet_balance(self, asset="USD"):
+        return {"asset_symbol": "USD", "balance": str(self.available_usd),
+                "available_balance": str(self.available_usd)}
+
+    def set_order_leverage(self, product_id, leverage):
+        self.__dict__.setdefault("leverage", {})[product_id] = leverage
+        return {"leverage": str(leverage)}
+
+    def get_order_leverage(self, product_id):
+        return float(self.__dict__.get("leverage", {}).get(product_id, 0))
+
 
 class Notifier:
     def __init__(self):

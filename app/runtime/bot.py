@@ -771,7 +771,8 @@ class TradingBot:
             self.metrics.signals_detected += 1
             decision = self.risk.evaluate(
                 exp, self.state, open_positions=self.broker.get_positions(),
-                now=market_now, market_can_trade=can_trade)
+                now=market_now, market_can_trade=can_trade,
+                sizing_equity=self._sizing_equity())
             if not decision.approved:
                 self.metrics.signals_rejected += 1
                 await self.repo.record_risk_event(RiskEventRecord(
@@ -794,6 +795,14 @@ class TradingBot:
 
         if decision is not None and decision.approved:
             await self._place(exp, decision, market_now)
+
+    def _sizing_equity(self) -> float | None:
+        """Equity to size a new position from. None means state.equity.
+
+        The paper bot's equity IS its money, so it returns None and nothing it
+        decides changes. The live bot overrides this with the venue's balance.
+        """
+        return None
 
     @property
     def _unresolved_entries(self) -> set[str]:

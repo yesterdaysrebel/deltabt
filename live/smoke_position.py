@@ -71,6 +71,9 @@ class _Intent:
     risk_per_unit: float
     intent_id: str
     signal_key: str
+    #: Required since leverage is chosen per trade from the stop distance
+    #: (LiveBroker._set_safe_leverage); without it the probe is refused.
+    entry_reference: float = 0.0
 
 
 def step(n: int, what: str) -> None:
@@ -131,6 +134,7 @@ def main(argv: list[str]) -> int:
                      limit_price=None, stop_price=float(stop),
                      target_price=float(target),
                      risk_per_unit=float(mark - stop),
+                     entry_reference=float(mark),
                      intent_id=f"smoke-{os.getpid()}",
                      signal_key=f"{symbol}:smoke")
 

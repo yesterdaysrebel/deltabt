@@ -121,7 +121,27 @@ def _died_unfilled(row) -> bool:
 #: entry rests, how far beyond the stop the marketable-limit cap sits, and
 #: which price the VENUE watches to trigger.
 LIVE_EXECUTION_FIELDS = ("entry_ttl_seconds", "stop_limit_cap_r",
-                         "stop_trigger_method", "max_entry_deviation")
+                         "stop_trigger_method", "max_entry_deviation",
+                         "liquidation_buffer", "sizing_equity_source")
+
+#: HOW FAR BEYOND THE STOP LIQUIDATION MUST SIT, as a multiple of the stop
+#: distance. Leverage is chosen per trade so that
+#:
+#:     1/leverage - maintenance_margin  >=  LIQUIDATION_BUFFER * stop_distance
+#:
+#: tnet's first live trades used the account's leverage -- ETH 100x, with
+#: liquidation 0.50% from entry -- against stops 0.53-0.66% away. Two positions
+#: were liquidated before their stops could fire. 3x leaves room for the entry
+#: slippage, fees and funding that move the real liquidation price inward.
+LIQUIDATION_BUFFER = 3.0
+
+#: Refuse an entry whose margin, at the leverage chosen above, would use more
+#: than this share of the available balance.
+MARGIN_HEADROOM = 0.9
+
+#: Live sizes from min(internal equity, the venue's balance). See
+#: live.runtime.LiveTradingBot._sizing_equity.
+SIZING_EQUITY_SOURCE = "min(internal_equity, venue_usd_balance)"
 
 
 def _live_execution_values(risk) -> dict:
@@ -134,7 +154,9 @@ def _live_execution_values(risk) -> dict:
     return {"entry_ttl_seconds": ENTRY_TTL_SECONDS,
             "stop_limit_cap_r": float(STOP_LIMIT_CAP_R),
             "stop_trigger_method": StopTriggerMethod.MARK.value,
-            "max_entry_deviation": MAX_ENTRY_DEVIATION}
+            "max_entry_deviation": MAX_ENTRY_DEVIATION,
+            "liquidation_buffer": LIQUIDATION_BUFFER,
+            "sizing_equity_source": SIZING_EQUITY_SOURCE}
 
 
 register_execution_profile("live", LIVE_EXECUTION_FIELDS,
@@ -168,6 +190,8 @@ class LivePosition:
     target_price: float = 0.0
     position_uid: str = ""
     intent_id: str = ""
+    #: The venue's own liquidation price, as of the last poll. 0 when unknown.
+    liquidation_price: float = 0.0
 
     def is_open(self) -> bool:
         return self.contracts > 0
@@ -195,6 +219,10 @@ class LiveBroker:
         #: See LIVE_EXECUTION_FIELDS. Enforced by live.runtime after the
         #: fill, in units of the trade's own R.
         self.max_entry_deviation = MAX_ENTRY_DEVIATION
+        self.liquidation_buffer = LIQUIDATION_BUFFER
+        self.sizing_equity_source = SIZING_EQUITY_SOURCE
+        #: symbol -> (initial_margin %, maintenance_margin %, contract_value)
+        self._margin_specs: dict[str, tuple[float, float, float]] = {}
         #: THE EXECUTION SURFACE THIS BROKER ACTUALLY HAS, recorded on the
         #: instance so the experiment identity reads what the broker received
         #: rather than a constant someone hoped matched. They were equal only
@@ -252,6 +280,81 @@ class LiveBroker:
             return d
         return (d / tick).to_integral_value() * tick
 
+    def _margin_spec(self, symbol: str) -> tuple[float, float, float]:
+        """(initial_margin %, maintenance_margin %, contract_value), cached."""
+        if symbol not in self._margin_specs:
+            row = self.client.get_product(symbol)
+            im = float(row.get("initial_margin") or 0)
+            mm = float(row.get("maintenance_margin") or 0)
+            cv = float(row.get("contract_value") or 0)
+            if im <= 0 or mm <= 0 or cv <= 0:
+                raise VenueError(f"{symbol} has no usable margin spec: "
+                                 f"initial={im} maintenance={mm} contract={cv}")
+            self._margin_specs[symbol] = (im, mm, cv)
+        return self._margin_specs[symbol]
+
+    def _set_safe_leverage(self, intent, pid: int) -> int:
+        """Choose, set and confirm the leverage for this entry, or refuse it.
+
+        The lowest leverage is not the goal; liquidation beyond the stop is.
+        So this takes the HIGHEST leverage whose liquidation still sits
+        LIQUIDATION_BUFFER times further out than the stop, capped at the
+        product's maximum -- the least margin that is still safe.
+
+        Every failure raises OpeningRefused: nothing has been sent, so the
+        runtime releases the exposure slot. Reading the leverage back after
+        setting it is deliberate -- the setting is what liquidation depends
+        on, and "the POST returned 200" is not the same claim.
+        """
+        symbol = intent.symbol
+        entry = getattr(intent, "entry_reference", None)
+        if not entry:
+            raise OpeningRefused(f"{symbol}: no entry reference to size leverage from")
+        entry = float(entry)
+        stop_distance = abs(entry - float(intent.stop_price)) / entry
+        if stop_distance <= 0:
+            raise OpeningRefused(f"{symbol}: stop equals entry; cannot size leverage")
+        try:
+            im_pct, mm_pct, contract_value = self._margin_spec(symbol)
+        except VenueError as exc:
+            raise OpeningRefused(f"{symbol}: {exc}") from exc
+
+        max_leverage = int(100.0 / im_pct)
+        leverage = min(int(1.0 / (self.liquidation_buffer * stop_distance
+                                  + mm_pct / 100.0)), max_leverage)
+        if leverage < 1:
+            raise OpeningRefused(
+                f"{symbol}: a {stop_distance:.2%} stop cannot sit inside "
+                f"liquidation at any leverage with {mm_pct}% maintenance margin")
+
+        notional = int(intent.quantity) * contract_value * entry
+        margin = notional / leverage
+        try:
+            available = float(self.client.get_wallet_balance("USD")
+                              .get("available_balance") or 0)
+        except VenueError as exc:
+            raise OpeningRefused(f"{symbol}: could not read the balance: {exc}") from exc
+        if margin > available * MARGIN_HEADROOM:
+            raise OpeningRefused(
+                f"{symbol}: margin ${margin:,.2f} at {leverage}x exceeds "
+                f"{MARGIN_HEADROOM:.0%} of the available ${available:,.2f}")
+
+        try:
+            self.client.set_order_leverage(pid, leverage)
+            confirmed = self.client.get_order_leverage(pid)
+        except VenueError as exc:
+            raise OpeningRefused(f"{symbol}: could not set leverage {leverage}x: {exc}") from exc
+        if int(round(confirmed)) != leverage:
+            raise OpeningRefused(
+                f"{symbol}: asked for {leverage}x, the venue reports {confirmed}x")
+
+        liq_distance = 1.0 / leverage - mm_pct / 100.0
+        log.info("%s leverage %dx: liquidation ~%.2f%% from entry, stop %.2f%% "
+                 "(%.1fx), margin $%.2f of $%.2f", symbol, leverage,
+                 liq_distance * 100, stop_distance * 100,
+                 liq_distance / stop_distance, margin, available)
+        return leverage
+
     def submit_order(self, intent, *, now: int | None = None,
                      order_uid: str | None = None) -> dict:
         """Send one risk-approved intent to the venue, with its brackets.
@@ -287,6 +390,7 @@ class LiveBroker:
         pid = self.product_ids.get(intent.symbol)
         if pid is None:
             raise OpeningRefused(f"no product_id known for {intent.symbol}")
+        leverage = self._set_safe_leverage(intent, pid)
 
         side = Side.for_position(intent.side)
         stop = self._round(intent.symbol, intent.stop_price)
@@ -325,6 +429,7 @@ class LiveBroker:
         self._entry_cid[intent.symbol] = cid
         self._pending[cid] = {
             "order_uid": order_uid,
+            "leverage": leverage,
             # live.ledger.open_record falls back to these. `quantity` is read
             # whenever the venue's order row reports no filled size, and was
             # absent, so that path raised KeyError inside the poll loop -- which
@@ -553,7 +658,8 @@ class LiveBroker:
                 symbol=sym, side=side, contracts=abs(size),
                 entry_price=float(row.get("entry_price") or 0.0),
                 product_id=pid,
-                position_uid=str(row.get("position_uid") or row.get("id") or ""))
+                position_uid=str(row.get("position_uid") or row.get("id") or ""),
+                liquidation_price=float(row.get("liquidation_price") or 0.0))
 
         events: list[BrokerEvent] = []
         for sym, pos in seen.items():

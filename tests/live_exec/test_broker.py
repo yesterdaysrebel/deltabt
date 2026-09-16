@@ -41,6 +41,24 @@ class FakeClient:
         self.cancelled.append((order_id, product_id))
         return {"id": order_id, "state": "cancelled"}
 
+    # Leverage is chosen and confirmed per entry since 2026-09-16.
+    leverage: dict = {}
+
+    def get_product(self, symbol):
+        return {"initial_margin": "2", "maintenance_margin": "1",
+                "contract_value": "1"}
+
+    def get_wallet_balance(self, asset="USD"):
+        return {"asset_symbol": "USD", "balance": "10000",
+                "available_balance": "10000"}
+
+    def set_order_leverage(self, product_id, leverage):
+        self.leverage = {**self.leverage, product_id: leverage}
+        return {"leverage": str(leverage)}
+
+    def get_order_leverage(self, product_id):
+        return float(self.leverage.get(product_id, 0))
+
 
 class FakeIntent:
     """Enough of ApprovedOrderIntent for the broker's purposes."""
@@ -53,6 +71,7 @@ class FakeIntent:
         self.order_type, self.limit_price = order_type, limit_price
         self.stop_price, self.target_price = stop_price, target_price
         self.risk_per_unit = risk_per_unit
+        self.entry_reference = stop_price + side * risk_per_unit
         self.intent_id = "intent-1"
         self.signal_key = "BEATUSD:1788768000:long"
 
