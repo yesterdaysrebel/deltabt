@@ -6,7 +6,7 @@ name: infrastructure
 #                   Deliberately NOT a workflow: anything that can create its
 #                   own trust anchor can also replace it.
 #   2. INFRASTRUCTURE  <-- this file. Terraform owns AWS.
-#   3. APPLICATION  deploy-paper.yml / deploy-testnet.yml / deploy-mainnet.yml,
+#   3. APPLICATION  deploy-paper.yml / deploy-testnet.yml / deploy-prod.yml,
 #                   sharing _roll.yml. Image and container only; it cannot change
 #                   infrastructure, and its role has no permission to.
 #

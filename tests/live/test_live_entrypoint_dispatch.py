@@ -73,7 +73,7 @@ async def test_bot_is_built_with_the_venue_universe_not_the_env(monkeypatch):
     expected = tuple(VENUE_SYMBOLS[venue])
 
     class _Client:
-        is_mainnet = False
+        is_prod = False
 
     captured = {}
 
@@ -152,7 +152,7 @@ class TestCliSeesTheVenueUniverse:
         from live.config import symbols_for
 
         monkeypatch.setenv("DELTABOT_SYMBOLS", "BEATUSD,AKEUSD")
-        for venue in ("testnet", "mainnet"):
+        for venue in ("testnet", "prod"):
             monkeypatch.setenv("DELTA_ENV", venue)
             captured = {}
             monkeypatch.setattr(

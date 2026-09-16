@@ -162,26 +162,27 @@ locals {
   #: there is no fourth time.
   #:
   #: AND IT EARNED ITS KEEP ON 2026-09-16. Splitting deploy.yml into
-  #: deploy-paper / deploy-testnet / deploy-mainnet introduced
-  #: `mainnet-deploy`, and this list was -- once again -- not updated with it.
+  #: deploy-paper / deploy-testnet / deploy-prod introduced
+  #: `mainnet-deploy` (renamed `prod-deploy` later that day), and this list
+  #: was -- once again -- not updated with it.
   #: The test failed in the same commit that added the workflow, before
   #: anything ran. It had to learn a new trick to do it: the roll job now lives
   #: in a reusable workflow whose `environment:` is an expression, so the test
   #: follows the `uses:` indirection and reads the literal out of each caller's
   #: `with:` block.
   #:
-  #: `mainnet-deploy` is trusted here BEFORE anything is on mainnet. That is
+  #: `prod-deploy` is trusted here BEFORE anything is on prod. That is
   #: deliberate -- an unused environment is exactly where a missing subject
   #: hides, as the 2026-08-19 failure did behind paths-ignore for three
-  #: commits. Trusting the subject does not put anything on mainnet: nothing
-  #: reaches that environment until var.live_venue says mainnet AND somebody
-  #: dispatches deploy-mainnet.yml by hand, and the roll refuses any host whose
+  #: commits. Trusting the subject does not put anything on prod: nothing
+  #: reaches that environment until var.live_venue says prod AND somebody
+  #: dispatches deploy-prod.yml by hand, and the roll refuses any host whose
   #: own venue parameter disagrees.
   github_subjects = flatten([for r in local.repo_forms : [
     "repo:${r}:ref:refs/heads/master",
     "repo:${r}:environment:paper",
     "repo:${r}:environment:paper-deploy",
     "repo:${r}:environment:live-deploy",
-    "repo:${r}:environment:mainnet-deploy",
+    "repo:${r}:environment:prod-deploy",
   ]])
 }

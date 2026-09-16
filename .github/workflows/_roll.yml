@@ -52,7 +52,7 @@ on:
         required: true
         type: string
       venue:
-        description: "paper | testnet | mainnet. Labels SSM commands and the job."
+        description: "paper | testnet | prod. Labels SSM commands and the job."
         required: true
         type: string
       id_prefix:
@@ -195,7 +195,7 @@ jobs:
         # BEFORE THE ROLL, NOT IN THE SUMMARY AFTER IT.
         #
         # var.live_venue is ONE GLOBAL VARIABLE, not a per-stack property, so
-        # the stack named `tnet` becomes a MAINNET bot the moment somebody
+        # the stack named `tnet` becomes a PROD bot the moment somebody
         # edits it -- the name says testnet and the orders are real. Nothing
         # about the stack table would look different.
         #

@@ -649,10 +649,10 @@ class TestBootstrapNeverAdoptsSilently:
         # venue its own concurrency group and its own environment -- a hung
         # live roll used to sit in front of paper in the same run -- and NOT to
         # add a second path to production. _roll.yml has no triggers at all;
-        # deploy-mainnet.yml has no `push:`.
+        # deploy-prod.yml has no `push:`.
         assert workflows == {"test.yml", "infrastructure.yml", "monitor.yml",
                              "deploy-paper.yml", "deploy-testnet.yml",
-                             "deploy-mainnet.yml", "_roll.yml"}, \
+                             "deploy-prod.yml", "_roll.yml"}, \
             f"unexpected workflow: {workflows}"
 
         # The intent, asserted directly rather than only via the set above.

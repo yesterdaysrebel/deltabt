@@ -40,7 +40,7 @@ DOCKERFILES = (
 #: EVERY WORKFLOW WITH A PUSH TRIGGER, not one file.
 #:
 #: deploy.yml became deploy-paper.yml and deploy-testnet.yml on 2026-09-16
-#: (plus deploy-mainnet.yml, which has no push trigger by design). The image is
+#: (plus deploy-prod.yml, which has no push trigger by design). The image is
 #: covered by the UNION of their allow-lists: `app/` rolls both, `live/` rolls
 #: only the testnet one. Reading a single file after the split would have made
 #: every assertion below pass against half the pipeline -- the same hole,

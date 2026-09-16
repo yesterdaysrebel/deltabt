@@ -1,4 +1,4 @@
-"""Mainnet may not start with its circuit breakers off."""
+"""Prod may not start with its circuit breakers off."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ DEPLOYED_TODAY = Risk(max_drawdown_pct=1.0, max_daily_loss_pct=1.0,
                       max_consecutive_losses=0)
 
 
-def test_the_configuration_running_today_would_be_refused_on_mainnet():
+def test_the_configuration_running_today_would_be_refused_on_prod():
     """THE test. variables.tf ships 1.0 / 1.0 / 0 -- every breaker off. That
     is correct for an unbiased paper measurement and is what the settings
     module calls "indefensible for real capital"."""
-    bad = circuit_breaker_failures(DEPLOYED_TODAY, "mainnet")
+    bad = circuit_breaker_failures(DEPLOYED_TODAY, "prod")
     assert len(bad) == 3
     assert any("max_drawdown_pct" in b for b in bad)
     assert any("max_daily_loss_pct" in b for b in bad)
@@ -36,8 +36,8 @@ def test_the_configuration_running_today_would_be_refused_on_mainnet():
 
 
 def test_a_configured_set_passes():
-    assert circuit_breaker_failures(Risk(), "mainnet") == []
-    require_circuit_breakers(Risk(), "mainnet")      # does not raise
+    assert circuit_breaker_failures(Risk(), "prod") == []
+    require_circuit_breakers(Risk(), "prod")      # does not raise
 
 
 def test_testnet_is_exempt():
@@ -53,19 +53,19 @@ def test_testnet_is_exempt():
 ])
 def test_each_breaker_is_checked_on_its_own(field, value):
     risk = Risk(**{field: value})
-    bad = circuit_breaker_failures(risk, "mainnet")
+    bad = circuit_breaker_failures(risk, "prod")
     assert len(bad) == 1 and field in bad[0]
 
 
 def test_a_value_beyond_the_sentinel_is_also_off():
     """1.5 is not 'stricter than 1.0'; it is further into never-halting."""
-    assert circuit_breaker_failures(Risk(max_drawdown_pct=1.5), "mainnet")
+    assert circuit_breaker_failures(Risk(max_drawdown_pct=1.5), "prod")
 
 
 def test_a_missing_limit_is_refused_rather_than_defaulted():
     class Empty:
         pass
-    bad = circuit_breaker_failures(Empty(), "mainnet")
+    bad = circuit_breaker_failures(Empty(), "prod")
     assert len(bad) == 3 and all("not configured" in b for b in bad)
 
 
@@ -73,7 +73,7 @@ def test_the_refusal_says_it_does_not_choose_the_numbers():
     """The code has no standing to decide whether the halt belongs at 5% or
     15% -- only to insist somebody decided."""
     with pytest.raises(GuardError) as exc:
-        require_circuit_breakers(DEPLOYED_TODAY, "mainnet")
+        require_circuit_breakers(DEPLOYED_TODAY, "prod")
     assert "does not choose the numbers" in str(exc.value)
     assert "censors the sample" in str(exc.value)
 
@@ -100,41 +100,41 @@ def test_an_unreadable_kill_switch_counts_as_engaged(tmp_path, monkeypatch):
 def test_the_kill_switch_beats_a_healthy_configuration(tmp_path):
     p = tmp_path / "HALT"
     p.write_text("")
-    assert "kill switch" in reason_to_refuse(Risk(), "mainnet",
+    assert "kill switch" in reason_to_refuse(Risk(), "prod",
                                              kill_switch=str(p))
 
 
 def test_nothing_to_refuse_when_configured_and_no_switch(tmp_path):
-    assert reason_to_refuse(Risk(), "mainnet",
+    assert reason_to_refuse(Risk(), "prod",
                             kill_switch=str(tmp_path / "absent")) is None
 
 
 def test_breakers_are_reported_when_no_switch_is_set(tmp_path):
-    msg = reason_to_refuse(DEPLOYED_TODAY, "mainnet",
+    msg = reason_to_refuse(DEPLOYED_TODAY, "prod",
                            kill_switch=str(tmp_path / "absent"))
     assert msg and "circuit breakers disabled" in msg
 
 
 # -- the operator's chosen values pass their own gate ------------------------
 
-def test_the_chosen_mainnet_values_would_be_accepted():
-    """The point of choosing them is that mainnet can then start."""
-    from live.config import MAINNET_RISK
+def test_the_chosen_prod_values_would_be_accepted():
+    """The point of choosing them is that prod can then start."""
+    from live.config import PROD_RISK
     from live.guards import circuit_breaker_failures
 
     class _Risk:
         pass
     risk = _Risk()
-    for k, v in MAINNET_RISK.items():
+    for k, v in PROD_RISK.items():
         setattr(risk, k, v)
-    assert circuit_breaker_failures(risk, "mainnet") == []
+    assert circuit_breaker_failures(risk, "prod") == []
 
 
 def test_the_chosen_values_are_not_the_disabled_sentinels():
-    from live.config import MAINNET_RISK
+    from live.config import PROD_RISK
     from live.guards import DISABLED
     for name, off in DISABLED.items():
-        assert MAINNET_RISK[name] != off, f"{name} is still the off switch"
+        assert PROD_RISK[name] != off, f"{name} is still the off switch"
 
 
 def test_they_are_not_in_the_paper_stacks_terraform():
@@ -150,3 +150,40 @@ def test_they_are_not_in_the_paper_stacks_terraform():
             raise AssertionError(
                 "the live daily-loss value has been written into the paper "
                 "stack's terraform; that replaces the paper host on apply")
+
+
+# --- the exemption is testnet, and ONLY testnet -----------------------------
+
+@pytest.mark.parametrize("venue", [
+    "mainnet",          # the name before 2026-09-16: must not be silently exempt
+    "production",
+    "live",
+    "",
+    None,
+    "Prod ",            # case and whitespace are normalised, not exploited
+    "testnet-ish",
+])
+def test_every_venue_other_than_testnet_requires_the_breakers(venue):
+    """The guard used to read `if venue != "mainnet": return []`.
+
+    That exempted everything that was not that exact string -- testnet, but
+    also a typo, an empty value and any new name. It was safe only because
+    nothing else could set the venue. Renaming the venue to "prod" is precisely
+    the change that breaks it: miss the one comparison and a prod host skips
+    its circuit breakers while every other file agrees it spends real money.
+
+    `"prod"` passing on its own proves nothing -- the fail-open version passes
+    that too. What proves the guard fails CLOSED is that no other value, the
+    old name included, gets the exemption.
+    """
+    bad = circuit_breaker_failures(DEPLOYED_TODAY, venue)
+    assert len(bad) == 3, (
+        f"venue {venue!r} was exempted from the circuit breakers; only an "
+        f"explicit testnet may be")
+    with pytest.raises(GuardError):
+        require_circuit_breakers(DEPLOYED_TODAY, venue)
+
+
+@pytest.mark.parametrize("venue", ["testnet", "TESTNET", " testnet "])
+def test_only_testnet_is_exempt_however_it_is_written(venue):
+    assert circuit_breaker_failures(DEPLOYED_TODAY, venue) == []

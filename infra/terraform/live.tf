@@ -120,13 +120,13 @@ locals {
 }
 
 variable "live_venue" {
-  description = "testnet | mainnet. Reaching mainnet must be a deliberate edit."
+  description = "testnet | prod. Reaching prod must be a deliberate edit."
   type        = string
   default     = "testnet"
 
   validation {
-    condition     = contains(["testnet", "mainnet"], var.live_venue)
-    error_message = "live_venue must be exactly \"testnet\" or \"mainnet\"."
+    condition     = contains(["testnet", "prod"], var.live_venue)
+    error_message = "live_venue must be exactly \"testnet\" or \"prod\"."
   }
 }
 
@@ -137,7 +137,7 @@ variable "live_venue" {
 # is one typo away from rolling a paper host onto an image that can place
 # orders. The boundary is worth a second repository.
 #
-# The build-live job in deploy-testnet.yml and deploy-mainnet.yml checks for
+# The build-live job in deploy-testnet.yml and deploy-prod.yml checks for
 # this repository and
 # skips when it is absent, so adding a live_stacks entry is the ONLY step --
 # there is no second place to remember to edit. This pipeline has been bitten
@@ -180,7 +180,8 @@ resource "aws_ssm_parameter" "live_credential_arn" {
 #
 # var.live_venue existed, validated its input, and reached nothing: no host
 # ever read it, and DELTA_ENV was set only by run_live.sh's own fallback. A
-# stack declaring `live_venue = "mainnet"` applied cleanly and ran testnet.
+# stack declaring `live_venue = "mainnet"` (now "prod") applied cleanly and
+# ran testnet.
 #
 # It is delivered this way for the same reason the credential ARN is: putting
 # it in the user_data template changes the rendered bytes for PAPER stacks,
@@ -188,7 +189,7 @@ resource "aws_ssm_parameter" "live_credential_arn" {
 # mid-experiment, through a feed gap. An SSM parameter costs the template
 # nothing and is already per-stack.
 #
-# run_live.sh REFUSES TO START on anything other than testnet|mainnet rather
+# run_live.sh REFUSES TO START on anything other than testnet|prod rather
 # than defaulting, so a missing or malformed parameter is a host that says so
 # and stops, not a host quietly trading the wrong venue.
 resource "aws_ssm_parameter" "live_venue" {
@@ -270,16 +271,16 @@ resource "aws_iam_role_policy" "live_ci" {
         # one that is not its own.
         #
         # var.live_venue is a SINGLE GLOBAL, not a per-stack property, so the
-        # stack named `tnet` becomes a MAINNET bot the moment somebody edits it
+        # stack named `tnet` becomes a PROD bot the moment somebody edits it
         # and nothing in the stack table looks different. deploy-testnet.yml
-        # and deploy-mainnet.yml therefore check this parameter -- the one
+        # and deploy-prod.yml therefore check this parameter -- the one
         # run_live.sh itself reads -- BEFORE touching the host.
         #
         # The grant was missing when that check shipped on 2026-09-16 and the
         # first testnet dispatch failed on it. It failed CLOSED, which is the
         # designed behaviour: an unreadable venue is refused, not assumed, so
         # a bound experiment was never at risk. Read-only, and the value is
-        # not a secret -- it is the literal string "testnet" or "mainnet".
+        # not a secret -- it is the literal string "testnet" or "prod".
         Sid    = "ReadWhichVenueAHostIsOn"
         Effect = "Allow"
         Action = ["ssm:GetParameter"]

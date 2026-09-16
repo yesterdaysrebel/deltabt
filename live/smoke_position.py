@@ -26,7 +26,7 @@ fire against real data then reconciliation is decoration.
 
 SAFETY
 
-Refuses mainnet. One contract, the minimum. Brackets are set far enough away
+Refuses prod. One contract, the minimum. Brackets are set far enough away
 that they cannot fire during the run, because the point here is the position
 lifecycle and not the exits. The close is in a `finally`, and if it fails the
 script says so loudly and names the position -- an open position left behind on
@@ -43,7 +43,7 @@ from decimal import Decimal
 
 from live.auth import Credentials
 from live.broker import LiveBroker
-from live.client import MAINNET, TESTNET, LiveClient, VenueError
+from live.client import PROD, TESTNET, LiveClient, VenueError
 from live.reconcile import Verdict, reconcile
 
 #: How far the brackets sit from entry, as a fraction of price. Wide enough
@@ -87,7 +87,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     base = os.environ.get("DELTA_BASE_URL", TESTNET)
-    if base == MAINNET or "testnet" not in base:
+    if base == PROD or "testnet" not in base:
         print(f"refusing to run against {base!r}: testnet only.\n"
               "This script OPENS A POSITION.", file=sys.stderr)
         return 2

@@ -65,11 +65,11 @@ def test_each_venue_has_its_own_concurrency_group():
         f"the other for no reason: {groups}")
 
 
-def test_mainnet_cannot_be_reached_by_a_push():
-    """Reaching mainnet must be a deliberate act, not a merge."""
-    text = named("deploy-mainnet").read_text()
+def test_prod_cannot_be_reached_by_a_push():
+    """Reaching prod must be a deliberate act, not a merge."""
+    text = named("deploy-prod").read_text()
     assert "\n  push:\n" not in text, (
-        "deploy-mainnet.yml has a push trigger, so a merge can spend real "
+        "deploy-prod.yml has a push trigger, so a merge can spend real "
         "money")
     assert "workflow_dispatch:" in text
 
@@ -79,7 +79,7 @@ def test_the_live_workflows_refuse_the_other_venue():
     host's parameter says so. Splitting by venue is only meaningful if each
     half refuses the other's hosts, checked against the host and not a table."""
     for stem, venue in (("deploy-testnet", "testnet"),
-                        ("deploy-mainnet", "mainnet")):
+                        ("deploy-prod", "prod")):
         text = named(stem).read_text()
         assert re.search(rf"^\s+expect_venue:\s*{venue}\s*$", text, re.M), (
             f"{stem}.yml does not pin expect_venue to {venue}, so it would "
@@ -97,7 +97,7 @@ def test_the_venue_check_runs_before_the_host_is_touched():
     gate = roll.index("the host must be on the venue this workflow is for")
     for step in ("may we roll this host?", "send the deploy command"):
         assert gate < roll.index(step), (
-            f"the venue check runs after {step!r}, so a mainnet host could be "
+            f"the venue check runs after {step!r}, so a prod host could be "
             f"interrogated or rolled by the testnet workflow first")
 
 
@@ -248,7 +248,7 @@ def test_workflow_messages_only_name_workflows_that_exist():
     """
     from tests.deploy_workflows import WORKFLOWS
     existing = {p.name for p in WORKFLOWS.glob("*.yml")}
-    venues = ("paper", "testnet", "mainnet")
+    venues = ("paper", "testnet", "prod")
     checked = 0
     for path in sorted(WORKFLOWS.glob("*.yml")):
         for line in path.read_text().splitlines():

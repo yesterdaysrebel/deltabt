@@ -1,4 +1,4 @@
-"""The only things that differ between testnet and mainnet.
+"""The only things that differ between testnet and prod.
 
 THE REQUIREMENT THIS EXISTS TO MEET
 
@@ -12,7 +12,7 @@ thing in particular does not survive being configured:
     PRODUCT IDS ARE NOT THE SAME ON BOTH VENUES. BTCUSD is product 84 on
     testnet. Hard-coding that, or putting it in a config file, means flipping
     the endpoint aims every order at whatever product 84 happens to be on
-    mainnet -- an order that places successfully, fills, and is for the wrong
+    prod -- an order that places successfully, fills, and is for the wrong
     instrument. Nothing downstream would notice: the id is valid, the fill is
     real, and reconciliation would agree with itself.
 
@@ -34,17 +34,17 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from live.auth import Credentials
-from live.client import MAINNET, TESTNET, LiveClient, VenueError
+from live.client import PROD, TESTNET, LiveClient, VenueError
 
 log = logging.getLogger(__name__)
 
 KEY_ENV = "DELTA_API_KEY"
 SECRET_ENV = "DELTA_API_SECRET"
-#: testnet | mainnet. A NAME, not a URL: a typo in a URL can silently point at
+#: testnet | prod. A NAME, not a URL: a typo in a URL can silently point at
 #: something reachable, while a typo in a name is refused outright.
 ENV_ENV = "DELTA_ENV"
 
-BASE_URLS = {"testnet": TESTNET, "mainnet": MAINNET}
+BASE_URLS = {"testnet": TESTNET, "prod": PROD}
 
 #: THE UNIVERSE DIFFERS BY VENUE, AND NOT BECAUSE ANYONE WANTED IT TO.
 #:
@@ -61,14 +61,14 @@ BASE_URLS = {"testnet": TESTNET, "mainnet": MAINNET}
 #: BTCUSD will do none of that, and the stop cap will never bind on testnet.
 #:
 #: The first time these three symbols trade through this code will therefore
-#: be on mainnet. That is a real limit of the plan, not a detail.
+#: be on prod. That is a real limit of the plan, not a detail.
 VENUE_SYMBOLS = {
     "testnet": ("BTCUSD", "ETHUSD", "SOLUSD"),
-    "mainnet": ("BEATUSD", "AKEUSD", "BANKUSD"),
+    "prod": ("BEATUSD", "AKEUSD", "BANKUSD"),
 }
 
 
-#: THE THREE CIRCUIT BREAKERS, FOR MAINNET. Chosen by the operator 2026-09-15.
+#: THE THREE CIRCUIT BREAKERS, FOR PROD. Chosen by the operator 2026-09-15.
 #:
 #: They are HERE and not in infra/terraform/variables.tf on purpose. That file
 #: feeds risk_hash AND the instance's user_data, which carries
@@ -95,7 +95,7 @@ VENUE_SYMBOLS = {
 #: 9.1% peak drawdown UNGATED, before live slippage. A 10% halt therefore sits
 #: barely above the range the strategy has already visited, and is likely to
 #: fire and end the run rather than merely bound it.
-MAINNET_RISK = {
+PROD_RISK = {
     "max_drawdown_pct": 0.10,
     "max_daily_loss_pct": 0.03,
     "max_consecutive_losses": 4,
@@ -132,7 +132,7 @@ class Product:
 def client_from_env(env: dict[str, str] | None = None) -> LiveClient:
     """Build the client from the two credentials and the venue name.
 
-    Defaults to TESTNET. Reaching mainnet requires saying so, because the
+    Defaults to TESTNET. Reaching prod requires saying so, because the
     difference between the two is real money and a default should never be the
     reason it was reached.
     """
@@ -147,8 +147,8 @@ def client_from_env(env: dict[str, str] | None = None) -> LiveClient:
         raise ConfigError(
             f"{ENV_ENV}={name!r} is not one of {sorted(BASE_URLS)}")
 
-    if name == "mainnet":
-        log.warning("MAINNET: orders from this process spend real money")
+    if name == "prod":
+        log.warning("PROD: orders from this process spend real money")
     return LiveClient(Credentials(key=key, secret=secret, label=name),
                       base_url=BASE_URLS[name])
 

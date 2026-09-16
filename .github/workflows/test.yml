@@ -19,7 +19,7 @@ permissions:
 concurrency:
   # github.workflow resolves to the CALLER's name, so the copy a deploy
   # workflow invokes via workflow_call lands in `test-deploy paper-<ref>` (or
-  # `deploy testnet`, `deploy mainnet`) while the run this push triggers
+  # `deploy testnet`, `deploy prod`) while the run this push triggers
   # directly lands in `test-test-<ref>`. Since the 2026-09-16 split a push
   # touching both venues runs the suite three times rather than twice; that is
   # CI minutes, not a fault, and every group stays distinct. Keyed on the ref alone
