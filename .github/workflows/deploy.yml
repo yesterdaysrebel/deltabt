@@ -424,7 +424,9 @@ jobs:
           # That is correct and is the point. Adding a family to
           # deltabt/catalog.py does not move any other family's config_hash, so
           # its strategy identity does not drift while it waits.
-          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"}]'
+          # THREE EDITS PER STACK: variables.tf, here, and monitor.yml.
+          # tests/live/test_stack_table_consistency.py fails if they disagree.
+          all='[{"stack":"atr","variant":"SPEC:manual_scalp_both_t3@5","instance_var":"BOT_INSTANCE_ID_ATR","document_var":"SSM_DEPLOY_DOCUMENT_ATR"},{"stack":"ladder","variant":"SPEC:manual_scalp_both_t3_ladder@5","instance_var":"BOT_INSTANCE_ID_LADDER","document_var":"SSM_DEPLOY_DOCUMENT_LADDER"},{"stack":"ltp","variant":"SPEC:manual_scalp_both_t3_ltp@5","instance_var":"BOT_INSTANCE_ID_LTP","document_var":"SSM_DEPLOY_DOCUMENT_LTP"}]'
           if [ -n "${ONLY:-}" ]; then
             picked=$(printf '%s' "$all" | jq -c --arg s "$ONLY" '[.[] | select(.stack==$s)]')
             if [ "$picked" = "[]" ]; then

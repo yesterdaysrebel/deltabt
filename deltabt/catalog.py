@@ -339,6 +339,57 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10),
     ),
+    # --- THE TWO EXIT ARMS, 2026-09-16 ------------------------------------
+    #
+    # Deployed as their own paper stacks beside the baseline above, ungated, by
+    # operator decision. They differ from it in ONE field each, so a difference
+    # in result is attributable; everything else -- entry rule, timeframes,
+    # stop geometry, target, universe, risk config -- is identical.
+    #
+    # THE BACKTEST SAYS THE LADDER COSTS MONEY, and that is recorded here
+    # rather than argued away. Over the arm's 342 backtest trades on the live
+    # universe, against +65.3R for leaving the stop alone:
+    #
+    #     breakeven at +1.0R          +15.0R   -0.147R/trade   t=-2.61
+    #     ladder 0.5/1/1.5/2           +8.7R   -0.166R/trade   t=-2.11
+    #     ladder 1/2/3                 +5.9R   -0.174R/trade   t=-2.78
+    #
+    # The mechanism is visible in the win rate: the ladder wins MORE often
+    # (36.5% against 32.2%) and earns a quarter as much. This arm's edge is a
+    # minority of trades that run to 3R, winners retrace a median 1.50R on the
+    # way, and a rung tight enough to rescue a 1R loser also stops out the
+    # winner that dips to +0.9R before running.
+    #
+    # WHAT MOTIVATED IT ANYWAY, because it is a real observation: on the 19
+    # trades the live arm had closed by 2026-09-15, losers reached a median
+    # +0.97R before dying (8 of 10 passed +0.5R) against +0.51R for the
+    # backtest population. Ten losers chosen by looking at them is how a rule
+    # that does not replicate gets built -- but the divergence is real and
+    # unexplained, and forward-testing it is how it gets settled.
+    "manual_scalp_both_t3_ladder": dict(
+        desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10,
+                  ladder_rungs=((0.5, 0.0), (1.0, 0.5),
+                                (1.5, 1.0), (2.0, 1.5))),
+    ),
+    # THE STOP-TRIGGER ARM. Identical rule; only which price the stop watches
+    # changes. It is aimed at the overshoot, not at the entry: the live arm's
+    # six BEATUSD stops filled a mean 0.247R PAST their trigger -- 1.48R, about
+    # a quarter of everything the arm has made -- because Delta triggers on
+    # mark and fills at last-traded, and mark lags LTP in a fast move on an
+    # illiquid instrument. Measured on 1m bars an LTP trigger looked WORSE, but
+    # 1m cannot see the fill inside the trigger bar, which is where the damage
+    # is; this runs it on real ticks.
+    "manual_scalp_both_t3_ltp": dict(
+        desc="manual_scalp_both_t3 with stops triggering on last-traded, not mark",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, stop_trigger="ltp"),
+    ),
     # THE SAME ARM, ENTERING WHERE THE OPERATOR ACTUALLY ENTERS.
     #
     # WHY THIS EXISTS. On 2026-09-07 the operator said the live arm was

@@ -163,6 +163,10 @@ class PaperPosition:
     #: Bar on which the entry filled. Used by the same-bar look-ahead guard.
     entry_bar: int | None = None
     entry_was_passive: bool = False
+    #: True once a ladder rung has moved this position's stop. Read at exit so
+    #: a promoted stop can carry its own cooldown, and recorded on the trade so
+    #: the arm's damage is attributable rather than inferred.
+    stop_promoted: bool = False
     #: Exchange microsecond timestamp of the entry fill. Stop and target are
     #: only live for ticks strictly after it.
     armed_after_us: int | None = None
@@ -285,8 +289,29 @@ class PaperBroker:
                  max_hold_seconds: int = 0,
                  exit_on_wpr_band_exit: bool = False,
                  wpr_exit_long_level: float = -80.0,
-                 wpr_exit_short_level: float = -20.0) -> None:
+                 wpr_exit_short_level: float = -20.0,
+                 ladder_rungs: tuple[tuple[float, float], ...] = (),
+                 stop_trigger: str = "mark") -> None:
         self.costs = costs
+        #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending
+        #: ``(favourable excursion in R, new stop in R from entry)`` pairs.
+        #: ``()`` is the absence of the rule and is what every result recorded
+        #: before 2026-09-16 was measured under.
+        #:
+        #: The rungs and the ordering below mirror deltabt/engine.py so the
+        #: paper arm and the backtest are the same rule. They are NOT one
+        #: implementation: the engine walks bars and this walks ticks, which is
+        #: strictly finer -- a bar's extreme is a tick here.
+        self.ladder_rungs = tuple((float(t), float(s)) for t, s in ladder_rungs)
+        #: WHICH PRICE THE STOP WATCHES. "mark" is Delta's default and every
+        #: recorded result; "ltp" triggers on last-traded instead. Delta
+        #: TRIGGERS on mark and FILLS at last-traded, and on an illiquid
+        #: instrument mark lags LTP in a fast move -- which is where the live
+        #: arm's BEATUSD overshoot comes from.
+        if stop_trigger not in ("mark", "ltp"):
+            raise ValueError(
+                f"stop_trigger must be 'mark' or 'ltp', got {stop_trigger!r}")
+        self.stop_trigger = stop_trigger
         self.equity = starting_equity
         self.slippage_bps = slippage_bps
         #: An unfilled entry order dies after this long. A setup is a statement
@@ -806,12 +831,14 @@ class PaperBroker:
                 # the entry. Otherwise one price observation could open and
                 # close a position, which no real order sequence can do.
                 continue
-            # Stops trigger on MARK, per Delta's default.
+            # Stops trigger on MARK, per Delta's default; "ltp" is the venue
+            # setting, not a strategy rule, and is measured as its own arm.
+            trig = tick.mark if self.stop_trigger == "mark" else tick.ltp
             if pos.side == LONG:
-                hit_stop = tick.mark <= pos.stop_price
+                hit_stop = trig <= pos.stop_price
                 hit_target = tick.ltp >= pos.target_price
             else:
-                hit_stop = tick.mark >= pos.stop_price
+                hit_stop = trig >= pos.stop_price
                 hit_target = tick.ltp <= pos.target_price
 
             if hit_stop:
@@ -835,8 +862,50 @@ class PaperBroker:
                 px = self._slip(tick.ltp, -pos.side)
                 self._close(pos, px, ExitReason.TIME_EXIT, tick.ts,
                             tick.ts_us, maker=False)
+            elif self.ladder_rungs:
+                # THE LADDER MOVES THE STOP AFTER THE TESTS ABOVE, NEVER
+                # BEFORE, and only on a tick the position survived. Promoting
+                # first would let one price observation both raise the stop and
+                # be stopped out by the raise -- booking +0.5R on a tick that
+                # really took -1R, which is exactly the flattery this rule is
+                # suspected of. deltabt/engine.py orders it the same way.
+                self._promote_stop(pos, tick)
 
         return self.events[before:]
+
+    def _promote_stop(self, pos: PaperPosition, tick) -> None:
+        """Raise the stop to the highest rung this tick has earned.
+
+        FAVOURABLE EXCURSION IS MEASURED ON LTP and against the position's
+        ORIGINAL risk_per_unit, not against the current stop distance. Both
+        choices match deltabt/engine.py, and the second one matters: once a
+        rung promotes the stop to breakeven the current distance is ZERO, and
+        anything divided by it is meaningless.
+
+        The extreme is LTP while the stop may trigger on MARK. That split is
+        the venue's own and is deliberately not reconciled -- the ladder is a
+        decision about how far PRICE went, and price is last-traded.
+        """
+        if pos.risk_per_unit <= 0:
+            return
+        favourable = ((tick.ltp - pos.entry_price) if pos.side == LONG
+                      else (pos.entry_price - tick.ltp)) / pos.risk_per_unit
+        costs = self.costs.get(pos.symbol)
+        for trigger_r, stop_r in self.ladder_rungs:
+            if favourable < trigger_r:
+                # Rungs ascend, so nothing further can be earned either.
+                break
+            raw = pos.entry_price + pos.side * stop_r * pos.risk_per_unit
+            promoted = (costs.round_price(
+                raw, direction=-1 if pos.side == LONG else 1)
+                if costs is not None else raw)
+            # Monotone in the position's favour, never against it. A rung that
+            # rounds to the wrong side of the stop it already has is ignored
+            # rather than allowed to loosen protection.
+            if (pos.side == LONG and promoted > pos.stop_price) or (
+                    pos.side == SHORT and promoted < pos.stop_price):
+                pos.stop_price = promoted
+                pos.stop_promoted = True
 
     # -- stop-fill telemetry -------------------------------------------------
     #

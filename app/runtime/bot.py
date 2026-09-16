@@ -190,6 +190,26 @@ class TradingBot:
                                   exit_on_wpr_band_exit=settings.risk.exit_on_wpr_band_exit,
                                   wpr_exit_long_level=settings.risk.wpr_exit_long_level,
                                   wpr_exit_short_level=settings.risk.wpr_exit_short_level,
+                                  # FROM THE SPEC, not from Settings. The
+                                  # ladder changes which exits happen, so it
+                                  # belongs to the strategy's identity and
+                                  # rides strategy_hash. getattr because the
+                                  # frozen 1m arm is a StrategyConfig, not a
+                                  # StrategySpec, and has no such field.
+                                  ladder_rungs=getattr(strategy, "ladder_rungs", ()),
+                                  # ALSO FROM THE SPEC. It is really an
+                                  # EXECUTION choice -- Delta's own order
+                                  # parameter -- but execution config reaches a
+                                  # host through user_data, and user_data is
+                                  # shared and carries
+                                  # user_data_replace_on_change, so delivering
+                                  # it that way would replace the instance
+                                  # running the live experiment. The variant
+                                  # string is already per stack, costs no
+                                  # user_data bytes, and makes the arm a named
+                                  # catalog entry the backtester can run.
+                                  stop_trigger=getattr(strategy, "stop_trigger",
+                                                       "mark"),
                                   **broker_params(settings.risk))
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)

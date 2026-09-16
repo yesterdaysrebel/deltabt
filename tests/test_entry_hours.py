@@ -68,7 +68,18 @@ def test_a_family_without_a_window_hashes_as_if_the_field_did_not_exist(family):
     if spec.entry_hours_utc is not None:
         pytest.skip("this family carries a window")
     payload = asdict(spec)
+    # EVERY FIELD _hash_payload OMITS AT ITS DEFAULT, not just the first one.
+    # Listed explicitly rather than read out of the production code, because
+    # deriving it would make this test agree with whatever that code does and
+    # assert nothing. A fourth omitted field is a deliberate edit here, and
+    # this list going stale is how you find out.
+    if spec.ladder_rungs:
+        pytest.skip("this family carries a ladder")
+    if spec.stop_trigger != "mark":
+        pytest.skip("this family retriggers its stops")
     del payload["entry_hours_utc"]
+    del payload["ladder_rungs"]
+    del payload["stop_trigger"]
     legacy = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

@@ -928,6 +928,39 @@ variable "stacks" {
     # and ux_forward_test_running would refuse a second RUNNING experiment
     # there anyway.
     atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
+
+    # --- THE TWO EXIT ARMS, ADDED 2026-09-16 -----------------------------
+    #
+    # Both run the SAME entry rule, timeframes, stop geometry, target,
+    # universe and risk config as `atr` above. Each differs from it in exactly
+    # one behavioural field, so a difference in result is attributable. The
+    # specs are in deltabt/catalog.py and carry the measured evidence.
+    #
+    # UNGATED, like atr: max_drawdown 1.0, max_daily_loss 1.0,
+    # max_consecutive_losses 0, both cooldowns 0, minimum_rr 1.0. Those are
+    # GLOBAL variables in this file, so all three arms share them and the
+    # comparison is not confounded by a censoring rule firing on one of them.
+    # It also means expectancy here is uncensored, which is the point.
+    #
+    # THE BACKTEST DOES NOT SUPPORT THE LADDER and that is recorded rather
+    # than softened: -0.166R/trade over 342 trades, t = -2.11. It is run
+    # because it was asked for, against a live observation the backtest does
+    # not explain -- losers on the live arm reached a median +0.97R before
+    # dying, against +0.51R in the backtest.
+    #
+    # READ-OUT HORIZON. atr fills roughly 2 trades a day, so seven days is
+    # ~50 trades per arm. The ladder effect measured above needs several
+    # hundred to separate from noise at that size, so a 7-day read will very
+    # likely be UNDECIDED -- which must be written down now rather than
+    # argued about later, exactly as docs/v5_stopping_rule.md had to be.
+    #
+    # NEITHER DATABASE EXISTS YET. Terraform builds the RDS instance but has
+    # no sub-resource for a database inside one, so these names must be
+    # created before the first deploy or the bot dies on
+    # InvalidCatalogNameError, which is how v4 failed its first roll on
+    # 2026-08-20. See deploy/aws/create_stack_database.py.
+    ladder = { variant = "SPEC:manual_scalp_both_t3_ladder@5", db_name = "deltabt_ladder" }
+    ltp    = { variant = "SPEC:manual_scalp_both_t3_ltp@5", db_name = "deltabt_ltp" }
     # 2026-09-10: `hours` AND `cross` ARE REMOVED. ONLY `atr` REMAINS.
     #
     # Both were stopped by operator instruction at day 4 -- `hours` of 30,
