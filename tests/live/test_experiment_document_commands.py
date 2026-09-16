@@ -114,3 +114,31 @@ def test_stop_still_fails_on_a_real_error():
     assert "retire FAILED" in doc and 'exit "$rc"' in doc, (
         "the stop branch swallows every non-zero exit; a genuine failure to "
         "retire would then be followed by a roll that cannot bind")
+
+
+
+def test_retire_stops_the_service_before_running_the_cli():
+    """Otherwise the running bot's advisory lock makes retire impossible.
+
+    `cli` runs a SECOND bot instance, and the bot holds a Postgres advisory
+    lock so that only one ever runs. With the service up that second instance
+    exits with "another bot instance holds the advisory lock; refusing to
+    start" -- which is NOT the benign "no experiment is RUNNING" the stop
+    branch matches, so it falls through to "retire FAILED" and the deploy
+    stops.
+
+    `start` has always stopped the service first. `stop` never did, and the
+    asymmetry only surfaces on a host whose bot is UP and whose retire actually
+    reaches the CLI -- which is exactly the tnet stack on 2026-09-15: healthy
+    bot, nothing to retire, and binding an experiment impossible because the
+    step that runs first could not run at all.
+    """
+    doc = (ROOT / "infra/terraform/ec2.tf").read_text()
+    stop = doc[doc.index("[experiment] retiring any running experiment"):]
+    stop = stop[:stop.index("            start)")]
+    assert "systemctl stop deltabt.service" in stop, (
+        "retire runs the CLI while the bot still holds the advisory lock")
+    # And it must come back up: this document is also run by hand to retire a
+    # run, where leaving the bot down would be worse than the bug being fixed.
+    assert "systemctl start deltabt.service" in stop, (
+        "retire stops the bot and never restarts it")
