@@ -795,6 +795,19 @@ class TradingBot:
         if decision is not None and decision.approved:
             await self._place(exp, decision, market_now)
 
+    @property
+    def _unresolved_entries(self) -> set[str]:
+        """Symbols whose last entry ended with an unknown outcome.
+
+        Created on first use rather than in __init__: several harnesses build
+        a bot with __new__ to test one method in isolation, and a class-level
+        default would be ONE set shared by every bot in the process.
+        """
+        try:
+            return self.__dict__["_unresolved_entries_set"]
+        except KeyError:
+            return self.__dict__.setdefault("_unresolved_entries_set", set())
+
     async def _place(self, exp, decision, market_now: int) -> None:
         """Reserve exposure in the DATABASE, then create the paper order.
 
@@ -809,6 +822,19 @@ class TradingBot:
         operation.
         """
         intent = decision.intent
+        # A SYMBOL WHOSE LAST ENTRY HAS AN UNKNOWN OUTCOME IS NOT OPENED AGAIN.
+        # Its slot is held (see below), but the exposure gate is a global
+        # count, not per symbol, so without this a second entry on the same
+        # symbol would pass it -- and if the first order did land, the venue
+        # would add to that position. Cleared only by a restart, whose startup
+        # sweep checks the venue before releasing anything.
+        if intent.symbol in self._unresolved_entries:
+            exp.outcome = Outcome.REJECTED
+            exp.rejection_reason = (f"an earlier entry on {intent.symbol} has an "
+                                    f"unknown outcome; not opening again until "
+                                    f"it is reconciled")
+            log.warning("entry refused: %s", exp.rejection_reason)
+            return
         order_uid = new_uid("ord")
         ttl = self.broker.entry_ttl_seconds
         record = OrderRecord(
@@ -844,8 +870,49 @@ class TradingBot:
                      extra={"symbol": exp.symbol, "exposure": exposure})
             return
 
-        order = self.broker.submit_order(intent, now=market_now,
-                                         order_uid=order_uid)
+        try:
+            order = self.broker.submit_order(intent, now=market_now,
+                                             order_uid=order_uid)
+        except Exception as exc:                                  # noqa: BLE001
+            # THE SLOT IS ALREADY RESERVED, so every way out of here decides
+            # its fate. It used to decide nothing: any exception escaped with
+            # the row WORKING, and on 2026-09-16 LiveBroker raised TypeError on
+            # every entry, so tnet leaked all six slots and then refused every
+            # signal for hours while reporting healthy.
+            #
+            # Read with getattr, not isinstance: the exception types live in
+            # live/, and app/ must never import live/. Anything that does not
+            # declare the attribute -- including a plain bug -- is UNKNOWN.
+            if getattr(exc, "no_position_can_result", False):
+                await self.repo.update_order_status(
+                    order_uid, OrderStatus.REJECTED.value)
+                exp.outcome = Outcome.REJECTED
+                exp.rejection_reason = f"broker: {exc}"
+                await self._event("execution", "ENTRY_NOT_OPENED",
+                                  symbol=intent.symbol, severity="WARNING",
+                                  payload={"order_uid": order_uid,
+                                           "reason": str(exc)})
+                log.warning("entry not opened, slot released: %s", exc,
+                            extra={"symbol": intent.symbol})
+                return
+            # Outcome unknown. Holding the slot is the conservative choice: a
+            # wrongly held slot costs one trade, a wrongly released one can
+            # open a second position beside a live one. Re-raised so the bar
+            # loop records it; the bar is re-queued, and signal idempotency
+            # stops the retry from submitting again.
+            self._unresolved_entries.add(intent.symbol)
+            await self._event("execution", "ENTRY_OUTCOME_UNKNOWN",
+                              symbol=intent.symbol, severity="CRITICAL",
+                              payload={"order_uid": order_uid,
+                                       "error": f"{type(exc).__name__}: {exc}"})
+            await self.notifier.send(
+                f"{intent.symbol} ENTRY OUTCOME UNKNOWN",
+                f"order {order_uid}: {type(exc).__name__}: {exc}. Its slot is "
+                f"held and {intent.symbol} will not be opened again until a "
+                f"restart reconciles it against the venue.")
+            log.critical("entry outcome unknown; slot held, symbol blocked",
+                         extra={"symbol": intent.symbol, "order_uid": order_uid})
+            raise
         if order is None:
             # The broker declined after the slot was reserved, so the
             # reservation must be released or it would block every future
@@ -857,10 +924,15 @@ class TradingBot:
             return
 
         self.metrics.orders += 1
-        await self._event("execution", "PAPER_ORDER_CREATED", symbol=order.symbol,
-                          payload={"order_uid": order.order_uid,
-                                   "quantity": order.quantity,
-                                   "side": order.side})
+        # FROM THE INTENT, NOT FROM `order`. PaperBroker returns a PaperOrder
+        # and LiveBroker the venue's order dict; reading `.symbol` off a dict
+        # raised AttributeError AFTER a real order had been placed, leaving it
+        # unrecorded. PaperBroker builds its order from these same intent
+        # fields, so the recorded event is unchanged for paper.
+        await self._event("execution", "PAPER_ORDER_CREATED", symbol=intent.symbol,
+                          payload={"order_uid": order_uid,
+                                   "quantity": intent.quantity,
+                                   "side": intent.side})
 
     async def _record_signal(self, exp, key: str,
                              market_now: int | None = None) -> bool:
