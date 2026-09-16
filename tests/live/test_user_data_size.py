@@ -108,3 +108,42 @@ def test_headroom_is_reported_not_just_asserted():
     print(f"\nrendered user_data {n:,} / {EC2_LIMIT:,} bytes "
           f"({100*n/EC2_LIMIT:.0f}%), budget {BUDGET:,}")
     assert n > 0
+
+
+# --- the LIVE variant, which the tests above never rendered -----------------
+#
+# EMBEDDED names run.sh, but ec2.tf embeds run_live.sh for a live stack instead
+# (`each.value.live ? "run_live.sh" : "run.sh"`). So tnet's user_data was never
+# measured. Found 2026-09-16 while changing run_live.sh for the kill switch: it
+# was ALREADY 14,145 bytes on master, over the 13,926 soft budget, and nothing
+# said so. That overage predates this test and is recorded here rather than
+# hidden; the kill-switch change left it slightly smaller (14,125).
+#
+# The HARD cap is asserted, because crossing it is the failure that matters: EC2
+# rejects the user_data, and since run_live.sh is only ever applied by REPLACING
+# the live host, it rejects it mid-replacement.
+
+def _rendered_with(run_script: str) -> str:
+    saved = dict(EMBEDDED)
+    EMBEDDED["run_sh_b64"] = ROOT / run_script
+    try:
+        return _rendered()
+    finally:
+        EMBEDDED.clear()
+        EMBEDDED.update(saved)
+
+
+def test_the_live_run_script_is_what_ec2_tf_embeds_for_a_live_stack():
+    """Guards the test below: if the file name changes, it measures nothing."""
+    ec2 = (ROOT / "infra/terraform/ec2.tf").read_text()
+    assert '"run_live.sh" : "run.sh"' in ec2, (
+        "ec2.tf no longer selects run_live.sh for live stacks; update the "
+        "live user_data size test to measure whatever it embeds now")
+
+
+def test_live_user_data_is_within_the_hard_cap():
+    n = len(_rendered_with("deploy/aws/run_live.sh"))
+    assert n <= EC2_LIMIT, (
+        f"a LIVE host's rendered user_data is {n:,} bytes, over EC2's "
+        f"{EC2_LIMIT:,} hard cap. It is applied only by replacing the host, so "
+        f"this fails mid-replacement.")

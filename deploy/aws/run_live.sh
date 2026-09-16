@@ -126,17 +126,18 @@ umask 077
 } > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC DELTA_API_KEY DELTA_API_SECRET
 
+# Kill switch dir: 0755 so the bot (uid 10001) can see HALT. See live/guards.py.
+install -d -m 0755 /run/deltabt-control
+
 CPU_LIMIT=$(nproc 2>/dev/null || echo 1)
 if [ "$CPU_LIMIT" -gt 2 ]; then CPU_LIMIT=2; fi
 log "venue=$DELTA_ENV cpu=$CPU_LIMIT"
 
-# /run/deltabt is BIND-MOUNTED so the kill switch works. live/guards.py checks
-# for /run/deltabt/HALT before every order, and a path that existed only inside
-# the container could not be reached to stop the bot -- which is the one thing
-# a kill switch has to be able to do.
+# Mount only the kill switch dir, never /run/deltabt (credentials).
 exec docker run --rm --name deltabot \
   --env-file /run/deltabt/env \
-  -v /run/deltabt:/run/deltabt:ro \
+  -v /run/deltabt-control:/run/deltabt-control:ro \
+  -e "DELTA_KILL_SWITCH=/run/deltabt-control/HALT" \
   -e "DELTA_ENV=$DELTA_ENV" \
   -e "DELTABOT_SYMBOLS=$DELTABOT_SYMBOLS" \
   -e "DELTABOT_VARIANT=${DELTABOT_VARIANT:-V1}" \

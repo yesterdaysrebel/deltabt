@@ -47,7 +47,18 @@ log = logging.getLogger(__name__)
 #: /run is tmpfs, so it clears on reboot -- a kill switch that silently
 #: survived a host replacement would be worse than none, because the bot would
 #: come back refusing every trade for a reason nobody remembers setting.
-KILL_SWITCH_PATH = os.environ.get("DELTA_KILL_SWITCH", "/run/deltabt/HALT")
+#:
+#: ITS OWN DIRECTORY, NOT /run/deltabt. That directory holds the venue
+#: credentials and is 0700 root, and the bot runs as uid 10001
+#: (Dockerfile.live). So the bot could not even stat /run/deltabt/HALT: every
+#: check raised PermissionError, kill_switch_engaged() correctly treated an
+#: unreadable switch as ENGAGED, and tnet refused every entry on 2026-09-16
+#: with no HALT file anywhere. A control directory the bot can traverse, holding
+#: nothing secret, keeps both properties: only root can create HALT, and the bot
+#: can see whether it did. deploy/aws/run_live.sh mounts it and passes this path
+#: explicitly; the default here must match what it passes.
+KILL_SWITCH_PATH = os.environ.get("DELTA_KILL_SWITCH",
+                                  "/run/deltabt-control/HALT")
 
 #: The sentinel value that means "this breaker is off", per limit.
 #: These come from app/config/settings.py's own comments, not from taste.
