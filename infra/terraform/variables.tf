@@ -477,7 +477,8 @@ variable "bot_symbols" {
   # experiment's config_hash is computed from. Terraform replacing the host is
   # only half of such a change: the other half is retiring the running
   # experiment and registering a successor, and that lives in the deploy
-  # workflow. So `infra/terraform/variables.tf` is in deploy.yml's path filter
+  # workflow. So `infra/terraform/variables.tf` is in the path filters of
+  # deploy-paper.yml and deploy-testnet.yml
   # even though none of it is in the image, and
   # tests/live/test_identity_paths_trigger_deploy.py fails if it is removed.
   #

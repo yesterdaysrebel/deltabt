@@ -230,3 +230,43 @@ def test_the_ci_role_can_read_every_ssm_parameter_the_roll_reads():
         f"live CI role is not granted. The step fails closed, so nothing is "
         f"rolled -- but the run goes red for a permission rather than for "
         f"anything about the deploy. Granted: {sorted(granted_suffixes)}.")
+
+
+# --- instructions to an operator must name a workflow that exists ------------
+
+def test_workflow_messages_only_name_workflows_that_exist():
+    """A notice telling someone what to dispatch is an instruction.
+
+    After the split, the guard's refusal was carried into _roll.yml verbatim:
+    "End the run, or dispatch deploy.yml with only_stack=tnet". deploy.yml no
+    longer existed. It surfaced on the first real testnet run, in exactly the
+    moment an operator would act on it -- a bound experiment refusing a roll.
+
+    Past-tense history in comments may name deleted files; that is what history
+    is. This checks only what a workflow PRINTS: ::notice::, ::warning:: and
+    ::error:: lines, where a filename is advice.
+    """
+    from tests.deploy_workflows import WORKFLOWS
+    existing = {p.name for p in WORKFLOWS.glob("*.yml")}
+    venues = ("paper", "testnet", "mainnet")
+    checked = 0
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        for line in path.read_text().splitlines():
+            if not re.search(r"::(notice|warning|error)::", line):
+                continue
+            # The templated form first, then consume it so the plain pass does
+            # not see its fragments. `${{ inputs.venue }}` contains spaces, so a
+            # single whitespace-delimited token regex would split it apart.
+            templ = re.compile(r"([\w-]*)\$\{\{\s*inputs\.venue\s*\}\}([\w-]*)\.yml")
+            names = []
+            for pre, post in templ.findall(line):
+                names += [f"{pre}{v}{post}.yml" for v in venues]
+            names += re.findall(r"(?<![\w{}$])([\w-]+\.yml)\b", templ.sub("", line))
+            for name in names:
+                    checked += 1
+                    assert name in existing, (
+                        f"{path.name} prints advice naming {name!r}, which "
+                        f"does not exist. Workflows present: {sorted(existing)}")
+    assert checked, (
+        "no workflow message names a .yml at all; the guard's dispatch advice "
+        "is gone or this parse is wrong, and the test would assert nothing")

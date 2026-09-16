@@ -287,7 +287,7 @@ jobs:
               else
                 why="its state could not be read (SSM command: $st)"
               fi
-              echo "::notice::NOT rolling ${{ matrix.stack }}: $why. End the run, or dispatch deploy.yml with only_stack=${{ matrix.stack }} to roll deliberately."
+              echo "::notice::NOT rolling ${{ matrix.stack }}: $why. End the run, or dispatch deploy-${{ inputs.venue }}.yml with only_stack=${{ matrix.stack }} to roll deliberately."
               echo "${{ matrix.stack }}: not rolled -- $why" >> "$GITHUB_STEP_SUMMARY" ;;
           esac
 
