@@ -192,3 +192,63 @@ async def test_a_missing_object_it_cannot_create_still_fails_loudly(app_role):
         await admin.execute(
             "CREATE INDEX IF NOT EXISTS ix_system_events_time "
             "ON system_events (occurred_at DESC)")
+
+
+# --- the token signer knows its region inside the container ----------------
+#
+# 2026-09-17, the first roll with IAM auth on: the new image died at startup
+# with botocore NoRegionError and the host rolled back. db_auth.py claimed
+# boto3 resolves the region from instance metadata on EC2; botocore takes only
+# CREDENTIALS from there. The container has no AWS_REGION. Nothing caught it:
+# no test ever called the token provider, so these isolate botocore from any
+# region a developer machine happens to have configured and then call it.
+
+RDS_HOST = "deltabt-paper.cluyoue2shk8.ap-south-1.rds.amazonaws.com"
+RDS_DSN = f"postgresql://deltabt:stale@{RDS_HOST}:5432/deltabt_tnet?sslmode=require"
+
+
+@pytest.fixture
+def container_like_aws_env(monkeypatch, tmp_path):
+    """What the live container has: instance credentials, and no region."""
+    pytest.importorskip("boto3")
+    for var in ("AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "no-config"))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "no-creds"))
+    # Stand-ins for the instance-role credentials; signing is local.
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIAEXAMPLEEXAMPLE00")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "example/secret/key/example/secret/key00")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+
+
+def test_a_token_is_minted_with_no_region_configured(container_like_aws_env):
+    kw = db_auth.connect_kwargs(RDS_DSN, env={db_auth.IAM_ENV: "1"})
+    db_token = kw["password"]()                  # NoRegionError before the fix
+    assert db_token.startswith(f"{RDS_HOST}:5432/?")
+    assert "ap-south-1" in db_token and "DBUser=deltabt_app" in db_token
+
+
+@pytest.mark.parametrize("host,region", [
+    (RDS_HOST, "ap-south-1"),
+    ("db.abc123.us-east-1.rds.amazonaws.com", "us-east-1"),
+    ("db.abc123.eu-central-2.rds.amazonaws.com", "eu-central-2"),
+    ("db.abc123.cn-north-1.rds.amazonaws.com.cn", "cn-north-1"),
+    ("db.abc123.us-gov-west-1.rds.amazonaws.com", "us-gov-west-1"),
+    ("localhost", None),
+    ("db", None),
+    ("ap-south-1.example.com", None),
+])
+def test_the_region_is_read_from_an_rds_endpoint(host, region):
+    assert db_auth.region_from_host(host) == region
+
+
+def test_an_explicit_region_wins(container_like_aws_env):
+    kw = db_auth.connect_kwargs(
+        RDS_DSN, env={db_auth.IAM_ENV: "1", db_auth.REGION_ENV: "us-west-2"})
+    assert "us-west-2" in kw["password"]()
+
+
+def test_no_region_anywhere_is_refused_with_the_reason(container_like_aws_env):
+    with pytest.raises(ValueError, match="region"):
+        db_auth.connect_kwargs("postgresql://u@db.internal:5432/d",
+                               env={db_auth.IAM_ENV: "1"})
