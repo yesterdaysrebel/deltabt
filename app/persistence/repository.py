@@ -11,6 +11,7 @@ scenario through both.
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 
@@ -521,6 +522,16 @@ class InMemoryRepository(Repository):
 # =====================================================================
 
 
+_SCHEMA_OBJECT = re.compile(
+    r"^\s*CREATE\s+(?:UNIQUE\s+)?(?:TABLE|INDEX)\s+IF\s+NOT\s+EXISTS\s+(\w+)",
+    re.IGNORECASE | re.MULTILINE)
+
+
+def schema_objects(sql: str) -> tuple[str, ...]:
+    """The tables and indexes a schema script creates, in order."""
+    return tuple(_SCHEMA_OBJECT.findall(sql))
+
+
 class PostgresRepository(Repository):
     def __init__(self, dsn: str, *, min_size: int = 2, max_size: int = 8) -> None:
         self.dsn = dsn
@@ -545,9 +556,32 @@ class PostgresRepository(Repository):
         await self.migrate()
 
     async def migrate(self) -> None:
+        """Create what schema.sql defines, unless all of it already exists.
+
+        THE SKIP IS WHAT LETS THE BOT RUN AS ITS OWN ROLE. schema.sql is only
+        CREATE ... IF NOT EXISTS, so on a complete schema executing it changes
+        nothing -- but Postgres checks OWNERSHIP before it checks IF NOT EXISTS,
+        and `CREATE INDEX IF NOT EXISTS` on a table the connecting role does not
+        own fails with "must be owner of table". Every deployed table was
+        created by the master user, so the IAM-auth role (`deltabt_app`, which
+        holds SELECT/INSERT/UPDATE/DELETE and nothing more) would die here on
+        every start. Found 2026-09-17, before switching IAM auth on.
+
+        When something IS missing the SQL still runs, and still fails loudly if
+        this role cannot create it -- that is a schema change needing a
+        deliberate migration, not something to paper over.
+        """
         from pathlib import Path
         sql = (Path(__file__).parent / "schema.sql").read_text()
+        names = schema_objects(sql)
         async with self._pool.acquire() as con:
+            present = await con.fetchval(
+                "SELECT count(*) FROM unnest($1::text[]) AS n "
+                "WHERE to_regclass(n) IS NOT NULL", list(names))
+            if names and present == len(names):
+                log.info("schema complete (%d objects); nothing to migrate",
+                         len(names))
+                return
             await con.execute(sql)
 
     async def close(self) -> None:

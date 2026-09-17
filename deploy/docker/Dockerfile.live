@@ -51,6 +51,19 @@ COPY pyproject.toml ./
 
 ENV NUMBA_CACHE_DIR=/tmp/numba DELTABT_DATA=/tmp/deltabt-data
 
+# DATABASE AUTH BY IAM TOKEN, NOT BY THE MASTER PASSWORD. app/persistence/
+# db_auth.py mints a token per connection, so the weekly RDS rotation of the
+# master password cannot strand the bot. #57 built this and left it DORMANT --
+# the flag was meant to be forwarded by run_live.sh, and editing that file
+# replaces the host -- and nothing ever turned it on. On 2026-09-17 the
+# password rotated at 05:07 UTC and tnet's next new connection, at 06:21, was
+# refused for four minutes.
+#
+# Set in the IMAGE because only this image runs on AWS: local development
+# builds deploy/docker/Dockerfile against the compose Postgres, which has no
+# IAM. tests/live_exec/test_live_db_auth.py pins both halves.
+ENV DB_IAM_AUTH=1
+
 # /run/deltabt is where the kill switch lives (live/guards.py). It must be
 # writable by somebody with SSM access on the host and READABLE here, so it is
 # mounted from the host rather than created in the image -- a path that exists
