@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import urllib.parse
 from typing import Any, Callable
 
@@ -56,10 +57,24 @@ log = logging.getLogger(__name__)
 #: the docker-compose Postgres use -- neither has an IAM identity.
 IAM_ENV = "DB_IAM_AUTH"
 
-#: Region for the token signer. Optional: on EC2 boto3 resolves it from
-#: instance metadata, and forwarding it explicitly cost more user_data budget
-#: than it was worth (tests/live/test_user_data_size.py).
+#: Region for the token signer. Optional, because the RDS hostname carries it.
+#:
+#: IT USED TO SAY boto3 resolves the region from instance metadata on EC2. It
+#: does not -- botocore takes CREDENTIALS from instance metadata, never the
+#: region. The first image to switch IAM auth on (125862a, 2026-09-17) died at
+#: startup with NoRegionError and the host rolled back. The containers are
+#: given no AWS_REGION, and forwarding one means editing the host launcher,
+#: which replaces the host. So the region comes from the endpoint instead.
 REGION_ENV = "AWS_REGION"
+
+#: `<instance>.<cluster-id>.<region>.rds.amazonaws.com` (and `.com.cn`).
+_RDS_HOST = re.compile(r"\.([a-z]{2}(?:-[a-z]+)+-\d+)\.rds\.amazonaws\.com(?:\.cn)?$")
+
+
+def region_from_host(host: str) -> str | None:
+    """The AWS region an RDS endpoint lives in, or None if it is not one."""
+    m = _RDS_HOST.search(host or "")
+    return m.group(1) if m else None
 
 #: The Postgres role to connect AS under IAM, overriding whatever user the DSN
 #: carries. The DSN is built once by deploy/aws/run.sh and names the master
@@ -76,7 +91,7 @@ def iam_enabled(env: dict[str, str] | None = None) -> bool:
 
 
 def _db_token_provider(host: str, port: int, user: str,
-                       region: str | None) -> Callable[[], str]:
+                       region: str) -> Callable[[], str]:
     """A callable asyncpg invokes for EVERY new connection.
 
     The boto3 client is built once (it is thread-safe and holds no connection);
@@ -122,8 +137,14 @@ def connect_kwargs(dsn: str, *, env: dict[str, str] | None = None) -> dict[str, 
             f"{IAM_ENV} is set but the DSN is missing host or database "
             f"(host={host!r} database={database!r})")
 
-    # Optional: boto3 resolves the region from instance metadata on EC2.
-    region = src.get(REGION_ENV) or src.get("AWS_DEFAULT_REGION") or None
+    region = (src.get(REGION_ENV) or src.get("AWS_DEFAULT_REGION")
+              or region_from_host(host))
+    if not region:
+        # Refuse here, with the reason, rather than let botocore raise
+        # NoRegionError from inside pool creation.
+        raise ValueError(
+            f"{IAM_ENV} is set but no region is known: set {REGION_ENV}, or "
+            f"connect to an RDS endpoint (host={host!r})")
 
     log.info("database auth: IAM tokens for %s@%s/%s (no stored password)",
              user, host, database)
