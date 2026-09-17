@@ -24,12 +24,19 @@ resource "aws_db_instance" "main" {
   # into state in plaintext.
   manage_master_user_password = true
 
-  # The bot does NOT use the master password. It connects as `db_app_username`
-  # with a locally-minted IAM token (app/persistence/db_auth.py), so AWS can
-  # keep rotating the master credential and nothing caches anything that can
-  # go stale. Enabling this is a no-op for existing password connections, so
-  # it is safe to apply while the paper experiment is running.
-  iam_database_authentication_enabled = true
+  # OFF. The bots use the master password (deploy/aws/run.sh, run_live.sh).
+  #
+  # IAM database authentication needs "between 300 and 1000 MiB extra memory"
+  # (AWS). On this db.t4g.micro, with ~120 MiB free, enabling it on 2026-09-17
+  # pushed swap from ~75 to ~340 MiB and every token login timed out and was
+  # denied -- while the same instance served three running paper experiments.
+  # It was disabled by CLI the same day; this keeps Terraform from turning it
+  # back on at the next maintenance window.
+  #
+  # Re-enable only on an instance class with the memory, and together with
+  # DB_IAM_AUTH in deploy/docker/Dockerfile.live. tests/live_exec/
+  # test_live_db_auth.py fails if the three disagree.
+  iam_database_authentication_enabled = false
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db.id]

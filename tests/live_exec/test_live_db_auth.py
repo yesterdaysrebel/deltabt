@@ -48,10 +48,44 @@ def _env(dockerfile: str) -> dict[str, str]:
 
 # --- the flag is on where it must be, and only there ----------------------
 
-def test_the_live_image_turns_iam_auth_on():
-    env = _env(LIVE_IMAGE)
-    assert db_auth.IAM_ENV in env, "the live image leaves IAM auth dormant"
-    assert db_auth.iam_enabled(env), f"{db_auth.IAM_ENV}={env[db_auth.IAM_ENV]!r} is not 'on'"
+RDS_TF = (ROOT / "infra/terraform/rds.tf").read_text()
+VARIABLES_TF = (ROOT / "infra/terraform/variables.tf").read_text()
+
+#: Instance classes too small for IAM database authentication, which AWS says
+#: needs 300-1000 MiB of extra memory. db.t4g.micro had ~120 MiB free.
+TOO_SMALL_FOR_IAM = ("micro", "nano")
+
+
+def _database_iam_enabled() -> bool:
+    m = re.search(r"^\s*iam_database_authentication_enabled\s*=\s*(true|false)",
+                  RDS_TF, re.M)
+    assert m, "rds.tf no longer sets iam_database_authentication_enabled"
+    return m.group(1) == "true"
+
+
+def _db_instance_class() -> str:
+    block = VARIABLES_TF[VARIABLES_TF.index('variable "db_instance_class"'):]
+    return re.search(r'default\s*=\s*"([^"]+)"', block).group(1)
+
+
+def test_the_live_image_uses_iam_only_when_the_database_accepts_it():
+    """#84 turned IAM on in the image while the database had it disabled
+    (pending, apply_immediately=false): every login was refused. Then it was
+    enabled on a micro and every login timed out. The image flag, the RDS
+    setting and the instance size are one decision."""
+    image_iam = db_auth.iam_enabled(_env(LIVE_IMAGE))
+    assert image_iam == _database_iam_enabled(), (
+        f"Dockerfile.live DB_IAM_AUTH is {'on' if image_iam else 'off'} but "
+        f"rds.tf iam_database_authentication_enabled is "
+        f"{str(_database_iam_enabled()).lower()}")
+
+
+def test_iam_auth_is_never_enabled_on_an_instance_too_small_for_it():
+    if _database_iam_enabled():
+        cls = _db_instance_class()
+        assert not any(t in cls for t in TOO_SMALL_FOR_IAM), (
+            f"IAM database auth needs 300-1000 MiB extra memory; {cls} has "
+            f"~120 MiB free and every token login timed out on 2026-09-17")
 
 
 def test_the_paper_image_does_not():
