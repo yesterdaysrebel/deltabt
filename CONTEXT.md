@@ -43,11 +43,16 @@ trades/arm against ~350 needed for -0.166R/trade at 80% power). Read them for ME
 a rung arms, whether promoted stops cut trades that reached target, and LTP-arm stop overshoot
 against the mark baseline.
 
-`tnet` at the last check: host `i-0161071571ade0664`, image `f08a017`, 0 restarts, healthz 200 on
-all 6 checks, ledger == venue to the cent on both open positions, both fully bracketed with stops
-~3x inside liquidation. 6 entries in 3.77 days; closes since binding 3 STOP_LOSS + 3 TAKE_PROFIT =
-+5.94R, internal equity 10012.50. Venue USD $445.13 against an internal equity of 10,000 — **the
-sizing mismatch is unchanged and real**: a "$50 / 0.5%" risk budget is ~7% of the actual account.
+`tnet` as of 2026-09-22 19:26 UTC (`scripts/report.sh status`, live pull): same host
+`i-0161071571ade0664`, image `f08a017`, RUNNING, git_dirty=False — no drift since 09-17 binding.
+7 positions opened, 5 closed / 2 still open (BTCUSD=5, ETHUSD=2), oldest open since 2026-09-21
+05:50 IST. Net P&L on the 5 closed trades: gross +$14.52, fees −$1.45, funding $0.00, net +$13.08.
+Ratios explicitly WITHHELD by the report — 5 closed trades is below the 30-trade floor, no
+profitability inference possible. This pass only queried `forward-test status`; it did not
+re-check healthz, ledger-vs-venue equality, or bracket/liquidation distance — those numbers above
+are carried from the 09-21 05:36 UTC check and are unverified this session. The sizing mismatch
+noted then ("$50 / 0.5%" risk budget is ~7% of the actual venue account) has not been re-measured
+either; assume it is still real until re-checked.
 
 ## Git state — the local refs lie
 
