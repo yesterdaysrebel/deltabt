@@ -174,10 +174,20 @@ identity mid-experiment.
 - **The retire step runs `app.cli stop` inside the RUNNING container with its start-time DSN**, so a
   rotated DB password fails the roll. Restart the service first — the same image rebinds the same
   experiment.
-- **IAM database auth is OFF and must stay off until the DB is upsized.** `deltabt-paper` is
-  db.t4g.micro (~120 MiB free); AWS needs 300-1000 MiB more for IAM auth. Enabling it swapped
-  75 → 340 MiB and logins hung 60s then failed. Revisit only with t4g.small+ and after 2026-09-30.
-  The RDS master password rotates on a 21-day CLI schedule (next ~2026-10-08), not in Terraform.
+- **IAM database auth: approved 2026-09-25, in two ordered merges, on branch
+  `claude/vibrant-pascal-2bj9ju`.** Step 1 (committed, NOT merged) moves the default
+  `db_instance_class` to `db.t4g.small` and sets `iam_database_authentication_enabled = true`;
+  the live image stays on the password. `apply_immediately = false`, so both wait for the
+  `sun:19:30-20:30 UTC` window. **Do not merge step 1 before 2026-09-27 20:30 UTC**, or the
+  class change (a DB restart, minutes of downtime for every stack) lands on 09-27, before
+  `ladder`/`ltp` end on 09-30. Merge it 09-30 or later, and it applies 2026-10-04. Step 2, only
+  after `describe-db-instances` shows `db.t4g.small`, IAM enabled and no pending modifications:
+  `ENV DB_IAM_AUTH=1` in `Dockerfile.live`. That rolls `tnet` and resets its sample. Doing step 2
+  before the DB change applies is #84 again (every login refused); the test allows only DB-first.
+  Why a micro can't do it: ~120 MiB free, and AWS needs 300-1000 MiB more; enabling it on 09-17
+  swapped 75 -> 340 MiB and every login hung 60s and failed. Only `tnet` (the live image) moves to
+  tokens; the paper stacks stay on the password. The RDS master password rotates on a 21-day CLI
+  schedule (next ~2026-10-08), not in Terraform, so step 2 needs to be live before then.
 - **The one failure shape behind every 09-16 break:** two sides computing the same fact from two
   sources with nothing making them agree. Green health checks never assert the universe or the
   binding — check what a bot WARMED, SUBSCRIBED TO, and whether it logged `bound to experiment`.

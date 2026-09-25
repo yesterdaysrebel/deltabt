@@ -71,13 +71,17 @@ def _db_instance_class() -> str:
 def test_the_live_image_uses_iam_only_when_the_database_accepts_it():
     """#84 turned IAM on in the image while the database had it disabled
     (pending, apply_immediately=false): every login was refused. Then it was
-    enabled on a micro and every login timed out. The image flag, the RDS
-    setting and the instance size are one decision."""
+    enabled on a micro and every login timed out. The image may ask for tokens
+    only once the database accepts them.
+
+    The other direction -- database on, image off -- is allowed, and is the
+    required first step: it leaves password logins untouched while the RDS
+    change waits for the maintenance window."""
     image_iam = db_auth.iam_enabled(_env(LIVE_IMAGE))
-    assert image_iam == _database_iam_enabled(), (
-        f"Dockerfile.live DB_IAM_AUTH is {'on' if image_iam else 'off'} but "
-        f"rds.tf iam_database_authentication_enabled is "
-        f"{str(_database_iam_enabled()).lower()}")
+    if image_iam:
+        assert _database_iam_enabled(), (
+            "Dockerfile.live sets DB_IAM_AUTH but rds.tf "
+            "iam_database_authentication_enabled is false")
 
 
 def test_iam_auth_is_never_enabled_on_an_instance_too_small_for_it():

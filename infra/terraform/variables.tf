@@ -193,9 +193,14 @@ variable "root_volume_gb" {
 # --- database --------------------------------------------------------------
 
 variable "db_instance_class" {
-  description = "RDS size. The bot writes a few hundred rows a minute."
+  description = <<-EOT
+    RDS size. The bot writes a few hundred rows a minute, which a micro handles;
+    the size is set by IAM database auth, not by load. AWS needs 300-1000 MiB
+    extra memory for it, a micro had ~120 MiB free, and every token login timed
+    out when it was enabled there (2026-09-17). small has 2 GiB.
+  EOT
   type        = string
-  default     = "db.t4g.micro"
+  default     = "db.t4g.small"
 }
 
 variable "db_app_username" {
