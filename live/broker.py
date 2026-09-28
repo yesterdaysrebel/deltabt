@@ -210,6 +210,7 @@ class LiveBroker:
                  exit_on_wpr_band_exit: bool = False,
                  wpr_exit_long_level: float = -80.0,
                  wpr_exit_short_level: float = -20.0,
+                 max_hold_seconds: int = 0,
                  kill_switch_path: str | None = None) -> None:
         self.client = client
         self.product_ids = dict(product_ids)
@@ -234,6 +235,10 @@ class LiveBroker:
         self.exit_on_wpr_band_exit = exit_on_wpr_band_exit
         self.wpr_exit_long_level = wpr_exit_long_level
         self.wpr_exit_short_level = wpr_exit_short_level
+        #: The time stop, in seconds; 0 disables. Same value and meaning as
+        #: PaperBroker.max_hold_seconds. Enforced by live.runtime, which holds
+        #: each position's recorded opened_at -- this cache does not.
+        self.max_hold_seconds = int(max_hold_seconds or 0)
         self.kill_switch_path = kill_switch_path
         #: symbol -> LivePosition, refreshed by poll(). A CACHE.
         self.positions: dict[str, LivePosition] = {}
