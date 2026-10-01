@@ -37,7 +37,7 @@ STRICT = os.environ.get("STRICT_COST_GUARD") == "1"
 #: pricing; verify against the actual bill in the first week.
 EXPECTED = {
     "aws_instance": (12.0, "t4g.small on-demand"),
-    "aws_db_instance": (13.0, "db.t4g.micro plus 20 GB gp3"),
+    "aws_db_instance": (26.0, "db.t4g.small plus 20 GB gp3"),
     "aws_ebs_volume": (2.0, "gp3 per 20 GB"),
     "aws_eip": (3.6, "charged even while attached, since 2024"),
     "aws_cloudwatch_log_group": (1.0, "ingest plus 90-day retention at this volume"),
