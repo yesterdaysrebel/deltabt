@@ -271,6 +271,15 @@ class StrategyParams:
     #: trip, so it books slightly negative.
     breakeven_lock_r: float = 0.0
 
+    #: The paper broker's stop ladder, ``((trigger_r, stop_r), ...)``: once the
+    #: favourable excursion reaches ``trigger_r`` the stop moves to
+    #: ``entry + stop_r`` (never backwards). Empty disables it. Mirrors
+    #: ``StrategySpec.ladder_rungs`` and ``PaperBroker._promote_stop``; in
+    #: ``run_portfolio`` it is evaluated minute by minute inside the primary
+    #: bar when 1m fill series are supplied, and on the bar's LTP extreme
+    #: after that bar's exits otherwise. Generalises ``breakeven_at_r``.
+    ladder_rungs: tuple[tuple[float, float], ...] = ()
+
     #: Close when %R leaves the band in the ADVERSE direction: a long exits
     #: below ``wpr_exit_long_level``, a short exits above
     #: ``wpr_exit_short_level``. Leaving the band the FAVOURABLE way is the

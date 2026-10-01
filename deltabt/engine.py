@@ -69,6 +69,10 @@ class Trade:
     leverage: float
     cost_per_r: float
     ambiguous: bool
+    #: True when a ladder rung moved this trade's stop before it closed. The
+    #: paper broker does not persist this, so its forward test can only infer
+    #: it from where stops filled; the backtest records it directly.
+    stop_promoted: bool = False
 
 
 @dataclass

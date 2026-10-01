@@ -1,0 +1,102 @@
+universe ['BEATUSD', 'AKEUSD', 'BANKUSD', 'WIFUSD']; archive ends 10-01 19:23; filler bars DROPPED
+  BEATUSD  1m bars  387711  01-05 13:32 -> 10-01 19:22
+  AKEUSD   1m bars  102555  07-22 14:08 -> 10-01 19:22
+  BANKUSD  1m bars  102559  07-22 14:04 -> 10-01 19:22
+  WIFUSD   1m bars  394281  01-01 00:03 -> 10-01 19:23
+
+================ 1. REPRODUCTION CHECK: engine vs the paper arms, 09-16 06:25Z -> 10-01 18:00Z
+--- engine baseline, live window: n=46 sumR -6.65 meanR -0.145 sd 1.73 t=-0.57 win 24% | exits {'target': 10, 'stop': 35, 'max_hold': 1} | promoted 0 | maxDD 16.9R | hold h median 3.6 | net $-434 fees $56 funding $-16
+      AKEUSD   n=  30 sumR   +3.04 meanR +0.101 win 30% TP 8
+      BEATUSD  n=  14 sumR   -7.49 meanR -0.535 win 14% TP 2
+      WIFUSD   n=   2 sumR   -2.20 meanR -1.101 win 0% TP 0
+      rejects {'max_open_positions': 0, 'max_trades_per_day': 0, 'max_daily_loss': 0, 'max_drawdown': 0, 'max_consecutive_losses': 0, 'zero_contracts': 23, 'cost_per_r': 0, 'stop_too_close': 0}
+--- engine ladder,   live window: n=104 sumR +10.74 meanR +0.103 sd 0.97 t=+1.08 win 51% | exits {'stop': 99, 'target': 5} | promoted 75 | maxDD 6.8R | hold h median 1.7 | net $+434 fees $147 funding $-16
+      AKEUSD   n=  63 sumR  +13.75 meanR +0.218 win 54% TP 5
+      BANKUSD  n=   4 sumR   +3.33 meanR +0.832 win 100% TP 0
+      BEATUSD  n=  32 sumR   -4.53 meanR -0.142 win 41% TP 0
+      WIFUSD   n=   5 sumR   -1.80 meanR -0.361 win 40% TP 0
+      rejects {'max_open_positions': 0, 'max_trades_per_day': 0, 'max_daily_loss': 0, 'max_drawdown': 0, 'max_consecutive_losses': 0, 'zero_contracts': 21, 'cost_per_r': 0, 'stop_too_close': 0}
+
+signal stream, live window: bars where the rule fired (approved or rejected), bot vs engine
+  BEATUSD  bot   333  engine   377  bot bars also fired by engine  97%  5m bars in window 1292
+  AKEUSD   bot  1194  engine  1196  bot bars also fired by engine  97%  5m bars in window 4414
+  BANKUSD  bot   116  engine   115  bot bars also fired by engine  93%  5m bars in window 462
+  WIFUSD   bot   106  engine    79  bot bars also fired by engine  69%  5m bars in window 371
+
+baseline: engine vs paper atr arm
+  paper positions 51 (closed 48) | engine trades in window 46 | entries matched within 150s: 5
+  of 5 matched+closed: same exit type 5 | engine R - paper R: mean -0.028 median -0.004 | entry price rel diff median 0.0200%
+  paper sumR on matched +2.73 vs engine +2.59
+  promoted-stop exits: paper (inferred R>-0.3) 0 vs engine (recorded) 0
+  paper entries with no engine match: 46; engine entries with no paper match: 41
+  unmatched paper by symbol: {'BEATUSD': 14, 'WIFUSD': 5, 'AKEUSD': 22, 'BANKUSD': 5} | engine by symbol: {'AKEUSD': 30, 'BEATUSD': 14, 'WIFUSD': 2} | paper by symbol: {'BEATUSD': 16, 'WIFUSD': 5, 'AKEUSD': 25, 'BANKUSD': 5}
+
+ladder: engine vs paper ladder arm
+  paper positions 127 (closed 124) | engine trades in window 104 | entries matched within 150s: 20
+  of 20 matched+closed: same exit type 20 | engine R - paper R: mean +0.007 median +0.000 | entry price rel diff median 0.0362%
+  paper sumR on matched +1.97 vs engine +2.10
+  promoted-stop exits: paper (inferred R>-0.3) 15 vs engine (recorded) 15
+  paper entries with no engine match: 107; engine entries with no paper match: 84
+  unmatched paper by symbol: {'AKEUSD': 52, 'BEATUSD': 35, 'WIFUSD': 13, 'BANKUSD': 7} | engine by symbol: {'AKEUSD': 63, 'BEATUSD': 32, 'BANKUSD': 4, 'WIFUSD': 5} | paper by symbol: {'AKEUSD': 64, 'BEATUSD': 40, 'WIFUSD': 14, 'BANKUSD': 9}
+
+live window, engine paired on shared entries: shared entries 21 | baseline sumR +0.68 vs ladder -3.33 | paired diff mean -0.191R t=-0.54 | ladder better 8 same 7 worse 6
+  (baseline exit, ladder exit): {('target', 'stop'): 5, ('stop', 'stop'): 15, ('max_hold', 'stop'): 1}
+
+live window (IN-SAMPLE for the hypothesis -- reproduction only)
+  ladder trades 104, shared with baseline at the same bar 21, created 83
+  created, all                                               n=  83 sumR  +14.07 meanR +0.170 t=+1.50 win 53% TP   5
+  created, <=6h after PROMOTED exit, OPPOSITE side   [DECIDES] n=  28 sumR   -0.92 meanR -0.033 t=-0.25 win 54% TP   0
+  created, <=6h after promoted exit, same side               n=  24 sumR   +9.83 meanR +0.410 t=+1.91 win 62% TP   2
+  created, <=6h after plain -1R stop, opposite side          n=  11 sumR  +10.21 meanR +0.928 t=+2.01 win 73% TP   3
+  created, <=6h after plain -1R stop, same side              n=   5 sumR   -1.84 meanR -0.368 t=-1.48 win 20% TP   0
+  created, >6h after any exit or after target/max_hold       n=  15 sumR   -3.22 meanR -0.214 t=-0.92 win 33% TP   0
+  the deciding row, per symbol:
+      AKEUSD                                                 n=  20 sumR   -2.85 meanR -0.143 t=-0.91 win 45% TP   0
+      BANKUSD                                                n=   3 sumR   +1.92 meanR +0.639 t=+3.95 win 100% TP   0
+      BEATUSD                                                n=   5 sumR   +0.02 meanR +0.004 t=+0.01 win 60% TP   0
+  the deciding row, per anchored quarter of its own span:
+      quarter 0                                              n=   7 sumR   -0.46 meanR -0.066 t=-0.22 win 57% TP   0
+      quarter 1                                              n=   7 sumR   -1.38 meanR -0.197 t=-0.61 win 57% TP   0
+      quarter 2                                              n=   7 sumR   +2.36 meanR +0.337 t=+2.14 win 57% TP   0
+      quarter 3                                              n=   7 sumR   -1.44 meanR -0.206 t=-0.92 win 43% TP   0
+  all ladder trades, <=6h after promoted exit, opposite side n=  29 sumR   -0.93 meanR -0.032 t=-0.26 win 52% TP   0
+
+
+================ 2. PRE-REGISTERED: archive before 2026-09-16 00:00Z
+--- engine baseline, out-of-sample: n=406 sumR +11.98 meanR +0.030 sd 1.78 t=+0.33 win 28% | exits {'target': 103, 'stop': 291, 'max_hold': 12} | promoted 0 | maxDD 45.2R | hold h median 5.5 | net $+394 fees $476 funding $-15
+      AKEUSD   n=  76 sumR   -4.82 meanR -0.063 win 26% TP 17
+      BANKUSD  n=  27 sumR   +3.53 meanR +0.131 win 30% TP 7
+      BEATUSD  n= 280 sumR  +16.35 meanR +0.058 win 29% TP 73
+      WIFUSD   n=  23 sumR   -3.08 meanR -0.134 win 26% TP 6
+      rejects {'max_open_positions': 0, 'max_trades_per_day': 0, 'max_daily_loss': 0, 'max_drawdown': 0, 'max_consecutive_losses': 0, 'zero_contracts': 0, 'cost_per_r': 0, 'stop_too_close': 0}
+--- engine ladder,   out-of-sample: n=1233 sumR -48.44 meanR -0.039 sd 0.96 t=-1.43 win 43% | exits {'stop': 1193, 'target': 40} | promoted 826 | maxDD 59.6R | hold h median 2.0 | net $-2234 fees $1650 funding $+1
+      AKEUSD   n= 245 sumR  -20.28 meanR -0.083 win 41% TP 7
+      BANKUSD  n=  93 sumR   +0.25 meanR +0.003 win 48% TP 5
+      BEATUSD  n= 847 sumR  -27.82 meanR -0.033 win 44% TP 25
+      WIFUSD   n=  48 sumR   -0.60 meanR -0.012 win 44% TP 3
+      rejects {'max_open_positions': 0, 'max_trades_per_day': 0, 'max_daily_loss': 0, 'max_drawdown': 0, 'max_consecutive_losses': 0, 'zero_contracts': 0, 'cost_per_r': 0, 'stop_too_close': 0}
+
+out-of-sample, paired on shared entries: shared entries 217 | baseline sumR +47.05 vs ladder +18.17 | paired diff mean -0.133R t=-1.34 | ladder better 78 same 82 worse 57
+  (baseline exit, ladder exit): {('target', 'stop'): 52, ('target', 'target'): 13, ('stop', 'stop'): 145, ('max_hold', 'stop'): 7}
+
+out-of-sample created entries   <<< THE QUESTION
+  ladder trades 1233, shared with baseline at the same bar 217, created 1016
+  created, all                                               n=1016 sumR  -66.61 meanR -0.066 t=-2.23 win 42% TP  27
+  created, <=6h after PROMOTED exit, OPPOSITE side   [DECIDES] n= 312 sumR  -23.21 meanR -0.074 t=-1.36 win 42% TP   9
+  created, <=6h after promoted exit, same side               n= 366 sumR   -8.20 meanR -0.022 t=-0.47 win 45% TP   9
+  created, <=6h after plain -1R stop, opposite side          n= 155 sumR  -22.91 meanR -0.148 t=-2.13 win 35% TP   3
+  created, <=6h after plain -1R stop, same side              n= 116 sumR   -1.60 meanR -0.014 t=-0.15 win 45% TP   5
+  created, >6h after any exit or after target/max_hold       n=  67 sumR  -10.68 meanR -0.159 t=-1.28 win 42% TP   1
+  the deciding row, per symbol:
+      AKEUSD                                                 n=  66 sumR   -4.39 meanR -0.067 t=-0.47 win 39% TP   4
+      BANKUSD                                                n=  21 sumR   -2.54 meanR -0.121 t=-0.56 win 52% TP   1
+      BEATUSD                                                n= 219 sumR  -12.04 meanR -0.055 t=-0.90 win 42% TP   4
+      WIFUSD                                                 n=   6 sumR   -4.25 meanR -0.708 t=-2.21 win 17% TP   0
+  the deciding row, per anchored quarter of its own span:
+      quarter 0                                              n=  78 sumR   -7.88 meanR -0.101 t=-1.07 win 40% TP   0
+      quarter 1                                              n=  78 sumR   -1.07 meanR -0.014 t=-0.13 win 45% TP   2
+      quarter 2                                              n=  78 sumR   -9.69 meanR -0.124 t=-1.18 win 40% TP   2
+      quarter 3                                              n=  78 sumR   -4.58 meanR -0.059 t=-0.46 win 44% TP   5
+  all ladder trades, <=6h after promoted exit, opposite side n= 342 sumR  -19.85 meanR -0.058 t=-1.09 win 43% TP  11
+
+trade frames written under /tmp/claude-1337/-workspaces-glueops/5f9df928-4781-4038-b00d-e87440d9be48/scratchpad/lab_out

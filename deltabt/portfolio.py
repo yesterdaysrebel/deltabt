@@ -136,6 +136,7 @@ class _Position:
     entry_fee: float
     cost_per_r: float
     accrued_funding: float = 0.0
+    stop_promoted: bool = False
 
 
 @dataclass
@@ -160,6 +161,10 @@ class _Series:
     f_mhigh: np.ndarray | None
     f_lo: np.ndarray | None
     f_hi: np.ndarray | None
+    #: 1m LTP extremes, read only by the ladder walk: favourable excursion is
+    #: measured on last-traded, as the paper broker measures it.
+    f_lhi: np.ndarray | None
+    f_llo: np.ndarray | None
     tradable: np.ndarray
     funding: dict
     last_exit_index: int = -(10 ** 9)
@@ -189,12 +194,14 @@ def _prepare(book: Book) -> _Series:
                                  book.costs.funding_interval_seconds)
               if len(time) else np.zeros(0, dtype=np.int64))
     rates = _funding_lookup(book, stamps)
-    f_close = f_mlow = f_mhigh = f_lo = f_hi = None
+    f_close = f_mlow = f_mhigh = f_lo = f_hi = f_lhi = f_llo = None
     if book.fill_ltp is not None and book.fill_mark is not None and len(time):
         fl = book.fill_ltp.sort_values("time")
         ft = fl["time"].to_numpy("int64")
         fm = book.fill_mark.set_index("time").reindex(ft)
         f_close = fl["close"].to_numpy("float64")
+        f_lhi = fl["high"].to_numpy("float64")
+        f_llo = fl["low"].to_numpy("float64")
         fmh = fm["high"].to_numpy("float64")
         fml = fm["low"].to_numpy("float64")
         bad = ~np.isfinite(fmh) | ~np.isfinite(fml)
@@ -207,7 +214,7 @@ def _prepare(book: Book) -> _Series:
 
     return _Series(book=book, time=time, close=close, mark_high=mh, mark_low=ml,
                    ltp_high=high, ltp_low=low, f_close=f_close, f_mlow=f_mlow,
-                   f_mhigh=f_mhigh, f_lo=f_lo, f_hi=f_hi,
+                   f_mhigh=f_mhigh, f_lo=f_lo, f_hi=f_hi, f_lhi=f_lhi, f_llo=f_llo,
                    tradable=tradable, funding=rates)
 
 
@@ -236,6 +243,67 @@ def _fill_at_cross(s: "_Series", i: int, side: int, stop: float,
     if px is None:
         px = float(s.close[i])
     return px * (1.0 - side * slip_rate)
+
+
+def _promote_rungs(pos: _Position, fav_px: float, params: StrategyParams,
+                   costs: SymbolCosts) -> None:
+    """Move the stop to the highest rung the favourable excursion has armed.
+
+    Same arithmetic as ``PaperBroker._promote_stop``: excursion is LTP against
+    entry in R, the rung's stop is ``entry + stop_r * risk``, rounded away from
+    the market, and the stop only ever moves in the trade's favour.
+    """
+    fav_r = (fav_px - pos.entry_price) * pos.side / pos.risk_per_unit
+    lock = None
+    for trig_r, stop_r in params.ladder_rungs:
+        if fav_r >= trig_r:
+            lock = stop_r
+    if lock is None:
+        return
+    new = costs.round_price(pos.entry_price + pos.side * lock * pos.risk_per_unit,
+                            direction=-1 if pos.side == LONG else 1)
+    if (pos.side == LONG and new > pos.stop_price) or (
+            pos.side == SHORT and new < pos.stop_price):
+        pos.stop_price = new
+        pos.stop_promoted = True
+
+
+def _ladder_walk(s: "_Series", i: int, pos: _Position,
+                 params: StrategyParams) -> tuple[bool, bool, float] | None:
+    """Resolve bar ``i`` minute by minute for a laddered position.
+
+    The paper broker promotes on every tick the position SURVIVES, and a stop
+    it has just moved can fire on the next tick -- inside the same 5m bar.
+    Bar-level evaluation cannot express that (it would promote at the bar's
+    end and bind from the next bar), so when 1m series exist the bar is
+    walked: each minute first tests the stop (on MARK unless
+    ``stop_trigger_ltp``) and the target (on LTP), and only then arms rungs on
+    that minute's LTP extreme. A stop fills at that minute's LTP close moved
+    by the slippage, exactly as ``_fill_at_cross`` does.
+
+    Returns ``(hit_stop, hit_target, stop_fill)``, or ``None`` when the bar
+    has no minutes to walk, in which case the caller falls back to the
+    bar-level test and promotes on the bar's extreme afterwards.
+    """
+    lo, hi = int(s.f_lo[i]), int(s.f_hi[i])
+    if hi <= lo:
+        return None
+    slip = s.book.costs.slippage_rate
+    for k in range(lo, hi):
+        if pos.side == LONG:
+            trig = s.f_llo[k] if params.stop_trigger_ltp else s.f_mlow[k]
+            hit_stop = trig <= pos.stop_price
+            hit_target = s.f_lhi[k] >= pos.target_price
+            fav_px = s.f_lhi[k]
+        else:
+            trig = s.f_lhi[k] if params.stop_trigger_ltp else s.f_mhigh[k]
+            hit_stop = trig >= pos.stop_price
+            hit_target = s.f_llo[k] <= pos.target_price
+            fav_px = s.f_llo[k]
+        if hit_stop or hit_target:
+            return hit_stop, hit_target, float(s.f_close[k]) * (1.0 - pos.side * slip)
+        _promote_rungs(pos, float(fav_px), params, s.book.costs)
+    return False, False, float("nan")
 
 
 def _funding_lookup(book: Book, stamps: np.ndarray) -> dict:
@@ -323,6 +391,13 @@ def run_portfolio(
                 pos.accrued_funding += charge
                 equity -= charge
 
+            # A LADDERED POSITION IS RESOLVED MINUTE BY MINUTE when 1m series
+            # exist (see _ladder_walk); the bar-level values below are then
+            # overridden. Without 1m series the bar-level test stands and the
+            # rungs arm on the bar's extreme after its exits.
+            walked = (_ladder_walk(s, i, pos, params)
+                      if params.ladder_rungs and s.f_close is not None else None)
+
             trig_low = s.ltp_low if params.stop_trigger_ltp else s.mark_low
             trig_high = s.ltp_high if params.stop_trigger_ltp else s.mark_high
             # TARGET READS LTP, STOP READS MARK -- the split the venue makes
@@ -363,6 +438,8 @@ def run_portfolio(
                 else:
                     adverse = max(s.ltp_high[i], pos.stop_price)
                 stop_fill = pos.stop_price + params.stop_fill_fraction * (adverse - pos.stop_price)
+            if walked is not None:
+                hit_stop, hit_target, stop_fill = walked
 
             # A RESTING LIMIT CANNOT BE FILLED BY A PRICE NOBODY TRADED AT.
             # When the mark triggers but LTP never reaches the stop, the order
@@ -438,11 +515,20 @@ def run_portfolio(
                             pos.side * params.breakeven_lock_r * pos.risk_per_unit)
                         pos.stop_price = (max(pos.stop_price, lock) if pos.side == LONG
                                           else min(pos.stop_price, lock))
+                if params.ladder_rungs and walked is None:
+                    _promote_rungs(pos, float(s.ltp_high[i] if pos.side == LONG
+                                              else s.ltp_low[i]),
+                                   params, s.book.costs)
                 continue
 
             costs = s.book.costs
-            fee_out = costs.exit_cost(pos.contracts, exit_price,
-                                      maker=exit_reason == "target")
+            # _fill_at_cross and _ladder_walk already moved a stop fill by the
+            # slippage; billing it again in the fee is the double charge
+            # SymbolCosts.entry_cost documents (0.127R on the first 13 live
+            # trades when the paper broker made the same mistake).
+            fee_out = costs.exit_cost(
+                pos.contracts, exit_price, maker=exit_reason == "target",
+                slipped_price=(exit_reason == "stop" and params.stop_fill == "ltp_close"))
             gross = (pos.side * (exit_price - pos.entry_price)
                      * pos.contracts * costs.contract_value)
             pnl = gross - pos.entry_fee - fee_out - pos.accrued_funding
@@ -463,6 +549,7 @@ def run_portfolio(
                 bars_held=i - pos.entry_index,
                 leverage=costs.notional(pos.contracts, pos.entry_price) / max(equity, 1e-9),
                 cost_per_r=pos.cost_per_r, ambiguous=ambiguous,
+                stop_promoted=pos.stop_promoted,
             ))
             del open_positions[sym]
             s.last_exit_index = i

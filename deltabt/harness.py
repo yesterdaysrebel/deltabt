@@ -79,6 +79,7 @@ def params_for(spec, minutes: int, hold_hours: int | None = None) -> StrategyPar
         max_hold_bars=max(20, ((hold_hours or HOLD_HOURS) * 60) // minutes),
         exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
+        ladder_rungs=tuple(getattr(spec, "ladder_rungs", ()) or ()),
     )
 
 
