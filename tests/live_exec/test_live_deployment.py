@@ -17,6 +17,8 @@ from __future__ import annotations
 import pathlib
 import re
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 from tests.deploy_workflows import text as _deploy_text
 
@@ -120,8 +122,18 @@ def test_every_live_resource_is_gated_on_its_own_variable():
     IAM policy still appears only when a credential is actually configured --
     so the blast radius of this file is still exactly what its variables say.
     """
+    # THE ECR REPOSITORY IS THE ONE EXCEPTION, since 2026-10-01. It carries
+    # prevent_destroy because its images are the only durable link between a
+    # ledger row and the code that produced it; gating its count on
+    # live_stacks made removing the last live stack (`tnet`) unplannable --
+    # "Instance cannot be destroyed". So it is unconditional, and this checks
+    # that it stays protected rather than that it stays gated.
+    ecr = LIVE_TF[LIVE_TF.index('resource "aws_ecr_repository" "live"'):]
+    ecr = ecr[:ecr.index("\n}\n")]
+    assert "count = 1" in ecr and "prevent_destroy = true" in ecr, (
+        "the live ECR repository must exist unconditionally AND be protected")
     assert "length(var.live_stacks) > 0 ? 1 : 0" in LIVE_TF, (
-        "the live ECR repository is not gated on a live stack existing")
+        "no live resource is gated on a live stack existing")
     assert "if s.live" in LIVE_TF, (
         "the live SSM parameter is not filtered to live stacks")
     # The credential grant is scoped to the secret's NAME pattern, because the
@@ -135,7 +147,8 @@ def test_every_live_resource_is_gated_on_its_own_variable():
     assert ':secret:*"' not in LIVE_TF and '"*"' not in LIVE_TF.replace(
         'Resource = "*" # this action does not accept a resource restriction', ""), (
         "a live grant is scoped to every secret in the account")
-    assert LIVE_TF.count("length(var.live_stacks) > 0 ? 1 : 0") >= 4, (
+    # Was >= 4 until the ECR repository became unconditional (see above).
+    assert LIVE_TF.count("length(var.live_stacks) > 0 ? 1 : 0") >= 3, (
         "not every live resource is gated on a live stack existing")
 
 
@@ -366,6 +379,12 @@ def test_the_live_matrix_matches_the_configured_live_stacks():
     block = LIVE_TF[LIVE_TF.index('variable "live_stacks"'):]
     block = block[block.index("default = {"):]
     names = {r["stack"] for r in rows}
+    registered = re.findall(r"^\s{4}(\w+)\s*=\s*\{", block[:block.index("\n  }")], re.M)
+    if not registered:
+        # `tnet` was removed 2026-10-01 by instruction; the default is empty
+        # again. The parser must agree that nothing is deployable.
+        assert not names, f"live_stacks is empty but the matrix still names {sorted(names)}"
+        pytest.skip("no live stack is registered in live.tf; nothing to deploy")
     assert names, "the live matrix is empty; nothing would ever be deployed"
     for name in names:
         assert f"{name} =" in block, f"{name} is not a live stack in live.tf"

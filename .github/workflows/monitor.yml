@@ -13,10 +13,8 @@ name: daily-report
 # the notification path that costs nothing and needs no SNS.
 
 on:
-  schedule:
-    # 01:30 UTC = 07:00 IST. After the UTC day boundary, so the report covers
-    # a COMPLETE previous day rather than a partial one.
-    - cron: "30 1 * * *"
+  # The nightly schedule (01:30 UTC) was removed 2026-10-01 along with the last
+  # stack -- see the matrix comment below. Dispatch stays for a manual read.
   workflow_dispatch:
     inputs:
       day:
@@ -63,78 +61,17 @@ jobs:
           # v5 and v6 followed on 2026-08-26 after a single day, by
           # instruction. v5's experiment was stopped with a reason; v6 never
           # registered one. Their databases survive; their log groups did not.
-          - stack: atr
-            variant: SPEC:manual_scalp_both_t3@5
-            instance_var: BOT_INSTANCE_ID_ATR
-            document_var: SSM_MONITOR_DOCUMENT_ATR
-            # 2026-08-27: the stack kept its name and its database and changed
-            # what it evaluates -- atr_arm's %R floor gained a ceiling at the
-            # band midpoint. `ATR-5M-GATED-20260826-2` was stopped deliberately.
-            #
-            # 2026-08-29: BACK TO atr_arm for ATR-5M-UN-GATED-PAPER-20260829-1.
-            # Same stack, same database, same EIP, same log group, same alarms.
-            #
-            # THE HASH IS 16 CHARACTERS AGAIN, AND THAT IS THE POINT OF THE
-            # PARAGRAPH BELOW READ BACKWARDS. A SPEC arm reports
-            # `spec.config_hash`, the full sha256 of the StrategySpec
-            # (app/strategy/spec_arm.py:56), so it pins 64. AtrArmConfig
-            # truncates its own to 16 (atr_arm.py: `[:16]`), so pinning 64
-            # against THIS arm could never match and the daily report would
-            # call a correct deployment drifted, every day -- the same failure
-            # as before, in the opposite direction. The length follows the arm.
-            # 2026-08-31: the stack changes what it evaluates again, to the
-            # operator's own hand-traded style encoded from 165 real round
-            # trips (deltabt/catalog.py: manual_scalp). Same stack, database,
-            # EIP, log group and alarms; the universe narrows to BEATUSD.
-            #
-            # BACK TO 64 CHARACTERS, for the reason the paragraph above gives:
-            # a SPEC arm reports spec.config_hash in full, so a 16-char pin
-            # here could never match and the daily report would call a correct
-            # deployment drifted every morning. The length follows the arm.
-            # 2026-09-01: SPEC:manual_scalp_st@5 -- manual_scalp plus
-            # Supertrend alignment, no DI, no ADX. Same stack, EIP, log group
-            # and alarms; NEW database (deltabt_st) because the previous
-            # experiment is stopped holding open positions, and the universe
-            # widens to all seven by instruction.
-            #
-            # STILL 64 CHARACTERS, for the reason two paragraphs up: a SPEC
-            # arm reports spec.config_hash in full.
-            # 2026-09-01 (second change today): the operator's stated rule,
-            # Supertrend aligned AND %R banded, on the thin 3 again. NEW
-            # database deltabt_stb -- the seven-symbol run is stopped holding
-            # majors that are no longer in the universe.
-            # 2026-09-04, later: the 1h-direction arm is withdrawn by
-            # instruction and the stack runs the operator's ORIGINAL entry
-            # (%R alone, no Supertrend) with a 4R target -- a tail harvest.
-            # NEW database deltabt_tail. Still 64 characters: a SPEC arm
-            # reports spec.config_hash in full.
-            # 2026-09-07: the 4R arm is replaced by the operator's %R entry on
-            # BOTH timeframes held to 3R. New database deltabt_both. Still 64
-            # characters: a SPEC arm reports spec.config_hash in full.
-            strategy_hash: "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d"
-            log_group: /deltabt/paper/atr/bot
-
-          # --- THE TWO EXIT ARMS, 2026-09-16 --------------------------------
-          #
-          # Same entry rule, timeframes, stop geometry, target, universe and
-          # risk config as `atr`; one behavioural field each. Both ungated, as
-          # atr is, so the three are comparable.
-          #
-          # 64 CHARACTERS, for the reason recorded above: a SPEC arm reports
-          # spec.config_hash in full, and a 16-char pin could never match.
-          - stack: ladder
-            variant: SPEC:manual_scalp_both_t3_ladder@5
-            instance_var: BOT_INSTANCE_ID_LADDER
-            document_var: SSM_MONITOR_DOCUMENT_LADDER
-            strategy_hash: "2e8bd25296855d2cd28019bc6cb753f0ce231e3597cf8f30d3eedec5f7faf02d"
-            log_group: /deltabt/paper/ladder/bot
-
-          - stack: ltp
-            variant: SPEC:manual_scalp_both_t3_ltp@5
-            instance_var: BOT_INSTANCE_ID_LTP
-            document_var: SSM_MONITOR_DOCUMENT_LTP
-            strategy_hash: "3847e632b1075ade5a2d8384b8b026839d87edc5c5f2b6a1062387f9b4d9fee0"
-            log_group: /deltabt/paper/ltp/bot
+          # 2026-10-01: atr, ladder AND ltp ARE REMOVED, by operator instruction
+          # ("stop ltp, ladder, atr and testnet"), one day after the 09-30 read of
+          # the exit arms. Same footprint as every retirement above: experiments
+          # stopped with a reason first, services stopped and disabled, then the
+          # hosts removed in Terraform; the databases deltabt_both, deltabt_ladder,
+          # deltabt_ltp and deltabt_tnet keep every record. With no stack left this
+          # matrix is empty, so the nightly schedule below was removed too: a report
+          # that fails every night on "no instances" is the false alarm this comment
+          # block keeps warning about. Re-adding a stack means re-adding the schedule.
+          # tests/live/test_stack_table_consistency.py holds this table equal to
+          # variables.tf.
 
           # 2026-09-10: `hours` AND `cross` ARE RETIRED, AND ONLY `atr` REMAINS.
           #

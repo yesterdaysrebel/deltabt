@@ -46,6 +46,19 @@ import pytest
 from tests.deploy_workflows import text as _deploy_text
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+def _registered_paper_stacks() -> list[str]:
+    """Stack keys in variables.tf's `stacks` default -- the one table that decides what runs.
+
+    Empty since 2026-10-01, when the last three paper stacks were removed by
+    instruction. The vacuity guards below relax ONLY in that state, so a table
+    that is empty while variables.tf still registers a stack keeps failing.
+    """
+    text = (ROOT / "infra/terraform/variables.tf").read_text()
+    start = text.index('variable "stacks"')
+    block = text[start: text.index("\nvariable ", start + 10)]
+    return re.findall(r"^\s{4}(\w+)\s*=\s*\{", block, re.M)
 SCRIPTS = ROOT / "scripts"
 
 
@@ -694,7 +707,10 @@ class TestBootstrapNeverAdoptsSilently:
                           "forward-test start", "forward-test stop"):
             assert forbidden not in text, f"monitor.yml references {forbidden!r}"
         assert "AWS_MONITOR_ROLE_ARN" in text
-        assert "SSM_MONITOR_DOCUMENT" in text
+        # The document variable rides on the matrix entries; with no stack
+        # registered there is no entry to carry it, and nothing to protect.
+        if _registered_paper_stacks():
+            assert "SSM_MONITOR_DOCUMENT" in text
 
     def test_the_monitor_role_and_document_are_read_only(self):
         tf = (ROOT / "infra" / "terraform" / "monitoring.tf").read_text()

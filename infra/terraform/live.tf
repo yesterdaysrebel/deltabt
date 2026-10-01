@@ -77,7 +77,19 @@ variable "live_stacks" {
   # ALONGSIDE THE PAPER STACK. `atr` keeps running and is not touched: it is
   # the only thing estimating whether the arm has an edge.
   default = {
-    tnet = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_tnet" }
+    # 2026-10-01: `tnet` IS REMOVED, by operator instruction, after 14 days
+    # bound to LIVE-MANUAL_SCALP_BOTH_T3-5-20260917-f08a017. Stopped in order:
+    # kill switch engaged; both venue positions flattened reduce-only at
+    # market through the bot's own client (BTC 1 @ 84759.5, +$1.77; ETH 4 @
+    # 2701.6, -$0.16; the running bot recorded both as MANUAL_CLOSE); venue
+    # verified flat with no bracket legs left, USD $397.33; experiment retired;
+    # service stopped and disabled. Rehearsal record: 30 closed trades, 4
+    # take-profits, net -$34.58 after the flatten; SOL untradeable there (book
+    # 1-8% off the feed), 4 UNPROTECTED flattens when Delta attached no
+    # brackets, two 502 bursts handled safely, zero restarts since 09-17. The
+    # live time stop (#88) was merged but never deployed here. The database
+    # deltabt_tnet is NOT Terraform-managed and keeps every record.
+    # (entry was: tnet = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_tnet" })
   }
 }
 
@@ -143,7 +155,14 @@ variable "live_venue" {
 # there is no second place to remember to edit. This pipeline has been bitten
 # twice by exactly that kind of forgotten link.
 resource "aws_ecr_repository" "live" {
-  count = length(var.live_stacks) > 0 ? 1 : 0
+  # NOT gated on live_stacks, unlike everything else in this file, since
+  # 2026-10-01. The lifecycle block below says why the repository must
+  # survive: its images are the only durable link between a ledger row and
+  # the code that produced it. A count that drops to zero when the last live
+  # stack is removed asks Terraform to destroy a resource it is forbidden to
+  # destroy, and the removal of `tnet` could not even be planned. Keeping the
+  # repository costs cents; it holds f08a017, the image every tnet trade ran on.
+  count = 1
 
   name                 = "${local.name}-live"
   image_tag_mutability = "IMMUTABLE"

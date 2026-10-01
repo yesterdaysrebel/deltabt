@@ -928,7 +928,15 @@ variable "stacks" {
     # run's 8 closed trades and its 2 open positions exactly as they were,
     # and ux_forward_test_running would refuse a second RUNNING experiment
     # there anyway.
-    atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" }
+    # 2026-10-01: `atr` IS REMOVED, by operator instruction ("stop ltp, ladder,
+    # atr and testnet"), after the 09-30 read of the two exit arms it was the
+    # control for. Its own experiment MANUAL_SCALP_BOTH_T3-5-20260915-cd7e430
+    # was retired first (`forward-test stop`, reason recorded in deltabt_both
+    # .forward_test) and its service stopped and disabled, so this apply
+    # destroys a host that is no longer trading: 48 closed trades 09-16..10-01,
+    # +2.03R net, -$80.88 net, 3 paper positions left OPEN by design. The
+    # database deltabt_both is NOT Terraform-managed and keeps every record.
+    # (entry was: atr = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_both" })
 
     # --- THE TWO EXIT ARMS, ADDED 2026-09-16 -----------------------------
     #
@@ -979,8 +987,32 @@ variable "stacks" {
     # created before the first deploy or the bot dies on
     # InvalidCatalogNameError, which is how v4 failed its first roll on
     # 2026-08-20. See deploy/aws/create_stack_database.py.
-    ladder = { variant = "SPEC:manual_scalp_both_t3_ladder@5", db_name = "deltabt_ladder" }
-    ltp    = { variant = "SPEC:manual_scalp_both_t3_ltp@5", db_name = "deltabt_ltp" }
+    # 2026-10-01: `ladder` AND `ltp` ARE REMOVED, one day past the stopping
+    # date written above, after the read it asked for. Both experiments were
+    # retired first and their services stopped and disabled; the databases
+    # deltabt_ladder and deltabt_ltp keep every record. What the read said:
+    #
+    #   ltp     53 closed, -3.20R, -$253.88. NEGATIVE at the per-trade level:
+    #           on 46 entries paired with `atr` the exit TYPE was identical in
+    #           46/46 and only the stop fills differed -- worse on 12, better
+    #           on 3 (paired t -1.59); overshoot past the trigger +0.116R vs
+    #           +0.007R on the mark baseline. The LTP trigger makes the
+    #           overshoot it was built to remove worse on thin books.
+    #   ladder  124 closed, +11.06R, +$265.55 ($158 fees). The rungs did what
+    #           the spec says (stop exits cluster at ~0 / +0.5 / +1.0 / +1.5R)
+    #           and what the backtest above predicted: 3R reached on 4% of
+    #           trades vs 23%, and BEHIND the baseline by 0.12R/trade on the
+    #           30 shared signals. Its dollar lead was 93 trades the baseline
+    #           never took because faster exits free the per-symbol slot;
+    #           that turnover claim was pre-registered and closed in the
+    #           backtest the same day (scripts/ladder_turnover_lab.py, PR #89:
+    #           created entries -0.066R on 1,016). Promotions were never
+    #           persisted -- `stop_price` in the ledger never moves -- so the
+    #           rung evidence is inferred from where the stops filled.
+    #
+    # (entries were:
+    #   ladder = { variant = "SPEC:manual_scalp_both_t3_ladder@5", db_name = "deltabt_ladder" }
+    #   ltp    = { variant = "SPEC:manual_scalp_both_t3_ltp@5", db_name = "deltabt_ltp" })
     # 2026-09-10: `hours` AND `cross` ARE REMOVED. ONLY `atr` REMAINS.
     #
     # Both were stopped by operator instruction at day 4 -- `hours` of 30,

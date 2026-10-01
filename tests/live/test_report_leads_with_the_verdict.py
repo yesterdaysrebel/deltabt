@@ -33,6 +33,15 @@ import sys
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+def _registered_paper_stacks() -> list[str]:
+    """Stack keys in variables.tf's `stacks` default. Empty since 2026-10-01 (all
+    paper stacks removed by instruction); see tests/live/test_stack_table_consistency.py."""
+    text = (ROOT / "infra/terraform/variables.tf").read_text()
+    start = text.index('variable "stacks"')
+    block = text[start: text.index("\nvariable ", start + 10)]
+    return re.findall(r"^\s{4}(\w+)\s*=\s*\{", block, re.M)
 _REPORT = ROOT / "scripts/daily_report.py"
 _DIGEST = ROOT / "scripts/arms_digest.py"
 
@@ -301,6 +310,9 @@ def test_only_the_arm_that_declares_a_rule_gets_one():
     working whether that is one arm or five.
     """
     rows = _monitor_rows()
+    if not rows and not _registered_paper_stacks():
+        pytest.skip("no stack is registered in variables.tf (all removed 2026-10-01); "
+                    "an empty matrix is the consistent state here, not a vacuous one")
     assert rows, "the monitor matrix parsed as empty; every assertion below would pass vacuously"
     for stack in rows:
         assert "review_days" not in rows[stack], (
