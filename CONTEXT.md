@@ -25,13 +25,13 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — tnet last read 2026-09-28 10:16 UTC (paper stacks 2026-09-21)
+## Deployed state — all four stacks last read 2026-10-01 ~18:40 UTC
 
 | stack | venue | experiment | state |
 |---|---|---|---|
 | `atr` | paper | baseline `manual_scalp_both_t3` | rolled 09-15, hash `41e764beceaf` |
-| `ladder` | paper | `MANUAL_SCALP_BOTH_T3_LADDER-5-20260916-1e5c102` | runs to **2026-09-30** |
-| `ltp` | paper | `MANUAL_SCALP_BOTH_T3_LTP-5-20260916-1e5c102` | runs to **2026-09-30** |
+| `ladder` | paper | `MANUAL_SCALP_BOTH_T3_LADDER-5-20260916-1e5c102` | stopping date **2026-09-30 passed**, still running; read below |
+| `ltp` | paper | `MANUAL_SCALP_BOTH_T3_LTP-5-20260916-1e5c102` | stopping date **2026-09-30 passed**, still running; **NEGATIVE**, stop it |
 | `tnet` | Delta **testnet** | `LIVE-MANUAL_SCALP_BOTH_T3-5-20260917-f08a017` | bound since 09-17 11:13 UTC |
 
 All four are ungated (max_drawdown 1, max_daily_loss 1, consec_losses 0, cooldowns 0, min_rr 1) —
@@ -43,14 +43,34 @@ trades/arm against ~350 needed for -0.166R/trade at 80% power). Read them for ME
 a rung arms, whether promoted stops cut trades that reached target, and LTP-arm stop overshoot
 against the mark baseline.
 
-`tnet` as of 2026-09-28 10:16 UTC (live pull: `scripts/report.sh status` + SSM probe): same host
-`i-0161071571ade0664`, image `f08a017`, up 10 days, 0 restarts, healthz 200, no tracebacks in 72 h,
-still bound. Ledger == venue on both open positions (BTC long 1 @ 83739; ETH short 7 @ 2670.85),
-both bracketed, stops inside liquidation. 15 closed since binding: 4 take-profits (~+3R) and 11
-stop-losses (~-1R) = about +0.56R, **net +$1.29 after $4.23 fees**. Since the 09-22 read (+$13.08 on
-5 closed): 10 closes, 1 win, 9 losses. Venue USD $435.75. SOL: 0 trades from 1,053 signals (book
-guard). New reject reason seen: "position rounds to zero contracts" ×53. Ratios withheld (<30
-trades). This sample ran **without a time stop** — see "Live and venue traps".
+**The 09-30 read, taken 2026-10-01 from the three databases** (trades paired across arms by
+symbol + side + entry bar; `signal_key` is per-instance and never matches; `r_multiple` in the DB is
+NET of fees and funding). atr 48 closed, +2.03R, **−$80.88**; ladder 124 closed, +11.06R, **+$265.55**
+($158 fees); ltp 53 closed, −3.20R, **−$253.88**. No arm's t exceeds 1.0 — UNDECIDED on P&L as
+pre-registered. **LTP is negative at the per-trade level:** on 46 paired trades the exit type was
+identical in 46/46 and only the stop fills differed — worse on 12, better on 3 (paired t −1.59, sign
+test p≈0.035); stop overshoot +0.116R vs +0.007R on the mark baseline. **The ladder does exactly
+what the backtest said:** rungs confirmed from its stop-exit R clusters (35 at ~0, 26 at ~+0.5, 7 at
+~+1.0, 10 at ~+1.5; promotions are NOT persisted, `stop_price` never moves), 3R reached on 4% of
+trades vs 23%, and on 30 shared signals it is BEHIND by 0.12R/trade. Its dollar lead was 93
+trades the baseline never took because faster exits free the per-symbol slot — a turnover claim,
+since **closed by backtest** (see "What is CLOSED"). Gates: ungated as specified; the cooldown check
+has no skip-at-zero and rejected one BANKUSD signal on 09-21 with "−4s elapsed of 0s"; Docker health
+is permanently "unhealthy" on all three from the no-recent-gaps check on thin symbols. The daily
+report has no mechanism fields (no promotion count, no overshoot) — those questions need the DB.
+
+`tnet` as of 2026-10-01 18:20 UTC (`scripts/report.sh status` + SSM probe): same host
+`i-0161071571ade0664`, image `f08a017`, 0 restarts since 09-17, healthz green, still bound. Ledger ==
+venue on both open positions (BTC long 1 @ 82994.5, opened 09-28 15:00Z and ~75 h old — **live has no
+time stop**; the fix is PR #88 on `fix/live-time-stop`, unmerged; ETH short 4 @ 2697.6), both bracketed,
+stops inside liquidation. 28 closed since binding: 4 take-profits, 24 losses, **net −$36.19** ($6.72
+fees); since 09-28, 13 closes, 0 wins, −$37.48. Venue USD $395.84. **SOL started trading on 09-28
+12:20Z** (its book briefly sat near the feed): 7 trades, 7 losses, −$26.31; 4 closed UNPROTECTED ~16 s
+after entry — Delta attached no bracket legs and the bot flattened at market into a 3–4%-wide book
+(−1.65R to −4.08R each). The #83 guard checks only the entry side of the book, not the spread, so it
+lets these through; why Delta dropped the legs is unconfirmed (mark already beyond the stop is the
+hypothesis). Two Delta 502 bursts (09-29 09:11Z, 09-30 13:03Z, ~5 min each) were handled safely
+(balance unreadable → sized at zero, then reconciled). No new entry since 09-30 17:20Z.
 
 ## Git state — the local refs lie
 
@@ -93,8 +113,32 @@ identity mid-experiment.
 **Do NOT drop a symbol.** The per-symbol ranking inverts live: AKEUSD backtest -0.241 vs live +0.757
 (n=5); BEATUSD backtest +0.141 vs live -0.649 (n=7). Hold cap 72h is already the peak.
 
+**The ladder's "turnover" edge is closed (2026-10-01, `scripts/ladder_turnover_lab.py`, branch
+`research/ladder-portfolio`).** The paper ladder arm's +$266 came from entries created in freed slots,
+and within those from one post-hoc row: entries within 6 h of a promoted-stop exit on the opposite
+side (+0.25R, n=45 live). Pre-registered and run on the archive before 09-16 with four slots: that row is
+**−0.074R on 312 trades (t −1.36)** with filler bars dropped and −0.029R on 345 with them kept;
+all created entries −0.066R on 1,016 (t −2.23); ladder vs baseline paired on 217 shared entries
+−0.133R/trade. `run_portfolio` now implements `ladder_rungs` (1m walk inside the 5m bar, exits before
+rungs, promotion recorded on the trade); on the paper arm's own 127 entries it reproduces 74/76 exit
+types and 70/76 promotion decisions, median R difference 0.000. Also fixed there: `exit_cost`
+double-billed slippage on `ltp_close` stop fills.
+
 ## Measurement rules this repo learned the hard way
 
+- **The archive's filler bars break live parity on thin symbols (found 2026-10-01).** Delta's REST
+  history returns a flat zero-volume bar for every untraded minute — 49% of BEATUSD minutes, 79%
+  BANKUSD, 80% WIFUSD, 1% AKEUSD — and the live `CandleBuilder` only has minutes that traded. Both
+  sides share `resample_complete`, but it counts minutes, so the archive keeps every 5m bucket while
+  the bot keeps 29% / 10% / 8% of them, and the %R(140) window spans a different stretch of time.
+  Measured against the ladder bot's own `strategy_signals`: engine on the archive fires 2.4–3.7× the
+  bot's signals on the thin three; with filler bars dropped the counts match and 93–97% of the bot's
+  bars are hit (WIFUSD 69%, open). **Drop rows with volume 0 and o=h=l=c before resampling.** Every
+  thin-symbol backtest in `out/` ran on the inflated bar set; exit studies survive (fills reproduce on
+  identical entries), signal-timing and trade-count claims do not. And even with 95% signal
+  agreement the realised trade LIST diverges after one differing bar, because the rule fires ~80×/day
+  per symbol on one slot — reproduction standards here are signal-stream agreement and exits on
+  forced identical entries, not "same trades".
 - **The old engine had no loss tail.** `portfolio.py`/`engine.py` triggered stops on MARK and filled
   them AT `stop_price`, so nothing in `out/` predating #54 can contain a loss worse than ~-1.34R.
   Run on master with `stop_fill="ltp_close"` and `Book.fill_ltp`/`fill_mark` set. Bracket any new
@@ -243,9 +287,12 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
 3. **No entry-deviation guard existed before #83 and no post-fill bracket verification exists at
    all** — a fill past its own stop gets NO bracket and Delta drops the legs silently. Required
    before prod.
-4. `ladder` and `ltp` report on **2026-09-30**, for mechanism, not P&L.
-5. **Live time stop added 2026-09-28 (`fix/live-time-stop`), not yet deployed.** Needed for prod;
-   tnet's current sample (15 closed on `f08a017`) was taken without it — a live exit rule the paper
-   baseline has and the live arm did not. See "Live and venue traps".
+4. `ladder` and `ltp` were read on 2026-10-01 (see "Deployed state"); both are still running past
+   their 09-30 stopping date. **Decision due:** stop `ltp` (negative, clean); stop `ladder` per the
+   rule or extend it with a written reason — its only unmeasured claim (turnover) is now closed.
+5. **Live time stop merged 2026-10-01 (#88, `c67fed3`), not yet deployed to `tnet`.** Needed for
+   prod; tnet's whole sample so far (28 closed on `f08a017`) was taken without it — a live exit rule
+   the paper baseline has and the live arm did not. Deploying it is a deliberate
+   `deploy-testnet only_stack=tnet`, which retires the current experiment. See "Live and venue traps".
 6. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
    overshoot is worth at most +0.0154R/trade, ~12% of the arm's edge.
