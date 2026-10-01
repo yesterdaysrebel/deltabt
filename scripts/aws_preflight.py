@@ -61,10 +61,24 @@ class Context:
     phase: str = "application"
     plan: dict = field(default_factory=dict)
     account: str = ""
+    #: How many bot hosts Terraform state says exist. None = unknown (the
+    #: historical behaviour: absence fails unless a plan creates one). ZERO IS
+    #: A LEGITIMATE ANSWER since 2026-10-01, when the last four stacks were
+    #: removed by instruction and the post-apply preflight then failed every
+    #: run on "does not exist" for hosts that were correctly gone -- the same
+    #: false alarm check_alarms describes for v1/v2. The caller derives it
+    #: from `tofu state list`, so it is read, not restated.
+    expected_stacks: int | None = None
 
     @property
     def name(self) -> str:
         return f"deltabt-{self.environment}"
+
+    def no_stack_registered(self, what: str) -> "Result | None":
+        """PASS for a per-stack check when state says there is no stack to check."""
+        if self.expected_stacks == 0:
+            return Result(what, PASS, "no stack is registered in Terraform state; nothing to check")
+        return None
 
     def creates(self, resource_type: str) -> bool:
         """True when the supplied plan will CREATE a resource of this type."""
@@ -334,7 +348,8 @@ def check_one_instance_per_stack(ctx: Context) -> Result:
     if not ok:
         return Result("one_instance_per_stack", FAIL, "could not enumerate instances")
     if not instances:
-        return absent(ctx, "aws_instance", "one_instance_per_stack")
+        return (ctx.no_stack_registered("one_instance_per_stack")
+                or absent(ctx, "aws_instance", "one_instance_per_stack"))
 
     by_stack: dict[str, list[str]] = {}
     for i in instances:
@@ -387,6 +402,8 @@ def check_no_public_ingress(ctx: Context) -> Result:
 
 def check_ssm(ctx: Context) -> Result:
     ok, instances = _bot_instances(ctx)
+    if ok and not instances and ctx.no_stack_registered("ssm_available"):
+        return ctx.no_stack_registered("ssm_available")
     if not ok or not instances:
         return absent(ctx, "aws_instance", "ssm_available")
     ids = [i["InstanceId"] for i in instances]
@@ -446,7 +463,8 @@ def check_alarms(ctx: Context) -> Result:
     if not ok:
         return Result("cloudwatch_alarms", FAIL, "could not enumerate instances")
     if not instances:
-        return absent(ctx, "aws_instance", "cloudwatch_alarms")
+        return (ctx.no_stack_registered("cloudwatch_alarms")
+                or absent(ctx, "aws_instance", "cloudwatch_alarms"))
 
     stacks = sorted({
         tags.get("Stack") for i in instances
@@ -619,6 +637,11 @@ def main() -> int:
     ap.add_argument("--plan-json",
                     help="terraform show -json output. Absence of a resource is "
                          "only acceptable when this plan creates it.")
+    ap.add_argument("--expected-stacks", type=int, default=None,
+                    help="how many bot hosts Terraform state holds (derive it: "
+                         "`tofu state list | grep -c '^aws_instance.bot\\['`). "
+                         "0 makes the per-stack checks pass on an empty registry; "
+                         "omitted keeps absence a failure.")
     args = ap.parse_args()
 
     plan = {}
@@ -629,7 +652,8 @@ def main() -> int:
     ctx = Context(region=args.region, environment=args.environment,
                   phase=args.phase,
                   expected_account=args.account, state_bucket=args.state_bucket,
-                  ecr_repository=args.ecr_repository, plan=plan)
+                  ecr_repository=args.ecr_repository, plan=plan,
+                  expected_stacks=args.expected_stacks)
 
     checks = (INFRASTRUCTURE_CHECKS if args.phase == "infrastructure"
               else APPLICATION_CHECKS)

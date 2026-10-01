@@ -532,12 +532,17 @@ jobs:
       - name: AWS preflight -- the applied stack
         if: needs.plan.outputs.changes == '2'
         # Re-run after apply, in the strict phase, with no plan to excuse an
-        # absence. Everything must now actually exist.
+        # absence. Everything must now actually exist -- where "everything" is
+        # what the applied state says, so the per-stack checks are told how
+        # many hosts it holds. With none registered (2026-10-01) they pass
+        # rather than fail every apply on hosts that are correctly gone.
         run: |
+          expected=$(cd infra/terraform && tofu state list | grep -c '^aws_instance\.bot\[' || true)
           python3 scripts/aws_preflight.py --phase application \
             --region "$AWS_REGION" \
             --account "${{ vars.AWS_ACCOUNT_ID }}" \
-            --state-bucket "${{ vars.TF_STATE_BUCKET }}"
+            --state-bucket "${{ vars.TF_STATE_BUCKET }}" \
+            --expected-stacks "${expected:-0}"
 
       - name: create each stack's database if it does not exist
         # THE DATABASE BELONGS TO INFRASTRUCTURE, NOT TO THE DEPLOY.
