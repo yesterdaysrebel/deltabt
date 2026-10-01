@@ -484,3 +484,23 @@ moved {
   from = aws_ssm_parameter.image_tag_previous
   to   = aws_ssm_parameter.image_tag_previous["v1"]
 }
+
+# A POLICY STATEMENT MAY NOT HAVE AN EMPTY RESOURCE LIST. Five statements in
+# github_oidc.tf, iam.tf and monitoring.tf scope themselves to per-stack
+# resources -- deploy/experiment/monitor documents, instances, image-tag
+# parameters, log groups -- by iterating the for_each maps. With no stack
+# registered every one of those lists is [], and IAM refuses the document:
+# "MalformedPolicyDocument: Policy statement must contain resources". That is
+# how the 2026-10-01 removal of the last four stacks destroyed every host and
+# then failed on the three policy updates (run 36923406567), leaving the state
+# three in-place changes short of clean.
+#
+# So each of those statements falls back to THIS when the map is empty: an ARN
+# in this account's namespace that nothing will ever carry. It grants nothing
+# usable, it is visibly a placeholder in the console, and it goes away on its
+# own the moment a stack is registered, because the conditional flips back to
+# the real list. Dropping the statements instead would have meant rebuilding
+# three Statement literals around a conditional; this keeps every Sid in place.
+locals {
+  no_stack_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/${local.name}-no-stacks-registered"
+}

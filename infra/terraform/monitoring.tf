@@ -157,7 +157,7 @@ resource "aws_iam_role_policy" "github_monitor" {
         Sid      = "ReadTheBotLog"
         Effect   = "Allow"
         Action   = ["logs:FilterLogEvents", "logs:DescribeLogStreams", "logs:GetLogEvents"]
-        Resource = [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"]
+        Resource = length(local.stacks) > 0 ? [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"] : [local.no_stack_arn]
       },
       {
         Sid    = "RunTheREADONLYProbeDocumentOnly"
@@ -165,11 +165,13 @@ resource "aws_iam_role_policy" "github_monitor" {
         Action = ["ssm:SendCommand"]
         # NOT AWS-RunShellScript, and NOT the deploy document. This role can
         # run exactly one fixed, read-only script on exactly one instance.
-        Resource = concat(
+        # Empty when no stack is registered, which IAM refuses; see
+        # local.no_stack_arn in ec2.tf.
+        Resource = length(local.stacks) > 0 ? concat(
           [for d in aws_ssm_document.monitor : d.arn],
           [for i in aws_instance.bot :
           "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${i.id}"],
-        )
+        ) : [local.no_stack_arn]
       },
       {
         Sid      = "ReadBackTheResult"

@@ -90,10 +90,12 @@ resource "aws_iam_role_policy" "instance" {
         Sid    = "ReadWhichImageTagToRun"
         Effect = "Allow"
         Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:PutParameter"]
-        Resource = concat(
+        # Empty when no stack is registered, which IAM refuses; see
+        # local.no_stack_arn in ec2.tf.
+        Resource = length(local.stacks) > 0 ? concat(
           [for p in aws_ssm_parameter.image_tag : p.arn],
           [for p in aws_ssm_parameter.image_tag_previous : p.arn],
-        )
+        ) : [local.no_stack_arn]
       },
       {
         Sid    = "WriteItsOwnLogs"
@@ -103,7 +105,7 @@ resource "aws_iam_role_policy" "instance" {
           "logs:PutLogEvents",
           "logs:DescribeLogStreams",
         ]
-        Resource = [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"]
+        Resource = length(local.stacks) > 0 ? [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"] : [local.no_stack_arn]
       },
     ]
   })

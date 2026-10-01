@@ -34,13 +34,19 @@ safety claim to anyone.
 | `ltp` | paper | `MANUAL_SCALP_BOTH_T3_LTP-5-20260916-1e5c102` | **STOPPED** 10-01 ~20:12Z; 3 paper positions left OPEN; service stopped + disabled |
 | `tnet` | Delta **testnet** | `LIVE-MANUAL_SCALP_BOTH_T3-5-20260917-f08a017` | **STOPPED** 10-01 20:19Z. Kill switch engaged, both venue positions flattened reduce-only at market first (BTC 1 @ 84759.5, +$1.77; ETH 4 @ 2701.6, −$0.16; both recorded MANUAL_CLOSE), venue flat, 0 brackets left, USD $397.33; service stopped + disabled |
 
-The hosts still exist until the Terraform removal (branch `ops/stop-all-stacks`: all four entries removed from
+**The four hosts were destroyed 2026-10-01 ~20:45 UTC** by PR #90 (all four entries removed from
 `stacks`/`live_stacks` with the record in place, the paper table in `deploy-paper.yml` and the `monitor.yml`
 matrix emptied to match, the nightly report schedule removed, and the live ECR repository made unconditional
-because its `prevent_destroy` made removing the last live stack unplannable) is merged and applied. The
-databases on the shared RDS instance are not Terraform-managed and keep every record; the CloudWatch log groups
-do NOT survive the apply. PR #87 (RDS micro → small for IAM auth) was approved before the stop and is on hold
-pending the operator's word. The 10-01 reads that led here follow.
+because its `prevent_destroy` made removing the last live stack unplannable). Removing hosts takes the
+three-step dance every time (#53 did the same): the PR's plan check and the post-merge push run FAIL BY
+DESIGN on a host destroy, then a manual `infrastructure` dispatch with `allow_replace=true` and
+`replace_hosts=<stacks>` plus the `paper` environment approval applies it. That apply destroyed everything
+and then failed on its last three in-place changes: the IAM policies that scope themselves to per-stack
+resources had empty `Resource` lists, which IAM refuses ("Policy statement must contain resources"). Fixed by
+giving those five statements a documented placeholder ARN when no stack is registered (`local.no_stack_arn`,
+ec2.tf). The databases on the shared RDS instance are not Terraform-managed and keep every record; the
+CloudWatch log groups are gone (operator: no export needed). PR #87 (RDS micro → small for IAM auth) is
+approved and un-drafted; it applies at the Sunday maintenance window. The 10-01 reads that led here follow.
 
 All four are ungated (max_drawdown 1, max_daily_loss 1, consec_losses 0, cooldowns 0, min_rr 1) —
 those are **global** Terraform vars, so every stack shares them.

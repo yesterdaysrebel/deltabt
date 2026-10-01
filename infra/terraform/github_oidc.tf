@@ -88,7 +88,9 @@ resource "aws_iam_role_policy" "github_app_deploy" {
         Sid    = "RunTheDeployDocumentOnTheBotHostOnly"
         Effect = "Allow"
         Action = ["ssm:SendCommand"]
-        Resource = concat(
+        # Empty when no stack is registered, which IAM refuses; see
+        # local.no_stack_arn in ec2.tf.
+        Resource = length(local.stacks) > 0 ? concat(
           [for d in aws_ssm_document.deploy : d.arn],
           # The experiment lifecycle is a SECOND named document rather than a
           # grant of arbitrary shell. The role can retire a run and register
@@ -96,7 +98,7 @@ resource "aws_iam_role_policy" "github_app_deploy" {
           [for d in aws_ssm_document.experiment : d.arn],
           [for i in aws_instance.bot :
           "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${i.id}"],
-        )
+        ) : [local.no_stack_arn]
       },
       {
         Sid      = "ReadBackTheResult"
