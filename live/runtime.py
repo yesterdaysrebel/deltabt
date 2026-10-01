@@ -77,6 +77,10 @@ BRACKET_GRACE_SECONDS = 15.0
 #: venue, and closing a protected position during an outage is its own harm.
 BRACKET_ALERT_SECONDS = 120.0
 
+#: How often open positions are checked against the time stop. It reads the
+#: ledger, so not every poll; a minute late on a 72-hour limit is nothing.
+TIME_STOP_CHECK_SECONDS = 60.0
+
 #: How long a venue balance read is reused for sizing. Several symbols close on
 #: the same 5m bar; one read serves them, a stale one does not survive a trade.
 BALANCE_TTL_SECONDS = 20.0
@@ -130,6 +134,11 @@ class LiveTradingBot(TradingBot):
             exit_on_wpr_band_exit=self.settings.risk.exit_on_wpr_band_exit,
             wpr_exit_long_level=self.settings.risk.wpr_exit_long_level,
             wpr_exit_short_level=self.settings.risk.wpr_exit_short_level,
+            # THE TIME STOP, from the same place as the paper broker's. Until
+            # 2026-09-28 it was not passed at all: risk_hash carried 259200s
+            # for tnet while no live code read it, and a BTC long sat open for
+            # 91 hours. See _enforce_time_stop.
+            max_hold_seconds=self.settings.risk.max_hold_seconds,
             kill_switch_path=kill_switch_path)
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
         self._poll_task: asyncio.Task | None = None
@@ -640,6 +649,58 @@ class LiveTradingBot(TradingBot):
                                   symbol=symbol, severity="WARNING",
                                   payload={"stop_loss_legs": len(legs["stop_loss"])})
 
+    async def _enforce_time_stop(self) -> None:
+        """Close at market any position held longer than max_hold_seconds.
+
+        WHY THIS EXISTS. PaperBroker closes a position once it is older than
+        max_hold_seconds (TIME_EXIT). LiveBroker was built without the setting
+        and nothing in live/ read it, so tnet -- whose risk_hash says 259200s,
+        the same as the paper baseline -- never time-stopped: on 2026-09-28 a
+        BTC long opened 09-24 15:05 UTC was 91 hours old and still open. A live
+        arm that exits differently from its paper arm is not a rehearsal of it.
+
+        SAME RULE AS PAPER. Age is exchange time (the market clock) minus the
+        LEDGER's opened_at, so a restart does not reset it and a position
+        recovered from a previous process keeps its true age. A bracket that
+        fires while this close is in flight is still recorded as the bracket:
+        live.ledger.exit_reason prefers the venue's stop_order_type, just as
+        the paper broker ranks stop and target above the time stop.
+
+        The close is reduce-only at market and asked for once per position,
+        like _flatten; a close the venue refuses is reported CRITICAL rather
+        than retried every check.
+        """
+        limit = int(getattr(self.broker, "max_hold_seconds", 0) or 0)
+        clock = getattr(self, "clock", None)
+        if not limit or clock is None or not clock.now() or not self.broker.positions:
+            return
+        now = clock.now()
+        for p in await self.repo.load_open_positions():
+            symbol = p.symbol
+            if symbol in self._flattening() or symbol not in self.broker.positions:
+                continue
+            if not p.opened_at or now - int(p.opened_at) < limit:
+                continue
+            held = now - int(p.opened_at)
+            self._flattening().add(symbol)
+            self._bracket_checks().pop(symbol, None)
+            await self._event("execution", "TIME_STOP", symbol=symbol,
+                              severity="WARNING",
+                              payload={"opened_at": int(p.opened_at),
+                                       "held_seconds": held,
+                                       "max_hold_seconds": limit})
+            await self.notifier.send(
+                f"{self.venue} TIME STOP {symbol}",
+                f"held {held / 3600:.1f}h, limit {limit / 3600:.1f}h")
+            try:
+                self.broker.close_position(symbol, "time_exit")
+            except VenueError as exc:
+                log.critical("could not time-stop %s: %s", symbol, exc)
+                await self._event("execution", "FLATTEN_FAILED", symbol=symbol,
+                                  severity="CRITICAL",
+                                  payload={"reason": "time_exit",
+                                           "error": str(exc)})
+
     async def _persist_close(self, ev) -> None:
         """Record a close the venue performed, and WHY it performed it.
 
@@ -689,6 +750,7 @@ class LiveTradingBot(TradingBot):
     async def _poll_loop(self, interval: float = POLL_SECONDS) -> None:
         """Ask the venue what it did, and re-reconcile periodically."""
         since_reconcile = 0.0
+        since_time_stop = TIME_STOP_CHECK_SECONDS     # check on the first pass
         # `_stopping` is an asyncio.Event, not a bool. `while not self._stopping`
         # is permanently False -- an Event has no __bool__, so it is truthy --
         # and the loop would never run one iteration while looking correct.
@@ -714,6 +776,10 @@ class LiveTradingBot(TradingBot):
                 # position it exists to protect.
                 self.__dict__["_polled_once"] = True
                 await self._verify_brackets()
+                since_time_stop += interval
+                if since_time_stop >= TIME_STOP_CHECK_SECONDS:
+                    since_time_stop = 0.0
+                    await self._enforce_time_stop()
                 since_reconcile += interval
                 if since_reconcile >= RECONCILE_SECONDS:
                     since_reconcile = 0.0

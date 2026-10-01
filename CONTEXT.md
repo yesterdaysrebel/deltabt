@@ -25,7 +25,7 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — last read 2026-09-21 05:36 UTC
+## Deployed state — tnet last read 2026-09-28 10:16 UTC (paper stacks 2026-09-21)
 
 | stack | venue | experiment | state |
 |---|---|---|---|
@@ -43,16 +43,14 @@ trades/arm against ~350 needed for -0.166R/trade at 80% power). Read them for ME
 a rung arms, whether promoted stops cut trades that reached target, and LTP-arm stop overshoot
 against the mark baseline.
 
-`tnet` as of 2026-09-22 19:26 UTC (`scripts/report.sh status`, live pull): same host
-`i-0161071571ade0664`, image `f08a017`, RUNNING, git_dirty=False — no drift since 09-17 binding.
-7 positions opened, 5 closed / 2 still open (BTCUSD=5, ETHUSD=2), oldest open since 2026-09-21
-05:50 IST. Net P&L on the 5 closed trades: gross +$14.52, fees −$1.45, funding $0.00, net +$13.08.
-Ratios explicitly WITHHELD by the report — 5 closed trades is below the 30-trade floor, no
-profitability inference possible. This pass only queried `forward-test status`; it did not
-re-check healthz, ledger-vs-venue equality, or bracket/liquidation distance — those numbers above
-are carried from the 09-21 05:36 UTC check and are unverified this session. The sizing mismatch
-noted then ("$50 / 0.5%" risk budget is ~7% of the actual venue account) has not been re-measured
-either; assume it is still real until re-checked.
+`tnet` as of 2026-09-28 10:16 UTC (live pull: `scripts/report.sh status` + SSM probe): same host
+`i-0161071571ade0664`, image `f08a017`, up 10 days, 0 restarts, healthz 200, no tracebacks in 72 h,
+still bound. Ledger == venue on both open positions (BTC long 1 @ 83739; ETH short 7 @ 2670.85),
+both bracketed, stops inside liquidation. 15 closed since binding: 4 take-profits (~+3R) and 11
+stop-losses (~-1R) = about +0.56R, **net +$1.29 after $4.23 fees**. Since the 09-22 read (+$13.08 on
+5 closed): 10 closes, 1 win, 9 losses. Venue USD $435.75. SOL: 0 trades from 1,053 signals (book
+guard). New reject reason seen: "position rounds to zero contracts" ×53. Ratios withheld (<30
+trades). This sample ran **without a time stop** — see "Live and venue traps".
 
 ## Git state — the local refs lie
 
@@ -144,7 +142,15 @@ identity mid-experiment.
 - **Open bug:** `/api/positions` 500s on live — `app/api/app.py:137` reads `p.last_price` and
   `LivePosition` has no such attribute. Paper is unaffected; `/api/trades` is fine (its keys are
   `entry/stop/target/pnl/r/reason/opened_ist`, not DB column names).
-- **`DELTABOT_MAX_HOLD` → `max_hold_seconds`** is genuinely wired (`app/config/settings.py:244`).
+- **The 72h time stop was paper-only until `fix/live-time-stop` (2026-09-28).** `DELTABOT_MAX_HOLD` →
+  `max_hold_seconds` reaches settings and `risk_hash` (`app/config/settings.py:244`), but only
+  `PaperBroker` enforced it; `LiveBroker` was built without it and nothing in `live/` read it. tnet
+  (image `f08a017`) therefore never time-stops — a BTC long opened 2026-09-24 15:05 UTC was 91 h old
+  on 09-28. The fix: `LiveBroker.max_hold_seconds` + `LiveTradingBot._enforce_time_stop()` (poll
+  loop, every 60 s): market time minus the ledger's `opened_at` ≥ limit → reduce-only market close,
+  recorded as `TIME_EXIT` (a bracket that fills first still records as the bracket). Tests:
+  `tests/live_exec/test_live_time_stop.py`. **For the prod run.** tnet keeps running `f08a017`
+  until it is deliberately rolled; its first poll on the new image would close anything past 72 h.
 - **Check a live bot by heartbeat `orders` > 0 and zero `reservation gate` refusals — not readyz.**
   On 2026-09-16 tnet was `(healthy)` with all 7 checks green, 41 signals approved and **zero orders
   ever placed**; the 6 WORKING ledger rows were ghosts.
@@ -238,5 +244,8 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
    all** — a fill past its own stop gets NO bracket and Delta drops the legs silently. Required
    before prod.
 4. `ladder` and `ltp` report on **2026-09-30**, for mechanism, not P&L.
-5. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
+5. **Live time stop added 2026-09-28 (`fix/live-time-stop`), not yet deployed.** Needed for prod;
+   tnet's current sample (15 closed on `f08a017`) was taken without it — a live exit rule the paper
+   baseline has and the live arm did not. See "Live and venue traps".
+6. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
    overshoot is worth at most +0.0154R/trade, ~12% of the arm's edge.
