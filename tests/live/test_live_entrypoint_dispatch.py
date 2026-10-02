@@ -105,13 +105,14 @@ async def test_bot_is_built_with_the_venue_universe_not_the_env(monkeypatch):
 
 
 def test_source_applies_the_override_before_constructing_the_bot():
-    """Order matters: replace() must precede LiveTradingBot(settings, ...)."""
+    """Order matters: replace() must precede building EITHER bot (2026-10-02:
+    main() builds the live bot or the dry-run bot, both from `settings`)."""
     src = (REPO_ROOT / "live" / "__main__.py").read_text()
     override = src.index("settings = replace(settings")
-    construct = src.index("bot = LiveTradingBot(")
-    assert override < construct, (
-        "settings.symbols is overridden after the bot is built, so the bot "
-        "still holds the un-overridden universe")
+    for construct in ("bot = _live_bot(settings", "bot = build_dry_run("):
+        assert override < src.index(construct), (
+            f"settings.symbols is overridden after {construct!r}, so that bot "
+            f"still holds the un-overridden universe")
 
 
 class TestCliSeesTheVenueUniverse:

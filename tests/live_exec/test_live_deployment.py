@@ -582,8 +582,9 @@ def test_run_live_refuses_without_sizing_and_writes_it_to_the_shared_env_file():
         "experiment document's CLI read, or the two compute different risk_hash")
 
 
-def test_an_image_without_dry_run_mode_refuses_a_dry_run_host():
-    """A host told to observe must never trade because the image ignored it."""
+def test_the_dry_run_flag_is_read_strictly():
+    """A host told to observe gets the dry-run bot (live/dry_run.py); see
+    tests/live_exec/test_dry_run.py for the no-write guarantee."""
 
     import live.__main__ as entry
 
