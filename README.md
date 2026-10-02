@@ -1,5 +1,16 @@
 # deltabt
 
+> **CORRECTED 2026-10-02 — parts of this document are out of date.** `live/` (image
+> `Dockerfile.live`, entry `python -m live`) signs venue requests and **places real orders**:
+> it traded on Delta testnet 2026-09-16 → 10-01, and a prod pilot is planned (dry run first, on a
+> read-only key). The paper bot (`app/`) still cannot place orders, and `app/` must never import
+> `live/`. Deploys are `deploy-paper.yml` / `deploy-testnet.yml` / `deploy-prod.yml` via
+> `_roll.yml` (`deploy.yml` is gone). `infrastructure.yml` **applies on merge with no approval
+> gate**; the review is the pull request's read-only plan plus the destroy/cost guards, and
+> removing a host needs a manual `allow_replace` dispatch. `deploy-prod.yml` is dispatch-only and
+> gated by the `prod-deploy` environment. Current state: `CONTEXT.md`.
+
+
 Backtesting and **pre-registered strategy research** for
 **Delta Exchange India** perpetual futures.
 

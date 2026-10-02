@@ -29,6 +29,7 @@ The grammar accepted is the one HCL uses for this map and nothing more:
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
 import sys
@@ -88,12 +89,33 @@ def matrix(text: str) -> list[dict[str, str]]:
     return out
 
 
+def configured_venue(text: str) -> str:
+    """The default of `variable "live_venue"` -- ONE global for every live stack."""
+    i = text.index('variable "live_venue"')
+    block = text[i:text.index("\n}\n", i)]
+    m = re.search(r'^\s*default\s*=\s*"([^"]*)"', block, re.M)
+    if not m:
+        raise ValueError("live_venue has no default")
+    return m.group(1)
+
+
 def main(argv: list[str]) -> int:
-    rows = matrix(LIVE_TF.read_text())
+    text = LIVE_TF.read_text()
+    rows = matrix(text)
+    # A WORKFLOW ROLLS ONLY ITS OWN VENUE (2026-10-02). live_venue is global,
+    # so every live stack is on it; deploy-testnet ran on every push and went
+    # RED at _roll.yml's host check once the hosts were prod. Callers pass
+    # FOR_VENUE and get no stacks when the venue is another workflow's. The
+    # host check stays as the fail-closed backstop.
+    want = os.environ.get("FOR_VENUE", "").strip()
+    if want and rows and configured_venue(text) != want:
+        print(f"live stacks are on venue {configured_venue(text)!r}, not "
+              f"{want!r}; nothing for this workflow to roll", file=sys.stderr)
+        rows = []
     only = argv[1] if len(argv) > 1 else ""
     if only:
         rows = [r for r in rows if r["stack"] == only]
-        if not rows:
+        if not rows and not want:
             print(f"only_stack={only!r} matches no live stack", file=sys.stderr)
             return 1
     print(json.dumps(rows, separators=(",", ":")))
