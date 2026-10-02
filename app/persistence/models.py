@@ -197,6 +197,37 @@ class SystemEventRecord:
 
 
 @dataclass
+class ShadowExitRecord:
+    """Where one exit rule WOULD have closed one real position (2026-10-02).
+
+    Written by app/execution/shadow_exits.py: one row per position per rule,
+    paired by construction because every rule shadows the same entry. R is
+    against the position's ORIGINAL risk per unit; net_r subtracts the round
+    trip the paper broker would charge (taker in, maker on a target).
+    """
+    position_uid: str
+    rule: str
+    symbol: str
+    side: int
+    quantity: int
+    entry_price: float
+    initial_stop: float
+    target_price: float
+    risk_per_unit: float
+    opened_at: int
+    armed_at: int | None
+    promotions: int
+    trail_amount: float | None
+    final_stop: float
+    exit_price: float
+    exit_reason: str
+    closed_at: int
+    gross_r: float
+    net_r: float
+    observed_from_entry: bool
+
+
+@dataclass
 class QuarantinedFillRecord:
     """A fill that could not be tied to a known order and position.
 

@@ -320,6 +320,36 @@ CREATE TABLE IF NOT EXISTS system_events (
 );
 CREATE INDEX IF NOT EXISTS ix_system_events_time ON system_events (occurred_at DESC);
 
+-- Where each exit rule WOULD have closed each real position (prod pilot dry
+-- run, 2026-10-02). One row per position per rule; paired by construction.
+CREATE TABLE IF NOT EXISTS shadow_exits (
+    id                  BIGSERIAL PRIMARY KEY,
+    position_uid        TEXT        NOT NULL,
+    rule                TEXT        NOT NULL,
+    instance_uid        TEXT        NOT NULL,
+    experiment_id       TEXT,
+    symbol              TEXT        NOT NULL,
+    side                SMALLINT    NOT NULL,
+    quantity            INTEGER     NOT NULL,
+    entry_price         NUMERIC(20,8) NOT NULL,
+    initial_stop        NUMERIC(20,8) NOT NULL,
+    target_price        NUMERIC(20,8) NOT NULL,
+    risk_per_unit       NUMERIC(20,8) NOT NULL,
+    opened_at           TIMESTAMPTZ NOT NULL,
+    armed_at            TIMESTAMPTZ,
+    promotions          INTEGER     NOT NULL DEFAULT 0,
+    trail_amount        NUMERIC(20,8),
+    final_stop          NUMERIC(20,8) NOT NULL,
+    exit_price          NUMERIC(20,8) NOT NULL,
+    exit_reason         TEXT        NOT NULL,
+    closed_at           TIMESTAMPTZ NOT NULL,
+    gross_r             NUMERIC(12,6) NOT NULL,
+    net_r               NUMERIC(12,6) NOT NULL,
+    observed_from_entry BOOLEAN     NOT NULL,
+    recorded_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (position_uid, rule)
+);
+
 -- Small key/value durable state: equity, daily counters, consecutive losses.
 CREATE TABLE IF NOT EXISTS strategy_state (
     key             TEXT PRIMARY KEY,

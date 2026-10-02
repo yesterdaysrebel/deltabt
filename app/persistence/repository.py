@@ -25,6 +25,7 @@ from app.persistence.models import (
     OrderRecord,
     PositionRecord,
     RiskEventRecord,
+    ShadowExitRecord,
     SignalRecord,
     SystemEventRecord,
     utc,
@@ -194,6 +195,11 @@ class Repository(ABC):
     async def recent_signals(self, limit: int = 50) -> list[dict]: ...
     @abstractmethod
     async def recent_system_events(self, limit: int = 50) -> list[dict]: ...
+    @abstractmethod
+    async def record_shadow_exit(self, rec: ShadowExitRecord, *, instance_uid: str,
+                                 experiment_id: str | None) -> None: ...
+    @abstractmethod
+    async def recent_shadow_exits(self, limit: int = 200) -> list[dict]: ...
 
     # -- durable key/value -------------------------------------------------
     @abstractmethod
@@ -230,6 +236,7 @@ class InMemoryRepository(Repository):
         s.setdefault("quarantine", {})
         s.setdefault("funding", {})
         s.setdefault("experiments", {})
+        s.setdefault("shadow_exits", {})
         s.setdefault("positions", {})
         s.setdefault("positions_by_signal", {})
         s.setdefault("risk_events", [])
@@ -509,6 +516,15 @@ class InMemoryRepository(Repository):
 
     async def recent_system_events(self, limit: int = 50) -> list[dict]:
         return [asdict(r) for r in self._s["system_events"][-limit:][::-1]]
+
+    async def record_shadow_exit(self, rec, *, instance_uid, experiment_id) -> None:
+        # Idempotent on (position_uid, rule), as the table's UNIQUE is.
+        self._s["shadow_exits"].setdefault(
+            (rec.position_uid, rec.rule),
+            {**asdict(rec), "instance_uid": instance_uid, "experiment_id": experiment_id})
+
+    async def recent_shadow_exits(self, limit: int = 200) -> list[dict]:
+        return list(self._s["shadow_exits"].values())[-limit:][::-1]
 
     async def get_state(self, key: str) -> dict | None:
         return self._s["kv"].get(key)
@@ -1247,6 +1263,31 @@ class PostgresRepository(Repository):
                 r.event_id, r.instance_uid, r.symbol, r.component, r.event_type,
                 r.severity, r.payload, r.strategy_version,
                 _ts(r.exchange_ts), _ts(r.received_ts))
+
+    async def record_shadow_exit(self, r, *, instance_uid, experiment_id) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                """INSERT INTO shadow_exits (position_uid, rule, instance_uid,
+                       experiment_id, symbol, side, quantity, entry_price,
+                       initial_stop, target_price, risk_per_unit, opened_at,
+                       armed_at, promotions, trail_amount, final_stop,
+                       exit_price, exit_reason, closed_at, gross_r, net_r,
+                       observed_from_entry)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                           $16,$17,$18,$19,$20,$21,$22)
+                   ON CONFLICT (position_uid, rule) DO NOTHING""",
+                r.position_uid, r.rule, instance_uid, experiment_id, r.symbol,
+                r.side, r.quantity, r.entry_price, r.initial_stop,
+                r.target_price, r.risk_per_unit, _ts(r.opened_at),
+                _ts(r.armed_at), r.promotions, r.trail_amount, r.final_stop,
+                r.exit_price, r.exit_reason, _ts(r.closed_at), r.gross_r,
+                r.net_r, r.observed_from_entry)
+
+    async def recent_shadow_exits(self, limit: int = 200) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                "SELECT * FROM shadow_exits ORDER BY recorded_at DESC LIMIT $1", limit)
+        return [dict(r) for r in rows]
 
     async def recent_signals(self, limit: int = 50) -> list[dict]:
         async with self._pool.acquire() as con:
