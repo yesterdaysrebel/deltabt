@@ -49,7 +49,8 @@ class FakeClient:
     touch: float = 0.0929214 + 0.0097
 
     def get_ticker(self, symbol):
-        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)}}
+        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)},
+                "mark_price": str(self.touch)}
 
     def get_product(self, symbol):
         return {"initial_margin": "2", "maintenance_margin": "1",

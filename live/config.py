@@ -68,38 +68,22 @@ VENUE_SYMBOLS = {
 }
 
 
-#: THE THREE CIRCUIT BREAKERS, FOR PROD. Chosen by the operator 2026-09-15.
+#: THE PROD CIRCUIT BREAKERS LIVE IN infra/terraform/variables.tf (2026-10-02).
 #:
-#: They are HERE and not in infra/terraform/variables.tf on purpose. That file
-#: feeds risk_hash AND the instance's user_data, which carries
-#: `user_data_replace_on_change = true` -- so editing these values there would
-#: replace the PAPER bot's host and then fail to bind its running experiment on
-#: ConfigurationDrift. The live bot gets its own configuration; the paper run
-#: is not collateral.
+#: A PROD_RISK dict stood here from 2026-09-15 (0.10 / 0.03 / 4), chosen to be
+#: kept OUT of variables.tf so editing them would not replace a running paper
+#: host. Nothing ever read it -- the container takes its gates from
+#: /opt/deltabt/env, rendered from those Terraform globals -- and with no paper
+#: stack left the reason for the split was gone. The pilot values (0.20 / 0.10
+#: / 8) and their arithmetic are in variables.tf; live/guards.py refuses prod
+#: unless all three are switched on.
 #:
 #: WHAT EACH ONE DOES WHEN IT FIRES -- they are not the same kind of thing:
 #:
 #:   max_daily_loss_pct       resets at the UTC day roll (RiskState.roll_day)
 #:   max_consecutive_losses   resets at the UTC day roll, and on any win
 #:   max_drawdown_pct         LATCHES. TERMINAL. Only `forward-test resume
-#:                            --yes` clears it, and it rebases the peak so the
-#:                            run does not immediately re-halt.
-#:
-#: The drawdown halt is deliberately terminal, and the engine explains why: a
-#: breach reached while FLAT is self-sustaining, because equity only moves when
-#: a position closes. Every entry is refused, nothing can close, equity never
-#: changes, and the drawdown never recovers. It is a stop-and-reassess event,
-#: "not something that should quietly clear at midnight".
-#:
-#: SIZING NOTE, WHICH THE OPERATOR SHOULD WEIGH: the arm's own backtest had a
-#: 9.1% peak drawdown UNGATED, before live slippage. A 10% halt therefore sits
-#: barely above the range the strategy has already visited, and is likely to
-#: fire and end the run rather than merely bound it.
-PROD_RISK = {
-    "max_drawdown_pct": 0.10,
-    "max_daily_loss_pct": 0.03,
-    "max_consecutive_losses": 4,
-}
+#:                            --yes` clears it, and it rebases the peak.
 
 
 def symbols_for(env_name: str) -> tuple[str, ...]:

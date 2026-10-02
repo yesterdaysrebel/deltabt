@@ -57,6 +57,12 @@ def load_costs(symbols, slippage_bps: float) -> dict[str, SymbolCosts]:
             for s in symbols}
 
 
+def dry_run_requested(env=None) -> bool:
+    """True when the host asked for a dry run (see main)."""
+    src = os.environ if env is None else env
+    return (src.get("DELTABOT_DRY_RUN") or "0").strip().lower() not in ("0", "", "false", "no", "off")
+
+
 async def main() -> int:
     # The bot reads execution params off its own broker, but bind_experiment()
     # compares against what the CLI wrote, so the profile has to be set here
@@ -65,6 +71,16 @@ async def main() -> int:
     os.environ["DELTABOT_EXECUTION_PROFILE"] = "live"
     settings = Settings.from_env()
     configure(settings.log_level)
+
+    # A HOST CONFIGURED FOR A DRY RUN MUST NOT TRADE (2026-10-02). live.tf's
+    # live_sizing can now say dry_run "1", and run_live.sh writes it into the
+    # env file. Until this image implements dry-run mode, the only safe answer
+    # to that request is to refuse to start -- an image that ignored it would
+    # place real orders on a host its operator believes is observing.
+    if dry_run_requested():
+        log.critical("DELTABOT_DRY_RUN=1 but this image has no dry-run mode; "
+                     "refusing to start rather than trade")
+        return 2
 
     venue = venue_name()
     client = client_from_env()

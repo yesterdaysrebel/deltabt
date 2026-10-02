@@ -23,9 +23,9 @@ ENTRY, RPU = 75_000.0, 400.0            # approve(): stop = entry -/+ 1R, limit 
 class Book(FakeVenue):
     """A ticker with separate sides, and a record of every leverage write."""
 
-    def __init__(self, ask=ENTRY, bid=ENTRY):
+    def __init__(self, ask=ENTRY, bid=ENTRY, mark=ENTRY):
         super().__init__("fill")
-        self.ask, self.bid = ask, bid
+        self.ask, self.bid, self.mark = ask, bid, mark
         self.ticker_error: Exception | None = None
 
     def get_ticker(self, symbol):
@@ -36,7 +36,10 @@ class Book(FakeVenue):
             quotes["best_ask"] = str(self.ask)
         if self.bid is not None:
             quotes["best_bid"] = str(self.bid)
-        return {"quotes": quotes}
+        out = {"quotes": quotes}
+        if self.mark is not None:
+            out["mark_price"] = str(self.mark)
+        return out
 
 
 async def refused(venue, side=1):
@@ -80,19 +83,63 @@ async def test_a_short_whose_bid_is_already_beyond_its_stop_is_refused():
 
 @pytest.mark.asyncio
 async def test_a_buy_meets_the_ask_and_a_sell_meets_the_bid():
-    """A wide ask does not block a sell, and a wide bid does not block a buy."""
-    far = ENTRY + 1.5 * RPU
-    sell = Book(ask=far, bid=ENTRY)
+    """The deviation is measured on the touch the order meets.
+
+    REWRITTEN 2026-10-02. This used to show a 1.5R-wide ask NOT blocking a
+    sell. Since the spread check, any book wider than 0.5R is refused whatever
+    the side -- 09-28's SOL entries passed the one-sided check and were then
+    flattened into the far side at -1.65..-4.08R. The side-specific deviation
+    is still pinned here, inside a spread the new rule allows.
+    """
+    sell = Book(ask=ENTRY + 0.45 * RPU, bid=ENTRY)   # bid on reference: 0R
     await refused(sell, side=-1)
     assert len(sell.placed) == 1
 
-    buy = Book(ask=ENTRY, bid=ENTRY - 1.5 * RPU)
-    await refused(buy, side=1)
-    assert len(buy.placed) == 1
-
-    blocked = Book(ask=far, bid=ENTRY)
-    bot = await refused(blocked, side=1)
+    blocked = Book(ask=ENTRY + 0.45 * RPU, bid=ENTRY + 0.1 * RPU)
+    bot = a_bot(blocked)
+    bot.broker.max_entry_deviation = 0.3              # ask is 0.45R off
+    await place(bot, "SOLUSD", 1)
     assert_refused_cleanly(bot, blocked)
+
+
+@pytest.mark.asyncio
+async def test_the_solusd_spread_of_09_28_is_refused_on_either_side():
+    """09-28, tnet: entries passed the touch check into a 3-4% wide book."""
+    for side in (1, -1):
+        venue = Book(ask=ENTRY + 1.5 * RPU, bid=ENTRY) if side < 0 else \
+            Book(ask=ENTRY, bid=ENTRY - 1.5 * RPU)
+        bot = await refused(venue, side=side)
+        assert_refused_cleanly(bot, venue)
+
+
+@pytest.mark.asyncio
+async def test_a_spread_inside_the_limit_is_traded():
+    venue = Book(ask=ENTRY + 0.1 * RPU, bid=ENTRY - 0.1 * RPU)
+    await refused(venue, side=1)
+    assert len(venue.placed) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_one_sided_book_refuses():
+    """No far side, no measurable spread, no way to close near the entry."""
+    venue = Book(bid=None)
+    bot = await refused(venue, side=1)
+    assert_refused_cleanly(bot, venue)
+
+
+@pytest.mark.asyncio
+async def test_a_mark_already_beyond_the_stop_refuses():
+    """The leading hypothesis for Delta silently dropping a bracket."""
+    venue = Book(mark=ENTRY - 1.2 * RPU)                 # long stop is 1R below
+    bot = await refused(venue, side=1)
+    assert_refused_cleanly(bot, venue)
+
+
+@pytest.mark.asyncio
+async def test_a_missing_mark_refuses():
+    venue = Book(mark=None)
+    bot = await refused(venue, side=1)
+    assert_refused_cleanly(bot, venue)
 
 
 @pytest.mark.asyncio
