@@ -115,41 +115,54 @@ def test_breakers_are_reported_when_no_switch_is_set(tmp_path):
     assert msg and "circuit breakers disabled" in msg
 
 
-# -- the operator's chosen values pass their own gate ------------------------
+# -- the values that reach a prod host pass their own gate --------------------
+#
+# REWRITTEN 2026-10-02. These read a PROD_RISK dict in live/config.py that
+# nothing deployed ever used; they now read the variables.tf defaults that are
+# rendered into /opt/deltabt/env on every host.
 
-def test_the_chosen_prod_values_would_be_accepted():
-    """The point of choosing them is that prod can then start."""
-    from live.config import PROD_RISK
-    from live.guards import circuit_breaker_failures
+def _tf_default(name):
+    import pathlib
+    import re
+    tf = (pathlib.Path(__file__).resolve().parents[2]
+          / "infra/terraform/variables.tf").read_text()
+    block = tf[tf.index(f'variable "{name}"'):]
+    block = block[:block.index("\n}\n")]
+    return float(re.search(r"^\s*default\s*=\s*([0-9.]+)", block, re.M).group(1))
+
+
+def test_the_deployed_breakers_would_let_prod_start():
+    from live.guards import DISABLED, circuit_breaker_failures
 
     class _Risk:
         pass
     risk = _Risk()
-    for k, v in PROD_RISK.items():
-        setattr(risk, k, v)
+    for name in DISABLED:
+        setattr(risk, name, _tf_default(name))
     assert circuit_breaker_failures(risk, "prod") == []
 
 
-def test_the_chosen_values_are_not_the_disabled_sentinels():
-    from live.config import PROD_RISK
-    from live.guards import DISABLED
-    for name, off in DISABLED.items():
-        assert PROD_RISK[name] != off, f"{name} is still the off switch"
+def test_the_deployed_breakers_are_the_pre_registered_pilot_values():
+    """Pinned so a change is a decision, not an accident: 20% latch, 10% day,
+    8 in a row (docs/prod_pilot_prereg.md once frozen)."""
+    assert _tf_default("max_drawdown_pct") == 0.20
+    assert _tf_default("max_daily_loss_pct") == 0.10
+    assert _tf_default("max_consecutive_losses") == 8
 
 
-def test_they_are_not_in_the_paper_stacks_terraform():
-    """Editing risk values in variables.tf feeds risk_hash AND user_data, which
-    replaces the paper bot's host and then fails to bind its experiment on
-    drift. The live bot's numbers must not live there."""
+def test_the_pilot_gates_are_not_silently_inherited_by_a_paper_stack():
+    """The gates are GLOBAL. Paper arms have run ungated on purpose -- a halt
+    censors the sample -- so a paper stack added while these are set would
+    measure a censored arm. Adding one must revisit them."""
     import pathlib
+    import re
     tf = (pathlib.Path(__file__).resolve().parents[2]
           / "infra/terraform/variables.tf").read_text()
-    for line in tf.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("default") and "0.03" in stripped:
-            raise AssertionError(
-                "the live daily-loss value has been written into the paper "
-                "stack's terraform; that replaces the paper host on apply")
+    start = tf.index('variable "stacks"')
+    block = tf[start:tf.index("\nvariable ", start + 10)]
+    entries = re.findall(r"^\s{4}(\w+)\s*=\s*\{", block, re.M)
+    assert not entries, (
+        f"paper stacks {entries} would inherit the prod pilot's breakers")
 
 
 # --- the exemption is testnet, and ONLY testnet -----------------------------

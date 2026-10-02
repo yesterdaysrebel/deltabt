@@ -211,6 +211,49 @@ resource "aws_ssm_parameter" "live_credential_arn" {
 # run_live.sh REFUSES TO START on anything other than testnet|prod rather
 # than defaulting, so a missing or malformed parameter is a host that says so
 # and stops, not a host quietly trading the wrong venue.
+# SIZING AND DRY-RUN, PER STACK, ADDED 2026-10-02 for the prod pilot.
+#
+# Why its own variable and parameter rather than more fields on live_stacks:
+# local.all_stacks merges paper and live entries into one map, and objects of
+# different shapes in that merge stop it being a map once both kinds exist.
+# Why SSM rather than user_data: the template is shared with paper stacks
+# (changing it replaces them) and run.sh has no bytes left to forward more.
+#
+# WHAT IT FIXES. The breakers are computed on the bot's INTERNAL equity, which
+# starts at RiskConfig.starting_equity = 10,000 unless DELTABOT_EQUITY is set
+# -- and nothing on a live host set it. On a $250 account a "20% drawdown
+# latch" would have needed a $2,000 loss. run_live.sh writes these into
+# /run/deltabt/env, the one file both the bot and the experiment document's
+# CLI read, so the experiment is registered with the risk_hash the bot binds.
+#
+# dry_run "1" = the live code path on the venue with no order ever sent; it is
+# meant to be paired with a READ-ONLY venue key, so a defect cannot trade.
+variable "live_sizing" {
+  description = "Per live stack: equity_usd, risk_per_trade, min_contract_risk_cap, dry_run (all strings)."
+  type = map(object({
+    equity_usd            = string
+    risk_per_trade        = string
+    min_contract_risk_cap = string
+    dry_run               = string
+  }))
+  default = {}
+}
+
+resource "aws_ssm_parameter" "live_sizing" {
+  for_each = { for k, s in local.stacks : k => s if s.live }
+
+  name  = "${each.value.ssm_prefix}/sizing"
+  type  = "String"
+  value = jsonencode(lookup(var.live_sizing, each.key, null))
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(var.live_sizing), each.key)
+      error_message = "Live stack '${each.key}' has no live_sizing entry. A live bot without one would size and gate against 10,000 of equity it does not have."
+    }
+  }
+}
+
 resource "aws_ssm_parameter" "live_venue" {
   for_each = { for k, s in local.stacks : k => s if s.live }
 
@@ -358,6 +401,7 @@ resource "aws_iam_role_policy" "live_host" {
         Resource = concat(
           [for p in aws_ssm_parameter.live_venue : p.arn],
           [for p in aws_ssm_parameter.live_credential_arn : p.arn],
+          [for p in aws_ssm_parameter.live_sizing : p.arn],
         )
       },
     ]

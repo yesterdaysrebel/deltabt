@@ -427,6 +427,19 @@ class RiskEngine:
         units = min(units_by_risk, units_by_leverage, units_by_notional)
         quantity = costs.contracts_for(units)
 
+        # THE MINIMUM-CONTRACT FLOOR (RiskConfig.min_contract_risk_cap; 0 = off).
+        # One contract when the budget buys none, if that one contract's risk
+        # is within the cap. Leverage and notional limits below still apply.
+        budget = risk_amount
+        floor_cap = equity * cfg.min_contract_risk_cap
+        if quantity <= 0 and floor_cap > 0:
+            one_contract_risk = costs.contract_value * rpu
+            if one_contract_risk <= floor_cap:
+                quantity = 1
+                budget = max(risk_amount, floor_cap)
+                exp.detail["sized_at_minimum_contract"] = True
+                exp.detail["minimum_contract_risk"] = one_contract_risk
+
         exp.risk_amount = risk_amount
         exp.quantity = quantity
 
@@ -472,11 +485,11 @@ class RiskEngine:
         # should never exceed budget -- checked because "should never" is not
         # a guarantee.
         actual_risk = quantity * costs.contract_value * rpu
-        if actual_risk > risk_amount * 1.000001:
+        if actual_risk > budget * 1.000001:
             return reject(
                 f"realised risk ${actual_risk:.2f} exceeds budget "
-                f"${risk_amount:.2f} after contract rounding",
-                name="risk_per_trade", limit=risk_amount, observed=actual_risk)
+                f"${budget:.2f} after contract rounding",
+                name="risk_per_trade", limit=budget, observed=actual_risk)
         ok("realised_risk_within_budget")
 
         fee = costs.entry_cost(quantity, entry) + costs.exit_cost(

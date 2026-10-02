@@ -1083,7 +1083,10 @@ variable "max_drawdown_pct" {
     ends it silently but for the ERROR line and the daily report.
   EOT
   type        = number
-  default     = 1.0
+  # 2026-10-02: 0.20 for the prod pilot ($50 on a $250 account, terminal, no
+  # resume), owner's choice. Every stack shares it; none other exists. The
+  # ladder's paper fortnight drew 7.2R, so firing is a pre-registered outcome.
+  default = 0.20
 }
 
 variable "max_daily_loss_pct" {
@@ -1100,7 +1103,9 @@ variable "max_daily_loss_pct" {
     0.02 is the value that was in force before it was disabled on 2026-08-20.
   EOT
   type        = number
-  default     = 1.0
+  # 2026-10-02: 0.10 for the prod pilot ($25 = 5 BEAT/BANK losses or 2 AKE
+  # losses in a UTC day). 0.03 would halt after one AKEUSD loss.
+  default = 0.10
 }
 
 variable "max_consecutive_losses" {
@@ -1114,7 +1119,11 @@ variable "max_consecutive_losses" {
     than latching.
   EOT
   type        = number
-  default     = 0
+  # 2026-10-02: 8 for the prod pilot. A breakeven-rung exit is net-negative
+  # after fees and counts here, so ~60% of ladder exits are 'losses': P(8
+  # straight) ~1.6% per window, against ~15% of ladder days at 6. Resets on a
+  # win and at the UTC roll. The dollar cap above is the gate that bites.
+  default = 8
 }
 
 variable "admin_cidrs" {
