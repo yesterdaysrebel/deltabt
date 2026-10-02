@@ -1,0 +1,26 @@
+window 2026-01-06 .. 2026-09-30  universe ['BEATUSD', 'AKEUSD', 'BANKUSD']  (filler bars dropped)
+baseline entries 428; replayed under all three rules, paired: 423
+
+rule          n     sumR   meanR  win% 3R hit promoted  fees $
+baseline    423   +15.76  +0.037    28    107        0     506
+ladder      423    -7.71  -0.018    44     14      293     501
+trail       423    +2.64  +0.006    62      4      293     508
+
+ladder - baseline, paired: mean -0.055R/trade  t=-0.78  better 173 same 145 worse 105
+trail - baseline, paired: mean -0.031R/trade  t=-0.41  better 173 same 134 worse 116
+trail - ladder,   paired: mean +0.024R/trade  t=+1.34
+
+per symbol, meanR (n):
+  BEATUSD  n= 294  baseline +0.037  ladder -0.052  trail -0.036
+  AKEUSD   n= 100  baseline +0.001  ladder -0.031  trail +0.065
+  BANKUSD  n=  29  baseline +0.167  ladder +0.366  trail +0.231
+per anchored quarter of the sample, meanR:
+  q0 n= 106  baseline -0.223  ladder -0.120  trail -0.114
+  q1 n= 105  baseline +0.227  ladder -0.000  trail +0.030
+  q2 n= 106  baseline +0.326  ladder +0.130  trail +0.081
+  q3 n= 106  baseline -0.179  ladder -0.082  trail +0.028
+
+risk shape on the same trades (in R, by exit time):
+  baseline  max drawdown  42.7R   longest run of non-positive exits  18   sd 1.78R   worst trade -2.02R
+  ladder    max drawdown  25.1R   longest run of non-positive exits  15   sd 0.93R   worst trade -2.02R
+  trail     max drawdown  17.2R   longest run of non-positive exits   7   sd 0.85R   worst trade -2.02R
