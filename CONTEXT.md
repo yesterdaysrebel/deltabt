@@ -1,6 +1,6 @@
 # CONTEXT — where this stands and what to do next
 
-Written 2026-09-21. **Provenance:** reconstructed from the working tree, git history, and the
+Written 2026-09-21; current-state sections updated 2026-10-02. **Provenance:** reconstructed from the working tree, git history, and the
 session memory notes — not from a transcript. Repo facts (layout, branch, code line numbers) were
 re-verified against the checkout today. Deployed-state facts carry the UTC timestamp of the last
 session that actually read the venue; re-verify anything load-bearing before acting on it.
@@ -25,66 +25,52 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — ALL FOUR STACKS STOPPED 2026-10-01 ~20:15 UTC by operator instruction
+## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
+
+Last read 2026-10-02 ~11:00 UTC. Pre-registration and the registration record:
+`docs/prod_dry_run_prereg.md` (frozen; read once at 100 closed positions, 21 days ≈ 2026-10-23, the
+20% latch, or a defect).
 
 | stack | venue | experiment | state |
 |---|---|---|---|
-| `atr` | paper | `MANUAL_SCALP_BOTH_T3-5-20260915-cd7e430` | **STOPPED** 10-01 ~20:12Z (reason in `forward_test`); 3 paper positions left OPEN by design; `deltabt.service` stopped + disabled |
-| `ladder` | paper | `MANUAL_SCALP_BOTH_T3_LADDER-5-20260916-1e5c102` | **STOPPED** 10-01 ~20:12Z; 3 paper positions left OPEN; service stopped + disabled |
-| `ltp` | paper | `MANUAL_SCALP_BOTH_T3_LTP-5-20260916-1e5c102` | **STOPPED** 10-01 ~20:12Z; 3 paper positions left OPEN; service stopped + disabled |
-| `tnet` | Delta **testnet** | `LIVE-MANUAL_SCALP_BOTH_T3-5-20260917-f08a017` | **STOPPED** 10-01 20:19Z. Kill switch engaged, both venue positions flattened reduce-only at market first (BTC 1 @ 84759.5, +$1.77; ETH 4 @ 2701.6, −$0.16; both recorded MANUAL_CLOSE), venue flat, 0 brackets left, USD $397.33; service stopped + disabled |
+| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-ed31cba` | RUNNING on `i-0a38139027a767607` (EIP `15.207.211.127`), image `ed31cba`, IAM-token DB login, `deltabt_dryrun` |
 
-**The four hosts were destroyed 2026-10-01 ~20:45 UTC** by PR #90 (all four entries removed from
-`stacks`/`live_stacks` with the record in place, the paper table in `deploy-paper.yml` and the `monitor.yml`
-matrix emptied to match, the nightly report schedule removed, and the live ECR repository made unconditional
-because its `prevent_destroy` made removing the last live stack unplannable). Removing hosts takes the
-three-step dance every time (#53 did the same): the PR's plan check and the post-merge push run FAIL BY
-DESIGN on a host destroy, then a manual `infrastructure` dispatch with `allow_replace=true` and
-`replace_hosts=<stacks>` plus the `paper` environment approval applies it. That apply destroyed everything
-and then failed on its last three in-place changes: the IAM policies that scope themselves to per-stack
-resources had empty `Resource` lists, which IAM refuses ("Policy statement must contain resources"). Fixed by
-giving those five statements a documented placeholder ARN when no stack is registered (`local.no_stack_arn`,
-ec2.tf). The databases on the shared RDS instance are not Terraform-managed and keep every record; the
-CloudWatch log groups are gone (operator: no export needed). PR #87 (RDS micro → small for IAM auth) is
-approved and un-drafted; it applies at the Sunday maintenance window. The 10-01 reads that led here follow.
+**What it is.** The live code path (`live/dry_run.py`) on prod books with a read-only key. Every
+approved entry runs the live checks (kill switch, entry deviation ≤ 0.25R, spread ≤ 0.5R, mark not
+beyond the stop, leverage plan) and is journaled as `DRY_RUN_ORDER` or `DRY_RUN_REFUSED` in
+`system_events`; the position itself is filled and exited by the paper fill model on prod ticks.
+Entries are the baseline spec (`manual_scalp_both_t3@5`, BEAT/AKE/BANK). Every position is shadowed
+under **baseline** (hold to 3R), **ladder** (rungs) and **trail** (0.5R behind the peak from +0.5R) —
+one row per position per rule in `shadow_exits`, one stop rule in `deltabt/exits.py`. Sizing is the
+real pilot's: equity $250, 2% risk ($5/R), AKEUSD may take 1 contract if it risks ≤ 5%; gates 20%
+drawdown latch (terminal), 10% daily loss, 8 consecutive losses, 72 h time stop.
 
-All four are ungated (max_drawdown 1, max_daily_loss 1, consec_losses 0, cooldowns 0, min_rr 1) —
-those are **global** Terraform vars, so every stack shares them.
+**What it cannot say:** whether any exit has an edge (~0.1–0.17R standard error at 100 trades vs
+0.02–0.06R differences), or how Delta fills, attaches brackets or runs its own trailing stop.
 
-`ladder` and `ltp` run to 2026-09-30 **by operator instruction**, with the stopping rule written in
-`variables.tf` and `deltabt/catalog.py` before the first bar. **Expect UNDECIDED on P&L** (~24
-trades/arm against ~350 needed for -0.166R/trade at 80% power). Read them for MECHANISM: how often
-a rung arms, whether promoted stops cut trades that reached target, and LTP-arm stop overshoot
-against the mark baseline.
+**Daily report** (#102, `scripts/brief_report.py`): one screen in plain English at 7:00 AM IST
+(01:30 UTC) by email and on the `monitor` run page — verdict first, progress to the read, the three
+exits side by side, would-be orders/refusals per symbol, the $250 account against its limits,
+health. The long `daily_report.py` remains for paper stacks.
 
-**The 09-30 read, taken 2026-10-01 from the three databases** (trades paired across arms by
-symbol + side + entry bar; `signal_key` is per-instance and never matches; `r_multiple` in the DB is
-NET of fees and funding). atr 48 closed, +2.03R, **−$80.88**; ladder 124 closed, +11.06R, **+$265.55**
-($158 fees); ltp 53 closed, −3.20R, **−$253.88**. No arm's t exceeds 1.0 — UNDECIDED on P&L as
-pre-registered. **LTP is negative at the per-trade level:** on 46 paired trades the exit type was
-identical in 46/46 and only the stop fills differed — worse on 12, better on 3 (paired t −1.59, sign
-test p≈0.035); stop overshoot +0.116R vs +0.007R on the mark baseline. **The ladder does exactly
-what the backtest said:** rungs confirmed from its stop-exit R clusters (35 at ~0, 26 at ~+0.5, 7 at
-~+1.0, 10 at ~+1.5; promotions are NOT persisted, `stop_price` never moves), 3R reached on 4% of
-trades vs 23%, and on 30 shared signals it is BEHIND by 0.12R/trade. Its dollar lead was 93
-trades the baseline never took because faster exits free the per-symbol slot — a turnover claim,
-since **closed by backtest** (see "What is CLOSED"). Gates: ungated as specified; the cooldown check
-has no skip-at-zero and rejected one BANKUSD signal on 09-21 with "−4s elapsed of 0s"; Docker health
-is permanently "unhealthy" on all three from the no-recent-gaps check on thin symbols. The daily
-report has no mechanism fields (no promotion count, no overshoot) — those questions need the DB.
+**After the read (owner's plan, not decided):** real money, $250 on each of two Delta sub-accounts
+(`baseline`, `ladder`), Trading keys IP-allowlisted, exit chosen from this record. Before any real
+money: a testnet probe of Delta's trailing stop (units, sign, edit on an open bracket). The baseline
+sub-account's read-only key is the one in `deltabt-paper/live/dryrun/venue-credentials`.
 
-`tnet` as of 2026-10-01 18:20 UTC (`scripts/report.sh status` + SSM probe): same host
-`i-0161071571ade0664`, image `f08a017`, 0 restarts since 09-17, healthz green, still bound. Ledger ==
-venue on both open positions (BTC long 1 @ 82994.5, opened 09-28 15:00Z and ~75 h old — **live has no
-time stop**; the fix is PR #88 on `fix/live-time-stop`, unmerged; ETH short 4 @ 2697.6), both bracketed,
-stops inside liquidation. 28 closed since binding: 4 take-profits, 24 losses, **net −$36.19** ($6.72
-fees); since 09-28, 13 closes, 0 wins, −$37.48. Venue USD $395.84. **SOL started trading on 09-28
-12:20Z** (its book briefly sat near the feed): 7 trades, 7 losses, −$26.31; 4 closed UNPROTECTED ~16 s
-after entry — Delta attached no bracket legs and the bot flattened at market into a 3–4%-wide book
-(−1.65R to −4.08R each). The #83 guard checks only the entry side of the book, not the spread, so it
-lets these through; why Delta dropped the legs is unconfirmed (mark already beyond the stop is the
-hypothesis). Two Delta 502 bursts (09-29 09:11Z, 09-30 13:03Z, ~5 min each) were handled safely
-(balance unreadable → sized at zero, then reconciled). No new entry since 09-30 17:20Z.
+### How we got here (2026-10-01 → 10-02)
+
+- 10-01 ~20:15Z the four earlier stacks (`atr`, `ladder`, `ltp` paper; `tnet` testnet) were stopped by
+  instruction and destroyed by #90 (records in the databases; log groups gone). Their 09-30 read:
+  no arm's P&L distinguishable from zero; LTP worse on paired fills (12 worse / 3 better); the ladder
+  behind baseline by 0.12R/trade on shared signals, its dollar lead was turnover, closed by backtest
+  (#89). Paired backtest over 423 trades (`scripts/paired_exits_lab.py`): baseline +0.037R/trade (DD
+  42.7R), ladder −0.018 (25.1R), trail +0.006 (17.2R) — none distinguishable from zero.
+- #87 RDS → `db.t4g.small` + IAM (applied early by the owner 10-02); #93 five live-path fixes (DELTA_ENV
+  source, gate values, sizing plumbing, spread/mark book guard, …); #97 trail arm + shared stop rule;
+  #98 per-stack secrets, `live_venue = "prod"`, IAM tokens in the live image (the `prod-deploy` GitHub
+  environment, reviewer = owner, master only, was created by the owner); #99 shadow exits; #100 dry-run mode; #101 the `dryrun` stack and its pre-registration.
+  #94/#95 merged into stack branches by mistake and were re-landed by #96.
 
 ## Git state — the local refs lie
 
@@ -224,9 +210,9 @@ double-billed slippage on `ltp_close` stop fills.
 - **But any merge that changes `user_data` (run.sh, run_live.sh, the template) REPLACES the host
   immediately** — including paper hosts mid-experiment. `disableApiTermination` does **not** stop it
   (it destroyed tnet twice on 09-16); the `ec2.tf` comment claiming otherwise is stale.
-- **`var.live_venue` is ONE GLOBAL, not per-stack.** Flipping it turns `tnet` into a prod bot.
-  `_roll.yml` therefore reads the host's own `/deltabt/paper/<stack>/delta_env` before the guard and
-  fails closed.
+- **`var.live_venue` is ONE GLOBAL, not per-stack** — `"prod"` since 2026-10-02. Every live stack is a
+  prod stack; a testnet stack cannot coexist with it. `_roll.yml` reads the host's own
+  `/deltabt/paper/<stack>/delta_env` before the guard and fails closed on a mismatch.
 - **`deploy/aws/run.sh` is at its size ceiling** — gzipped into user_data, 16,384-byte cap with an
   85% budget enforced by `tests/live/test_user_data_size.py`; last measured 13,917 against 13,926.
   One extra `-e` line (~20 rendered bytes) fails the build. Put logic in Python, not the shell.
@@ -238,20 +224,11 @@ double-billed slippage on `ltp_close` stop fills.
 - **The retire step runs `app.cli stop` inside the RUNNING container with its start-time DSN**, so a
   rotated DB password fails the roll. Restart the service first — the same image rebinds the same
   experiment.
-- **IAM database auth: approved 2026-09-25, in two ordered merges, on branch
-  `claude/vibrant-pascal-2bj9ju`.** Step 1 (committed, NOT merged) moves the default
-  `db_instance_class` to `db.t4g.small` and sets `iam_database_authentication_enabled = true`;
-  the live image stays on the password. `apply_immediately = false`, so both wait for the
-  `sun:19:30-20:30 UTC` window. **Do not merge step 1 before 2026-09-27 20:30 UTC**, or the
-  class change (a DB restart, minutes of downtime for every stack) lands on 09-27, before
-  `ladder`/`ltp` end on 09-30. Merge it 09-30 or later, and it applies 2026-10-04. Step 2, only
-  after `describe-db-instances` shows `db.t4g.small`, IAM enabled and no pending modifications:
-  `ENV DB_IAM_AUTH=1` in `Dockerfile.live`. That rolls `tnet` and resets its sample. Doing step 2
-  before the DB change applies is #84 again (every login refused); the test allows only DB-first.
-  Why a micro can't do it: ~120 MiB free, and AWS needs 300-1000 MiB more; enabling it on 09-17
-  swapped 75 -> 340 MiB and every login hung 60s and failed. Only `tnet` (the live image) moves to
-  tokens; the paper stacks stay on the password. The RDS master password rotates on a 21-day CLI
-  schedule (next ~2026-10-08), not in Terraform, so step 2 needs to be live before then.
+- **IAM database auth is live (2026-10-02).** RDS is `db.t4g.small` with IAM enabled (#87, applied
+  early by the owner) and the live image sets `ENV DB_IAM_AUTH=1` (#98). The DB-first order was the
+  rule: tokens before the instance accepts them is #84 again (every login refused); a micro cannot
+  run IAM auth (~120 MiB free). Paper images still use the password, which rotates on a 21-day CLI
+  schedule (next ~2026-10-08), not in Terraform.
 - **The one failure shape behind every 09-16 break:** two sides computing the same fact from two
   sources with nothing making them agree. Green health checks never assert the universe or the
   binding — check what a bot WARMED, SUBSCRIBED TO, and whether it logged `bound to experiment`.
@@ -305,18 +282,14 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
 
 ## Open threads
 
-1. `/api/positions` 500 on live (`LivePosition.last_price`) — small, still open since 09-19.
-2. The **sizing mismatch**: bot sizes against internal equity 10,000, venue balance is ~$445.
-   Must be settled before anything touches prod.
-3. **No entry-deviation guard existed before #83 and no post-fill bracket verification exists at
-   all** — a fill past its own stop gets NO bracket and Delta drops the legs silently. Required
-   before prod.
-4. `ladder` and `ltp` were read on 2026-10-01 (see "Deployed state"); both are still running past
-   their 09-30 stopping date. **Decision due:** stop `ltp` (negative, clean); stop `ladder` per the
-   rule or extend it with a written reason — its only unmeasured claim (turnover) is now closed.
-5. **Live time stop merged 2026-10-01 (#88, `c67fed3`), not yet deployed to `tnet`.** Needed for
-   prod; tnet's whole sample so far (28 closed on `f08a017`) was taken without it — a live exit rule
-   the paper baseline has and the live arm did not. Deploying it is a deliberate
-   `deploy-testnet only_stack=tnet`, which retires the current experiment. See "Live and venue traps".
-6. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
-   overshoot is worth at most +0.0154R/trade, ~12% of the arm's edge.
+1. **Dry run in progress** — read at the first of 100 closed positions, ~2026-10-23, the latch, or a
+   defect (`docs/prod_dry_run_prereg.md`). No interim read changes anything.
+2. **Before any real money:** testnet probe of Delta's trailing stop on an open bracket; Trading keys
+   for the `baseline`/`ladder` sub-accounts created only after their hosts exist (EIP allowlist);
+   a real-money pre-registration frozen before the first order.
+3. Housekeeping the owner may choose: delete the old global secret
+   `deltabt-paper/live/venue-credentials`; delete the snapshot `deltabt-paper-pre-resize-20261002`.
+4. The RDS master password rotates ~2026-10-08; the live image logs in with IAM tokens, and #102 moves
+   the monitor probe to tokens too.
+5. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
+   overshoot is worth at most +0.0154R/trade.

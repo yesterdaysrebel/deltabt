@@ -61,3 +61,26 @@ Nothing above the line below changes once the experiment is registered. Addition
 dated: the experiment id, image SHA, hashes, registration time, the host's EIP (never the key).
 
 <!-- FROZEN ABOVE THIS LINE -->
+
+## Addendum 2026-10-02 — registration record
+
+Recorded after the stack came up; nothing above changed.
+
+| field | value |
+|---|---|
+| experiment | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-ed31cba` |
+| registered | 2026-10-02 10:39:17 UTC (4:09 PM IST) |
+| image | `ed31cba` (#101 on master) |
+| strategy hash | `41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d` |
+| risk hash | `15f132654e7f4374` |
+| execution hash | `07cf8612d9ade35c` (paper profile) |
+| host | `i-0a38139027a767607`, EIP `15.207.211.127` (the read-only key is allowlisted to it) |
+| sizing at start | equity 250, risk 0.02, `min_contract_risk_cap` 0.05; gates 0.20 / 0.10 / 8 |
+| database | `deltabt_dryrun`, IAM-token login |
+| venue writes | 0 at registration; all three shadow rules present in the running image |
+
+The three symbols bound at start; BANKUSD began inside a stale-data halt (the flat-bar rule) and
+resumes on its own when real bars arrive, as designed.
+
+**Daily report** (#102): one screen, 7:00 AM IST, emailed to the alarm topic. Its self-check line is
+D7 above: a closed position without a baseline shadow row is reported as needing attention.
