@@ -115,3 +115,53 @@ def test_before_the_first_trade_it_says_so_plainly():
     assert not problems
     assert "No trade has closed yet" in text
     assert "No entry signal yet" in text
+
+
+def test_the_thin_symbol_gap_check_alone_does_not_raise_the_alarm():
+    """no_recent_gaps is red most of the time on BEAT/BANK (no trade in a
+    minute); the first real report (2026-10-02) flagged it, and a report that
+    is red every day stops being read. It is shown under Health instead."""
+    sec, db = a_probe()
+    sec["HEALTHZ"] = json.dumps({
+        "status": "unhealthy", "ready": True, "equity": 250.0, "uptime_seconds": 1800,
+        "ws_connected": True,
+        "checks": [{"name": "no_recent_gaps", "ok": False, "detail": "4 gap(s) in the recent window"},
+                   {"name": "candles_fresh", "ok": True}]})
+    text, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not problems and facts["verdict"] == "clear"
+    assert "4 gap(s) in the recent window (normal on thin symbols)" in text
+
+
+def test_a_real_health_failure_still_raises_it_next_to_gaps():
+    sec, db = a_probe()
+    sec["HEALTHZ"] = json.dumps({
+        "status": "unhealthy", "ready": True, "equity": 250.0, "ws_connected": False,
+        "checks": [{"name": "no_recent_gaps", "ok": False},
+                   {"name": "websocket_fresh", "ok": False}]})
+    _, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert problems == ["the bot is not healthy (websocket_fresh)"]
+
+
+def test_progress_and_the_self_check_count_from_the_database_not_the_50_row_api():
+    """/api/trades returns at most 50 rows; the read waits for 100."""
+    sec, db = a_probe()
+    db["closed_trades_total"] = 73
+    db["shadow_exits"] = [[rule, "BEATUSD", i, 0.1, "STOP_LOSS", False, None]
+                          for i in range(73) for rule in ("baseline", "ladder", "trail")]
+    text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "**Progress:** 73 of 100 trades closed" in text
+    assert not problems
+
+
+def test_entries_the_simulator_did_not_open_are_flagged():
+    """The 2026-10-02 defect: three AKEUSD entries passed the live checks and
+    the paper broker opened none, so the dry run held nothing a real bot
+    would have held. The report must say so, per symbol."""
+    sec, db = a_probe()
+    db["opened_by_symbol"] = {"BEATUSD": 1}
+    db["dry_run"]["AKEUSD"]["orders"] = 3
+    text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert any(p.startswith("AKEUSD: 3 entries passed the live checks but the simulator opened 0")
+               for p in problems)
+    assert "**AKEUSD**: 3 orders would have been sent (simulated: 0 opened)" in text
+    assert "**BEATUSD**: 1 order would have been sent (simulated: 1 opened)" in text

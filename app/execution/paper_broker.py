@@ -281,6 +281,16 @@ def broker_params(risk) -> dict:
             "min_fill_rr": FILL_RR_RETENTION * risk.minimum_rr}
 
 
+
+def _fill_budget(intent: ApprovedOrderIntent) -> float:
+    """The most a fill may risk: the approved risk, or the floor's cap.
+
+    `risk_cap` is set only for an order the minimum-contract floor sized at
+    one contract (see ApprovedOrderIntent.risk_cap); for every other order it
+    is 0 and this is `risk_amount`, exactly as before.
+    """
+    return max(intent.risk_amount, intent.risk_cap)
+
 class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
 
@@ -666,7 +676,7 @@ class PaperBroker:
                else (intent.stop_price - price))
         if rpu <= 0:
             return 0
-        affordable = int(intent.risk_amount / (rpu * costs.contract_value))
+        affordable = int(_fill_budget(intent) / (rpu * costs.contract_value))
         return max(0, min(order.quantity, affordable))
 
     def _open_from_fill(self, order: PaperOrder, intent: ApprovedOrderIntent,
@@ -678,7 +688,7 @@ class PaperBroker:
         if qty <= 0:
             self._kill_entry(
                 order, f"fill at {price} leaves no room inside the "
-                       f"${intent.risk_amount:.2f} risk budget", False)
+                       f"${_fill_budget(intent):.2f} risk budget", False)
             return None
         if qty != order.quantity:
             log.info("reducing size to stay inside the risk budget",

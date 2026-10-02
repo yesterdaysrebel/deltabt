@@ -35,6 +35,8 @@ _spec.loader.exec_module(dr)
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 READ_AT_TRADES = 100            # docs/prod_dry_run_prereg.md
 READ_AT_DAYS = 21
+#: The health check left out of the verdict (see build()).
+GAPS_CHECK = "no_recent_gaps"
 RULES = ("baseline", "ladder", "trail")
 RULE_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
 
@@ -118,14 +120,18 @@ def exit_table(shadow: list[list], risk_per_r: float | None) -> tuple[list[str],
     return lines, summary
 
 
-def would_have(dry: dict) -> list[str]:
-    """What the live checks would have sent or refused, per symbol."""
+def would_have(dry: dict, opened: dict | None = None) -> list[str]:
+    """What the live checks would have sent or refused, per symbol, and how
+    many of the sent ones the simulator actually opened."""
     if not dry:
         return ["No entry signal yet, so the live checks have not run."]
     out = []
     for sym in sorted(dry):
         s = dry[sym]
-        bits = [f"{plural(s['orders'], 'order')} would have been sent"]
+        sent = f"{plural(s['orders'], 'order')} would have been sent"
+        if opened is not None and s["orders"]:
+            sent += f" (simulated: {opened.get(sym, 0)} opened)"
+        bits = [sent]
         if s["refused"]:
             why = ", ".join(f"{n} {k}" for k, n in
                             sorted(s["reasons"].items(), key=lambda kv: -kv[1]))
@@ -165,6 +171,11 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append("no experiment is RUNNING on this host")
 
     closed = [t for t in trades if str(t.get("status")).upper() == "CLOSED"]
+    # The run's closed count comes from the database: /api/trades returns at
+    # most 50 rows, so counting its list would stall progress (and break the
+    # self-check) at 50 of the 100 trades the read waits for.
+    n_closed = db.get("closed_trades_total")
+    n_closed = len(closed) if n_closed is None else int(n_closed)
     since = now - dt.timedelta(hours=24)
     day_closed = [t for t in closed if (parse_time(t.get("closed_utc") or t.get("closed_at"))
                                          or dt.datetime.min.replace(tzinfo=dt.timezone.utc)) >= since]
@@ -184,10 +195,18 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     streak_limit = snap.get("max_consecutive_losses")
 
     # health
-    healthy = str(healthz.get("status")) == "healthy" and healthz.get("ready") is True
+    # `no_recent_gaps` is left out of the verdict. It counts minutes with no
+    # trade, and on BEAT/BANK that is most minutes (CONTEXT.md: health is
+    # permanently "unhealthy" from it on thin symbols), so it would mark every
+    # day as needing attention. A dead feed still shows: candles_fresh and
+    # websocket_fresh go red with it. The gap count is still shown under Health.
+    failing = [c for c in healthz.get("checks", []) if not c.get("ok")]
+    gaps = next((c for c in failing if c.get("name") == GAPS_CHECK), None)
+    bad = [c.get("name") for c in failing if c.get("name") != GAPS_CHECK]
+    healthy = bool(healthz) and healthz.get("ready") is True and not bad and (
+        str(healthz.get("status")) == "healthy" or gaps is not None)
     if healthz and not healthy:
-        bad = [c.get("name") for c in healthz.get("checks", []) if not c.get("ok")]
-        problems.append(f"the bot is not healthy ({', '.join(bad) or healthz.get('status')})")
+        problems.append(f"the bot is not healthy ({', '.join(bad) or 'not ready'})")
     elif not healthz:
         problems.append("the bot did not answer its health check")
     restarts = None
@@ -207,9 +226,19 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     # the self-check (prereg D7): one baseline shadow per closed position
     shadow = db.get("shadow_exits") or []
     base_rows = sum(1 for r in shadow if r[0] == "baseline")
-    if closed and base_rows != len(closed):
-        problems.append(f"self-check: {len(closed)} closed trades but {base_rows} baseline "
+    if n_closed and base_rows != n_closed:
+        problems.append(f"self-check: {n_closed} closed trades but {base_rows} baseline "
                         f"shadow records -- the comparison is incomplete")
+
+    # every entry the live checks passed should become a simulated position
+    opened = db.get("opened_by_symbol")
+    if isinstance(opened, dict):
+        for sym, s in sorted((db.get("dry_run") or {}).items()):
+            if s.get("orders", 0) > opened.get(sym, 0):
+                problems.append(
+                    f"{sym}: {plural(s['orders'], 'entry', 'entries')} passed the live checks but "
+                    f"the simulator opened {opened.get(sym, 0)} -- the dry run is not holding "
+                    f"what a real bot would")
 
     day_n = (now - started).days + 1 if started else None
     title_day = f"day {day_n} of {READ_AT_DAYS}" if day_n else "day ?"
@@ -221,7 +250,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         out.append("**✅ All normal — nothing needs you.**")
     out.append("")
     read_by = (started + dt.timedelta(days=READ_AT_DAYS)) if started else None
-    out.append(f"**Progress:** {len(closed)} of {READ_AT_TRADES} trades closed · {title_day}"
+    out.append(f"**Progress:** {n_closed} of {READ_AT_TRADES} trades closed · {title_day}"
                + (f" · read due by {ist(read_by, with_day=True).split(',')[0]}" if read_by else "")
                + " (whichever comes first).")
     out.append("")
@@ -261,7 +290,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
 
     # what a real bot would have done
     out.append("## What a real bot would have done (since the start)")
-    out += would_have(db.get("dry_run") or {})
+    out += would_have(db.get("dry_run") or {},
+                      opened if isinstance(opened, dict) else None)
     out.append("")
 
     # the account
@@ -285,12 +315,14 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     up = healthz.get("uptime_seconds")
     out.append(f"Bot up {duration(up)}, {plural(restarts or 0, 'restart')}, "
                f"{'?' if errors_24h is None else plural(errors_24h, 'error')} in the log "
-               f"(24h), prices {'live' if healthz.get('ws_connected') else 'NOT live'}. "
+               f"(24h), prices {'live' if healthz.get('ws_connected') else 'NOT live'}"
+               + (f"; {gaps.get('detail') or 'price gaps'} (normal on thin symbols)"
+                  if gaps else "") + ". "
                f"Experiment `{exp_id or '?'}`.")
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
              "verdict": "clear" if not problems else "attention", "problems": problems,
-             "day_closed": len(day_closed), "closed": len(closed), "exits_r": summary,
+             "day_closed": len(day_closed), "closed": n_closed, "exits_r": summary,
              "experiment": exp_id, "equity_line": None if equity is None else f"{equity:,.2f}",
              "health_line": "healthy" if healthy else "not healthy",
              "day_of": title_day}

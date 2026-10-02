@@ -576,3 +576,53 @@ class TestFillTimeRewardRisk:
         b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_000.0))
         b.process_market_event(tick(63_200.0, ts=BAR_CLOSE + 2))
         assert len(b.get_positions()) == 1
+
+
+class TestMinimumContractFloorFills:
+    """An order the minimum-contract floor sized at ONE contract must fill.
+
+    Found on the prod dry run 2026-10-02: three AKEUSD entries passed the live
+    checks and the paper broker opened none ("fill at 0.0323 leaves no room
+    inside the $10.88 risk budget"). The order's risk_amount was exactly one
+    contract's risk at the reference, and the broker's own 2 bps adverse slip
+    made the affordable quantity int(0.99...) = 0 on every fill.
+    """
+
+    AKE = SymbolCosts(symbol="AKEUSD", tick_size=1e-7, contract_value=10_000.0,
+                      maker_fee=0.0002, taker_fee=0.0005, max_leverage=20.0,
+                      position_size_limit=15_000, funding_interval_seconds=14400,
+                      slippage_bps=2.0)
+    ENTRY, STOP, TARGET = 0.0323426, 0.0312541, 0.0356081
+
+    def _intent(self, risk_cap):
+        rpu = self.ENTRY - self.STOP
+        return ApprovedOrderIntent(
+            intent_id="ake1", signal_key="sig-ake", risk_evaluation_id="risk1",
+            symbol="AKEUSD", side=1, order_type="market", quantity=1,
+            limit_price=None, entry_reference=self.ENTRY, stop_price=self.STOP,
+            target_price=self.TARGET, risk_per_unit=rpu,
+            risk_amount=1 * 10_000.0 * rpu,            # one contract, exactly
+            notional=self.AKE.notional(1, self.ENTRY), equity_before=250.0,
+            estimated_fee=0.3, estimated_slippage=0.1,
+            strategy_version="x@1", bar_open=BAR_CLOSE,
+            checks_passed=("quantity_positive",), risk_cap=risk_cap)
+
+    def _fill(self, risk_cap):
+        b = PaperBroker({"AKEUSD": self.AKE}, starting_equity=250.0, slippage_bps=2.0)
+        b.submit_order(self._intent(risk_cap))
+        b.process_market_event(Tick("AKEUSD", (BAR_CLOSE + 2) * US, self.ENTRY, self.ENTRY))
+        return b.get_positions()
+
+    def test_without_the_cap_the_broker_cannot_fill_it(self):
+        """The defect, pinned: no cap, no position, at the reference price."""
+        assert self._fill(0.0) == []
+
+    def test_with_the_floor_cap_it_fills_one_contract_inside_the_cap(self):
+        (pos,) = self._fill(12.5)                       # 5% of $250
+        assert pos.quantity == 1
+        assert pos.initial_risk <= 12.5
+
+    def test_a_fill_past_the_cap_is_still_refused(self):
+        """The cap is a ceiling: a fill whose one contract risks more is not taken."""
+        rpu = self.ENTRY - self.STOP
+        assert self._fill(10_000.0 * rpu * 0.999) == []

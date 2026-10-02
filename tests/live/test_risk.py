@@ -654,6 +654,13 @@ class TestMinimumContractFloor:
         assert exp.detail["minimum_contract_risk"] == pytest.approx(
             10_000 * AKE_ENTRY * 0.035)
 
+    def test_the_floor_cap_rides_the_intent_so_the_fill_can_use_it(self):
+        """Without it the paper broker resizes a one-contract order to zero on
+        any adverse slip (prod dry run, 2026-10-02)."""
+        d = self._decide(0.035, min_contract_risk_cap=0.05)
+        assert d.intent.risk_cap == pytest.approx(12.5)
+        assert approve().intent.risk_cap == 0.0, "only floor-sized orders carry it"
+
     def test_a_volatile_day_is_still_skipped(self):
         """Above the cap the old rejection stands: the cap is a ceiling."""
         d = self._decide(0.06, min_contract_risk_cap=0.05)

@@ -41,6 +41,23 @@ log = logging.getLogger(__name__)
 CHANNELS = ("v2/ticker", "candlestick_1m", "all_trades")
 
 
+
+def _abandon(task: asyncio.Future) -> None:
+    """Cancel a receive we no longer want, and consume whatever it ends with.
+
+    The case that bit (prod dry run, 2026-10-02 10:38Z): shutdown cancelled
+    the feed while `_recv` waited, so the pending `ws.recv()` task was never
+    awaited or cancelled; it then ended with ConnectionClosedOK when the
+    socket closed, and asyncio logged "Task exception was never retrieved" at
+    ERROR. The daily report counts ERROR lines, so every restart read as a
+    fault for 24 hours. Cancelling it settles that; the callback reads the
+    result in case it finished before the cancel could land.
+    """
+    task.cancel()
+    task.add_done_callback(
+        lambda t: None if t.cancelled() else t.exception())
+
+
 class FeedStats:
     def __init__(self) -> None:
         self.messages = 0
@@ -178,15 +195,21 @@ class DeltaMarketFeed:
         the orchestrator mid-write instead of shutting down cleanly.
         """
         recv_task = asyncio.ensure_future(ws.recv())
-        done, _ = await asyncio.wait(
-            {recv_task, stop_task}, timeout=self.recv_timeout,
-            return_when=asyncio.FIRST_COMPLETED)
+        try:
+            done, _ = await asyncio.wait(
+                {recv_task, stop_task}, timeout=self.recv_timeout,
+                return_when=asyncio.FIRST_COMPLETED)
+        except BaseException:
+            # Shutdown cancels the feed HERE, mid-wait. Left alone, the
+            # receive outlives us and fails when the socket closes.
+            _abandon(recv_task)
+            raise
 
         if not done:
-            recv_task.cancel()
+            _abandon(recv_task)
             raise StaleFeedError(f"no message for {self.recv_timeout}s")
         if stop_task in done:
-            recv_task.cancel()
+            _abandon(recv_task)
             return None
         return recv_task.result()
 
