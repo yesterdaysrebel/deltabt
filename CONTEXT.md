@@ -53,9 +53,12 @@ drawdown latch (terminal), 10% daily loss, 8 consecutive losses, 72 h time stop.
 **Daily report** (`scripts/brief_report.py`, 7:00 AM IST / 01:30 UTC, email + the `monitor` run
 page): by owner instruction (2026-10-02) ONLY two parts — the attention list (unhealthy, restarts,
 log errors, latch, missing data, D7 self-check, entries the simulator did not open) and the trade
-journal (open now; every trade closed this run, carried-over ones marked *): IST times, side, qty,
-size, the leverage a real bot would set, entry/stop/target, exit, how, held, net R and $, totals.
-The three-exit comparison is read from the database at the pre-registered read, not mailed daily.
+journal as the THREE-EXIT COMPARISON: open trades (current price, R, $), then every trade closed this
+run (carried-over ones marked *) as three lines — hold to 3R (the real simulated trade), ladder,
+trail — each with closed time, exit price, how, held, net R and $ (other exits priced at the real
+trade's $/R), then per-exit totals. Live stacks run the probe in journal mode
+(`DELTABT_PROBE_MODE=journal`, monitoring.tf): no /api/trades section, no `economics`/`approvals`,
+and the oldest closed trades are dropped (and counted) if the output would pass SSM's 24,000 bytes.
 The long `daily_report.py` remains for paper stacks.
 
 **After the read (owner's plan, not decided):** real money, $250 on each of two Delta sub-accounts

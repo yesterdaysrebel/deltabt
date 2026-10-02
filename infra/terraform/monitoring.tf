@@ -42,7 +42,7 @@ resource "aws_ssm_document" "monitor" {
       name   = "probe"
       inputs = {
         timeoutSeconds = "600"
-        runCommand = [
+        runCommand = concat([
           "set +e",
           "echo '===CONTAINER==='",
           "docker ps --filter name=deltabot --format '{{.Image}}|{{.Status}}'",
@@ -83,24 +83,32 @@ resource "aws_ssm_document" "monitor" {
           # The section names carry _GZ so an old document and a new report --
           # or the reverse, since these deploy independently -- disagree
           # loudly about the name rather than quietly about the encoding.
-          "echo '===TRADES_GZ==='",
-          "curl -sS --max-time 10 http://127.0.0.1:8000/api/trades | gzip -9 | base64 -w0",
-          "echo",
-          # PERSISTENCE MOVED AHEAD OF THE NARRATIVE SECTIONS. Compression
-          # alone should keep everything inside the cap, but ordering decides
-          # what survives if that is ever wrong again, and the database probe
-          # is the section the report cannot substitute for.
-          "echo '===PERSISTENCE_GZ==='",
-          # Read-only SQL, base64 so no quoting survives a trip through YAML.
-          "echo '${base64encode(file("${path.root}/../../deploy/aws/db_probe.py"))}' | base64 -d > /tmp/db_probe.py",
-          "docker exec -i deltabot python - < /tmp/db_probe.py 2>&1 | tail -5 | gzip -9 | base64 -w0",
-          "echo",
-          "echo '===EXPERIMENT==='",
-          "docker exec deltabot python -m app forward-test status 2>&1 | head -40",
-          "echo '===DAILYREPORT==='",
-          "docker exec deltabot python -m app forward-test report --day '{{ Day }}' 2>&1 | head -80",
-          "echo '===END==='",
-        ]
+          ],
+          # LIVE STACKS (the prod dry run) read the journal report, which
+          # never uses /api/trades: leave that section out, and run the probe
+          # in journal mode so it skips the paper report's growing lists
+          # (scripts/brief_report.py, deploy/aws/db_probe.py, 2026-10-02).
+          each.value.live ? [] : [
+            "echo '===TRADES_GZ==='",
+            "curl -sS --max-time 10 http://127.0.0.1:8000/api/trades | gzip -9 | base64 -w0",
+            "echo",
+          ],
+          [
+            # PERSISTENCE MOVED AHEAD OF THE NARRATIVE SECTIONS. Compression
+            # alone should keep everything inside the cap, but ordering decides
+            # what survives if that is ever wrong again, and the database probe
+            # is the section the report cannot substitute for.
+            "echo '===PERSISTENCE_GZ==='",
+            # Read-only SQL, base64 so no quoting survives a trip through YAML.
+            "echo '${base64encode(file("${path.root}/../../deploy/aws/db_probe.py"))}' | base64 -d > /tmp/db_probe.py",
+            "docker exec -i ${each.value.live ? "-e DELTABT_PROBE_MODE=journal " : ""}deltabot python - < /tmp/db_probe.py 2>&1 | tail -5 | gzip -9 | base64 -w0",
+            "echo",
+            "echo '===EXPERIMENT==='",
+            "docker exec deltabot python -m app forward-test status 2>&1 | head -40",
+            "echo '===DAILYREPORT==='",
+            "docker exec deltabot python -m app forward-test report --day '{{ Day }}' 2>&1 | head -80",
+            "echo '===END==='",
+        ])
       }
     }]
   })

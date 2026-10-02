@@ -36,6 +36,8 @@ READ_AT_TRADES = 100            # docs/prod_dry_run_prereg.md
 READ_AT_DAYS = 21
 #: The health check left out of the verdict (see build()).
 GAPS_CHECK = "no_recent_gaps"
+EXITS = ("baseline", "ladder", "trail")
+EXIT_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
 WHY = {"TAKE_PROFIT": "target", "STOP_LOSS": "stop", "TIME_EXIT": "time",
        "TIME_STOP": "time", "MAX_HOLD": "time", "MANUAL_CLOSE": "manual",
        "LIQUIDATION": "LIQUIDATED", "HALT": "halt"}
@@ -113,11 +115,15 @@ def journal_rows(db: dict) -> list[dict]:
             if isinstance(row, list) and len(row) == len(fields)]
 
 
-def journal(rows: list[dict], live: dict) -> tuple[list[str], dict]:
-    """Open positions, then every closed trade of the run."""
+def journal(rows: list[dict], live: dict, exits: dict | None = None,
+            omitted: int = 0) -> tuple[list[str], dict]:
+    """Open positions, then every closed trade of the run under all three exits."""
+    exits = exits or {}
     out: list[str] = []
     side = {1: "long", -1: "short"}
-    num = {r["uid"]: i + 1 for i, r in enumerate(rows)}
+    # Numbered in order of opening, counting any oldest trades the probe left
+    # out for space, so a trade keeps its number from one report to the next.
+    num = {r["uid"]: omitted + i + 1 for i, r in enumerate(rows)}
     lev = lambda r: "—" if r.get("lev") is None else f"{r['lev']:.0f}x"
     mark = lambda r: f"{num[r['uid']]}{'*' if r.get('carried') else ''}"
 
@@ -143,37 +149,83 @@ def journal(rows: list[dict], live: dict) -> tuple[list[str], dict]:
         out.append("Nothing open.")
     out.append("")
 
-    out.append(f"## Closed so far ({len(closed)} of {READ_AT_TRADES} for the read)")
-    totals = {"n": len(closed), "r": 0.0, "pnl": 0.0, "costs": 0.0, "won": 0}
+    out.append(f"## Closed so far ({len(closed) + omitted} of {READ_AT_TRADES} for the read) — "
+               f"the three exits on each trade")
+    if omitted:
+        out.append(f"The oldest {plural(omitted, 'closed trade')} are left out to fit the "
+                   f"report's size limit; the database has every trade, and the totals "
+                   f"below cover only the trades shown.")
+    totals = {rule: {"n": 0, "won": 0, "tp": 0, "r": 0.0, "pnl": 0.0} for rule in EXITS}
+    partial = False
     if closed:
         body = []
         for r in closed:
             rr, pnl = r.get("r"), r.get("pnl")
-            totals["r"] += rr or 0.0
-            totals["pnl"] += pnl or 0.0
-            totals["costs"] += r.get("costs") or 0.0
-            totals["won"] += 1 if (pnl or 0) > 0 else 0
-            held = (r["closed"] - r["opened"]) if r.get("closed") and r.get("opened") else None
-            body.append([mark(r), r["symbol"], side.get(r["side"], "?"), str(r["qty"]),
-                         f"{r['notional']:,.0f}" if r.get("notional") is not None else "—",
-                         lev(r), when(r["opened"]), price(r["entry"]), price(r["sl"]),
-                         price(r["tp"]), when(r["closed"]), price(r.get("exit")),
-                         WHY.get(str(r.get("why")), str(r.get("why") or "—").lower()),
-                         duration(held), "—" if rr is None else f"{rr:+.2f}", money(pnl)])
-        out += table(["#", "symbol", "side", "qty", "size $", "lev", "opened (IST)",
-                      "entry", "stop", "target", "closed (IST)", "exit", "how",
-                      "held", "R", "P&L $"],
-                     body, right={0, 3, 4, 5, 7, 8, 9, 11, 13, 14, 15})
-        out.append(f"Total: {totals['won']} won, {totals['n'] - totals['won']} lost · "
-                   f"{totals['r']:+.2f}R · ${totals['pnl']:+,.2f} after "
-                   f"${totals['costs']:,.2f} of fees and funding.")
+            # dollars per R for this trade, from the real position, so the
+            # other exits' R can be priced the same way
+            per_r = (pnl / rr) if (pnl is not None and rr) else None
+            lines = [("hold to 3R", r.get("closed"), r.get("exit"), r.get("why"), rr, pnl, True)]
+            for rule in ("ladder", "trail"):
+                e = exits.get((r["uid"], rule))
+                if e is None:
+                    lines.append((rule, None, None, "not recorded", None, None, True))
+                else:
+                    lines.append((rule, e.get("closed"), e.get("exit"), e.get("why"), e.get("r"),
+                                  None if (per_r is None or e.get("r") is None) else e["r"] * per_r,
+                                  bool(e.get("seen", True))))
+            for k, (rule, c, px, why, er, epnl, seen) in enumerate(lines):
+                first = k == 0
+                held = (c - r["opened"]) if c and r.get("opened") else None
+                label = rule + ("" if seen else " ~")
+                partial = partial or not seen
+                body.append([
+                    mark(r) if first else "", r["symbol"] if first else "",
+                    side.get(r["side"], "?") if first else "", str(r["qty"]) if first else "",
+                    lev(r) if first else "", when(r["opened"]) if first else "",
+                    price(r["entry"]) if first else "", price(r["sl"]) if first else "",
+                    price(r["tp"]) if first else "",
+                    label, when(c), price(px),
+                    WHY.get(str(why), str(why or "—").lower()), duration(held),
+                    "—" if er is None else f"{er:+.2f}", money(epnl)])
+                key = "baseline" if first else rule
+                if er is not None:
+                    tot = totals[key]
+                    tot["n"] += 1
+                    tot["won"] += 1 if er > 0 else 0
+                    tot["tp"] += 1 if str(why).endswith("TAKE_PROFIT") else 0
+                    tot["r"] += er
+                    tot["pnl"] += epnl or 0.0
+            body.append([""] * 16)
+        body.pop()
+        out += table(["#", "symbol", "side", "qty", "lev", "opened (IST)", "entry", "stop",
+                      "target", "exit rule", "closed (IST)", "exit", "how", "held", "R",
+                      "P&L $"], body, right={0, 3, 4, 6, 7, 8, 11, 13, 14, 15})
+        out.append("")
+        out.append("Totals on the same trades:")
+        rows_t = []
+        for rule in EXITS:
+            tot = totals[rule]
+            n = tot["n"]
+            rows_t.append([EXIT_LABEL[rule], str(n), str(tot["won"]), str(tot["tp"]),
+                           f"{tot['r']:+.2f}", f"{tot['r'] / n:+.2f}" if n else "—",
+                           money(tot["pnl"])])
+        out += table(["exit rule", "trades", "won", "hit 3R", "total R", "avg R", "P&L $"],
+                     rows_t, right={1, 2, 3, 4, 5, 6})
+        out.append(f"Too early to tell the exits apart; the planned read is at {READ_AT_TRADES} "
+                   f"trades, and even then it compares how they behave, not whether any has "
+                   f"an edge.")
     else:
         out.append("No trade has closed yet.")
     if any(r.get("carried") for r in rows):
         out.append("Trades marked * opened under the previous run and count in this one (same setup).")
-    out.append("R and P&L are after fees and funding. Size is the position's value; lev "
-               "is the leverage a real bot would have set on Delta.")
-    return out, totals
+    if partial:
+        out.append("~ the bot restarted while this trade was open, so this exit is approximate.")
+    out.append("Hold to 3R is the real (simulated) trade; ladder and trail are where the other "
+               "two exits would have closed it. R and P&L are after fees and funding. Lev is "
+               "the leverage a real bot would have set on Delta.")
+    real = totals["baseline"]
+    return out, {"n": real["n"], "r": real["r"], "pnl": real["pnl"],
+                 "by_exit": {k: round(v["r"], 2) for k, v in totals.items()}}
 
 
 def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
@@ -229,7 +281,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append("the 20% drawdown stop has fired: the run is over (no resume, by design)")
 
     rows = journal_rows(db)
-    n_closed = sum(1 for r in rows if str(r.get("status")).upper() == "CLOSED")
+    n_closed = sum(1 for r in rows if str(r.get("status")).upper() == "CLOSED") \
+        + int(db.get("journal_omitted") or 0)
 
     # the self-check (prereg D7): one baseline shadow per closed position
     counts = db.get("shadow_counts")
@@ -256,13 +309,22 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     else:
         out.append("**✅ All normal — nothing needs you.**")
     out.append("")
-    lines, totals = journal(rows, live)
+    fields = db.get("exits_fields") or []
+    exits = {}
+    for row in db.get("exits") or []:
+        if isinstance(row, list) and len(row) == len(fields):
+            e = dict(zip(fields, row))
+            if isinstance(e.get("i"), int) and 0 <= e["i"] < len(rows):
+                exits[(rows[e["i"]]["uid"], e["rule"])] = e
+    omitted = int(db.get("journal_omitted") or 0)
+    lines, totals = journal(rows, live, exits, omitted)
     out += lines
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
              "verdict": "clear" if not problems else "attention", "problems": problems,
              "closed": n_closed, "total_r": round(totals["r"], 2),
-             "total_pnl": round(totals["pnl"], 2), "experiment": exp_id,
+             "total_pnl": round(totals["pnl"], 2), "exits_r": totals["by_exit"],
+             "experiment": exp_id,
              "health_line": "healthy" if healthy else "not healthy", "day_of": title_day}
     return "\n".join(out) + "\n", facts, problems
 

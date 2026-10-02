@@ -29,7 +29,17 @@ def trade(uid, symbol, side, status, *, opened, closed=None, exit=None, why=None
             costs, carried, lev]
 
 
-def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, opened=None):
+EXITS_FIELDS = ["i", "rule", "closed", "exit", "why", "r", "seen"]
+DEFAULT_EXITS = [
+    [0, "ladder", T("2026-10-02T19:40:00+00:00"), 0.0318201, "STOP_LOSS", 0.45, True],
+    [0, "trail", T("2026-10-02T21:10:00+00:00"), 0.0306100, "STOP_LOSS", 1.61, True],
+    [1, "ladder", T("2026-10-03T05:10:00+00:00"), 0.8812, "STOP_LOSS", -1.03, True],
+    [1, "trail", T("2026-10-03T05:10:00+00:00"), 0.8812, "STOP_LOSS", -1.03, True],
+]
+
+
+def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, opened=None,
+            exits=None):
     if journal is None:
         journal = [
             trade("p1", "AKEUSD", -1, "CLOSED", opened="2026-10-02T11:30:06+00:00",
@@ -56,6 +66,8 @@ def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, op
     db = {"experiments": [{"experiment_id": "DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a",
                            "status": "RUNNING", "started_at": STARTED, "risk": RISK}],
           "journal_fields": FIELDS, "journal": journal,
+          "exits_fields": EXITS_FIELDS,
+          "exits": DEFAULT_EXITS if exits is None else exits,
           "shadow_counts": shadow if shadow is not None else
           {"baseline": n_closed, "ladder": n_closed, "trail": n_closed},
           "opened_by_symbol": opened if opened is not None else {"BEATUSD": 1, "BANKUSD": 1},
@@ -77,16 +89,65 @@ def test_the_report_is_the_attention_list_then_the_journal_and_nothing_else():
     assert lines[0] == "# Dry run journal — day 2 of 21 · Sun 04 Oct, 7:00 AM IST"
     assert lines[2] == "**✅ All normal — nothing needs you.**"
     headers = [ln for ln in lines if ln.startswith("## ")]
-    assert headers == ["## Open now (1)", "## Closed so far (2 of 100 for the read)"]
+    assert headers == ["## Open now (1)",
+                       "## Closed so far (2 of 100 for the read) — the three exits on each trade"]
 
 
-def test_a_closed_trade_shows_times_prices_size_leverage_and_result():
+def _block(text, mark):
+    """The three lines of one closed trade: hold to 3R, ladder, trail."""
+    lines = text.splitlines()
+    i = next(k for k, ln in enumerate(lines) if ln.lstrip().startswith(mark + " ")
+             and "hold to 3R" in ln)
+    return lines[i:i + 3]
+
+
+def test_each_closed_trade_shows_its_facts_and_all_three_exits():
     text, _, _ = render()
-    row = next(ln for ln in text.splitlines() if ln.lstrip().startswith("2 ") and "BEATUSD" in ln)
-    for cell in ("BEATUSD", "long", "277", "252", "12x", "03 Oct 9:30 AM", "0.9101",
-                 "0.892", "0.9644", "03 Oct 10:40 AM", "0.8812", "stop", "1h 10m",
+    real, ladder, trail = _block(text, "2")
+    for cell in ("BEATUSD", "long", "277", "12x", "03 Oct 9:30 AM", "0.9101", "0.892",
+                 "0.9644", "hold to 3R", "03 Oct 10:40 AM", "0.8812", "stop", "1h 10m",
                  "-1.03", "-5.15"):
-        assert cell in row, f"{cell!r} missing from: {row}"
+        assert cell in real, f"{cell!r} missing from: {real}"
+    assert ladder.split()[0] == "ladder" and trail.split()[0] == "trail", \
+        "the facts are written once; the exit lines below carry only the exit"
+
+
+def test_the_other_exits_are_priced_in_dollars_from_the_real_trade():
+    """$ per R comes from the real position (31.84 / 2.93), so a ladder exit
+    at +0.45R is +4.89 and a trail exit at +1.61R is +17.50."""
+    text, _, _ = render()
+    real, ladder, trail = _block(text, "1*")
+    assert "target" in real and "+2.93" in real and "+31.84" in real
+    for cell in ("03 Oct 1:10 AM", "0.0318201", "stop", "8h 9m", "+0.45", "+4.89"):
+        assert cell in ladder, f"{cell!r} missing from: {ladder}"
+    for cell in ("0.03061", "+1.61", "+17.50"):
+        assert cell in trail, f"{cell!r} missing from: {trail}"
+
+
+def test_totals_compare_the_three_exits_on_the_same_trades():
+    text, facts, _ = render()
+    lines = text.splitlines()
+    i = lines.index("Totals on the same trades:")
+    rows = {ln.split("  ")[0].strip(): ln.split() for ln in lines[i + 3:i + 6]}
+    assert rows["hold to 3R"][-6:] == ["2", "1", "1", "+1.90", "+0.95", "+26.69"]
+    assert rows["ladder"][-6:] == ["2", "1", "0", "-0.58", "-0.29", "-0.26"]
+    assert rows["trail"][-6:] == ["2", "1", "0", "+0.58", "+0.29", "+12.35"]
+    assert facts["exits_r"] == {"baseline": 1.9, "ladder": -0.58, "trail": 0.58}
+    assert "not whether any has an edge" in text
+
+
+def test_a_missing_shadow_exit_says_not_recorded():
+    text, _, problems = render(exits=[], shadow={"baseline": 2, "ladder": 0, "trail": 0})
+    _, ladder, trail = _block(text, "2")
+    assert "not recorded" in ladder and "not recorded" in trail
+
+
+def test_an_exit_open_across_a_restart_is_marked_approximate():
+    exits = [row[:6] + [False] if row[0] == 0 else row for row in DEFAULT_EXITS]
+    text, _, _ = render(exits=exits)
+    _, ladder, _ = _block(text, "1*")
+    assert ladder.split()[0:2] == ["ladder", "~"]
+    assert "~ the bot restarted while this trade was open" in text
 
 
 def test_an_open_trade_shows_where_it_stands_now():
@@ -98,15 +159,9 @@ def test_an_open_trade_shows_where_it_stands_now():
     assert "  —  " in row, "unknown leverage is a dash, not a guess"
 
 
-def test_totals_are_after_fees_and_funding():
-    text, facts, _ = render()
-    assert "Total: 1 won, 1 lost · +1.90R · $+26.69 after $0.66 of fees and funding." in text
-    assert facts["closed"] == 2 and facts["total_r"] == 1.9
-
-
 def test_a_carried_over_trade_is_marked_and_counted():
     text, _, _ = render()
-    row = next(ln for ln in text.splitlines() if "AKEUSD" in ln)
+    row = next(ln for ln in text.splitlines() if "AKEUSD" in ln and "hold to 3R" in ln)
     assert row.lstrip().startswith("1*")
     assert "Trades marked * opened under the previous run and count in this one" in text
 
@@ -115,9 +170,9 @@ def test_every_closed_trade_is_listed_past_the_apis_50_row_limit():
     journal = [trade(f"p{i}", "BEATUSD", 1, "CLOSED", opened="2026-10-03T04:00:00+00:00",
                      closed="2026-10-03T05:00:00+00:00", exit=0.88, why="STOP_LOSS",
                      r=-1.0, pnl=-5.0) for i in range(73)]
-    text, _, problems = render(journal=journal)
+    text, _, problems = render(journal=journal, exits=[])
     assert "## Closed so far (73 of 100 for the read)" in text
-    assert sum(1 for ln in text.splitlines() if "BEATUSD" in ln) == 73
+    assert sum(1 for ln in text.splitlines() if "BEATUSD" in ln and "hold to 3R" in ln) == 73
     assert not problems
 
 
@@ -174,3 +229,14 @@ def test_a_missing_probe_is_a_problem_not_an_empty_journal():
     sec, _ = a_probe()
     _, _, problems = br.build(sec, {}, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
     assert any("database figures did not arrive" in p for p in problems)
+
+
+def test_trades_left_out_for_space_are_counted_and_said():
+    sec, db = a_probe()
+    db["journal_omitted"] = 40
+    db["shadow_counts"] = {"baseline": 42, "ladder": 42, "trail": 42}
+    text, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "## Closed so far (42 of 100 for the read)" in text
+    assert "The oldest 40 closed trades are left out to fit the report's size limit" in text
+    assert _block(text, "41*")[0].split()[1] == "AKEUSD", "numbers continue past the omitted"
+    assert not problems and facts["closed"] == 42

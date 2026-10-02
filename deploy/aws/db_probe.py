@@ -43,6 +43,50 @@ def _json(value, fallback):
     return value
 
 
+#: The dry-run report (scripts/brief_report.py) reads the journal and the
+#: attention checks, never `approvals` or `economics`, which are the old paper
+#: report's and grow with the run until the SSM cap cuts the output. Live
+#: stacks run the probe with DELTABT_PROBE_MODE=journal (monitoring.tf).
+JOURNAL_MODE = "journal"
+#: gzip+base64 bytes the probe may emit in journal mode. SSM keeps 24,000
+#: bytes of output and the sections ahead of this one (container, health,
+#: status, risk, positions) take a few thousand.
+JOURNAL_BUDGET = 16_000
+
+
+def _encoded_size(out: dict) -> int:
+    import base64
+    import gzip
+    return len(base64.b64encode(gzip.compress(json.dumps(out, default=str).encode(), 9)))
+
+
+def _fit_journal(out: dict, budget: int = JOURNAL_BUDGET) -> None:
+    """Drop the OLDEST closed trades until the output fits, and say how many.
+
+    Open trades are never dropped. Exit rows follow their trade, and their
+    journal index is shifted to match.
+    """
+    omitted = 0
+    size = _encoded_size(out)
+    while size > budget:
+        journal = out.get("journal") or []
+        closed = [i for i, row in enumerate(journal) if row[3] == "CLOSED"]
+        if not closed:
+            break
+        # Drop a batch sized from the excess, then measure again: one
+        # compression per batch instead of one per trade.
+        per_row = size / max(len(journal), 1)
+        batch = min(len(closed), max(1, int((size - budget) / per_row) + 1))
+        gone = set(closed[:batch])
+        shift = {old: old - sum(1 for g in gone if g < old) for old in range(len(journal))}
+        out["journal"] = [row for i, row in enumerate(journal) if i not in gone]
+        out["exits"] = [[shift[e[0]], *e[1:]] for e in (out.get("exits") or [])
+                        if e[0] not in gone]
+        omitted += batch
+        size = _encoded_size(out)
+    out["journal_omitted"] = omitted
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
@@ -141,7 +185,8 @@ async def collect(con) -> dict:
     #
     # Capped at 40 and trimmed hard: this section is gzipped into an SSM
     # response with a 24,000-byte ceiling, and `indicators` is unbounded JSON.
-    out["approvals"] = [dict(
+    journal_mode = os.environ.get("DELTABT_PROBE_MODE") == JOURNAL_MODE
+    out["approvals"] = [] if journal_mode else [dict(
         symbol=r["symbol"],
         bar_open=str(r["bar_open"]),
         direction=r["direction"],
@@ -173,11 +218,7 @@ async def collect(con) -> dict:
     out["journal_fields"] = ["uid", "symbol", "side", "status", "qty", "entry",
                              "sl", "tp", "notional", "opened", "closed", "exit",
                              "why", "r", "pnl", "costs", "carried", "lev"]
-    out["journal"] = [[r["uid"], r["symbol"], r["side"], r["status"], r["q"],
-                       r["entry"], r["sl"], r["tp"], r["notional"], r["o"],
-                       r["c"], r["px"], r["why"], r["r"], r["pnl"],
-                       r["costs"], bool(r["carried"]), r["lev"]]
-                      for r in await con.fetch(
+    rows = await con.fetch(
         """select p.position_uid uid, p.symbol, p.side, p.status, p.quantity q,
                   p.entry_price::float entry, p.stop_price::float sl,
                   p.target_price::float tp, p.notional::float notional,
@@ -198,7 +239,48 @@ async def collect(con) -> dict:
              from positions p
             where p.status <> 'CLOSED'
                or ($1::timestamptz is null or p.closed_at >= $1)
-            order by p.opened_at""", since)][-400:]
+            order by p.opened_at""", since)
+    rows = rows[-400:]
+
+    def _sig(x, digits=7):
+        """Round to significant digits: prices are ~1e-2..1e0, and 7
+        significant digits cover every tick size in the universe while
+        compressing far better than full doubles."""
+        return None if x is None else float(f"{x:.{digits}g}")
+
+    def _dp(x, places):
+        return None if x is None else round(x, places)
+
+    # Short ids: the position uid only matters for an OPEN trade (to find its
+    # live price in /api/positions); a closed one is numbered by position.
+    out["journal"] = [[r["uid"] if r["status"] != "CLOSED" else i,
+                       r["symbol"], r["side"], r["status"], r["q"],
+                       _sig(r["entry"]), _sig(r["sl"]), _sig(r["tp"]),
+                       _dp(r["notional"], 1), r["o"], r["c"], _sig(r["px"]),
+                       r["why"], _dp(r["r"], 3), _dp(r["pnl"], 2),
+                       _dp(r["costs"], 2), bool(r["carried"]), _dp(r["lev"], 1)]
+                      for i, r in enumerate(rows)]
+    # THE OTHER TWO EXITS on each journal trade (owner, 2026-10-02: the
+    # journal is the three-exit comparison). The real position IS the hold-
+    # to-3R exit; ladder and trail come from shadow_exits, matched by
+    # position. Row = [journal index, rule, closed, exit price, reason, net R,
+    # observed from entry]; the index instead of the uid keeps it small.
+    out["exits_fields"] = ["i", "rule", "closed", "exit", "why", "r", "seen"]
+    out["exits"] = []
+    if out["journal"] and await con.fetchval(
+            "select to_regclass('shadow_exits') is not null"):
+        index = {r["uid"]: i for i, r in enumerate(rows)}
+        out["exits"] = [
+            [index[r["uid"]], r["rule"], r["t"], _sig(r["px"]), r["why"],
+             _dp(r["r"], 3), bool(r["seen"])]
+            for r in await con.fetch(
+                """select position_uid uid, rule,
+                          extract(epoch from closed_at)::bigint t,
+                          exit_price::float px, exit_reason why, net_r::float r,
+                          observed_from_entry seen
+                     from shadow_exits
+                    where position_uid = any($1::text[]) and rule <> 'baseline'
+                    order by closed_at""", list(index))]
     # Positions opened per symbol this run, any status: the dry-run report
     # compares them with the entries the live checks passed (DRY_RUN_ORDER).
     # Counted here, not from /api/trades, which returns at most 50 rows.
@@ -233,7 +315,7 @@ async def collect(con) -> dict:
     # degradation the forward test exists to measure" -- and the report showed
     # neither. Cost as a fraction of R is the panel's binding constraint and
     # had to be computed by hand.
-    out["economics"] = [dict(r) for r in await con.fetch(
+    out["economics"] = [] if journal_mode else [dict(r) for r in await con.fetch(
         """select symbol, side, r_multiple, planned_r, fill_rr, notional,
                   entry_fee, exit_fee, funding, entry_slippage, exit_slippage,
                   realized_pnl, exit_reason, hold_seconds
@@ -348,6 +430,8 @@ async def collect(con) -> dict:
                         pass
         out["dry_run"] = summary
 
+    if journal_mode:
+        _fit_journal(out)
     return out
 
 
