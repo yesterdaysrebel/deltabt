@@ -50,10 +50,16 @@ drawdown latch (terminal), 10% daily loss, 8 consecutive losses, 72 h time stop.
 **What it cannot say:** whether any exit has an edge (~0.1–0.17R standard error at 100 trades vs
 0.02–0.06R differences), or how Delta fills, attaches brackets or runs its own trailing stop.
 
-**Daily report** (#102, `scripts/brief_report.py`): one screen in plain English at 7:00 AM IST
-(01:30 UTC) by email and on the `monitor` run page — verdict first, progress to the read, the three
-exits side by side, would-be orders/refusals per symbol, the $250 account against its limits,
-health. The long `daily_report.py` remains for paper stacks.
+**Daily report** (`scripts/brief_report.py`, 7:00 AM IST / 01:30 UTC, email + the `monitor` run
+page): by owner instruction (2026-10-02) ONLY two parts — the attention list (unhealthy, restarts,
+log errors, latch, missing data, D7 self-check, entries the simulator did not open) and the trade
+journal as the THREE-EXIT COMPARISON: open trades (current price, R, $), then every trade closed this
+run (carried-over ones marked *) as three lines — hold to 3R (the real simulated trade), ladder,
+trail — each with closed time, exit price, how, held, net R and $ (other exits priced at the real
+trade's $/R), then per-exit totals. Live stacks run the probe in journal mode
+(`DELTABT_PROBE_MODE=journal`, monitoring.tf): no /api/trades section, no `economics`/`approvals`,
+and the oldest closed trades are dropped (and counted) if the output would pass SSM's 24,000 bytes.
+The long `daily_report.py` remains for paper stacks.
 
 **After the read (owner's plan, not decided):** real money, $250 on each of two Delta sub-accounts
 (`baseline`, `ladder`), Trading keys IP-allowlisted, exit chosen from this record. Before any real

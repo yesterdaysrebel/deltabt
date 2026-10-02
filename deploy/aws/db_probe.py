@@ -43,6 +43,50 @@ def _json(value, fallback):
     return value
 
 
+#: The dry-run report (scripts/brief_report.py) reads the journal and the
+#: attention checks, never `approvals` or `economics`, which are the old paper
+#: report's and grow with the run until the SSM cap cuts the output. Live
+#: stacks run the probe with DELTABT_PROBE_MODE=journal (monitoring.tf).
+JOURNAL_MODE = "journal"
+#: gzip+base64 bytes the probe may emit in journal mode. SSM keeps 24,000
+#: bytes of output and the sections ahead of this one (container, health,
+#: status, risk, positions) take a few thousand.
+JOURNAL_BUDGET = 16_000
+
+
+def _encoded_size(out: dict) -> int:
+    import base64
+    import gzip
+    return len(base64.b64encode(gzip.compress(json.dumps(out, default=str).encode(), 9)))
+
+
+def _fit_journal(out: dict, budget: int = JOURNAL_BUDGET) -> None:
+    """Leave out the OLDEST closed trades until the output fits; say how many.
+
+    Open trades are never dropped. Exit rows follow their trade, and their
+    journal index is shifted to match.
+    """
+    omitted = 0
+    size = _encoded_size(out)
+    while size > budget:
+        journal = out.get("journal") or []
+        closed = [i for i, row in enumerate(journal) if row[3] == "CLOSED"]
+        if not closed:
+            break
+        # Remove a batch sized from the excess, then measure again: one
+        # compression per batch instead of one per trade.
+        per_row = size / max(len(journal), 1)
+        batch = min(len(closed), max(1, int((size - budget) / per_row) + 1))
+        gone = set(closed[:batch])
+        shift = {old: old - sum(1 for g in gone if g < old) for old in range(len(journal))}
+        out["journal"] = [row for i, row in enumerate(journal) if i not in gone]
+        out["exits"] = [[shift[e[0]], *e[1:]] for e in (out.get("exits") or [])
+                        if e[0] not in gone]
+        omitted += batch
+        size = _encoded_size(out)
+    out["journal_omitted"] = omitted
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
@@ -141,7 +185,8 @@ async def collect(con) -> dict:
     #
     # Capped at 40 and trimmed hard: this section is gzipped into an SSM
     # response with a 24,000-byte ceiling, and `indicators` is unbounded JSON.
-    out["approvals"] = [dict(
+    journal_mode = os.environ.get("DELTABT_PROBE_MODE") == JOURNAL_MODE
+    out["approvals"] = [] if journal_mode else [dict(
         symbol=r["symbol"],
         bar_open=str(r["bar_open"]),
         direction=r["direction"],
@@ -162,23 +207,80 @@ async def collect(con) -> dict:
     out["closed_trades_total"] = await con.fetchval(
         "select count(*) from positions where status = 'CLOSED' "
         "and ($1::timestamptz is null or opened_at >= $1)", since) or 0
-    # Positions CLOSED during this run, whenever they opened. A position
+    # THE JOURNAL (owner, 2026-10-02: the dry-run report is the trade
+    # journal plus the attention list). Every position closed during this
+    # run, whenever it opened, plus every position still open. A position
     # carried over from the previous experiment (same strategy, sizing and
-    # gates) is restored by the new process and closes under this run; the
-    # owner counts it (2026-10-02), and its shadow rows land under this run's
-    # id, so the dry-run report's count and self-check must include it too.
-    # closed_trades_total above keeps its opened-since meaning for paper.
-    out["closed_in_run"] = [
-        [r["symbol"], r["t"], None if r["r"] is None else round(r["r"], 4),
-         str(r["exit_reason"])[:24], bool(r["carried"])]
-        for r in await con.fetch(
-            """select symbol, extract(epoch from closed_at)::bigint t,
-                      r_multiple::float r, exit_reason,
-                      ($1::timestamptz is not null and opened_at < $1) carried
-                 from positions
-                where status = 'CLOSED'
-                  and ($1::timestamptz is null or closed_at >= $1)
-                order by closed_at""", since)][-900:]
+    # gates) counts, by owner decision; `carried` marks it. `lev` is the
+    # leverage the live checks would have set on Delta for that entry, read
+    # from its DRY_RUN_ORDER event through the entry order. Compact arrays:
+    # the probe's output shares SSM's 24,000-byte cap with every section.
+    out["journal_fields"] = ["uid", "symbol", "side", "status", "qty", "entry",
+                             "sl", "tp", "notional", "opened", "closed", "exit",
+                             "why", "r", "pnl", "costs", "carried", "lev"]
+    rows = await con.fetch(
+        """select p.position_uid uid, p.symbol, p.side, p.status, p.quantity q,
+                  p.entry_price::float entry, p.stop_price::float sl,
+                  p.target_price::float tp, p.notional::float notional,
+                  extract(epoch from p.opened_at)::bigint o,
+                  extract(epoch from p.closed_at)::bigint c,
+                  p.exit_price::float px, p.exit_reason why,
+                  p.r_multiple::float r, p.realized_pnl::float pnl,
+                  (p.entry_fee + p.exit_fee + p.funding)::float costs,
+                  ($1::timestamptz is not null and p.opened_at < $1) carried,
+                  (select (e.payload->'leverage'->>'leverage')::float
+                     from system_events e
+                     join paper_orders o on o.order_uid = e.payload->>'order_uid'
+                    where o.position_uid = p.position_uid
+                      and e.component = 'dry_run'
+                      and e.event_type = 'DRY_RUN_ORDER'
+                      and jsonb_typeof(e.payload->'leverage'->'leverage') = 'number'
+                    order by e.occurred_at desc limit 1) lev
+             from positions p
+            where p.status <> 'CLOSED'
+               or ($1::timestamptz is null or p.closed_at >= $1)
+            order by p.opened_at""", since)
+    rows = rows[-400:]
+
+    def _sig(x, digits=7):
+        """Round to significant digits: prices are ~1e-2..1e0, and 7
+        significant digits cover every tick size in the universe while
+        compressing far better than full doubles."""
+        return None if x is None else float(f"{x:.{digits}g}")
+
+    def _dp(x, places):
+        return None if x is None else round(x, places)
+
+    # Short ids: the position uid only matters for an OPEN trade (to find its
+    # live price in /api/positions); a closed one is numbered by position.
+    out["journal"] = [[r["uid"] if r["status"] != "CLOSED" else i,
+                       r["symbol"], r["side"], r["status"], r["q"],
+                       _sig(r["entry"]), _sig(r["sl"]), _sig(r["tp"]),
+                       _dp(r["notional"], 1), r["o"], r["c"], _sig(r["px"]),
+                       r["why"], _dp(r["r"], 3), _dp(r["pnl"], 2),
+                       _dp(r["costs"], 2), bool(r["carried"]), _dp(r["lev"], 1)]
+                      for i, r in enumerate(rows)]
+    # THE OTHER TWO EXITS on each journal trade (owner, 2026-10-02: the
+    # journal is the three-exit comparison). The real position IS the hold-
+    # to-3R exit; ladder and trail come from shadow_exits, matched by
+    # position. Row = [journal index, rule, closed, exit price, reason, net R,
+    # observed from entry]; the index instead of the uid keeps it small.
+    out["exits_fields"] = ["i", "rule", "closed", "exit", "why", "r", "seen"]
+    out["exits"] = []
+    if out["journal"] and await con.fetchval(
+            "select to_regclass('shadow_exits') is not null"):
+        index = {r["uid"]: i for i, r in enumerate(rows)}
+        out["exits"] = [
+            [index[r["uid"]], r["rule"], r["t"], _sig(r["px"]), r["why"],
+             _dp(r["r"], 3), bool(r["seen"])]
+            for r in await con.fetch(
+                """select position_uid uid, rule,
+                          extract(epoch from closed_at)::bigint t,
+                          exit_price::float px, exit_reason why, net_r::float r,
+                          observed_from_entry seen
+                     from shadow_exits
+                    where position_uid = any($1::text[]) and rule <> 'baseline'
+                    order by closed_at""", list(index))]
     # Positions opened per symbol this run, any status: the dry-run report
     # compares them with the entries the live checks passed (DRY_RUN_ORDER).
     # Counted here, not from /api/trades, which returns at most 50 rows.
@@ -213,7 +315,7 @@ async def collect(con) -> dict:
     # degradation the forward test exists to measure" -- and the report showed
     # neither. Cost as a fraction of R is the panel's binding constraint and
     # had to be computed by hand.
-    out["economics"] = [dict(r) for r in await con.fetch(
+    out["economics"] = [] if journal_mode else [dict(r) for r in await con.fetch(
         """select symbol, side, r_multiple, planned_r, fill_rr, notional,
                   entry_fee, exit_fee, funding, entry_slippage, exit_slippage,
                   realized_pnl, exit_reason, hold_seconds
@@ -282,20 +384,13 @@ async def collect(con) -> dict:
     # Guarded on the table existing, so a paper database without it still
     # yields every figure above.
     if await con.fetchval("select to_regclass('shadow_exits') is not null"):
-        rows = await con.fetch(
-            """select rule, symbol, extract(epoch from closed_at)::bigint t,
-                      net_r::float r, exit_reason, armed_at is not null armed,
-                      trail_amount::float trail, observed_from_entry seen
-                 from shadow_exits
+        # Counts only: the report's self-check (prereg D7) needs one baseline
+        # row per closed position; the three-exit comparison itself is read
+        # from the database at the pre-registered read, not in the daily mail.
+        out["shadow_counts"] = {r["rule"]: r["n"] for r in await con.fetch(
+            """select rule, count(*) n from shadow_exits
                 where experiment_id is not distinct from $1
-                order by closed_at, rule""", rid)
-        # Compact rows, capped: three per closed position, a few dozen bytes
-        # each, well inside the SSM output limit once gzipped.
-        out["shadow_exits"] = [
-            [r["rule"], r["symbol"], r["t"], round(r["r"], 4),
-             str(r["exit_reason"])[:24], bool(r["armed"]), r["trail"],
-             bool(r["seen"])]
-            for r in rows][-900:]
+                group by rule""", rid)}
 
     dry = await con.fetch(
         """select event_type, symbol, payload from system_events
@@ -326,10 +421,17 @@ async def collect(con) -> dict:
                 for key, src, name in (("spread_r", book, "spread_r"),
                                        ("deviation_r", book, "deviation_r"),
                                        ("leverage", lev, "leverage")):
-                    if src.get(name) is not None:
-                        s[key].append(round(float(src[name]), 4))
+                    # One malformed value must not cost the report every
+                    # database figure: skip it rather than raise.
+                    try:
+                        if src.get(name) is not None:
+                            s[key].append(round(float(src[name]), 4))
+                    except (TypeError, ValueError, AttributeError):
+                        pass
         out["dry_run"] = summary
 
+    if journal_mode:
+        _fit_journal(out)
     return out
 
 
