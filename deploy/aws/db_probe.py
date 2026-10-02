@@ -61,7 +61,7 @@ def _encoded_size(out: dict) -> int:
 
 
 def _fit_journal(out: dict, budget: int = JOURNAL_BUDGET) -> None:
-    """Drop the OLDEST closed trades until the output fits, and say how many.
+    """Leave out the OLDEST closed trades until the output fits; say how many.
 
     Open trades are never dropped. Exit rows follow their trade, and their
     journal index is shifted to match.
@@ -73,7 +73,7 @@ def _fit_journal(out: dict, budget: int = JOURNAL_BUDGET) -> None:
         closed = [i for i, row in enumerate(journal) if row[3] == "CLOSED"]
         if not closed:
             break
-        # Drop a batch sized from the excess, then measure again: one
+        # Remove a batch sized from the excess, then measure again: one
         # compression per batch instead of one per trade.
         per_row = size / max(len(journal), 1)
         batch = min(len(closed), max(1, int((size - budget) / per_row) + 1))
