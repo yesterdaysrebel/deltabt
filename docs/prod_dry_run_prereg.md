@@ -1,0 +1,63 @@
+# Prod dry run — pre-registration
+
+Written 2026-10-02, before the `dryrun` stack exists. Owner's decisions; this file records them so
+the read cannot be redesigned after the data arrive. Template: `docs/v5_stopping_rule.md`.
+
+## What runs
+
+- **Stack `dryrun`** (`infra/terraform/live.tf`): the live code path on **Delta India PROD** with a
+  **read-only** API key and **no order path** (`live/dry_run.py`; `live_sizing.dryrun.dry_run = "1"`).
+- **Entries:** `SPEC:manual_scalp_both_t3@5` (strategy fingerprint `41e764beceaf`), universe
+  BEATUSD / AKEUSD / BANKUSD.
+- **Sizing as the real pilot would size:** equity $250, risk 2% ($5/R), AKEUSD may take one
+  contract if that risks ≤ 5% of equity (`min_contract_risk_cap`).
+- **Gates as the real pilot would run them:** 20% drawdown latch (terminal, no resume), 10% daily
+  loss, 8 consecutive losses, 72 h time stop.
+- **Every entry** passes the live broker's checks against the real prod book (kill switch,
+  entry-side deviation ≤ 0.25R, spread ≤ 0.5R, mark not beyond the stop, leverage leaving
+  liquidation ≥ 3 stop distances away), and is then recorded as `DRY_RUN_ORDER` or `DRY_RUN_REFUSED`.
+- **Positions** are filled and exited by the paper fill model on prod ticks. Every position is
+  shadowed under **baseline** (hold to 3R), **ladder** (0.5→0, 1.0→+0.5, 1.5→+1.0, 2.0→+1.5) and
+  **trail** (0.5R behind the peak from +0.5R), one row per position per rule in `shadow_exits`.
+- **Experiment** id prefix `DRY-`; execution profile **paper**.
+
+## Stopping point (frozen)
+
+Read once, at the first of: **100 closed positions**; **21 days** after registration; the
+**20% latch**; a **defect** below. No interim reads change anything.
+
+## What this can conclude — counts and per-trade quantities
+
+| # | question | source |
+|---|---|---|
+| D1 | How often would the live checks refuse an approved entry on prod books, by reason and by symbol (deviation / spread / mark / leverage / zero contracts)? | `system_events` `DRY_RUN_*`, `risk_events` |
+| D2 | AKEUSD under the floor rule: share sized at one contract vs skipped. | `strategy_signals.detail`, `risk_events` |
+| D3 | Spread and touch distance at signal time, in R, per symbol (median, p90): the slippage a market entry would meet. | `DRY_RUN_ORDER.book` |
+| D4 | The leverage chosen and the liquidation buffer, per symbol. | `DRY_RUN_ORDER.leverage` |
+| D5 | Exit shape under each rule on identical entries: mean and median R, win rate, 3R hits, max drawdown in R, longest non-positive run. Read against the backtest (`scripts/paired_exits_lab.py`: baseline +0.037, ladder −0.018, trail +0.006 R/trade; drawdown 42.7 / 25.1 / 17.2 R). | `shadow_exits` |
+| D6 | Trail mechanics: when the bracket edit would be sent (time to +0.5R) and the `bracket_trail_amount` values, per symbol. | `shadow_exits.armed_at`, `trail_amount` |
+| D7 | Self-check: the baseline shadow agrees with the real (paper) position on every trade. Any disagreement is a defect. | `shadow_exits` vs `positions` |
+| D8 | Gates: how often each would fire at $250 / 2%, and whether the latch fires. | `risk_events`, `/api/risk` |
+
+## What this cannot conclude
+
+**Whether any exit rule has an edge.** At ~100 trades the standard error on mean R is ~0.17R (baseline)
+and ~0.09R (trail); the differences measured in nine months of backtest are 0.02–0.06R. **No P&L
+figure from this run is evidence of edge or of its absence.** Nor can it say how Delta fills, attaches
+brackets or runs its own trailing stop: no order is sent. Those need the testnet probe and, if
+chosen, the real-money stage.
+
+## Decisions it feeds
+
+- **Whether to run real money at all**, and with which exit, decided by the owner from D1–D8 with the
+  limits above stated.
+- **Defects** (any one stops the run, is fixed, and restarts under a new experiment id): a venue write
+  attempted; D7 disagreement; journal rows missing for any position; the bot trading a universe other
+  than BEAT/AKE/BANK; sizing from equity other than $250.
+
+## Amendment rule
+
+Nothing above the line below changes once the experiment is registered. Additions go underneath,
+dated: the experiment id, image SHA, hashes, registration time, the host's EIP (never the key).
+
+<!-- FROZEN ABOVE THIS LINE -->

@@ -90,6 +90,16 @@ variable "live_stacks" {
     # live time stop (#88) was merged but never deployed here. The database
     # deltabt_tnet is NOT Terraform-managed and keeps every record.
     # (entry was: tnet = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_tnet" })
+
+    # 2026-10-02: `dryrun`, the prod pilot's DRY RUN (owner). The live code
+    # path on Delta PROD with a READ-ONLY key and no order path at all
+    # (live/dry_run.py; live_sizing below says dry_run "1"). Entries under
+    # the baseline arm's identity; every position is shadowed under baseline,
+    # ladder and trail (app/execution/shadow_exits.py) into shadow_exits. Its
+    # experiment registers the PAPER execution profile and is named DRY-...
+    # Read per docs/prod_pilot_prereg.md once frozen; real money is decided
+    # after it, on separate stacks and accounts.
+    dryrun = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_dryrun" }
   }
 }
 
@@ -148,7 +158,9 @@ locals {
 variable "live_venue" {
   description = "testnet | prod. Reaching prod must be a deliberate edit."
   type        = string
-  default     = "testnet"
+  # 2026-10-02: PROD, for the `dryrun` stack (owner). Global: every live
+  # stack is on it, and deploy-testnet now rolls nothing (FOR_VENUE).
+  default = "prod"
 
   validation {
     condition     = contains(["testnet", "prod"], var.live_venue)
@@ -250,7 +262,10 @@ variable "live_sizing" {
     min_contract_risk_cap = string
     dry_run               = string
   }))
-  default = {}
+  # $250 at 2% with the AKEUSD one-contract floor at 5% (owner, 2026-10-02).
+  default = {
+    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.05", dry_run = "1" }
+  }
 }
 
 resource "aws_ssm_parameter" "live_sizing" {
@@ -360,9 +375,12 @@ resource "aws_iam_role_policy" "live_ci" {
         Sid    = "ReadWhichVenueAHostIsOn"
         Effect = "Allow"
         Action = ["ssm:GetParameter"]
-        Resource = [
-          for k, s in local.stacks : aws_ssm_parameter.live_venue[k].arn if s.live
-        ]
+        Resource = concat(
+          [for k, s in local.stacks : aws_ssm_parameter.live_venue[k].arn if s.live],
+          # AND WHETHER IT IS A DRY RUN (2026-10-02), so _roll.yml names its
+          # experiment DRY-... and nobody reads its records as real trades.
+          [for k, s in local.stacks : aws_ssm_parameter.live_sizing[k].arn if s.live],
+        )
       },
     ]
   })

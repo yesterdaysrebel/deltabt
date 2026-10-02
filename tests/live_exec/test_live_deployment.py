@@ -152,11 +152,23 @@ def test_every_live_resource_is_gated_on_its_own_variable():
         "not every live resource is gated on a live stack existing")
 
 
-def test_the_venue_defaults_to_testnet():
-    """Reaching prod must be a deliberate edit, not a default."""
+def test_the_venue_pin_is_deliberate_and_dated():
+    """Reaching prod must be a deliberate edit, not a default.
+
+    REWRITTEN 2026-10-02, when the `dryrun` stack moved the venue to prod by
+    the owner's decision. The guarantee kept: any venue other than testnet
+    carries a dated reason right above it, so the edit that put it there is
+    visible where the value is, and a future flip has to say why too.
+    """
+    import re
     block = LIVE_TF[LIVE_TF.index('variable "live_venue"'):]
     block = block[:block.index("\n}\n")]
-    assert 'default     = "testnet"' in block, block
+    m = re.search(r'^\s*default\s*=\s*"([a-z]+)"', block, re.M)
+    assert m and m.group(1) in ("testnet", "prod"), block
+    if m.group(1) != "testnet":
+        before = block[:m.start()].strip().splitlines()[-2:]
+        assert any(re.search(r"20\d\d-\d\d-\d\d", l) for l in before), (
+            f"live_venue is {m.group(1)!r} with no dated reason above it")
 
 
 def test_the_credential_arn_actually_reaches_terraform():
