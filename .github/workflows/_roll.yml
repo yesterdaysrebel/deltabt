@@ -317,7 +317,20 @@ jobs:
           slug=$(printf '%s' "$VARIANT" \
                  | sed 's|^SPEC:||; s|@|-|g; s|/|-|g; s|[^A-Za-z0-9._-]|-|g' \
                  | tr '[:lower:]' '[:upper:]' | cut -c1-${{ inputs.slug_max }})
-          id="${{ inputs.id_prefix }}${slug}-$(date -u +%Y%m%d)-${GITHUB_SHA:0:7}"
+          prefix="${{ inputs.id_prefix }}"
+          # A DRY-RUN HOST IS NAMED FOR WHAT IT IS (2026-10-02): its sizing
+          # parameter says dry_run "1", and its experiment must not read as
+          # LIVE- trades. Unreadable means not a dry run: the host refuses to
+          # start without that parameter anyway (run_live.sh).
+          if [ "${{ inputs.live }}" = "true" ]; then
+            sizing=$(aws ssm get-parameter --region "$AWS_REGION" \
+                      --name "/deltabt/paper/${{ matrix.stack }}/sizing" \
+                      --query Parameter.Value --output text 2>/dev/null || echo "{}")
+            if printf '%s' "$sizing" | grep -q '"dry_run":"1"'; then
+              prefix="DRY-"
+            fi
+          fi
+          id="${prefix}${slug}-$(date -u +%Y%m%d)-${GITHUB_SHA:0:7}"
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "experiment \`$id\`" >> "$GITHUB_STEP_SUMMARY"
 
