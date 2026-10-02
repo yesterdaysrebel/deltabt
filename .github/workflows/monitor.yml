@@ -13,8 +13,10 @@ name: daily-report
 # the notification path that costs nothing and needs no SNS.
 
 on:
-  # The nightly schedule (01:30 UTC) was removed 2026-10-01 along with the last
-  # stack -- see the matrix comment below. Dispatch stays for a manual read.
+  # 01:30 UTC = 7:00 AM IST. Removed 2026-10-01 with the last stack, restored
+  # 2026-10-02 for the prod dry run (`dryrun`), whose owner reads it daily.
+  schedule:
+    - cron: "30 1 * * *"
   workflow_dispatch:
     inputs:
       day:
@@ -93,6 +95,18 @@ jobs:
           # fail-fast stays off above even with one stack, so restoring a second
           # arm needs no change here beyond its own block.
 
+          # 2026-10-02: `dryrun`, the prod dry run (live.tf live_stacks). Its
+          # report is scripts/brief_report.py (`report: brief`): one screen,
+          # plain English, IST, written for the owner after the long report
+          # "made no sense" to them. The paper report stays for paper arms.
+          - stack: dryrun
+            variant: SPEC:manual_scalp_both_t3@5
+            instance_var: BOT_INSTANCE_ID_DRYRUN
+            document_var: SSM_MONITOR_DOCUMENT_DRYRUN
+            strategy_hash: "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d"
+            log_group: /deltabt/paper/dryrun/bot
+            report: brief
+
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
     # for a human, which defeats the point of it running unattended.
@@ -134,8 +148,26 @@ jobs:
           fi
           echo "instance_id=$ids" >> "$GITHUB_OUTPUT"
 
+      - name: build the brief report
+        id: brief
+        if: matrix.report == 'brief'
+        run: |
+          set +e
+          python3 scripts/brief_report.py \
+            --instance-id "${{ steps.host.outputs.instance_id }}" \
+            --log-group "${{ matrix.log_group }}" \
+            --stack "${{ matrix.stack }}" \
+            --document "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-monitor', matrix.stack) }}" \
+            --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
+            --facts-json facts.json \
+            > report.md
+          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          cat report.md
+
       - name: build the report
         id: report
+        if: matrix.report != 'brief'
         run: |
           set +e
           python3 scripts/daily_report.py \
@@ -185,7 +217,7 @@ jobs:
         # this is a third copy, not the record.
         continue-on-error: true
         env:
-          OUTCOME: ${{ steps.report.outputs.exitcode == '0' && 'all clear' || 'NEEDS ATTENTION' }}
+          OUTCOME: ${{ (steps.report.outputs.exitcode || steps.brief.outputs.exitcode) == '0' && 'all clear' || 'NEEDS ATTENTION' }}
         run: |
           set -uo pipefail
           # Matched by suffix rather than a pinned ARN: the stack publishes to
@@ -215,7 +247,7 @@ jobs:
         # because a red run is visible in the Actions list forever, whereas an
         # email is read once and archived.
         run: |
-          if [ "${{ steps.report.outputs.exitcode }}" != "0" ]; then
+          if [ "${{ steps.report.outputs.exitcode || steps.brief.outputs.exitcode }}" != "0" ]; then
             echo "::error::The daily report found something that needs attention -- see the summary."
             exit 1
           fi
@@ -274,6 +306,13 @@ jobs:
           OUTCOME: ${{ steps.digest.outputs.exitcode == '0' && 'all clear' || 'NEEDS ATTENTION' }}
         run: |
           set -uo pipefail
+          # ONE ARM, ONE EMAIL (2026-10-02): with a single report the digest
+          # repeats it under a "both arms" subject. Sent only when it adds a
+          # comparison, i.e. when more than one arm reported.
+          if [ "$(ls facts/*/facts.json 2>/dev/null | wc -l)" -le 1 ]; then
+            echo "one arm reported; its own email is the report -- skipping the digest email"
+            exit 0
+          fi
           TOPIC="$(aws sns list-topics --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
                     --query "Topics[?ends_with(TopicArn, ':deltabt-paper-alarms')].TopicArn" \
                     --output text)"

@@ -73,12 +73,26 @@ def _monitor_matrix() -> dict[str, dict]:
     return out
 
 
+def _live_stacks() -> set[str]:
+    """Stack names in live.tf's live_stacks default, via the deploy parser."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "lsm", ROOT / "scripts/live_stacks_matrix.py")
+    lsm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lsm)
+    return {r["stack"] for r in lsm.matrix(lsm.LIVE_TF.read_text())}
+
+
 def test_the_three_tables_name_the_same_stacks():
+    """Paper deploys come from variables.tf; the daily report covers paper AND
+    live stacks (2026-10-02: the prod dry run `dryrun` is reported daily)."""
     tf, dep, mon = _terraform_stacks(), _deploy_table(), _monitor_matrix()
     assert set(tf) == set(dep), (
         f"variables.tf has {sorted(tf)} but {DEPLOY.name} has {sorted(dep)}")
-    assert set(tf) == set(mon), (
-        f"variables.tf has {sorted(tf)} but monitor.yml has {sorted(mon)}")
+    want = set(tf) | _live_stacks()
+    assert want == set(mon), (
+        f"paper + live stacks are {sorted(want)} but monitor.yml reports on "
+        f"{sorted(mon)}")
 
 
 @pytest.mark.parametrize("table", ["deploy", "monitor"])
