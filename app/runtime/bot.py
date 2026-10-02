@@ -125,6 +125,7 @@ class TradingBot:
         backfiller: Backfiller | None = None,
         feed: DeltaMarketFeed | None = None,
         lock=None,
+        shadow_exits=None,
     ) -> None:
         settings.validate()
         strategy.validate()
@@ -232,6 +233,13 @@ class TradingBot:
         #: from _pending_events on purpose: these describe our own
         #: execution model, not something that happened to a position.
         self._pending_probes: list = []
+        #: SHADOW EXITS (2026-10-02, prod pilot dry run): where each exit rule
+        #: would have closed every real position. None -- every paper arm --
+        #: records nothing and changes nothing. A constructor option, not a
+        #: setting, so no experiment identity moves. See
+        #: app/execution/shadow_exits.py.
+        self.shadow_exits = shadow_exits
+        self._pending_shadow: list = []
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
@@ -518,6 +526,15 @@ class TradingBot:
         # for a bar close.
         for ev in self.broker.process_market_event(tick):
             self._pending_events.append(ev)
+        if self.shadow_exits is not None:
+            # AFTER the broker, so a position its own rule closed on this tick
+            # is already gone and its shadows close at the same real exit.
+            try:
+                self._pending_shadow.extend(self.shadow_exits.observe(
+                    tick, self.broker.get_positions()))
+            except Exception:
+                # A measurement must never take down the tick path.
+                log.exception("shadow exits failed on a tick; continuing")
         # STOP-FILL TELEMETRY. Drained here rather than emitted as a broker
         # event because it is a measurement, not something that happened to a
         # position -- routing it through the event path would put it in the
@@ -1002,8 +1019,24 @@ class TradingBot:
             except Exception:
                 log.exception("could not record a stop-fill probe")
 
+    async def drain_shadow_exits(self) -> None:
+        """Persist shadow-exit rows the tick path produced (if any)."""
+        rows, self._pending_shadow = self._pending_shadow, []
+        for i, row in enumerate(rows):
+            try:
+                await self.repo.record_shadow_exit(
+                    row, instance_uid=self.instance_uid,
+                    experiment_id=getattr(self, "experiment_id", None))
+            except Exception:
+                # Kept for the next drain rather than dropped: the row is the
+                # measurement the dry run exists for.
+                log.exception("could not persist a shadow exit; will retry")
+                self._pending_shadow = rows[i:] + self._pending_shadow
+                return
+
     async def drain_broker_events(self) -> None:
         await self.drain_stop_probes()
+        await self.drain_shadow_exits()
         events, self._pending_events = self._pending_events, []
         for ev in events:
             if ev.kind == "EXIT_ORDER_CREATED":
