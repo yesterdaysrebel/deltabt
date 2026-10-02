@@ -165,3 +165,12 @@ def test_entries_the_simulator_did_not_open_are_flagged():
                for p in problems)
     assert "**AKEUSD**: 3 orders would have been sent (simulated: 0 opened)" in text
     assert "**BEATUSD**: 1 order would have been sent (simulated: 1 opened)" in text
+
+
+def test_trades_open_across_a_restart_are_called_approximate():
+    sec, db = a_probe()
+    db["shadow_exits"] = [row + [rule_seen] for row, rule_seen in
+                          zip(db["shadow_exits"], [False, False, False, True, True, True])]
+    text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "1 trade was open across a bot restart" in text
+    assert not problems

@@ -268,15 +268,21 @@ async def collect(con) -> dict:
         rows = await con.fetch(
             """select rule, symbol, extract(epoch from closed_at)::bigint t,
                       net_r::float r, exit_reason, armed_at is not null armed,
-                      trail_amount::float trail
+                      trail_amount::float trail, observed_from_entry seen
                  from shadow_exits
                 where experiment_id is not distinct from $1
-                order by closed_at, rule""", rid)
+                  -- Positions OPENED in this run, the same partition as
+                  -- closed_trades_total. A position carried over from the
+                  -- previous experiment closes under this one; counting it
+                  -- here but not there made the self-check fire falsely.
+                  and ($2::timestamptz is null or opened_at >= $2)
+                order by closed_at, rule""", rid, since)
         # Compact rows, capped: three per closed position, a few dozen bytes
         # each, well inside the SSM output limit once gzipped.
         out["shadow_exits"] = [
             [r["rule"], r["symbol"], r["t"], round(r["r"], 4),
-             str(r["exit_reason"])[:24], bool(r["armed"]), r["trail"]]
+             str(r["exit_reason"])[:24], bool(r["armed"]), r["trail"],
+             bool(r["seen"])]
             for r in rows][-900:]
 
     dry = await con.fetch(

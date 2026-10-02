@@ -114,6 +114,13 @@ def exit_table(shadow: list[list], risk_per_r: float | None) -> tuple[list[str],
                      f"{total / len(rs):+8.2f}{100 * won / len(rs):5.0f}%"
                      f"{tp:8d}{-max_dip(rs):+10.1f}R")
     lines.append("```")
+    # Row field 7 (observed_from_entry) arrives from probes after 2026-10-02;
+    # older rows have no such field and count as fully observed.
+    partial = sum(1 for row in shadow
+                  if row[0] == "baseline" and len(row) > 7 and row[7] is False)
+    if partial:
+        lines.append(f"{plural(partial, 'trade was', 'trades were')} open across a bot "
+                     f"restart, so their ladder and trail results are approximate.")
     if risk_per_r:
         money = " / ".join(f"{RULE_LABEL[r]} {summary[r] * risk_per_r:+,.2f}" for r in RULES)
         lines.append(f"At ${risk_per_r:,.2f} per R that is {money} dollars.")

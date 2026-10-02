@@ -103,3 +103,29 @@ symbol where the simulator opened fewer positions than the live checks passed.
 positions**, so no data is lost. The run restarts on the fixed image under a new experiment id,
 recorded below when it registers. The frozen section is unchanged, and the 21 days count from the
 new registration.
+
+## Addendum 2026-10-02 — the restarted experiment
+
+| field | value |
+|---|---|
+| experiment | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a` |
+| registered | 2026-10-02 11:52:38 UTC (5:22 PM IST); the 21 days run to 2026-10-23 |
+| image | `c4b719a` (#103 on master) |
+| strategy hash | `41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d` (unchanged) |
+| composite config hash | `3641376f54877289` (as logged at binding; risk and execution hashes are in `forward_test`) |
+| host | unchanged: `i-0a38139027a767607`, EIP `15.207.211.127` |
+| sizing and gates | unchanged: equity 250, risk 0.02, floor cap 0.05; 0.20 / 0.10 / 8 |
+
+**A position carried over from the first experiment.** One AKEUSD short opened at 11:30 UTC under
+`…-ed31cba`. The broken fill check let it through because the price had moved in its favour by the
+fill. It was still open at the restart, so the new process restored it and protects it to its own
+stop or target. A real bot would hold it too. It is **excluded from the read**: it is neither a
+closed position of this experiment nor a row in its three-exit comparison, because both count only
+positions opened at or after 11:52:38 UTC. While it is open it blocks new AKEUSD entries (one
+position per symbol), and its P&L moves the simulated $250 account. Both are what a real bot's
+account would show.
+
+**Restored positions in general.** Until #104 the three-exit recorder marked a position restored
+after a restart as observed from entry, though its path before the restart was never seen. From
+#104 such rows carry `observed_from_entry = false`, and the daily report calls their ladder and
+trail results approximate. The baseline result does not depend on the path.
