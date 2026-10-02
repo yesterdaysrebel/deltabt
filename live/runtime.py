@@ -153,15 +153,49 @@ class LiveTradingBot(TradingBot):
         no-op on testnet -- see live/guards.py for why that exemption is
         deliberate and why this check exists at all.
         """
+        if not await self._start_checks_only():
+            return False
+        return await super().start()
+
+    async def _start_checks_only(self) -> bool:
+        """The refusals start() runs before anything else. Split out so they
+        can be exercised without booting the parent's lock, DB and feed."""
         from live.guards import GuardError, require_circuit_breakers
         try:
             require_circuit_breakers(self.settings.risk, self.venue)
+            self._require_executable_spec()
         except GuardError as exc:
             log.critical("%s", exc)
             self.recovery_error = str(exc)
             await self.notifier.send("REFUSING TO START", str(exc))
             return False
-        return await super().start()
+        return True
+
+    def _require_executable_spec(self) -> None:
+        """Refuse a spec whose exit fields this broker would silently ignore.
+
+        The rungs and the stop trigger ride strategy_hash (see the PaperBroker
+        construction in app/runtime/bot.py), so a live bot bound to
+        `manual_scalp_both_t3_ladder` would register the ladder's identity and
+        then run the baseline's exits -- the failure deltabt/spec.py names, "a
+        spec field the executor silently ignores". Found 2026-10-02 while
+        planning the prod pilot: LiveBroker took neither field. This check is
+        lifted for the ladder by the broker declaring `supports_ladder`, and
+        for the trigger only by a broker that can send something other than
+        MARK -- the live broker always sends MARK.
+        """
+        from live.guards import GuardError
+        rungs = tuple(getattr(self.strategy, "ladder_rungs", ()) or ())
+        if rungs and not getattr(self.broker, "supports_ladder", False):
+            raise GuardError(
+                f"the strategy declares a stop ladder {rungs} and the live "
+                f"broker cannot move a resting stop; it would register the "
+                f"ladder's identity and run the baseline's exits")
+        trigger = getattr(self.strategy, "stop_trigger", "mark") or "mark"
+        if trigger != "mark":
+            raise GuardError(
+                f"the strategy's stop trigger is {trigger!r}; the live broker "
+                f"always attaches brackets triggered on mark_price")
 
     async def recover(self) -> None:
         """Rebuild from the database, then check the VENUE agrees.
@@ -528,6 +562,15 @@ class LiveTradingBot(TradingBot):
                 log.critical("could not read the venue balance; sizing at zero: %s", exc)
                 return 0.0
             self.__dict__["_balance_cache"] = (t, venue)
+            if not self.__dict__.get("_sizing_logged"):
+                # ONCE, so the first-hour check can see which number sizes the
+                # bot: a venue reading 0 means the settlement asset is not named
+                # USD on this account, and an internal 10,000 means
+                # DELTABOT_EQUITY never arrived. Both look healthy otherwise.
+                self.__dict__["_sizing_logged"] = True
+                log.info("sizing equity: internal %.2f, venue USD %.2f -> %.2f",
+                         float(self.state.equity), venue,
+                         min(float(self.state.equity), venue))
         return min(float(self.state.equity), venue)
 
     def _bracket_checks(self) -> dict[str, float]:
@@ -732,6 +775,17 @@ class LiveTradingBot(TradingBot):
         self.state.apply_close(closed.realized_pnl or 0.0,
                                closed.closed_at or self.clock.now())
         await self._save_state()
+        if closed.exit_reason == "LIQUIDATION":
+            # Leverage is chosen so liquidation sits three stop-distances away
+            # (live/broker.py LIQUIDATION_BUFFER). Reaching it means that
+            # geometry failed, which no later trade should be allowed to repeat
+            # quietly: CRITICAL, so it reaches the alarm and not only the ledger.
+            await self._event("execution", "POSITION_LIQUIDATED", symbol=symbol,
+                              severity="CRITICAL",
+                              payload={"position_uid": closed.position_uid,
+                                       "exit_price": closed.exit_price,
+                                       "stop_price": closed.stop_price,
+                                       "realized_pnl": closed.realized_pnl})
         # FORMATTED DEFENSIVELY. The close is already recorded by this point;
         # a notification must not be able to undo that by raising. A closing
         # order without meta_data.pnl leaves realized_pnl and r_multiple None,

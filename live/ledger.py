@@ -50,6 +50,12 @@ log = logging.getLogger(__name__)
 _BRACKET_REASON = {
     "stop_loss_order": "STOP_LOSS",
     "take_profit_order": "TAKE_PROFIT",
+    # THE VENUE'S OWN CLOSE. Observed on tnet 2026-09-16 (venue order history,
+    # stop_order_type=liquidation_order, src=system): the ETH short liquidated
+    # at 2415.25 with its stop at 2416.2, and the SOL short at 99.508. Both were
+    # written as MANUAL_CLOSE because this mapping lacked the key, which hid
+    # the one exit that means the leverage geometry failed.
+    "liquidation_order": "LIQUIDATION",
 }
 
 #: What we call a close nobody can explain. Deliberately not "TIME_EXIT" or

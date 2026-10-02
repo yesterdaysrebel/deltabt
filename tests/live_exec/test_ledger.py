@@ -53,6 +53,16 @@ def test_a_target_leg_is_recorded_as_a_take_profit():
     assert exit_reason(a_bracket_close("take_profit_order")) == "TAKE_PROFIT"
 
 
+def test_a_liquidation_is_recorded_as_a_liquidation():
+    """tnet 2026-09-16: two liquidations were filed as MANUAL_CLOSE because
+    `liquidation_order` was not mapped, hiding the one exit that means the
+    leverage geometry failed."""
+    assert exit_reason(a_bracket_close("liquidation_order")) == "LIQUIDATION"
+    # A reason we asked for must not relabel the venue's own close either.
+    assert exit_reason(a_bracket_close("liquidation_order"),
+                       requested="time_exit") == "LIQUIDATION"
+
+
 def test_our_own_flatten_records_the_reason_we_asked_for():
     assert exit_reason(REAL_CLOSE, requested="time_exit") == "TIME_EXIT"
 

@@ -145,6 +145,22 @@ class TestCliSeesTheVenueUniverse:
             "the CLI built Settings from the paper universe, so any experiment "
             "it registers names symbols the bot will never trade")
 
+    def test_the_cli_refuses_to_guess_the_venue(self, monkeypatch):
+        """2026-10-02: the experiment document ran the CLI with an env file
+        that carried no DELTA_ENV, so a prod host would have registered
+        testnet's universe. The CLI must refuse rather than default."""
+        import pytest
+
+        import live.__main__ as entry
+        from live.config import ConfigError
+
+        monkeypatch.delenv("DELTA_ENV", raising=False)
+        called = []
+        monkeypatch.setattr("app.cli.main", lambda argv: called.append(argv) or 0)
+        with pytest.raises(ConfigError, match="DELTA_ENV is not set"):
+            entry.cli_entry(["forward-test", "start", "--experiment-id", "X"])
+        assert not called, "the CLI ran without knowing which venue it serves"
+
     def test_the_cli_and_the_bot_agree_on_the_universe(self, monkeypatch):
         """Stated as the invariant that actually matters, not as a detail."""
         import live.__main__ as entry

@@ -44,8 +44,8 @@ from app.persistence.lock import SingleInstanceLock
 from app.persistence.repository import PostgresRepository
 from deltabt.costs import SymbolCosts
 from deltabt.data.store import ProductCatalog
-from live.config import (client_from_env, product_ids, resolve_products,
-                         symbols_for, tick_sizes, venue_name)
+from live.config import (ENV_ENV, ConfigError, client_from_env, product_ids,
+                         resolve_products, symbols_for, tick_sizes, venue_name)
 from live.runtime import LiveTradingBot
 
 log = logging.getLogger("live")
@@ -168,7 +168,25 @@ def cli_entry(argv: list[str]) -> int:
 
     execution_hash moves with it because execution_params() hashes the
     per-symbol halt thresholds, so fixing the universe fixes both components.
+
+    THE VENUE MUST BE STATED, NOT INFERRED (2026-10-02). venue_name() defaults
+    to testnet, which is right for the bot's own convenience paths and wrong
+    here: the experiment document ran this with an env file that carried no
+    DELTA_ENV, so on a PROD host `forward-test start` would have registered
+    testnet's BTC/ETH/SOL while the bot traded BEAT/AKE/BANK -- the same drift
+    as above, from the other direction, and invisible on tnet only because
+    testnet is the default. Refusing costs nothing; guessing writes an
+    experiment the bot can never bind. Help and argparse usage errors act on
+    nothing, so they are let through to argparse without a venue.
     """
+    usage_only = (any(a in ("-h", "--help") for a in argv)
+                  or argv[:1] == ["forward-test"] and len(argv) < 2)
+    if not usage_only and not (os.environ.get(ENV_ENV) or "").strip():
+        raise ConfigError(
+            f"{ENV_ENV} is not set. The live CLI registers experiments against "
+            f"the venue's universe and must be told which venue that is; it "
+            f"does not default to testnet. On a host, run_live.sh writes it "
+            f"into /run/deltabt/env.")
     os.environ["DELTABOT_SYMBOLS"] = ",".join(symbols_for(venue_name()))
     # AND THE EXECUTION SURFACE, for the same reason. The CLI has no broker, so
     # it reconstructs the execution params; only this entry point knows they

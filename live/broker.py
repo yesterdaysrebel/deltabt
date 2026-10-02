@@ -42,6 +42,7 @@ halts rather than repairing.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from math import isfinite
@@ -192,9 +193,28 @@ class LivePosition:
     intent_id: str = ""
     #: The venue's own liquidation price, as of the last poll. 0 when unknown.
     liquidation_price: float = 0.0
+    #: NOT on the venue row; carried across polls by poll(). They exist because
+    #: /api/positions reads the PaperPosition surface and returned 500 on every
+    #: live host (`'LivePosition' object has no attribute 'last_price'`) --
+    #: which also broke the monitor document's probe of that endpoint.
+    risk_per_unit: float = 0.0
+    opened_at: int = 0
+    last_price: float | None = None
+    status: str = "OPEN"
 
     def is_open(self) -> bool:
         return self.contracts > 0
+
+    @property
+    def quantity(self) -> int:
+        return self.contracts
+
+    def unrealized(self, price: float, contract_value: float) -> float:
+        return self.side * (price - self.entry_price) * self.contracts * contract_value
+
+    def r_at(self, price: float, contract_value: float) -> float:
+        risk = self.risk_per_unit * self.contracts * contract_value
+        return self.unrealized(price, contract_value) / risk if risk > 0 else 0.0
 
 
 class LiveBroker:
@@ -255,7 +275,14 @@ class LiveBroker:
     # -- the inert half ------------------------------------------------------
 
     def process_market_event(self, tick) -> list[BrokerEvent]:
-        """Always empty. The venue decides fills; see the module docstring."""
+        """Always empty. The venue decides fills; see the module docstring.
+
+        It does note the last traded price of a held symbol, for
+        /api/positions' mark-to-market; nothing decides anything from it.
+        """
+        pos = self.positions.get(getattr(tick, "symbol", None))
+        if pos is not None and getattr(tick, "ltp", None):
+            pos.last_price = float(tick.ltp)
         return []
 
     def process_bar(self, bar) -> list[BrokerEvent]:
@@ -762,6 +789,23 @@ class LiveBroker:
                     # closing order was not a bracket leg.
                     "requested_reason": self._closing_reason.pop(sym, None)}))
 
+        # CARRY WHAT THE VENUE ROW DOES NOT HOLD. Every poll rebuilds the cache
+        # from /v2/positions/margined, so without this the stop, target, risk
+        # and open time would be lost five seconds after they were learned.
+        clock = int(now if now is not None else time.time())
+        for sym, pos in seen.items():
+            was = self.positions.get(sym)
+            if was is not None:
+                pos.stop_price, pos.target_price = was.stop_price, was.target_price
+                pos.risk_per_unit, pos.opened_at = was.risk_per_unit, was.opened_at
+                pos.last_price, pos.intent_id = was.last_price, was.intent_id
+                continue
+            facts = self._pending.get(self._entry_cid.get(sym, ""), {})
+            pos.stop_price = float(facts.get("stop_price") or 0.0)
+            pos.target_price = float(facts.get("target_price") or 0.0)
+            pos.risk_per_unit = float(facts.get("risk_per_unit") or 0.0)
+            pos.intent_id = str(facts.get("intent_id") or "")
+            pos.opened_at = clock
         self.positions = seen
         return events
 

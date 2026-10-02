@@ -202,3 +202,67 @@ class TestFundingIsTheVenuesJob:
         seen = []
         b.mark_funding_charged(seen.append(x) or x for x in (1, 2, 3))
         assert seen == [1, 2, 3]
+
+
+# -- /api/positions on a LIVE broker (500 on every live host until 2026-10-02) --
+
+def test_positions_endpoint_serves_a_live_position():
+    """The endpoint reads the PaperPosition surface; LivePosition lacked it and
+    every live host answered 500, including the monitor document's probe."""
+    from fastapi.testclient import TestClient
+
+    from app.api.app import create_app
+    from deltabt.costs import SymbolCosts
+    from live.broker import LivePosition
+
+    pos = LivePosition("BEATUSD", 1, 100, 0.0900, 27, stop_price=0.0880,
+                       target_price=0.0960, risk_per_unit=0.0020,
+                       opened_at=1_790_000_000)
+    pos.last_price = 0.0910
+
+    class _Broker:
+        def get_positions(self, symbol=None):
+            return [pos]
+
+    class _Bot:
+        broker = _Broker()
+        costs = {"BEATUSD": SymbolCosts(symbol="BEATUSD", tick_size=0.0001,
+                                        contract_value=10.0, maker_fee=0.0002,
+                                        taker_fee=0.0005, max_leverage=20.0,
+                                        position_size_limit=92000,
+                                        funding_interval_seconds=14400)}
+
+    r = TestClient(create_app(_Bot())).get("/api/positions")
+    assert r.status_code == 200, r.text
+    row = r.json()[0]
+    assert row["quantity"] == 100 and row["status"] == "OPEN"
+    assert row["current_price"] == 0.0910
+    # +0.0010 on 100 contracts of 10 units = $1.00; risk 0.002*100*10 = $2.00
+    assert row["unrealized_pnl"] == 1.0
+    assert row["r"] == 0.5
+
+
+def test_poll_keeps_what_the_venue_row_does_not_hold():
+    """poll() rebuilds the cache from the venue every 5 s; the stop, target,
+    risk and open time must survive that, or the endpoint reads zeros."""
+    from live.broker import LiveBroker
+
+    class _Client:
+        rows = [{"product_id": 27, "product_symbol": "BEATUSD", "size": 100,
+                 "entry_price": "0.0900", "liquidation_price": "0.0800"}]
+
+        def get_positions(self):
+            return self.rows
+
+    b = LiveBroker.__new__(LiveBroker)
+    b.client, b.positions, b._symbol_for = _Client(), {}, {27: "BEATUSD"}
+    b._closing_reason, b._entry_cid = {}, {"BEATUSD": "cid1"}
+    b._pending = {"cid1": {"stop_price": 0.088, "target_price": 0.096,
+                           "risk_per_unit": 0.002, "intent_id": "i1"}}
+    b.poll(now=1_790_000_000)
+    b._pending.clear()                     # consumed when the open is recorded
+    b.positions["BEATUSD"].last_price = 0.091
+    b.poll(now=1_790_000_300)
+    p = b.positions["BEATUSD"]
+    assert (p.stop_price, p.target_price, p.risk_per_unit) == (0.088, 0.096, 0.002)
+    assert p.opened_at == 1_790_000_000 and p.last_price == 0.091

@@ -72,6 +72,27 @@ def test_the_document_uses_the_bots_own_environment():
         assert var in doc, f"{var} is not passed to the one-off container"
 
 
+def test_the_live_cli_learns_its_venue_from_the_shared_env_file():
+    """THE VENUE REACHES THE ONE-OFF CONTAINER THROUGH /run/deltabt/env.
+
+    2026-10-02: the document's cli() passes `--env-file /run/deltabt/env` and
+    no DELTA_ENV of its own, and run_live.sh wrote only the database URL and
+    the two keys into that file. live.__main__.cli_entry then defaulted to
+    testnet, so a PROD host would have registered BTC/ETH/SOL while the bot
+    traded BEAT/AKE/BANK. One source for both: run_live.sh writes the venue
+    into the file the document already reads, and the CLI refuses without it.
+    """
+    doc = document()
+    assert "--env-file /run/deltabt/env" in doc, (
+        "the experiment document no longer reads the bot's env file")
+    run_live = (ROOT / "deploy/aws/run_live.sh").read_text()
+    block = run_live[run_live.index("install -d -m 0700 /run/deltabt"):
+                     run_live.index("> /run/deltabt/env")]
+    assert "printf 'DELTA_ENV=%s\\n'" in block, (
+        "run_live.sh does not write DELTA_ENV into /run/deltabt/env, so the "
+        "experiment document's CLI cannot know which venue it registers for")
+
+
 # --- a stack's FIRST roll, which has nothing to retire ----------------------
 #
 # Added 2026-09-04 with the second stack. The deploy retires before it rolls,

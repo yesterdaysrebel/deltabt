@@ -95,6 +95,10 @@ log = logging.getLogger(__name__)
 
 STATE_KEY = "risk_state"
 
+#: System-event severities that are also LOGGED, at this level. See _event.
+_EVENT_LOG_LEVELS = {"WARNING": logging.WARNING, "ERROR": logging.ERROR,
+                     "CRITICAL": logging.CRITICAL}
+
 
 def idempotency_key(symbol: str, bar_open: int, direction, config_hash: str) -> str:
     """Deterministic identity for one evaluation of one closed bar.
@@ -1195,6 +1199,17 @@ class TradingBot:
             symbol=symbol, payload=payload or {},
             strategy_version=self.strategy.version,
             exchange_ts=self.clock.now() or None, received_ts=wall_now()))
+        # AND TO THE LOG, at its own level. Found 2026-10-02: this wrote to the
+        # database only, so POSITION_FLATTENED_UNSAFE, FLATTEN_FAILED and
+        # PROTECTION_UNVERIFIABLE -- severity CRITICAL -- never reached the
+        # `{ $.level = "CRITICAL" }` metric filter, and the alarm that exists
+        # for exactly them could not fire. INFO events stay database-only; the
+        # log is not a second copy of the journal.
+        level = _EVENT_LOG_LEVELS.get(str(severity).upper())
+        if level is not None:
+            log.log(level, "%s %s", component, event_type,
+                    extra={"event_type": event_type, "symbol": symbol,
+                           "event_payload": payload or {}})
 
     # =================================================================
     # HEALTH INPUTS
