@@ -254,11 +254,80 @@ async def collect(con) -> dict:
         "select count(*) from system_events where component = 'halt' "
         "and received_ts > now() - interval '24 hours'") or 0
 
+    # --- THE PROD DRY RUN (2026-10-02) --------------------------------------
+    # Guarded on the table existing, so a paper database without it still
+    # yields every figure above.
+    if await con.fetchval("select to_regclass('shadow_exits') is not null"):
+        rows = await con.fetch(
+            """select rule, symbol, extract(epoch from closed_at)::bigint t,
+                      net_r::float r, exit_reason, armed_at is not null armed,
+                      trail_amount::float trail
+                 from shadow_exits
+                where experiment_id is not distinct from $1
+                order by closed_at, rule""", rid)
+        # Compact rows, capped: three per closed position, a few dozen bytes
+        # each, well inside the SSM output limit once gzipped.
+        out["shadow_exits"] = [
+            [r["rule"], r["symbol"], r["t"], round(r["r"], 4),
+             str(r["exit_reason"])[:24], bool(r["armed"]), r["trail"]]
+            for r in rows][-900:]
+
+    dry = await con.fetch(
+        """select event_type, symbol, payload from system_events
+            where component = 'dry_run'
+              and occurred_at >= coalesce($1, now() - interval '24 hours')""",
+        since)
+    if dry:
+        summary: dict = {}
+        for r in dry:
+            p = _json(r["payload"], {})
+            s = summary.setdefault(r["symbol"] or "?", {
+                "orders": 0, "refused": 0, "reasons": {}, "spread_r": [],
+                "deviation_r": [], "leverage": []})
+            if r["event_type"] == "DRY_RUN_REFUSED":
+                s["refused"] += 1
+                why = str(p.get("reason") or "")
+                kind = ("spread" if "spread" in why else
+                        "mark beyond stop" if "mark" in why else
+                        "book far from reference" if "from reference" in why else
+                        "one-sided book" if "the book has no" in why else
+                        "margin / leverage" if ("margin" in why or "leverage" in why) else
+                        "kill switch" if "kill switch" in why else "other")
+                s["reasons"][kind] = s["reasons"].get(kind, 0) + 1
+            else:
+                s["orders"] += 1
+                book = p.get("book") or {}
+                lev = p.get("leverage") or {}
+                for key, src, name in (("spread_r", book, "spread_r"),
+                                       ("deviation_r", book, "deviation_r"),
+                                       ("leverage", lev, "leverage")):
+                    if src.get(name) is not None:
+                        s[key].append(round(float(src[name]), 4))
+        out["dry_run"] = summary
+
     return out
 
 
+def _connect_kwargs() -> dict:
+    """IAM-token login when the image is set up for it (DB_IAM_AUTH=1).
+
+    The live image logs in with tokens since 2026-10-02; with only the DSN
+    this probe would have kept using the master password and failed at its
+    next rotation, as it did on 2026-09-03. The bot's own helper lives in the
+    container (`docker exec ... python -`), so it is imported when present;
+    anywhere else the DSN is used as before.
+    """
+    import sys
+    sys.path.insert(0, "/app")
+    try:
+        from app.persistence.db_auth import connect_kwargs
+        return connect_kwargs(os.environ["DATABASE_URL"])
+    except ImportError:
+        return {"dsn": os.environ["DATABASE_URL"]}
+
+
 async def main() -> None:
-    con = await asyncpg.connect(os.environ["DATABASE_URL"])
+    con = await asyncpg.connect(**_connect_kwargs())
     try:
         print(json.dumps(await collect(con), default=str))
     finally:
