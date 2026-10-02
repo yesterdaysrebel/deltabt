@@ -72,19 +72,22 @@ async def main() -> int:
     settings = Settings.from_env()
     configure(settings.log_level)
 
-    # A HOST CONFIGURED FOR A DRY RUN MUST NOT TRADE (2026-10-02). live.tf's
-    # live_sizing can now say dry_run "1", and run_live.sh writes it into the
-    # env file. Until this image implements dry-run mode, the only safe answer
-    # to that request is to refuse to start -- an image that ignored it would
-    # place real orders on a host its operator believes is observing.
-    if dry_run_requested():
-        log.critical("DELTABOT_DRY_RUN=1 but this image has no dry-run mode; "
-                     "refusing to start rather than trade")
-        return 2
+    # A HOST CONFIGURED FOR A DRY RUN NEVER TRADES (2026-10-02). It runs the
+    # paper bot with the live venue checks in front of every entry and no
+    # order path at all (live/dry_run.py); its positions are simulated, so its
+    # experiment registers the PAPER execution profile -- set here and in
+    # cli_entry so the two agree.
+    dry_run = dry_run_requested()
+    if dry_run:
+        os.environ["DELTABOT_EXECUTION_PROFILE"] = "paper"
 
     venue = venue_name()
     client = client_from_env()
-    if client.is_prod:
+    if dry_run:
+        log.warning("=" * 62)
+        log.warning("DRY RUN on %s. No order is sent from this process.", venue)
+        log.warning("=" * 62)
+    elif client.is_prod:
         log.warning("=" * 62)
         log.warning("PROD. Orders from this process spend real money.")
         log.warning("=" * 62)
@@ -111,7 +114,24 @@ async def main() -> int:
                                 "strategy": strategy.version,
                                 "config_hash": strategy.config_hash})
 
-    bot = LiveTradingBot(
+    if dry_run:
+        from live.dry_run import build as build_dry_run
+        from live.guards import KILL_SWITCH_PATH
+        bot = build_dry_run(
+            settings, client=client, venue=venue, symbols=symbols,
+            products=products, strategy=strategy,
+            costs=load_costs(symbols, settings.risk.slippage_bps),
+            repo=PostgresRepository(settings.database_url),
+            lock=SingleInstanceLock(settings.database_url),
+            notifier=LogNotifier(), backfiller=Backfiller(),
+            kill_switch_path=KILL_SWITCH_PATH)
+    else:
+        bot = _live_bot(settings, client, venue, symbols, products, strategy)
+    return await _serve(bot, settings)
+
+
+def _live_bot(settings, client, venue, symbols, products, strategy):
+    return LiveTradingBot(
         settings,
         PostgresRepository(settings.database_url),
         load_costs(symbols, settings.risk.slippage_bps),
@@ -125,6 +145,8 @@ async def main() -> int:
         tick_size=tick_sizes(products),
     )
 
+
+async def _serve(bot, settings) -> int:
     # The API comes up FIRST and stays up even if the bot refuses to start, so
     # /readyz can report WHY rather than the probe simply timing out. On this
     # bot that matters more: "refused because the circuit breakers are off" is
@@ -206,9 +228,10 @@ def cli_entry(argv: list[str]) -> int:
     os.environ["DELTABOT_SYMBOLS"] = ",".join(symbols_for(venue_name()))
     # AND THE EXECUTION SURFACE, for the same reason. The CLI has no broker, so
     # it reconstructs the execution params; only this entry point knows they
-    # should be the LIVE ones. main() below sets it too, so the bot that
-    # verifies the experiment and the CLI that wrote it agree.
-    os.environ["DELTABOT_EXECUTION_PROFILE"] = "live"
+    # should be the LIVE ones -- or, on a dry-run host, the PAPER ones, which
+    # simulate its positions. main() sets the same, so the bot that verifies
+    # the experiment and the CLI that wrote it agree.
+    os.environ["DELTABOT_EXECUTION_PROFILE"] = "paper" if dry_run_requested() else "live"
     from app.cli import main as cli_main
     return cli_main(argv)
 

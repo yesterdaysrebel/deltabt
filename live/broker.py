@@ -404,19 +404,23 @@ class LiveBroker:
         if (intent.side > 0 and mark <= stop) or (intent.side < 0 and mark >= stop):
             raise OpeningRefused(f"{symbol}: mark {mark:g} is already beyond the "
                                  f"stop {stop:g}; the bracket would be refused or fire at once")
+        return {"touch": touch, "far": far, "mark": mark, "reference": ref,
+                "deviation_r": dev,
+                "spread_r": abs(touch - far) / rpu if far > 0 else None}
 
-    def _set_safe_leverage(self, intent, pid: int) -> int:
-        """Choose, set and confirm the leverage for this entry, or refuse it.
+    def _plan_leverage(self, intent, *, available: float | None = None) -> dict:
+        """Choose the leverage for this entry WITHOUT writing anything.
 
         The lowest leverage is not the goal; liquidation beyond the stop is.
         So this takes the HIGHEST leverage whose liquidation still sits
         LIQUIDATION_BUFFER times further out than the stop, capped at the
         product's maximum -- the least margin that is still safe.
 
-        Every failure raises OpeningRefused: nothing has been sent, so the
-        runtime releases the exposure slot. Reading the leverage back after
-        setting it is deliberate -- the setting is what liquidation depends
-        on, and "the POST returned 200" is not the same claim.
+        Split from _set_safe_leverage on 2026-10-02 so the prod dry run can
+        apply the same rule on a read-only key. `available` overrides the
+        venue's available balance (the dry run plans against its configured
+        equity; its account may hold nothing). Every failure raises
+        OpeningRefused: nothing has been sent.
         """
         symbol = intent.symbol
         entry = getattr(intent, "entry_reference", None)
@@ -441,16 +445,32 @@ class LiveBroker:
 
         notional = int(intent.quantity) * contract_value * entry
         margin = notional / leverage
-        try:
-            available = float(self.client.get_wallet_balance("USD")
-                              .get("available_balance") or 0)
-        except VenueError as exc:
-            raise OpeningRefused(f"{symbol}: could not read the balance: {exc}") from exc
+        if available is None:
+            try:
+                available = float(self.client.get_wallet_balance("USD")
+                                  .get("available_balance") or 0)
+            except VenueError as exc:
+                raise OpeningRefused(f"{symbol}: could not read the balance: {exc}") from exc
         if margin > available * MARGIN_HEADROOM:
             raise OpeningRefused(
                 f"{symbol}: margin ${margin:,.2f} at {leverage}x exceeds "
                 f"{MARGIN_HEADROOM:.0%} of the available ${available:,.2f}")
+        liq_distance = 1.0 / leverage - mm_pct / 100.0
+        return {"leverage": leverage, "margin": margin, "available": available,
+                "notional": notional, "stop_distance": stop_distance,
+                "liquidation_distance": liq_distance,
+                "liquidation_buffer_x": liq_distance / stop_distance}
 
+    def _set_safe_leverage(self, intent, pid: int) -> int:
+        """Choose (_plan_leverage), set and confirm the leverage, or refuse.
+
+        Reading the leverage back after setting it is deliberate -- the
+        setting is what liquidation depends on, and "the POST returned 200" is
+        not the same claim.
+        """
+        symbol = intent.symbol
+        plan = self._plan_leverage(intent)
+        leverage = plan["leverage"]
         try:
             self.client.set_order_leverage(pid, leverage)
             confirmed = self.client.get_order_leverage(pid)
@@ -460,11 +480,10 @@ class LiveBroker:
             raise OpeningRefused(
                 f"{symbol}: asked for {leverage}x, the venue reports {confirmed}x")
 
-        liq_distance = 1.0 / leverage - mm_pct / 100.0
         log.info("%s leverage %dx: liquidation ~%.2f%% from entry, stop %.2f%% "
                  "(%.1fx), margin $%.2f of $%.2f", symbol, leverage,
-                 liq_distance * 100, stop_distance * 100,
-                 liq_distance / stop_distance, margin, available)
+                 plan["liquidation_distance"] * 100, plan["stop_distance"] * 100,
+                 plan["liquidation_buffer_x"], plan["margin"], plan["available"])
         return leverage
 
     def submit_order(self, intent, *, now: int | None = None,
