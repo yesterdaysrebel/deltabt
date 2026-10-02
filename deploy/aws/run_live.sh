@@ -120,10 +120,13 @@ docker rm -f deltabot >/dev/null 2>&1 || true
 # these. /run is tmpfs, so a reboot clears it and this rewrites it.
 install -d -m 0700 /run/deltabt
 umask 077
+# DELTA_ENV TOO: the experiment document runs the CLI with only this file, and
+# a CLI without it registered testnet's universe on a prod host (2026-10-02).
 {
   printf 'DATABASE_URL=%s\n' "$DATABASE_URL"
   printf 'DELTA_API_KEY=%s\n' "$DELTA_API_KEY"
   printf 'DELTA_API_SECRET=%s\n' "$DELTA_API_SECRET"
+  printf 'DELTA_ENV=%s\n' "$DELTA_ENV"
 } > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC DELTA_API_KEY DELTA_API_SECRET
 

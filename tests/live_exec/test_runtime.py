@@ -206,6 +206,66 @@ def test_prod_refuses_to_start_with_the_breakers_disabled(tmp_path):
     assert bot.notifier.sent, "a refusal nobody is told about is one nobody fixes"
 
 
+def _guarded_bot(strategy, broker=None):
+    """A bot whose breakers pass, so start() reaches the spec check."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class _Risk:
+        max_drawdown_pct: float = 0.20
+        max_daily_loss_pct: float = 0.10
+        max_consecutive_losses: int = 8
+
+    class _Settings:
+        risk = _Risk()
+
+    bot = a_bot(FakeVenue([]))
+    bot.settings = _Settings()
+    bot.venue = "prod"
+    bot.strategy = strategy
+    if broker is not None:
+        bot.broker = broker
+    return bot
+
+
+@pytest.mark.parametrize("variant, refused, why", [
+    ("SPEC:manual_scalp_both_t3_ladder@5", True, "stop ladder"),
+    ("SPEC:manual_scalp_both_t3_ltp@5", True, "stop trigger"),
+])
+def test_a_spec_the_live_broker_would_silently_ignore_refuses_to_start(
+        variant, refused, why):
+    """2026-10-02: LiveBroker took no rungs and always sends MARK, so these two
+    specs would bind under their own identity and run the baseline's exits."""
+    from app.config.variants import resolve_strategy
+
+    bot = _guarded_bot(resolve_strategy({"DELTABOT_VARIANT": variant}))
+    assert run(bot._start_checks_only()) is False
+    assert why in bot.recovery_error
+    assert bot.notifier.sent
+
+
+def test_the_baseline_spec_passes_the_spec_check():
+    from app.config.variants import resolve_strategy
+
+    bot = _guarded_bot(resolve_strategy({"DELTABOT_VARIANT": "SPEC:manual_scalp_both_t3@5"}))
+    assert run(bot._start_checks_only()) is True
+    assert bot.recovery_error is None
+
+
+def test_a_broker_that_declares_ladder_support_lifts_the_refusal():
+    from app.config.variants import resolve_strategy
+
+    class _LadderBroker:
+        supports_ladder = True
+
+        def poll(self):
+            return []
+
+    bot = _guarded_bot(resolve_strategy({"DELTABOT_VARIANT": "SPEC:manual_scalp_both_t3_ladder@5"}),
+                       broker=_LadderBroker())
+    assert run(bot._start_checks_only()) is True
+
+
 def test_the_kill_switch_stops_an_order_at_the_broker(tmp_path):
     from live.broker import LiveBroker
     from live.client import VenueError
@@ -325,6 +385,24 @@ def test_a_close_records_the_reason_the_venue_gives():
     assert closed.status == "CLOSED"
     assert closed.realized_pnl == -10.05
     assert closed.r_multiple == pytest.approx(-1.0)
+
+
+def test_a_liquidation_raises_a_critical_event():
+    """Recorded AND raised: a liquidation means the 3x liquidation buffer
+    failed, and the ledger alone is not where anybody looks."""
+    liq_fill = {"id": 3, "state": "closed", "average_fill_price": "88.0",
+                "paid_commission": "0.05", "stop_order_type": "liquidation_order",
+                "updated_at": "2026-09-15T07:55:54.630597Z",
+                "meta_data": {"pnl": "-12.05"}}
+    opened = _persisting_bot({"cid1": ENTRY_ORDER}, INTENT)
+    run(opened._persist_open(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    rec = opened.repo.opened[0]
+
+    bot = _persisting_bot({"history": [liq_fill]}, INTENT, ledger=[rec])
+    run(bot._persist_close(type("E", (), {"symbol": "BEATUSD", "payload": {}})()))
+    assert bot.repo.updated[0].exit_reason == "LIQUIDATION"
+    assert any(e[1] == "POSITION_LIQUIDATED" and e[2] == "CRITICAL"
+               for e in bot.events)
 
 
 def test_a_close_with_no_open_row_is_reported_not_invented():

@@ -307,3 +307,31 @@ def test_client_defaults_to_testnet_and_says_so():
     client = LiveClient(CREDS)
     assert not client.is_prod
     assert "testsecret" not in repr(client)
+
+
+# -- cancel and leverage writes: transport errors become VenueErrors (2026-10-02) --
+
+def test_a_cancel_survives_a_dropped_connection(monkeypatch):
+    """Cancel is idempotent at the venue, so it is resent; before 2026-10-02
+    a ConnectionError escaped as a raw requests exception."""
+    monkeypatch.setattr("live.client.time.sleep", lambda s: None)
+    client, session = a_client(requests.ConnectionError("reset"),
+                               _resp(200, {"success": True, "result": {"id": 9, "state": "cancelled"}}))
+    assert client.cancel_order(9, 27)["state"] == "cancelled"
+    assert [m for m, _ in session.sent] == ["DELETE", "DELETE"]
+
+
+def test_a_cancel_that_keeps_failing_raises_a_venue_error(monkeypatch):
+    monkeypatch.setattr("live.client.time.sleep", lambda s: None)
+    client, _ = a_client(requests.ConnectionError("x"), requests.ConnectionError("y"))
+    with pytest.raises(VenueUnavailable):
+        client.cancel_order(9, 27)
+
+
+def test_a_leverage_write_on_a_dropped_connection_is_a_venue_error():
+    """Not retried -- the broker reads leverage back -- but it must be a
+    VenueError, or `except VenueError` in _set_safe_leverage never sees it."""
+    client, session = a_client(requests.ConnectionError("reset"))
+    with pytest.raises(VenueUnavailable):
+        client.set_order_leverage(27, 10)
+    assert len(session.sent) == 1

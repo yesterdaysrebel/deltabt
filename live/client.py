@@ -401,10 +401,31 @@ class LiveClient:
         """
         path = f"/v2/products/{product_id}/orders/leverage"
         body = encode_body({"leverage": str(int(leverage))})
-        return self._parse(self._send_once("POST", path, "", body), path)
+        try:
+            resp = self._send_once("POST", path, "", body)
+        except requests.RequestException as exc:
+            # A raw requests exception escaped here before 2026-10-02, past the
+            # broker's `except VenueError`. Not retried: the caller reads back.
+            raise VenueUnavailable(f"{type(exc).__name__} on {path}") from exc
+        return self._parse(resp, path)
 
     def cancel_order(self, order_id: int, product_id: int) -> dict:
-        """Cancel is idempotent at the venue: cancelling twice is harmless."""
+        """Cancel is idempotent at the venue: cancelling twice is harmless.
+
+        So it is RETRIED on a transport error or a 5xx/429, unlike an order:
+        resending a cancel cannot create anything. Before 2026-10-02 a socket
+        error escaped as a raw requests exception, past every `except
+        VenueError` in the broker.
+        """
         body = encode_body({"id": order_id, "product_id": product_id})
-        return self._parse(self._send_once("DELETE", "/v2/orders", "", body),
-                           "/v2/orders")
+        last: Exception | None = None
+        for attempt in range(self.max_retries):
+            try:
+                return self._parse(self._send_once("DELETE", "/v2/orders", "", body),
+                                   "/v2/orders")
+            except VenueUnavailable as exc:
+                last = exc
+            except requests.RequestException as exc:
+                last = VenueUnavailable(f"{type(exc).__name__} on /v2/orders")
+            time.sleep(min(2.0 ** attempt, 8.0))
+        raise VenueUnavailable(f"giving up on cancel {order_id}: {last}")
