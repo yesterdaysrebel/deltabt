@@ -596,3 +596,81 @@ class TestTheTimeStop:
             assert head.index("hit_target") < head.index("_timed_out"), (
                 "the time stop must be checked after stop and target")
 
+
+
+# =====================================================================
+# THE MINIMUM-CONTRACT FLOOR (2026-10-02, the $250 prod pilot)
+# =====================================================================
+
+AKE = SymbolCosts(symbol="AKEUSD", tick_size=1e-7, contract_value=10_000.0,
+                  maker_fee=0.0002, taker_fee=0.0005, max_leverage=20.0,
+                  position_size_limit=15_000, funding_interval_seconds=14400,
+                  slippage_bps=2.0)
+AKE_ENTRY = 0.0306741
+
+
+def ake_setup(stop_pct):
+    """An AKEUSD long whose 4xATR stop sits `stop_pct` below entry, 3R target."""
+    stop = AKE_ENTRY * (1 - stop_pct)
+    return setup("AKEUSD", 1, AKE_ENTRY, stop, AKE_ENTRY + 3 * (AKE_ENTRY - stop))
+
+
+def ake_engine(**over):
+    cfg = replace(RiskConfig(starting_equity=250.0, risk_per_trade=0.02), **over)
+    return RiskEngine(cfg, {"AKEUSD": AKE}, allowed_symbols=("AKEUSD",))
+
+
+class TestMinimumContractFloor:
+    """One AKEUSD contract is 10,000 AKE: ~$307 notional; at the 30-day median
+    4xATR (~3.3% of price on 10-01) one contract risks ~$10.2.
+    At $250 and 2% ($5) the budget buys none, so AKEUSD never trades unless a
+    single contract may be taken when its risk is within the owner's cap."""
+
+    def _decide(self, stop_pct, **over):
+        return ake_engine(**over).evaluate(
+            ake_setup(stop_pct), RiskState.fresh(250.0), open_positions=[],
+            now=NOW, market_can_trade=True)
+
+    def test_off_by_default_so_paper_is_unchanged(self):
+        d = self._decide(0.043)
+        assert not d.approved and d.limit_name == "min_contract_size"
+
+    def test_one_contract_within_the_cap_is_taken(self):
+        # 1 contract at a 4.3% stop = 10,000 * 0.0306741 * 0.043 = $13.19,
+        # above the $12.50 cap (5% of $250): skipped.
+        d = self._decide(0.043, min_contract_risk_cap=0.05)
+        assert not d.approved and d.limit_name == "min_contract_size"
+        d = self._decide(0.035, min_contract_risk_cap=0.05)   # $10.74 <= $12.50
+        assert d.approved, d.reason
+        assert d.intent.quantity == 1
+
+    def test_the_floor_is_visible_in_the_decision(self):
+        exp = ake_setup(0.035)
+        d = ake_engine(min_contract_risk_cap=0.05).evaluate(
+            exp, RiskState.fresh(250.0), open_positions=[], now=NOW,
+            market_can_trade=True)
+        assert d.approved
+        assert exp.detail["sized_at_minimum_contract"] is True
+        assert exp.detail["minimum_contract_risk"] == pytest.approx(
+            10_000 * AKE_ENTRY * 0.035)
+
+    def test_a_volatile_day_is_still_skipped(self):
+        """Above the cap the old rejection stands: the cap is a ceiling."""
+        d = self._decide(0.06, min_contract_risk_cap=0.05)
+        assert not d.approved and d.limit_name == "min_contract_size"
+
+    def test_the_floor_never_overrides_leverage(self):
+        """1 contract is $307 on $250 = 1.23x; a 1.0x cap must still refuse."""
+        d = self._decide(0.035, min_contract_risk_cap=0.05, max_leverage=1.0)
+        assert not d.approved and d.limit_name == "max_leverage"
+
+    def test_symbols_the_budget_can_size_are_untouched(self):
+        """BTC at the default budget never reaches the floor."""
+        base = approve()
+        with_floor = approve(engine(min_contract_risk_cap=0.05))
+        assert with_floor.intent.quantity == base.intent.quantity
+
+    @pytest.mark.parametrize("bad", [-0.01, 0.2])
+    def test_the_cap_is_validated(self, bad):
+        with pytest.raises(ValueError, match="min_contract_risk_cap"):
+            RiskConfig(min_contract_risk_cap=bad).validate()
