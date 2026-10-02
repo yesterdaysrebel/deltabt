@@ -222,6 +222,17 @@ class StrategySpec:
     #: being reachable by thin prints that mark would have smoothed.
     stop_trigger: str = "mark"
 
+    #: A TRAILING STOP, ADDED 2026-10-02 for the prod pilot. Once the trade's
+    #: favourable excursion reaches ``trail_after_r`` (in R), the stop sits
+    #: ``trail_r`` behind the best price since. ``None`` is the absence of the
+    #: rule and hashes as before. Mirrors Delta's bracket_trail_amount attached
+    #: by one bracket edit at trail_after_r -- Delta documents no activation
+    #: price, so a trail from entry would start the stop at -trail_r. The
+    #: arithmetic is deltabt/exits.py, shared by every executor. Mutually
+    #: exclusive with ladder_rungs: one profit-protection rule per arm.
+    trail_after_r: float | None = None
+    trail_r: float | None = None
+
     #: Hours of the UTC day during which an entry may FIRE, ``(start, end)``
     #: with ``end`` exclusive and 24 meaning midnight. ``None`` -- the default
     #: and what every spec built before 2026-09-04 means -- is every hour.
@@ -300,6 +311,15 @@ class StrategySpec:
                         f"rung ({trig}, {stop}) puts the stop at or beyond the "
                         f"excursion that triggers it, so it would stop out the "
                         f"trade that armed it")
+        if (self.trail_after_r is None) != (self.trail_r is None):
+            raise ValueError("trail_after_r and trail_r are set together or not at all")
+        if self.trail_r is not None:
+            if self.trail_r <= 0 or self.trail_after_r <= 0:
+                raise ValueError(
+                    f"trail_after_r and trail_r must be positive, got "
+                    f"{self.trail_after_r}, {self.trail_r}")
+            if self.ladder_rungs:
+                raise ValueError("a spec carries a ladder or a trail, not both")
         if self.stop == "fixed_pct" and not 0 < self.stop_pct < 1:
             raise ValueError(f"stop_pct must be in (0, 1), got {self.stop_pct}")
         if self.entry_hours_utc is not None:
@@ -407,6 +427,10 @@ class StrategySpec:
             payload.pop("ladder_rungs", None)
         if payload.get("stop_trigger") == "mark":
             payload.pop("stop_trigger", None)
+        # THE THIRD, 2026-10-02: no trail is the absence of the rule.
+        if payload.get("trail_r") is None:
+            payload.pop("trail_r", None)
+            payload.pop("trail_after_r", None)
         return payload
 
     @property

@@ -382,6 +382,27 @@ FAMILIES: dict[str, dict] = {
                   ladder_rungs=((0.5, 0.0), (1.0, 0.5),
                                 (1.5, 1.0), (2.0, 1.5))),
     ),
+    # THE TRAIL ARM, 2026-10-02 (prod pilot, owner's choice). Identical entry,
+    # stop and target to manual_scalp_both_t3; once the trade has gone +0.5R
+    # the stop trails 0.5R behind the best price since. It equals the ladder
+    # above AT each rung (0.5->0, 1.0->+0.5, 1.5->+1.0, 2.0->+1.5) and is
+    # tighter between rungs and keeps trailing past +2R. Live it is one
+    # bracket edit at +0.5R setting Delta's bracket_trail_amount = 0.5R.
+    #
+    # THE EVIDENCE IS AGAINST IT AND IS RECORDED, as for the ladder: winners
+    # that reach 3R pull back a median 1.50R and green losers 1.51R, so no
+    # give-back distance separates them; 33 trailing cells never beat the
+    # baseline. It runs because it was asked for, first as a dry-run shadow
+    # on prod, where it is read paired against the baseline and the ladder on
+    # identical entries.
+    "manual_scalp_both_t3_trail": dict(
+        desc="manual_scalp_both_t3 with a 0.5R trailing stop armed at +0.5R",
+        primary=_tf_rules(wpr_rule="variant_a"),
+        confirm=_tf_rules(wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10,
+                  trail_after_r=0.5, trail_r=0.5),
+    ),
     # THE STOP-TRIGGER ARM. Identical rule; only which price the stop watches
     # changes. It is aimed at the overshoot, not at the entry: the live arm's
     # six BEATUSD stops filled a mean 0.247R PAST their trigger -- 1.48R, about

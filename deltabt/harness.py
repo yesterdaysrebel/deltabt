@@ -80,6 +80,8 @@ def params_for(spec, minutes: int, hold_hours: int | None = None) -> StrategyPar
         exit_on_trend_flip=EXIT_ON_TREND_FLIP,
         reward_risk=spec.target_r,
         ladder_rungs=tuple(getattr(spec, "ladder_rungs", ()) or ()),
+        trail_after_r=getattr(spec, "trail_after_r", None),
+        trail_r=getattr(spec, "trail_r", None),
     )
 
 

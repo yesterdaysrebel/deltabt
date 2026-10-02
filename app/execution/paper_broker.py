@@ -57,6 +57,7 @@ from app.execution.order_state import (
 from app.persistence.models import new_uid
 from app.portfolio.funding import settlements_for_position
 from app.forwardtest.identity import EXECUTION_FIELDS
+from deltabt.exits import earned_stop_r, tightens
 from deltabt.costs import SymbolCosts
 
 log = logging.getLogger(__name__)
@@ -297,7 +298,9 @@ class PaperBroker:
                  wpr_exit_long_level: float = -80.0,
                  wpr_exit_short_level: float = -20.0,
                  ladder_rungs: tuple[tuple[float, float], ...] = (),
-                 stop_trigger: str = "mark") -> None:
+                 stop_trigger: str = "mark",
+                 trail_after_r: float | None = None,
+                 trail_r: float | None = None) -> None:
         self.costs = costs
         #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending
         #: ``(favourable excursion in R, new stop in R from entry)`` pairs.
@@ -309,6 +312,11 @@ class PaperBroker:
         #: implementation: the engine walks bars and this walks ticks, which is
         #: strictly finer -- a bar's extreme is a tick here.
         self.ladder_rungs = tuple((float(t), float(s)) for t, s in ladder_rungs)
+        #: A TRAILING STOP armed at trail_after_r, trail_r behind the best
+        #: price (2026-10-02). None is the absence of the rule. The stop
+        #: arithmetic for both rules is deltabt/exits.py.
+        self.trail_after_r = None if trail_after_r is None else float(trail_after_r)
+        self.trail_r = None if trail_r is None else float(trail_r)
         #: WHICH PRICE THE STOP WATCHES. "mark" is Delta's default and every
         #: recorded result; "ltp" triggers on last-traded instead. Delta
         #: TRIGGERS on mark and FILLS at last-traded, and on an illiquid
@@ -868,7 +876,7 @@ class PaperBroker:
                 px = self._slip(tick.ltp, -pos.side)
                 self._close(pos, px, ExitReason.TIME_EXIT, tick.ts,
                             tick.ts_us, maker=False)
-            elif self.ladder_rungs:
+            elif self.ladder_rungs or self.trail_r is not None:
                 # THE LADDER MOVES THE STOP AFTER THE TESTS ABOVE, NEVER
                 # BEFORE, and only on a tick the position survived. Promoting
                 # first would let one price observation both raise the stop and
@@ -896,22 +904,22 @@ class PaperBroker:
             return
         favourable = ((tick.ltp - pos.entry_price) if pos.side == LONG
                       else (pos.entry_price - tick.ltp)) / pos.risk_per_unit
+        stop_r = earned_stop_r(favourable, ladder_rungs=self.ladder_rungs,
+                               trail_after_r=self.trail_after_r,
+                               trail_r=self.trail_r)
+        if stop_r is None:
+            return
         costs = self.costs.get(pos.symbol)
-        for trigger_r, stop_r in self.ladder_rungs:
-            if favourable < trigger_r:
-                # Rungs ascend, so nothing further can be earned either.
-                break
-            raw = pos.entry_price + pos.side * stop_r * pos.risk_per_unit
-            promoted = (costs.round_price(
-                raw, direction=-1 if pos.side == LONG else 1)
-                if costs is not None else raw)
-            # Monotone in the position's favour, never against it. A rung that
-            # rounds to the wrong side of the stop it already has is ignored
-            # rather than allowed to loosen protection.
-            if (pos.side == LONG and promoted > pos.stop_price) or (
-                    pos.side == SHORT and promoted < pos.stop_price):
-                pos.stop_price = promoted
-                pos.stop_promoted = True
+        raw = pos.entry_price + pos.side * stop_r * pos.risk_per_unit
+        promoted = (costs.round_price(
+            raw, direction=-1 if pos.side == LONG else 1)
+            if costs is not None else raw)
+        # Monotone in the position's favour, never against it. A rung or a
+        # trail that rounds to the wrong side of the stop it already has is
+        # ignored rather than allowed to loosen protection.
+        if tightens(pos.side, promoted, pos.stop_price):
+            pos.stop_price = promoted
+            pos.stop_promoted = True
 
     # -- stop-fill telemetry -------------------------------------------------
     #

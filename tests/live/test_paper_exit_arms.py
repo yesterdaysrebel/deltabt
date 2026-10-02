@@ -186,3 +186,58 @@ class TestIdentity:
         # that ONE behavioural field differs, not that the names match.
         assert replace(ladder, ladder_rungs=(), name=base.name) == base
         assert replace(ltp, stop_trigger="mark", name=base.name) == base
+
+
+# --- the trailing stop (2026-10-02, prod pilot) ------------------------------
+
+def trail_broker():
+    return PaperBroker(COSTS, starting_equity=10_000.0, slippage_bps=2.0,
+                       trail_after_r=0.5, trail_r=0.5)
+
+
+class TestTrail:
+    """0.5R behind the best price, armed at +0.5R: Delta's bracket_trail_amount
+    attached by one bracket edit at +0.5R (no activation price exists)."""
+
+    def test_nothing_moves_before_the_trail_arms(self):
+        b = trail_broker()
+        pos = open_long(b)
+        before = pos.stop_price
+        b.process_market_event(tick(pos.entry_price + 0.4 * pos.risk_per_unit,
+                                    ts=BAR_CLOSE + 60))
+        assert pos.stop_price == before and pos.stop_promoted is False
+
+    def test_it_arms_at_breakeven_and_then_trails_the_peak(self):
+        b = trail_broker()
+        pos = open_long(b)
+        e, r = pos.entry_price, pos.risk_per_unit
+        # +0.51R, not +0.50R: the tick rounds an exact +0.5R price to just
+        # below it (the ladder tests use +0.6R for the same reason).
+        b.process_market_event(tick(e + 0.51 * r, ts=BAR_CLOSE + 60))
+        assert pos.stop_price == pytest.approx(e + 0.01 * r, abs=1.0)
+        b.process_market_event(tick(e + 1.2 * r, ts=BAR_CLOSE + 120))
+        # Between rungs the trail is tighter than the ladder (ladder: +0.5R).
+        assert pos.stop_price == pytest.approx(e + 0.7 * r, abs=0.5)
+        b.process_market_event(tick(e + 0.9 * r, ts=BAR_CLOSE + 180))
+        assert pos.stop_price == pytest.approx(e + 0.7 * r, abs=0.5), "a pullback loosened it"
+
+    def test_it_equals_the_ladder_at_each_rung(self):
+        """Just past each rung the two stops agree to within that overshoot."""
+        for fav, expected in ((0.5, 0.0), (1.0, 0.5), (1.5, 1.0), (2.0, 1.5)):
+            t, ld = trail_broker(), broker(ladder=LADDER)
+            pt, pl = open_long(t), open_long(ld)
+            for b, p in ((t, pt), (ld, pl)):
+                b.process_market_event(
+                    tick(p.entry_price + (fav + 0.01) * p.risk_per_unit, ts=BAR_CLOSE + 60))
+            r = pt.risk_per_unit
+            assert pl.stop_price == pytest.approx(pl.entry_price + expected * r, abs=1.0), fav
+            assert abs(pt.stop_price - pl.stop_price) <= 0.02 * r, fav
+
+    def test_it_keeps_trailing_past_two_r_where_the_ladder_stops(self):
+        t, ld = trail_broker(), broker(ladder=LADDER)
+        pt, pl = open_long(t, target=70_000.0), open_long(ld, target=70_000.0)
+        for b, p in ((t, pt), (ld, pl)):
+            b.process_market_event(tick(p.entry_price + 2.8 * p.risk_per_unit,
+                                        ts=BAR_CLOSE + 60))
+        assert pt.stop_price == pytest.approx(pt.entry_price + 2.3 * pt.risk_per_unit, abs=0.5)
+        assert pl.stop_price == pytest.approx(pl.entry_price + 1.5 * pl.risk_per_unit, abs=0.5)

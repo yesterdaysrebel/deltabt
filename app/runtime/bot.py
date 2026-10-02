@@ -214,6 +214,9 @@ class TradingBot:
                                   # catalog entry the backtester can run.
                                   stop_trigger=getattr(strategy, "stop_trigger",
                                                        "mark"),
+                                  # The trail, from the spec like the ladder.
+                                  trail_after_r=getattr(strategy, "trail_after_r", None),
+                                  trail_r=getattr(strategy, "trail_r", None),
                                   **broker_params(settings.risk))
         self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
         self.state = RiskState.fresh(settings.risk.starting_equity)

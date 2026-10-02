@@ -193,6 +193,12 @@ class LiveTradingBot(TradingBot):
                 f"the strategy declares a stop ladder {rungs} and the live "
                 f"broker cannot move a resting stop; it would register the "
                 f"ladder's identity and run the baseline's exits")
+        if (getattr(self.strategy, "trail_r", None) is not None
+                and not getattr(self.broker, "supports_trail", False)):
+            raise GuardError(
+                "the strategy declares a trailing stop and the live broker "
+                "cannot attach one; it would register the trail's identity and "
+                "run the baseline's exits")
         trigger = getattr(self.strategy, "stop_trigger", "mark") or "mark"
         if trigger != "mark":
             raise GuardError(

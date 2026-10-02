@@ -280,6 +280,11 @@ class StrategyParams:
     #: after that bar's exits otherwise. Generalises ``breakeven_at_r``.
     ladder_rungs: tuple[tuple[float, float], ...] = ()
 
+    #: The trailing stop (StrategySpec.trail_after_r / trail_r), 2026-10-02.
+    #: Evaluated through deltabt/exits.py exactly where the ladder is.
+    trail_after_r: float | None = None
+    trail_r: float | None = None
+
     #: Close when %R leaves the band in the ADVERSE direction: a long exits
     #: below ``wpr_exit_long_level``, a short exits above
     #: ``wpr_exit_short_level``. Leaving the band the FAVOURABLE way is the
