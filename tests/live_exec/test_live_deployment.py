@@ -416,15 +416,19 @@ def test_the_secret_name_in_the_workflow_matches_terraform():
     default = next(l for l in block.splitlines() if l.strip().startswith("default"))
     environment = default.split("=", 1)[1].strip().strip('"')
 
-    # What Terraform tells the host to look for.
+    # PER STACK SINCE 2026-10-02: Terraform names <prefix>/<stack>/venue-
+    # credentials and the workflows must build the same string.
     line = next(l for l in LIVE_TF.splitlines()
-                if l.strip().startswith("live_credential_name"))
-    suffix = line.split("=", 1)[1].strip().strip('"')
-    expected = suffix.replace("${local.name}", f"deltabt-{environment}")
-
-    assert f"SECRET_NAME: {expected}" in DEPLOY, (
-        f"the workflow looks for a secret named something other than "
-        f"{expected!r}, which is what Terraform creates")
+                if l.strip().startswith("live_credential_prefix"))
+    prefix = line.split("=", 1)[1].strip().strip('"').replace(
+        "${local.name}", f"deltabt-{environment}")
+    assert '"${local.live_credential_prefix}/${k}/venue-credentials"' in LIVE_TF
+    for wf in ("deploy-prod", "deploy-testnet"):
+        text = _named(wf).read_text()
+        assert f"SECRET_PREFIX: {prefix}" in text, wf
+        assert 'name="$SECRET_PREFIX/$stack/venue-credentials"' in text, (
+            f"{wf} does not ask for each stack's own secret, which is what "
+            f"Terraform tells that stack's host to read")
 
 
 def test_a_live_stack_can_be_rolled_to_an_explicit_tag():
@@ -586,3 +590,30 @@ def test_an_image_without_dry_run_mode_refuses_a_dry_run_host():
     assert entry.dry_run_requested({"DELTABOT_DRY_RUN": "1"})
     assert not entry.dry_run_requested({"DELTABOT_DRY_RUN": "0"})
     assert not entry.dry_run_requested({})
+
+
+def test_each_live_workflow_rolls_only_its_own_venue(monkeypatch):
+    """2026-10-02: live_venue is global, and deploy-testnet ran on every push;
+    once the hosts were prod it would have gone red at the host check on each
+    one. The matrix is now empty for the other workflow's venue."""
+    for wf, v in (("deploy-prod", "prod"), ("deploy-testnet", "testnet")):
+        assert f"FOR_VENUE: {v}" in _named(wf).read_text(), wf
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "lsm", ROOT / "scripts/live_stacks_matrix.py")
+    lsm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lsm)
+    text = LIVE_TF.replace("  default = {\n", "  default = {\n    xx = { variant = \"SPEC:a@5\", db_name = \"d\" }\n", 1) \
+        if "xx = {" not in LIVE_TF else LIVE_TF
+    venue = lsm.configured_venue(LIVE_TF)
+    assert venue in ("testnet", "prod")
+    monkeypatch.setattr(lsm.LIVE_TF.__class__, "read_text", lambda self: text)
+    import contextlib
+    import io
+    for want, expect_rows in ((venue, True), ("prod" if venue == "testnet" else "testnet", False)):
+        monkeypatch.setenv("FOR_VENUE", want)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert lsm.main(["x"]) == 0
+        rows = __import__("json").loads(buf.getvalue())
+        assert bool(rows) is expect_rows, (want, rows)

@@ -264,7 +264,7 @@ jobs:
     if: needs['build-live'].outputs.exists == 'true'
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.pick.outputs.matrix }}
+      matrix: ${{ steps.credential.outputs.matrix }}
       ready: ${{ steps.credential.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
@@ -275,72 +275,62 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
           role-session-name: gha-live-targets-${{ github.run_id }}
 
-      - name: has the venue credential been supplied yet?
+      - name: which live stacks have their venue credential supplied?
         id: credential
-        # ASKED OF SECRETS MANAGER, not of a repository variable.
-        #
-        # This used to read vars.LIVE_CREDENTIAL_SECRET_ARN, which a human had
-        # to set after creating the secret by hand. Terraform now declares the
-        # secret, so the only open question is whether anybody has put a VALUE
-        # in it -- and that is a fact about the account, not about a variable
-        # somebody remembered to set.
-        #
-        # DescribeSecret returns the version list and no secret material. CI
-        # can see that a credential exists and still cannot read one; only the
-        # instance role has GetSecretValue.
+        # ASKED OF SECRETS MANAGER, per stack (one secret per stack since
+        # 2026-10-02; live.tf live_credential_names). DescribeSecret returns
+        # the version list and no secret material: CI can see that a value
+        # exists and still cannot read one -- only the instance role has
+        # GetSecretValue.
         #
         # AN ABSENT OR UNPOPULATED SECRET IS EXPECTED, NOT AN ERROR. Terraform
-        # neither creates nor reads it -- deliberately, so that it can be
-        # created BEFORE the infrastructure and the whole stack come up on one
-        # merge. If the operator has done that, this is ready on the first run;
-        # if not, the roll skips with the command to fix it, and the host waits
-        # at exit 90 rather than crash-looping.
-        env:
-          SECRET_NAME: deltabt-paper/live/venue-credentials
-        run: |
-          set -euo pipefail
-          echo "ready=false" >> "$GITHUB_OUTPUT"
-          if ! out=$(aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>&1); then
-            case "$out" in
-              *ResourceNotFoundException*)
-                # THE FIELD NAMES ARE NOT SPELLED HERE, DELIBERATELY.
-                # test_deployment_safety.py forbids naming an exchange
-                # credential anywhere on the deployment surface except
-                # live.tf, run_live.sh and Dockerfile.live -- and this file is
-                # none of those. Spelling them in a help string cost a red
-                # safety scan; pointing at the file that legitimately carries
-                # them costs nothing and keeps the boundary exact.
-                echo "::notice::$SECRET_NAME does not exist yet, so the live roll will skip. Create the venue API key, then: aws secretsmanager create-secret --name $SECRET_NAME --secret-string file://creds.json -- see deploy/aws/run_live.sh for the two JSON fields it parses. The key's IP allowlist can be set afterwards, once the host's EIP exists." ;;
-              *)
-                echo "::error::could not inspect $SECRET_NAME: $out"
-                exit 1 ;;
-            esac
-            exit 0
-          fi
-          # VersionIdsToStages is absent until a value is put; an empty object
-          # is what a declared-but-unpopulated secret returns.
-          if printf '%s' "$out" | grep -q 'AWSCURRENT'; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::$SECRET_NAME exists but holds no value, so the live roll will skip. aws secretsmanager put-secret-value --secret-id $SECRET_NAME --secret-string file://creds.json"
-          fi
-
-      - id: pick
+        # neither creates nor reads it, so it can be created before or after
+        # the infrastructure; a stack without a value is left out of the
+        # matrix with the command to fix it, and its host waits at exit 90.
+        #
+        # THE FIELD NAMES ARE NOT SPELLED HERE, DELIBERATELY:
+        # test_deployment_safety.py forbids naming an exchange credential on
+        # the deployment surface outside live.tf, run_live.sh and
+        # Dockerfile.live. See deploy/aws/run_live.sh for the JSON it parses.
         env:
           ONLY: ${{ github.event.inputs.only_stack }}
-          ARN: ${{ steps.credential.outputs.ready }}
+          SECRET_PREFIX: deltabt-paper/live
+          FOR_VENUE: prod
         run: |
           set -euo pipefail
           # READ FROM TERRAFORM, not from a table here. See the script.
-          picked=$(python3 scripts/live_stacks_matrix.py ${ONLY:+"$ONLY"} || echo '[]')
-          if [ -n "${ONLY:-}" ] && [ "$picked" = "[]" ]; then
+          all=$(python3 scripts/live_stacks_matrix.py ${ONLY:+"$ONLY"} || echo '[]')
+          if [ -n "${ONLY:-}" ] && [ "$all" = "[]" ]; then
             echo "::notice::only_stack='$ONLY' is not a live stack; the live deploy has nothing to do"
           fi
-          if [ -z "${ARN:-}" ] && [ "$picked" != "[]" ]; then
-            echo "::notice::live stacks are configured but the venue credential holds no value, so deploy-live will skip. The host comes up, reads \"none\", and waits (exit 90, not a crash loop). Create the venue key against the host's EIP, create the secret, set the variable, then dispatch this workflow with only_stack=<stack>."
+          ready='[]'
+          for stack in $(printf '%s' "$all" | jq -r '.[].stack'); do
+            name="$SECRET_PREFIX/$stack/venue-credentials"
+            if ! out=$(aws secretsmanager describe-secret --secret-id "$name" 2>&1); then
+              case "$out" in
+                *ResourceNotFoundException*)
+                  echo "::notice::$name does not exist yet, so $stack will not roll. Create the venue API key, then: aws secretsmanager create-secret --name $name --secret-string file://creds.json. The key's IP allowlist can be set once the host's EIP exists."
+                  continue ;;
+                *)
+                  echo "::error::could not inspect $name: $out"
+                  exit 1 ;;
+              esac
+            fi
+            # VersionIdsToStages lists AWSCURRENT once a value has been put.
+            if printf '%s' "$out" | grep -q 'AWSCURRENT'; then
+              row=$(printf '%s' "$all" | jq -c --arg s "$stack" '.[] | select(.stack == $s)')
+              ready=$(printf '%s' "$ready" | jq -c --argjson r "$row" '. + [$r]')
+            else
+              echo "::notice::$name exists but holds no value, so $stack will not roll. aws secretsmanager put-secret-value --secret-id $name --secret-string file://creds.json"
+            fi
+          done
+          if [ "$ready" = "[]" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "rolling (live): $picked"
-          echo "matrix=$picked" >> "$GITHUB_OUTPUT"
+          echo "rolling (live): $ready"
+          echo "matrix=$ready" >> "$GITHUB_OUTPUT"
 
 
   roll:

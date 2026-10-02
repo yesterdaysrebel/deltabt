@@ -120,15 +120,29 @@ variable "live_stacks" {
 # documented pattern for naming a secret you cannot yet resolve. It is not a
 # loosening: two secrets cannot share a name, so this matches at most the one
 # secret, and six `?` is tighter than the `*` usually seen.
+#
+# ONE SECRET PER STACK SINCE 2026-10-02. It was one global name for every live
+# stack, which made two stacks on two venue accounts impossible -- and the
+# prod pilot runs a dry-run stack on a READ-ONLY key now and trading stacks on
+# separate accounts later. The workflows derive the same names from
+# live_credential_prefix; tests/live_exec/test_live_deployment.py holds them
+# together. LIMITATION, recorded: the read grant sits on the SHARED instance
+# role, so any deltabt host can read any stack's secret. Every live host is a
+# pilot host today; per-host roles are the fix if that stops being true.
 locals {
-  live_credential_name = "${local.name}/live/venue-credentials"
+  live_credential_prefix = "${local.name}/live"
+  live_credential_names = {
+    for k, s in local.stacks : k => "${local.live_credential_prefix}/${k}/venue-credentials" if s.live
+  }
 
   # Six `?`, one per character of the suffix Secrets Manager appends.
-  live_credential_arn_pattern = join("", [
-    "arn:aws:secretsmanager:${var.aws_region}:",
-    "${data.aws_caller_identity.current.account_id}:secret:",
-    "${local.live_credential_name}-??????",
-  ])
+  live_credential_arn_patterns = [
+    for n in values(local.live_credential_names) : join("", [
+      "arn:aws:secretsmanager:${var.aws_region}:",
+      "${data.aws_caller_identity.current.account_id}:secret:",
+      "${n}-??????",
+    ])
+  ]
 }
 
 variable "live_venue" {
@@ -192,7 +206,7 @@ resource "aws_ssm_parameter" "live_credential_arn" {
   # infrastructure and the whole stack come up on one merge.
   name  = "${each.value.ssm_prefix}/delta_secret_id"
   type  = "String"
-  value = local.live_credential_name
+  value = local.live_credential_names[each.key]
 }
 
 # THE VENUE, AS A PARAMETER RATHER THAN A TEMPLATE VARIABLE.
@@ -313,7 +327,7 @@ resource "aws_iam_role_policy" "live_ci" {
         Sid      = "SeeWhetherTheCredentialHasBeenSuppliedWithoutReadingIt"
         Effect   = "Allow"
         Action   = ["secretsmanager:DescribeSecret"]
-        Resource = local.live_credential_arn_pattern
+        Resource = local.live_credential_arn_patterns
       },
       {
         # "HAS THIS STACK EVER BEEN DEPLOYED?" -- the image tag is "none" until
@@ -425,7 +439,7 @@ resource "aws_iam_role_policy" "live_credentials" {
       Sid      = "ReadTheVenueCredentialAndNothingElse"
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = local.live_credential_arn_pattern
+      Resource = local.live_credential_arn_patterns
     }]
   })
 }

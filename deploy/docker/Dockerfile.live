@@ -51,20 +51,20 @@ COPY pyproject.toml ./
 
 ENV NUMBA_CACHE_DIR=/tmp/numba DELTABT_DATA=/tmp/deltabt-data
 
-# DATABASE AUTH IS THE MASTER PASSWORD, FOR NOW. NOT IAM TOKENS.
+# DATABASE AUTH IS IAM TOKENS (2026-10-02), step 2 of 2.
 #
-# IAM tokens (app/persistence/db_auth.py) would stop the weekly RDS password
-# rotation stranding the bot, and this image switched them on in #84. It could
-# not work: AWS requires "between 300 and 1000 MiB extra memory" for IAM
-# database authentication, and the database is a db.t4g.micro with ~120 MiB
-# free. Enabling it on 2026-09-17 pushed swap from ~75 to ~340 MiB, and every
-# token login hung past Postgres's 60s authentication timeout and was denied
-# ("pam_authenticate failed: Permission denied"). It was switched off again.
-#
-# Turn it back on only together with iam_database_authentication_enabled in
-# infra/terraform/rds.tf, on an instance class with the memory for it.
-# tests/live_exec/test_live_db_auth.py holds all three together. Until then,
-# rotation is handled by a 21-day schedule and restarting before a roll.
+# History: #84 switched tokens on while the database was a db.t4g.micro with
+# ~120 MiB free; AWS needs 300-1000 MiB extra for IAM auth, every token login
+# hung past Postgres's 60 s timeout, and it was switched off (#86). #87 moved
+# the database to db.t4g.small with iam_database_authentication_enabled, and
+# the owner applied it early on 2026-10-02 (snapshot
+# deltabt-paper-pre-resize-20261002 first). With tokens, app/persistence/
+# db_auth.py discards the DSN's master user and password and connects as
+# deltabt_app with a token minted per connection, so the master password's
+# rotation (next ~2026-10-08) can no longer strand a running bot or a roll.
+# tests/live_exec/test_live_db_auth.py holds this, rds.tf and the instance
+# class together.
+ENV DB_IAM_AUTH=1
 
 # /run/deltabt is where the kill switch lives (live/guards.py). It must be
 # writable by somebody with SSM access on the host and READABLE here, so it is

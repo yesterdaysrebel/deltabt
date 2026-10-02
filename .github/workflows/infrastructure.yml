@@ -18,9 +18,11 @@ name: infrastructure
 #   pull request  -> READ-ONLY. A separate role with ReadOnlyAccess. Plan and
 #                    guards run; no mutation is possible even if the workflow
 #                    is wrong, because the credentials cannot mutate.
-#   push to master -> plan, guards, then a REQUIRED HUMAN APPROVAL on the
-#                    protected `paper` environment, then apply of the exact
-#                    plan file that was reviewed.
+#   push to master -> plan, guards, then apply of the exact plan file the
+#                    guards passed. NO approval gate (see the apply job:
+#                    "NO ENVIRONMENT GATE"); the review is the pull request's
+#                    plan. Corrected 2026-10-02 -- this said an approval was
+#                    required long after it was removed.
 #
 # A pull request can never apply. Not by convention -- by IAM.
 #
