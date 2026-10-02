@@ -27,7 +27,8 @@ from types import SimpleNamespace
 import pytest
 
 from live.client import VenueError
-from live.runtime import BRACKET_ALERT_SECONDS, BRACKET_GRACE_SECONDS
+from live.runtime import (BRACKET_ALERT_SECONDS, BRACKET_GRACE_SECONDS,
+                          BRACKET_RECHECK_SECONDS)
 from tests.live_exec.test_live_order_placement import (MKT, PIDS, FakeVenue,
                                                         a_bot, approve)
 
@@ -177,9 +178,47 @@ async def test_a_protected_position_is_left_alone():
     await open_position(bot, venue, "BTCUSD")
     venue.protect("BTCUSD")
 
-    await bot._verify_brackets(now=now() + BRACKET_GRACE_SECONDS + 1)
+    t = now() + BRACKET_GRACE_SECONDS + 1
+    await bot._verify_brackets(now=t)
     assert flattens(bot, venue, "BTCUSD") == []
-    assert "BTCUSD" not in bot._bracket_checks(), "verified, but still re-checked"
+    # CHANGED 2026-10-02: a verified position is re-checked a minute later,
+    # not dropped -- see the next test for why.
+    assert bot._bracket_checks()["BTCUSD"] == pytest.approx(t + BRACKET_RECHECK_SECONDS)
+
+
+@pytest.mark.asyncio
+async def test_a_stop_leg_that_vanishes_later_is_caught_on_the_recheck():
+    """Before 2026-10-02 one good check ended protection monitoring, so a stop
+    leg cancelled afterwards left the position naked until it closed."""
+    venue = Venue()
+    bot = a_bot(venue)
+    await open_position(bot, venue, "BTCUSD")
+    venue.protect("BTCUSD")
+    t = now() + BRACKET_GRACE_SECONDS + 1
+    await bot._verify_brackets(now=t)
+    assert flattens(bot, venue, "BTCUSD") == []
+
+    venue.pending = [r for r in venue.pending
+                     if r["stop_order_type"] != "stop_loss_order"]
+    await bot._verify_brackets(now=t + 30)                     # not due yet
+    assert flattens(bot, venue, "BTCUSD") == []
+    await bot._verify_brackets(now=t + BRACKET_RECHECK_SECONDS + 1)
+    assert len(flattens(bot, venue, "BTCUSD")) == 1
+    assert "POSITION_FLATTENED_UNSAFE" in kinds(bot)
+
+
+@pytest.mark.asyncio
+async def test_reverify_now_brings_the_check_forward():
+    venue = Venue()
+    bot = a_bot(venue)
+    await open_position(bot, venue, "BTCUSD")
+    venue.protect("BTCUSD")
+    t = now() + BRACKET_GRACE_SECONDS + 1
+    await bot._verify_brackets(now=t)
+    venue.pending = []
+    bot.reverify_now("BTCUSD")
+    await bot._verify_brackets(now=t + 1)
+    assert len(flattens(bot, venue, "BTCUSD")) == 1
 
 
 @pytest.mark.asyncio

@@ -71,6 +71,8 @@ RECONCILE_SECONDS = 300.0
 #: position a moment later, so checking on the very first sighting could race
 #: the venue and flatten a correctly protected trade. Three polls.
 BRACKET_GRACE_SECONDS = 15.0
+#: After the first check passes, how often a position's legs are read again.
+BRACKET_RECHECK_SECONDS = 60.0
 
 #: If the venue cannot be read for this long after the grace, say so loudly.
 #: It does not flatten on an unreadable venue: the close would need that same
@@ -636,6 +638,10 @@ class LiveTradingBot(TradingBot):
             "limit_r": limit, "beyond_stop": beyond})
         return True
 
+    def reverify_now(self, symbol: str) -> None:
+        """Check `symbol`'s legs on the next poll, e.g. after a stop moved."""
+        self._bracket_checks()[symbol] = 0.0
+
     async def _verify_brackets(self, now: float | None = None) -> None:
         """Flatten any position whose stop-loss is not held at the venue."""
         due = self._bracket_checks()
@@ -686,8 +692,15 @@ class LiveTradingBot(TradingBot):
                         "stop_price": first, "liquidation_price": liq,
                         "side": pos.side})
                     continue
-            due.pop(symbol, None)
-            if not legs["take_profit"]:
+            # RE-CHECKED EVERY MINUTE, not dropped (2026-10-02). This used to
+            # pop the symbol after one good check, so a stop leg that vanished
+            # later -- cancelled by the venue, or by a promotion gone wrong --
+            # left the position naked until it closed. One pending-orders read
+            # per open position per minute is well inside the rate limiter.
+            due[symbol] = t + BRACKET_RECHECK_SECONDS
+            warned = self.__dict__.setdefault("_tp_warned", set())
+            if not legs["take_profit"] and symbol not in warned:
+                warned.add(symbol)
                 await self._event("execution", "TAKE_PROFIT_MISSING",
                                   symbol=symbol, severity="WARNING",
                                   payload={"stop_loss_legs": len(legs["stop_loss"])})
@@ -824,6 +837,7 @@ class LiveTradingBot(TradingBot):
                         await self._persist_close(ev)
                         self._flattening().discard(ev.symbol)
                         self._bracket_checks().pop(ev.symbol, None)
+                        self.__dict__.get("_tp_warned", set()).discard(ev.symbol)
                 # Only after a poll has succeeded does broker.positions describe
                 # the venue. Before that, "not in positions" means "not looked
                 # yet", and a startup-scheduled check would drop the very

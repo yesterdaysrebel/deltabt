@@ -355,9 +355,13 @@ class LiveBroker:
                                  f"to check the book against")
         ref = float(ref)
         side = "best_ask" if intent.side > 0 else "best_bid"
+        other = "best_bid" if intent.side > 0 else "best_ask"
         try:
-            quotes = (self.client.get_ticker(symbol) or {}).get("quotes") or {}
+            ticker = self.client.get_ticker(symbol) or {}
+            quotes = ticker.get("quotes") or {}
             touch = float(quotes.get(side) or 0)
+            far = float(quotes.get(other) or 0)
+            mark = float(ticker.get("mark_price") or 0)
         except (VenueError, TypeError, ValueError) as exc:
             raise OpeningRefused(f"{symbol}: cannot read the book ({exc})") from exc
         if touch <= 0:
@@ -371,6 +375,35 @@ class LiveBroker:
             raise OpeningRefused(
                 f"{symbol}: book {side} {touch:g} is {dev:.2f}R from reference "
                 f"{ref:g} (limit {limit:g}R{', beyond the stop' if beyond else ''})")
+
+        # THE EXIT SIDE, ADDED 2026-10-02. The check above reads only the side
+        # the entry meets. On 09-28 tnet's SOL entries passed it and then sat
+        # in a book 3-4% wide: Delta attached no bracket, the bot flattened at
+        # market into the far side, and four trades lost 1.65-4.08R each. A
+        # position must be closable near where it was opened, so the spread is
+        # held to the same limit applied to BOTH touches around the reference
+        # -- 2 x max_entry_deviation, no new constant. A one-sided book has no
+        # measurable spread and is refused, as a missing touch is above.
+        if limit > 0:
+            if far <= 0:
+                raise OpeningRefused(f"{symbol}: the book has no {other}; its "
+                                     f"spread cannot be measured; not opening")
+            spread = abs(touch - far) / rpu
+            if spread > 2 * limit:
+                raise OpeningRefused(
+                    f"{symbol}: spread {spread:.2f}R (bid/ask {min(touch, far):g}"
+                    f"/{max(touch, far):g}) exceeds {2 * limit:g}R")
+
+        # MARK ALREADY BEYOND THE STOP. Delta triggers stops on mark; a bracket
+        # whose stop is on the wrong side of mark at the fill is the leading
+        # hypothesis for why those SOL brackets were dropped silently. Such an
+        # entry would be stopped, or left unprotected, the moment it filled.
+        # Fails closed: Delta's ticker always carries mark_price.
+        if mark <= 0:
+            raise OpeningRefused(f"{symbol}: the ticker has no mark_price; not opening")
+        if (intent.side > 0 and mark <= stop) or (intent.side < 0 and mark >= stop):
+            raise OpeningRefused(f"{symbol}: mark {mark:g} is already beyond the "
+                                 f"stop {stop:g}; the bracket would be refused or fire at once")
 
     def _set_safe_leverage(self, intent, pid: int) -> int:
         """Choose, set and confirm the leverage for this entry, or refuse it.

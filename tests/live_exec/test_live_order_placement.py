@@ -102,7 +102,8 @@ class FakeVenue:
     touch: float = 75_000.0
 
     def get_ticker(self, symbol):
-        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)}}
+        return {"quotes": {"best_ask": str(self.touch), "best_bid": str(self.touch)},
+                "mark_price": str(self.touch)}
 
     def get_product(self, symbol):
         return dict(self.margin_spec)
