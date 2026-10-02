@@ -40,6 +40,7 @@ import numpy as np
 import pandas as pd
 
 from deltabt.config import StrategyParams
+from deltabt.exits import earned_stop_r, tightens
 from deltabt.costs import SymbolCosts, funding_timestamps
 from deltabt.engine import LONG, SHORT, BacktestResult, Trade
 from deltabt.strategy import Signals
@@ -245,25 +246,27 @@ def _fill_at_cross(s: "_Series", i: int, side: int, stop: float,
     return px * (1.0 - side * slip_rate)
 
 
+def _protects(params: StrategyParams) -> bool:
+    """A profit-protecting stop rule is configured (ladder or trail)."""
+    return bool(params.ladder_rungs) or params.trail_r is not None
+
+
 def _promote_rungs(pos: _Position, fav_px: float, params: StrategyParams,
                    costs: SymbolCosts) -> None:
-    """Move the stop to the highest rung the favourable excursion has armed.
+    """Move the stop to where the ladder or trail says this excursion earns.
 
     Same arithmetic as ``PaperBroker._promote_stop``: excursion is LTP against
     entry in R, the rung's stop is ``entry + stop_r * risk``, rounded away from
     the market, and the stop only ever moves in the trade's favour.
     """
     fav_r = (fav_px - pos.entry_price) * pos.side / pos.risk_per_unit
-    lock = None
-    for trig_r, stop_r in params.ladder_rungs:
-        if fav_r >= trig_r:
-            lock = stop_r
+    lock = earned_stop_r(fav_r, ladder_rungs=params.ladder_rungs,
+                         trail_after_r=params.trail_after_r, trail_r=params.trail_r)
     if lock is None:
         return
     new = costs.round_price(pos.entry_price + pos.side * lock * pos.risk_per_unit,
                             direction=-1 if pos.side == LONG else 1)
-    if (pos.side == LONG and new > pos.stop_price) or (
-            pos.side == SHORT and new < pos.stop_price):
+    if tightens(pos.side, new, pos.stop_price):
         pos.stop_price = new
         pos.stop_promoted = True
 
@@ -396,7 +399,7 @@ def run_portfolio(
             # overridden. Without 1m series the bar-level test stands and the
             # rungs arm on the bar's extreme after its exits.
             walked = (_ladder_walk(s, i, pos, params)
-                      if params.ladder_rungs and s.f_close is not None else None)
+                      if _protects(params) and s.f_close is not None else None)
 
             trig_low = s.ltp_low if params.stop_trigger_ltp else s.mark_low
             trig_high = s.ltp_high if params.stop_trigger_ltp else s.mark_high
@@ -515,7 +518,7 @@ def run_portfolio(
                             pos.side * params.breakeven_lock_r * pos.risk_per_unit)
                         pos.stop_price = (max(pos.stop_price, lock) if pos.side == LONG
                                           else min(pos.stop_price, lock))
-                if params.ladder_rungs and walked is None:
+                if _protects(params) and walked is None:
                     _promote_rungs(pos, float(s.ltp_high[i] if pos.side == LONG
                                               else s.ltp_low[i]),
                                    params, s.book.costs)

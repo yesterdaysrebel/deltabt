@@ -19,6 +19,7 @@ import dataclasses
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from deltabt.config import StrategyParams
 from deltabt.costs import SymbolCosts
@@ -127,3 +128,31 @@ def test_empty_ladder_is_the_unladdered_run():
     a = _run(path)
     b = _run(path, ())
     pd.testing.assert_frame_equal(a, b)
+
+
+# --- the trail (2026-10-02): same walk, deltabt/exits.py decides the stop ----
+
+def _run_trail(closes):
+    from dataclasses import replace
+    params = replace(_params(), trail_after_r=0.5, trail_r=0.5)
+    res = run_portfolio({"TEST": _book(closes)}, params, RiskGates.off(),
+                        initial_capital=10_000.0)
+    return pd.DataFrame([dataclasses.asdict(t) for t in res.trades])
+
+
+def test_trail_locks_more_than_the_ladder_between_rungs():
+    # entry 100, R = 1: up to +1.25R (high 101.25 with the 0.05 spread), then down
+    path = FLAT + [100.3, 100.7, 101.0, 101.2, 101.1] + [100.9, 100.6, 100.3, 100.0, 99.5]
+    ladder = _run(path, RUNGS)
+    trail = _run_trail(path)
+    assert ladder.stop_price[0] == 100.5                 # the +0.5R rung
+    assert trail.stop_price[0] == pytest.approx(100.75)  # high 101.25 - 0.5R
+    assert trail.exit_reason[0] == "stop" and trail.stop_promoted[0]
+    assert trail.r_multiple[0] > ladder.r_multiple[0]
+
+
+def test_trail_does_nothing_before_plus_half_r():
+    path = FLAT + [100.1, 100.2, 100.3, 100.2, 100.1] + [99.9, 99.6, 99.2, 98.9, 98.5]
+    base, trail = _run(path), _run_trail(path)
+    assert not trail.stop_promoted[0]
+    assert trail.r_multiple[0] == pytest.approx(base.r_multiple[0])

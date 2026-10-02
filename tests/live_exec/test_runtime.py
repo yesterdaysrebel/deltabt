@@ -231,6 +231,7 @@ def _guarded_bot(strategy, broker=None):
 @pytest.mark.parametrize("variant, refused, why", [
     ("SPEC:manual_scalp_both_t3_ladder@5", True, "stop ladder"),
     ("SPEC:manual_scalp_both_t3_ltp@5", True, "stop trigger"),
+    ("SPEC:manual_scalp_both_t3_trail@5", True, "trailing stop"),
 ])
 def test_a_spec_the_live_broker_would_silently_ignore_refuses_to_start(
         variant, refused, why):
