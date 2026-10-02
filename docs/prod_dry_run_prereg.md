@@ -116,14 +116,18 @@ new registration.
 | host | unchanged: `i-0a38139027a767607`, EIP `15.207.211.127` |
 | sizing and gates | unchanged: equity 250, risk 0.02, floor cap 0.05; 0.20 / 0.10 / 8 |
 
-**A position carried over from the first experiment.** One AKEUSD short opened at 11:30 UTC under
-`…-ed31cba`. The broken fill check let it through because the price had moved in its favour by the
-fill. It was still open at the restart, so the new process restored it and protects it to its own
-stop or target. A real bot would hold it too. It is **excluded from the read**: it is neither a
-closed position of this experiment nor a row in its three-exit comparison, because both count only
-positions opened at or after 11:52:38 UTC. While it is open it blocks new AKEUSD entries (one
-position per symbol), and its P&L moves the simulated $250 account. Both are what a real bot's
-account would show.
+**A position carried over from the first experiment — counted (owner decision, 2026-10-02).** One
+AKEUSD short opened at 11:30 UTC under `…-ed31cba` (the broken fill check let it through because the
+price had moved in its favour by the fill) and was still open at the restart. The new process
+restored it and protects it to its own stop or target. **It counts in this run:** the strategy,
+sizing and gates are identical, and the fixed code would have opened it the same way (one contract,
+risk $10.87 inside the $12.50 cap, fill within 0.25R). "Closed positions" in the stopping rule is read
+as positions closed during this experiment, whenever they opened; the daily report counts them that
+way and says how many were carried over. Its shadow rows land under this experiment's id. Its ladder
+and trail legs were restarted at 11:52 UTC without the 11:30–11:52 path, and the running image
+(`c4b719a`) predates the adoption fix below, so its rows say "observed from entry" although they
+were not. Its baseline result does not depend on the path. While it is open it blocks new AKEUSD
+entries, and its P&L moves the simulated $250 account, as it would a real account.
 
 **Restored positions in general.** Until #104 the three-exit recorder marked a position restored
 after a restart as observed from entry, though its path before the restart was never seen. From

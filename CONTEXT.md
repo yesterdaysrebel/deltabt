@@ -30,7 +30,8 @@ safety claim to anyone.
 Last read 2026-10-02 ~12:10 UTC. The first experiment (`…-ed31cba`) had a defect: floor-sized
 AKEUSD entries could never fill in the simulator. It was retired with 0 closed positions and
 restarted on the fixed image (#103) at 11:52:38 UTC. One AKEUSD short from the first experiment
-carried over and is excluded from the read (prereg addendum).
+carried over and COUNTS in this run by owner decision (same setup); the report counts positions
+closed during the run, whenever they opened (prereg addendum).
 
 | stack | venue | experiment | state |
 |---|---|---|---|

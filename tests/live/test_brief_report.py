@@ -174,3 +174,29 @@ def test_trades_open_across_a_restart_are_called_approximate():
     text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
     assert "1 trade was open across a bot restart" in text
     assert not problems
+
+
+def test_a_position_carried_over_from_the_previous_run_counts():
+    """Owner, 2026-10-02: a position restored from the retired experiment
+    (same strategy, sizing and gates) counts in the new run. Its shadow rows
+    land under the new id, so the count and the self-check must include it."""
+    sec, db = a_probe()
+    t_recent = int(NOW.timestamp()) - 3600
+    db["closed_in_run"] = [["AKEUSD", t_recent, 2.9, "TAKE_PROFIT", True],
+                           ["BEATUSD", t_recent, -1.02, "STOP_LOSS", False]]
+    text, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "**Progress:** 2 of 100 trades closed" in text
+    assert "Includes 1 trade carried over from the previous run." in text
+    assert "- 2 trades closed under hold-to-3R (+1.88R in total)." in text
+    assert not problems, problems
+    assert facts["closed"] == 2
+
+
+def test_the_self_check_still_fires_when_a_shadow_record_is_missing():
+    sec, db = a_probe()
+    t_recent = int(NOW.timestamp()) - 3600
+    db["closed_in_run"] = [["AKEUSD", t_recent, 2.9, "TAKE_PROFIT", True],
+                           ["BEATUSD", t_recent, -1.02, "STOP_LOSS", False]]
+    db["shadow_exits"] = db["shadow_exits"][:3]
+    _, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert any("self-check: 2 closed trades but 1 baseline" in p for p in problems)

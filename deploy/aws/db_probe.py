@@ -162,6 +162,23 @@ async def collect(con) -> dict:
     out["closed_trades_total"] = await con.fetchval(
         "select count(*) from positions where status = 'CLOSED' "
         "and ($1::timestamptz is null or opened_at >= $1)", since) or 0
+    # Positions CLOSED during this run, whenever they opened. A position
+    # carried over from the previous experiment (same strategy, sizing and
+    # gates) is restored by the new process and closes under this run; the
+    # owner counts it (2026-10-02), and its shadow rows land under this run's
+    # id, so the dry-run report's count and self-check must include it too.
+    # closed_trades_total above keeps its opened-since meaning for paper.
+    out["closed_in_run"] = [
+        [r["symbol"], r["t"], None if r["r"] is None else round(r["r"], 4),
+         str(r["exit_reason"])[:24], bool(r["carried"])]
+        for r in await con.fetch(
+            """select symbol, extract(epoch from closed_at)::bigint t,
+                      r_multiple::float r, exit_reason,
+                      ($1::timestamptz is not null and opened_at < $1) carried
+                 from positions
+                where status = 'CLOSED'
+                  and ($1::timestamptz is null or closed_at >= $1)
+                order by closed_at""", since)][-900:]
     # Positions opened per symbol this run, any status: the dry-run report
     # compares them with the entries the live checks passed (DRY_RUN_ORDER).
     # Counted here, not from /api/trades, which returns at most 50 rows.
@@ -271,12 +288,7 @@ async def collect(con) -> dict:
                       trail_amount::float trail, observed_from_entry seen
                  from shadow_exits
                 where experiment_id is not distinct from $1
-                  -- Positions OPENED in this run, the same partition as
-                  -- closed_trades_total. A position carried over from the
-                  -- previous experiment closes under this one; counting it
-                  -- here but not there made the self-check fire falsely.
-                  and ($2::timestamptz is null or opened_at >= $2)
-                order by closed_at, rule""", rid, since)
+                order by closed_at, rule""", rid)
         # Compact rows, capped: three per closed position, a few dozen bytes
         # each, well inside the SSM output limit once gzipped.
         out["shadow_exits"] = [

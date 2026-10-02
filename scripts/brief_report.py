@@ -178,17 +178,28 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append("no experiment is RUNNING on this host")
 
     closed = [t for t in trades if str(t.get("status")).upper() == "CLOSED"]
-    # The run's closed count comes from the database: /api/trades returns at
-    # most 50 rows, so counting its list would stall progress (and break the
-    # self-check) at 50 of the 100 trades the read waits for.
-    n_closed = db.get("closed_trades_total")
-    n_closed = len(closed) if n_closed is None else int(n_closed)
+    # Counted from the database, not /api/trades: that returns at most 50
+    # rows, and only positions OPENED under the bound experiment. The probe's
+    # closed_in_run is every position closed during this run, including one
+    # carried over from the previous experiment (owner, 2026-10-02: same
+    # strategy, sizing and gates, so it counts).
     since = now - dt.timedelta(hours=24)
-    day_closed = [t for t in closed if (parse_time(t.get("closed_utc") or t.get("closed_at"))
-                                         or dt.datetime.min.replace(tzinfo=dt.timezone.utc)) >= since]
-    # /api/trades gives IST strings; fall back on them when no UTC field exists.
-    if not day_closed and closed and "closed_ist" in closed[0]:
-        day_closed = [t for t in closed if _ist_string_after(t.get("closed_ist"), since)]
+    run_closed = db.get("closed_in_run")
+    carried = 0
+    if isinstance(run_closed, list):
+        n_closed = len(run_closed)
+        carried = sum(1 for row in run_closed if len(row) > 4 and row[4])
+        cutoff = since.timestamp()
+        day_closed = [{"symbol": row[0], "r": row[2]} for row in run_closed
+                      if row[1] is not None and row[1] >= cutoff]
+    else:
+        n_closed = db.get("closed_trades_total")
+        n_closed = len(closed) if n_closed is None else int(n_closed)
+        day_closed = [t for t in closed if (parse_time(t.get("closed_utc") or t.get("closed_at"))
+                                             or dt.datetime.min.replace(tzinfo=dt.timezone.utc)) >= since]
+        # /api/trades gives IST strings; fall back on them when no UTC field exists.
+        if not day_closed and closed and "closed_ist" in closed[0]:
+            day_closed = [t for t in closed if _ist_string_after(t.get("closed_ist"), since)]
 
     equity = dr.num(risk_api.get("equity") if risk_api else None) or dr.num(healthz.get("equity"))
     start_eq = dr.num(snap.get("starting_equity")) or 10_000.0
@@ -259,7 +270,9 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     read_by = (started + dt.timedelta(days=READ_AT_DAYS)) if started else None
     out.append(f"**Progress:** {n_closed} of {READ_AT_TRADES} trades closed · {title_day}"
                + (f" · read due by {ist(read_by, with_day=True).split(',')[0]}" if read_by else "")
-               + " (whichever comes first).")
+               + " (whichever comes first)."
+               + (f" Includes {plural(carried, 'trade')} carried over from the previous run."
+                  if carried else ""))
     out.append("")
 
     # last 24 hours
