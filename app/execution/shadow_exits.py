@@ -75,8 +75,17 @@ class ShadowExits:
         self.rules = rules
         self.slip = slippage_bps / 10_000.0
         self._tracked: dict[str, _Tracked] = {}
+        #: Positions restored from the journal at startup. Their path before
+        #: this process started was never seen, so the ladder and trail legs
+        #: start from the initial stop without the peak they may already have
+        #: made; their rows say so with observed_from_entry = False.
+        self._adopted: set[str] = set()
 
     # -- public -----------------------------------------------------------
+
+    def adopt(self, position_uid: str) -> None:
+        """Mark a position recovered after a restart (see `_adopted`)."""
+        self._adopted.add(position_uid)
 
     def observe(self, tick, positions, *, from_entry: bool = True) -> list[ShadowExitRecord]:
         """Advance every shadow on `tick`'s symbol; return rows that closed.
@@ -109,6 +118,7 @@ class ShadowExits:
 
     def _start(self, p, from_entry: bool) -> None:
         initial = p.entry_price - p.side * p.risk_per_unit
+        from_entry = from_entry and p.position_uid not in self._adopted
         tr = _Tracked(pos=p, initial_stop=initial, observed_from_entry=from_entry)
         for rule in self.rules:
             tr.legs.append(_Leg(rule=rule, stop=initial))

@@ -27,15 +27,15 @@ safety claim to anyone.
 
 ## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
-Last read 2026-10-02 ~11:15 UTC. **The first experiment (below) has a defect and restarts on
-the fixed image under a new id**: floor-sized AKEUSD entries could never fill in the simulator
-(addendum in the prereg). Pre-registration and the registration record:
-`docs/prod_dry_run_prereg.md` (frozen; read once at 100 closed positions, 21 days ≈ 2026-10-23, the
-20% latch, or a defect).
+Last read 2026-10-02 ~12:10 UTC. The first experiment (`…-ed31cba`) had a defect: floor-sized
+AKEUSD entries could never fill in the simulator. It was retired with 0 closed positions and
+restarted on the fixed image (#103) at 11:52:38 UTC. One AKEUSD short from the first experiment
+carried over and COUNTS in this run by owner decision (same setup); the report counts positions
+closed during the run, whenever they opened (prereg addendum).
 
 | stack | venue | experiment | state |
 |---|---|---|---|
-| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-ed31cba` | RUNNING on `i-0a38139027a767607` (EIP `15.207.211.127`), image `ed31cba`, IAM-token DB login, `deltabt_dryrun` |
+| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a` | RUNNING since 11:52:38Z on `i-0a38139027a767607` (EIP `15.207.211.127`), image `c4b719a`, IAM-token DB login, `deltabt_dryrun` |
 
 **What it is.** The live code path (`live/dry_run.py`) on prod books with a read-only key. Every
 approved entry runs the live checks (kill switch, entry deviation ≤ 0.25R, spread ≤ 0.5R, mark not
@@ -284,7 +284,7 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
 
 ## Open threads
 
-1. **Dry run in progress** — read at the first of 100 closed positions, ~2026-10-23, the latch, or a
+1. **Dry run in progress** — read at the first of 100 closed positions, 2026-10-23, the latch, or a
    defect (`docs/prod_dry_run_prereg.md`). No interim read changes anything.
 2. **Before any real money:** testnet probe of Delta's trailing stop on an open bracket; Trading keys
    for the `baseline`/`ladder` sub-accounts created only after their hosts exist (EIP allowlist);

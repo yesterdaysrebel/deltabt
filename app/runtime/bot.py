@@ -428,6 +428,11 @@ class TradingBot:
                     float(c["funding_amount"] if isinstance(c, dict)
                           else c.funding_amount) for c in charged)
             self.broker.positions[p.position_uid] = pos
+            # Shadowed from here on, but its path before this restart was not
+            # seen. Without this its rows claimed full observation (found
+            # when the 2026-10-02 dry-run redeploy carried an AKEUSD short).
+            if self.shadow_exits is not None:
+                self.shadow_exits.adopt(p.position_uid)
 
         # Only now is self.state the real one. Both early returns above leave
         # it fresh on purpose, and stop() must not write those back.

@@ -125,3 +125,36 @@ async def test_rows_reach_the_journal_once():
     assert len(rows) == 3, "idempotent on (position, rule)"
     assert {x["rule"] for x in rows} == {"baseline", "ladder", "trail"}
     assert all(x["instance_uid"] == bot.instance_uid for x in rows)
+
+
+def test_an_adopted_position_is_marked_partly_observed():
+    """A position restored after a restart: its pre-restart path was never
+    seen, so its ladder/trail rows must not claim full observation."""
+    b = PaperBroker(COSTS, starting_equity=10_000.0, slippage_bps=2.0)
+    sh = ShadowExits(COSTS, PILOT_RULES, slippage_bps=2.0)
+    b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_500.0))
+    t0 = tick(63_000.0, ts=BAR_CLOSE)
+    b.process_market_event(t0)
+    pos = b.get_positions()[0]
+    sh.adopt(pos.position_uid)
+    sh.observe(t0, b.get_positions())
+    e, r = pos.entry_price, pos.risk_per_unit
+    rows = drive(b, sh, [e + 0.6 * r, e - 1.2 * r])
+    assert rows and all(not x.observed_from_entry for x in rows.values())
+
+
+@pytest.mark.asyncio
+async def test_the_bot_adopts_positions_it_recovers():
+    """Found 2026-10-02: the dry-run redeploy carried an AKEUSD short into the
+    new process and its shadows were recorded as observed from entry."""
+    from tests.live.test_recovery import make_bot, open_a_position
+
+    store: dict = {}
+    a = make_bot(store)
+    await a.start()
+    await open_a_position(a)
+    b = make_bot(store)
+    b.shadow_exits = ShadowExits(b.costs)
+    await b.start()
+    (p,) = b.broker.get_positions()
+    assert p.position_uid in b.shadow_exits._adopted
