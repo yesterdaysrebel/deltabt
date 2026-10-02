@@ -162,23 +162,43 @@ async def collect(con) -> dict:
     out["closed_trades_total"] = await con.fetchval(
         "select count(*) from positions where status = 'CLOSED' "
         "and ($1::timestamptz is null or opened_at >= $1)", since) or 0
-    # Positions CLOSED during this run, whenever they opened. A position
+    # THE JOURNAL (owner, 2026-10-02: the dry-run report is the trade
+    # journal plus the attention list). Every position closed during this
+    # run, whenever it opened, plus every position still open. A position
     # carried over from the previous experiment (same strategy, sizing and
-    # gates) is restored by the new process and closes under this run; the
-    # owner counts it (2026-10-02), and its shadow rows land under this run's
-    # id, so the dry-run report's count and self-check must include it too.
-    # closed_trades_total above keeps its opened-since meaning for paper.
-    out["closed_in_run"] = [
-        [r["symbol"], r["t"], None if r["r"] is None else round(r["r"], 4),
-         str(r["exit_reason"])[:24], bool(r["carried"])]
-        for r in await con.fetch(
-            """select symbol, extract(epoch from closed_at)::bigint t,
-                      r_multiple::float r, exit_reason,
-                      ($1::timestamptz is not null and opened_at < $1) carried
-                 from positions
-                where status = 'CLOSED'
-                  and ($1::timestamptz is null or closed_at >= $1)
-                order by closed_at""", since)][-900:]
+    # gates) counts, by owner decision; `carried` marks it. `lev` is the
+    # leverage the live checks would have set on Delta for that entry, read
+    # from its DRY_RUN_ORDER event through the entry order. Compact arrays:
+    # the probe's output shares SSM's 24,000-byte cap with every section.
+    out["journal_fields"] = ["uid", "symbol", "side", "status", "qty", "entry",
+                             "sl", "tp", "notional", "opened", "closed", "exit",
+                             "why", "r", "pnl", "costs", "carried", "lev"]
+    out["journal"] = [[r["uid"], r["symbol"], r["side"], r["status"], r["q"],
+                       r["entry"], r["sl"], r["tp"], r["notional"], r["o"],
+                       r["c"], r["px"], r["why"], r["r"], r["pnl"],
+                       r["costs"], bool(r["carried"]), r["lev"]]
+                      for r in await con.fetch(
+        """select p.position_uid uid, p.symbol, p.side, p.status, p.quantity q,
+                  p.entry_price::float entry, p.stop_price::float sl,
+                  p.target_price::float tp, p.notional::float notional,
+                  extract(epoch from p.opened_at)::bigint o,
+                  extract(epoch from p.closed_at)::bigint c,
+                  p.exit_price::float px, p.exit_reason why,
+                  p.r_multiple::float r, p.realized_pnl::float pnl,
+                  (p.entry_fee + p.exit_fee + p.funding)::float costs,
+                  ($1::timestamptz is not null and p.opened_at < $1) carried,
+                  (select (e.payload->'leverage'->>'leverage')::float
+                     from system_events e
+                     join paper_orders o on o.order_uid = e.payload->>'order_uid'
+                    where o.position_uid = p.position_uid
+                      and e.component = 'dry_run'
+                      and e.event_type = 'DRY_RUN_ORDER'
+                      and jsonb_typeof(e.payload->'leverage'->'leverage') = 'number'
+                    order by e.occurred_at desc limit 1) lev
+             from positions p
+            where p.status <> 'CLOSED'
+               or ($1::timestamptz is null or p.closed_at >= $1)
+            order by p.opened_at""", since)][-400:]
     # Positions opened per symbol this run, any status: the dry-run report
     # compares them with the entries the live checks passed (DRY_RUN_ORDER).
     # Counted here, not from /api/trades, which returns at most 50 rows.
@@ -282,20 +302,13 @@ async def collect(con) -> dict:
     # Guarded on the table existing, so a paper database without it still
     # yields every figure above.
     if await con.fetchval("select to_regclass('shadow_exits') is not null"):
-        rows = await con.fetch(
-            """select rule, symbol, extract(epoch from closed_at)::bigint t,
-                      net_r::float r, exit_reason, armed_at is not null armed,
-                      trail_amount::float trail, observed_from_entry seen
-                 from shadow_exits
+        # Counts only: the report's self-check (prereg D7) needs one baseline
+        # row per closed position; the three-exit comparison itself is read
+        # from the database at the pre-registered read, not in the daily mail.
+        out["shadow_counts"] = {r["rule"]: r["n"] for r in await con.fetch(
+            """select rule, count(*) n from shadow_exits
                 where experiment_id is not distinct from $1
-                order by closed_at, rule""", rid)
-        # Compact rows, capped: three per closed position, a few dozen bytes
-        # each, well inside the SSM output limit once gzipped.
-        out["shadow_exits"] = [
-            [r["rule"], r["symbol"], r["t"], round(r["r"], 4),
-             str(r["exit_reason"])[:24], bool(r["armed"]), r["trail"],
-             bool(r["seen"])]
-            for r in rows][-900:]
+                group by rule""", rid)}
 
     dry = await con.fetch(
         """select event_type, symbol, payload from system_events
@@ -326,8 +339,13 @@ async def collect(con) -> dict:
                 for key, src, name in (("spread_r", book, "spread_r"),
                                        ("deviation_r", book, "deviation_r"),
                                        ("leverage", lev, "leverage")):
-                    if src.get(name) is not None:
-                        s[key].append(round(float(src[name]), 4))
+                    # One malformed value must not cost the report every
+                    # database figure: skip it rather than raise.
+                    try:
+                        if src.get(name) is not None:
+                            s[key].append(round(float(src[name]), 4))
+                    except (TypeError, ValueError, AttributeError):
+                        pass
         out["dry_run"] = summary
 
     return out

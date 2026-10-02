@@ -1,21 +1,21 @@
-"""The dry run's daily report: one screen, plain English, IST times.
+"""The dry run's daily report: the attention list, then the trade journal.
 
     python3 scripts/brief_report.py --instance-id i-... --stack dryrun \
         --document deltabt-paper-dryrun-monitor --log-group /deltabt/paper/dryrun/bot \
         --facts-json facts.json
 
-WHY A NEW REPORT (owner, 2026-10-02: "previous ones were very long and made no
-sense to me ... make them informative and human readable"). scripts/
-daily_report.py grew to ~1,500 lines for the paper arms and still reads that
-way. This one answers, in order: does anything need me; how far along is it;
-what happened in the last 24 hours; how the three exits compare on the same
-trades; what a real bot would have done; where the simulated $250 account
-stands against its limits; is the bot healthy. It reuses daily_report.py's
-plumbing (the read-only SSM probe, section parsing, log search) and nothing
-else.
+Two parts and nothing else (owner, 2026-10-02: "a journal only with error
+report like we have right now"):
 
-What it does NOT claim is stated once, in a line: the comparison is read at
-100 trades (docs/prod_dry_run_prereg.md) and measures shape, not edge.
+1. Does anything need you -- the bot unhealthy or restarted, errors in its
+   log, the 20% stop fired, data missing, the shadow self-check (prereg D7),
+   or an entry the live checks passed that the simulator did not open.
+2. The journal -- every trade of the run: what is open now and everything
+   closed so far, with times in IST, side, size, the leverage a real bot
+   would have set on Delta, entry, stop, target, exit, R and dollars.
+
+It reuses daily_report.py's plumbing (the read-only SSM probe, section
+parsing, log search) and nothing else.
 """
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ import datetime as dt
 import importlib.util
 import json
 import pathlib
-import statistics as st
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -37,8 +36,9 @@ READ_AT_TRADES = 100            # docs/prod_dry_run_prereg.md
 READ_AT_DAYS = 21
 #: The health check left out of the verdict (see build()).
 GAPS_CHECK = "no_recent_gaps"
-RULES = ("baseline", "ladder", "trail")
-RULE_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
+WHY = {"TAKE_PROFIT": "target", "STOP_LOSS": "stop", "TIME_EXIT": "time",
+       "TIME_STOP": "time", "MAX_HOLD": "time", "MANUAL_CLOSE": "manual",
+       "LIQUIDATION": "LIQUIDATED", "HALT": "halt"}
 
 
 # -- small helpers ----------------------------------------------------------
@@ -78,79 +78,102 @@ def duration(seconds: float | None) -> str:
     return f"{d}d {h}h" if d else (f"{h}h {m}m" if h else f"{m}m")
 
 
-def max_dip(rs: list[float]) -> float:
-    eq = peak = dip = 0.0
-    for r in rs:
-        eq += r
-        peak = max(peak, eq)
-        dip = max(dip, peak - eq)
-    return dip
+def when(ts) -> str:
+    """'02 Oct 5:00 PM' in IST, or a dash."""
+    if ts is None:
+        return "—"
+    t = dt.datetime.fromtimestamp(float(ts), dt.timezone.utc).astimezone(IST)
+    return t.strftime("%d %b %-I:%M %p")
 
 
-# -- the report -------------------------------------------------------------
-
-def exit_table(shadow: list[list], risk_per_r: float | None) -> tuple[list[str], dict]:
-    """How the three exits did on the same closed positions."""
-    by_rule: dict[str, list] = {r: [] for r in RULES}
-    for row in shadow:
-        rule, _sym, t, r, reason = row[0], row[1], row[2], row[3], row[4]
-        if rule in by_rule:
-            by_rule[rule].append((t, float(r), str(reason)))
-    n = min((len(v) for v in by_rule.values()), default=0)
-    if n == 0:
-        return ["No trade has closed yet, so there is nothing to compare."], {}
-    lines = ["```",
-             f"{'exit':12s}{'trades':>7s}{'total R':>9s}{'avg R':>8s}{'won':>6s}"
-             f"{'hit 3R':>8s}{'worst dip':>11s}"]
-    summary = {}
-    for rule in RULES:
-        rows = sorted(by_rule[rule])
-        rs = [r for _, r, _ in rows]
-        won = sum(1 for r in rs if r > 0)
-        tp = sum(1 for _, _, why in rows if why.endswith("TAKE_PROFIT"))
-        total = sum(rs)
-        summary[rule] = round(total, 2)
-        lines.append(f"{RULE_LABEL[rule]:12s}{len(rs):7d}{total:+9.2f}"
-                     f"{total / len(rs):+8.2f}{100 * won / len(rs):5.0f}%"
-                     f"{tp:8d}{-max_dip(rs):+10.1f}R")
-    lines.append("```")
-    # Row field 7 (observed_from_entry) arrives from probes after 2026-10-02;
-    # older rows have no such field and count as fully observed.
-    partial = sum(1 for row in shadow
-                  if row[0] == "baseline" and len(row) > 7 and row[7] is False)
-    if partial:
-        lines.append(f"{plural(partial, 'trade was', 'trades were')} open across a bot "
-                     f"restart, so their ladder and trail results are approximate.")
-    if risk_per_r:
-        money = " / ".join(f"{RULE_LABEL[r]} {summary[r] * risk_per_r:+,.2f}" for r in RULES)
-        lines.append(f"At ${risk_per_r:,.2f} per R that is {money} dollars.")
-    return lines, summary
+def price(x) -> str:
+    if x is None:
+        return "—"
+    s = f"{float(x):.6g}"
+    return f"{float(x):.8f}".rstrip("0") if "e" in s else s
 
 
-def would_have(dry: dict, opened: dict | None = None) -> list[str]:
-    """What the live checks would have sent or refused, per symbol, and how
-    many of the sent ones the simulator actually opened."""
-    if not dry:
-        return ["No entry signal yet, so the live checks have not run."]
-    out = []
-    for sym in sorted(dry):
-        s = dry[sym]
-        sent = f"{plural(s['orders'], 'order')} would have been sent"
-        if opened is not None and s["orders"]:
-            sent += f" (simulated: {opened.get(sym, 0)} opened)"
-        bits = [sent]
-        if s["refused"]:
-            why = ", ".join(f"{n} {k}" for k, n in
-                            sorted(s["reasons"].items(), key=lambda kv: -kv[1]))
-            bits.append(f"{s['refused']} refused ({why})")
-        detail = []
-        if s.get("spread_r"):
-            detail.append(f"typical spread {st.median(s['spread_r']):.2f}R")
-        if s.get("leverage"):
-            detail.append(f"leverage {st.median(s['leverage']):.0f}x")
-        line = f"- **{sym}**: " + "; ".join(bits)
-        out.append(line + (f" — {', '.join(detail)}" if detail else "") + ".")
-    return out
+def money(x) -> str:
+    return "—" if x is None else f"{float(x):+,.2f}"
+
+
+def table(header: list[str], rows: list[list[str]], right: set[int]) -> list[str]:
+    """A fixed-width table in a code block: reads the same in mail and on GitHub."""
+    widths = [max(len(header[i]), *(len(r[i]) for r in rows)) for i in range(len(header))]
+
+    def line(cells):
+        return "  ".join(c.rjust(w) if i in right else c.ljust(w)
+                         for i, (c, w) in enumerate(zip(cells, widths))).rstrip()
+    return ["```", line(header), *(line(r) for r in rows), "```"]
+
+
+def journal_rows(db: dict) -> list[dict]:
+    fields = db.get("journal_fields") or []
+    return [dict(zip(fields, row)) for row in (db.get("journal") or [])
+            if isinstance(row, list) and len(row) == len(fields)]
+
+
+def journal(rows: list[dict], live: dict) -> tuple[list[str], dict]:
+    """Open positions, then every closed trade of the run."""
+    out: list[str] = []
+    side = {1: "long", -1: "short"}
+    num = {r["uid"]: i + 1 for i, r in enumerate(rows)}
+    lev = lambda r: "—" if r.get("lev") is None else f"{r['lev']:.0f}x"
+    mark = lambda r: f"{num[r['uid']]}{'*' if r.get('carried') else ''}"
+
+    open_ = [r for r in rows if str(r.get("status")).upper() != "CLOSED"]
+    closed = [r for r in rows if str(r.get("status")).upper() == "CLOSED"]
+
+    out.append(f"## Open now ({len(open_)})")
+    if open_:
+        body = []
+        for r in open_:
+            now = live.get(r["uid"], {})
+            r_now = now.get("r")
+            body.append([mark(r), r["symbol"], side.get(r["side"], "?"), str(r["qty"]),
+                         f"{r['notional']:,.0f}" if r.get("notional") is not None else "—",
+                         lev(r), when(r["opened"]), price(r["entry"]), price(r["sl"]),
+                         price(r["tp"]), price(now.get("current_price")),
+                         "—" if r_now is None else f"{r_now:+.2f}",
+                         money(now.get("unrealized_pnl"))])
+        out += table(["#", "symbol", "side", "qty", "size $", "lev", "opened (IST)",
+                      "entry", "stop", "target", "now", "R now", "P&L now $"],
+                     body, right={0, 3, 4, 5, 7, 8, 9, 10, 11, 12})
+    else:
+        out.append("Nothing open.")
+    out.append("")
+
+    out.append(f"## Closed so far ({len(closed)} of {READ_AT_TRADES} for the read)")
+    totals = {"n": len(closed), "r": 0.0, "pnl": 0.0, "costs": 0.0, "won": 0}
+    if closed:
+        body = []
+        for r in closed:
+            rr, pnl = r.get("r"), r.get("pnl")
+            totals["r"] += rr or 0.0
+            totals["pnl"] += pnl or 0.0
+            totals["costs"] += r.get("costs") or 0.0
+            totals["won"] += 1 if (pnl or 0) > 0 else 0
+            held = (r["closed"] - r["opened"]) if r.get("closed") and r.get("opened") else None
+            body.append([mark(r), r["symbol"], side.get(r["side"], "?"), str(r["qty"]),
+                         f"{r['notional']:,.0f}" if r.get("notional") is not None else "—",
+                         lev(r), when(r["opened"]), price(r["entry"]), price(r["sl"]),
+                         price(r["tp"]), when(r["closed"]), price(r.get("exit")),
+                         WHY.get(str(r.get("why")), str(r.get("why") or "—").lower()),
+                         duration(held), "—" if rr is None else f"{rr:+.2f}", money(pnl)])
+        out += table(["#", "symbol", "side", "qty", "size $", "lev", "opened (IST)",
+                      "entry", "stop", "target", "closed (IST)", "exit", "how",
+                      "held", "R", "P&L $"],
+                     body, right={0, 3, 4, 5, 7, 8, 9, 11, 13, 14, 15})
+        out.append(f"Total: {totals['won']} won, {totals['n'] - totals['won']} lost · "
+                   f"{totals['r']:+.2f}R · ${totals['pnl']:+,.2f} after "
+                   f"${totals['costs']:,.2f} of fees and funding.")
+    else:
+        out.append("No trade has closed yet.")
+    if any(r.get("carried") for r in rows):
+        out.append("Trades marked * opened under the previous run and count in this one (same setup).")
+    out.append("R and P&L are after fees and funding. Size is the position's value; lev "
+               "is the leverage a real bot would have set on Delta.")
+    return out, totals
 
 
 def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
@@ -158,8 +181,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     problems = list(probe_problems)
     healthz = dr.as_json(sec.get("HEALTHZ", ""))
     risk_api = dr.as_json(sec.get("RISK", ""))
-    trades = dr.as_json_list(dr.gunzip_section(sec, "TRADES"))
-    open_pos = dr.as_json_list(sec.get("POSITIONS", ""))
+    live = {p.get("position_uid"): p for p in dr.as_json_list(sec.get("POSITIONS", ""))}
 
     experiments = db.get("experiments") or []
     running = next((e for e in experiments if str(e.get("status")).upper() == "RUNNING"), None)
@@ -177,47 +199,10 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     if not running:
         problems.append("no experiment is RUNNING on this host")
 
-    closed = [t for t in trades if str(t.get("status")).upper() == "CLOSED"]
-    # Counted from the database, not /api/trades: that returns at most 50
-    # rows, and only positions OPENED under the bound experiment. The probe's
-    # closed_in_run is every position closed during this run, including one
-    # carried over from the previous experiment (owner, 2026-10-02: same
-    # strategy, sizing and gates, so it counts).
-    since = now - dt.timedelta(hours=24)
-    run_closed = db.get("closed_in_run")
-    carried = 0
-    if isinstance(run_closed, list):
-        n_closed = len(run_closed)
-        carried = sum(1 for row in run_closed if len(row) > 4 and row[4])
-        cutoff = since.timestamp()
-        day_closed = [{"symbol": row[0], "r": row[2]} for row in run_closed
-                      if row[1] is not None and row[1] >= cutoff]
-    else:
-        n_closed = db.get("closed_trades_total")
-        n_closed = len(closed) if n_closed is None else int(n_closed)
-        day_closed = [t for t in closed if (parse_time(t.get("closed_utc") or t.get("closed_at"))
-                                             or dt.datetime.min.replace(tzinfo=dt.timezone.utc)) >= since]
-        # /api/trades gives IST strings; fall back on them when no UTC field exists.
-        if not day_closed and closed and "closed_ist" in closed[0]:
-            day_closed = [t for t in closed if _ist_string_after(t.get("closed_ist"), since)]
-
-    equity = dr.num(risk_api.get("equity") if risk_api else None) or dr.num(healthz.get("equity"))
-    start_eq = dr.num(snap.get("starting_equity")) or 10_000.0
-    rpt = dr.num(snap.get("risk_per_trade"))
-    per_r = start_eq * rpt if rpt else None
-    dd = dr.num(risk_api.get("drawdown_pct")) if risk_api else None
-    dd_limit = dr.num(snap.get("max_drawdown_pct"))
-    day_loss = dr.num(risk_api.get("daily_loss_pct")) if risk_api else None
-    day_limit = dr.num(snap.get("max_daily_loss_pct"))
-    streak = risk_api.get("consecutive_losses") if risk_api else None
-    streak_limit = snap.get("max_consecutive_losses")
-
-    # health
-    # `no_recent_gaps` is left out of the verdict. It counts minutes with no
-    # trade, and on BEAT/BANK that is most minutes (CONTEXT.md: health is
-    # permanently "unhealthy" from it on thin symbols), so it would mark every
-    # day as needing attention. A dead feed still shows: candles_fresh and
-    # websocket_fresh go red with it. The gap count is still shown under Health.
+    # health. `no_recent_gaps` is left out: it counts minutes with no trade,
+    # and on BEAT/BANK that is most minutes (CONTEXT.md), so it would mark
+    # every day as needing attention. A dead feed still shows: candles_fresh
+    # and websocket_fresh go red with it.
     failing = [c for c in healthz.get("checks", []) if not c.get("ok")]
     gaps = next((c for c in failing if c.get("name") == GAPS_CHECK), None)
     bad = [c.get("name") for c in failing if c.get("name") != GAPS_CHECK]
@@ -238,15 +223,19 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append(f"the bot has restarted {plural(restarts, 'time')}")
     if errors_24h:
         problems.append(f"{plural(errors_24h, 'error')} in the bot's log in the last 24 hours")
+    dd = dr.num(risk_api.get("drawdown_pct")) if risk_api else None
+    dd_limit = dr.num(snap.get("max_drawdown_pct"))
     if dd is not None and dd_limit and dd >= dd_limit:
         problems.append("the 20% drawdown stop has fired: the run is over (no resume, by design)")
 
+    rows = journal_rows(db)
+    n_closed = sum(1 for r in rows if str(r.get("status")).upper() == "CLOSED")
+
     # the self-check (prereg D7): one baseline shadow per closed position
-    shadow = db.get("shadow_exits") or []
-    base_rows = sum(1 for r in shadow if r[0] == "baseline")
-    if n_closed and base_rows != n_closed:
-        problems.append(f"self-check: {n_closed} closed trades but {base_rows} baseline "
-                        f"shadow records -- the comparison is incomplete")
+    counts = db.get("shadow_counts")
+    if isinstance(counts, dict) and n_closed and counts.get("baseline", 0) != n_closed:
+        problems.append(f"self-check: {n_closed} closed trades but {counts.get('baseline', 0)} "
+                        f"baseline shadow records -- the exit comparison is incomplete")
 
     # every entry the live checks passed should become a simulated position
     opened = db.get("opened_by_symbol")
@@ -260,92 +249,21 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
 
     day_n = (now - started).days + 1 if started else None
     title_day = f"day {day_n} of {READ_AT_DAYS}" if day_n else "day ?"
-    out = [f"# Dry run — {title_day} · {ist(now, with_day=True)} IST", ""]
+    out = [f"# Dry run journal — {title_day} · {ist(now, with_day=True)} IST", ""]
     if problems:
         out.append("**⚠️ Needs your attention:**")
         out += [f"- {p}" for p in problems]
     else:
         out.append("**✅ All normal — nothing needs you.**")
     out.append("")
-    read_by = (started + dt.timedelta(days=READ_AT_DAYS)) if started else None
-    out.append(f"**Progress:** {n_closed} of {READ_AT_TRADES} trades closed · {title_day}"
-               + (f" · read due by {ist(read_by, with_day=True).split(',')[0]}" if read_by else "")
-               + " (whichever comes first)."
-               + (f" Includes {plural(carried, 'trade')} carried over from the previous run."
-                  if carried else ""))
-    out.append("")
-
-    # last 24 hours
-    out.append("## Last 24 hours")
-    if day_closed:
-        rsum = sum(dr.num(t.get("r")) or 0 for t in day_closed)
-        out.append(f"- {plural(len(day_closed), 'trade')} closed under hold-to-3R "
-                   f"({rsum:+.2f}R in total).")
-    else:
-        out.append("- No trade closed.")
-    if open_pos:
-        bits = [f"{p.get('symbol')} {str(p.get('side')).lower()} since {p.get('opened_ist', '?')}"
-                for p in open_pos]
-        out.append(f"- Open now: {', '.join(bits)}.")
-    else:
-        out.append("- Nothing open now.")
-    ev = db.get("evaluations_24h")
-    rej = db.get("rejections_24h") or {}
-    if isinstance(rej, dict) and rej:
-        top = sorted(rej.items(), key=lambda kv: -kv[1])[:2]
-        out.append(f"- Signals checked: {ev if ev is not None else '?'}; most common reasons "
-                   f"for no trade: " + "; ".join(f"{k} ({v})" for k, v in top) + ".")
-    elif ev is not None:
-        out.append(f"- Signals checked: {ev}.")
-    out.append("")
-
-    # the three exits
-    out.append("## The three exits on the same trades (since the start)")
-    lines, summary = exit_table(shadow, per_r)
+    lines, totals = journal(rows, live)
     out += lines
-    out.append("Too early to tell them apart; the planned read is at "
-               f"{READ_AT_TRADES} trades, and even then it compares how they behave, not "
-               "whether any has an edge.")
-    out.append("")
-
-    # what a real bot would have done
-    out.append("## What a real bot would have done (since the start)")
-    out += would_have(db.get("dry_run") or {},
-                      opened if isinstance(opened, dict) else None)
-    out.append("")
-
-    # the account
-    out.append(f"## Simulated ${start_eq:,.0f} account")
-    if equity is not None:
-        pct = 100 * (equity - start_eq) / start_eq
-        parts = [f"Equity ${equity:,.2f} ({pct:+.1f}%)"]
-        if dd is not None:
-            parts.append(f"drawdown {100 * dd:.1f}%" + (f" of the {100 * dd_limit:.0f}% limit" if dd_limit else ""))
-        if day_loss is not None:
-            parts.append(f"today's loss {100 * day_loss:.1f}%" + (f" of {100 * day_limit:.0f}%" if day_limit else ""))
-        if streak is not None:
-            parts.append(f"losing streak {streak}" + (f" of {streak_limit}" if streak_limit else ""))
-        out.append(" · ".join(parts) + ".")
-    else:
-        out.append("Equity unavailable.")
-    out.append("")
-
-    # health
-    out.append("## Health")
-    up = healthz.get("uptime_seconds")
-    out.append(f"Bot up {duration(up)}, {plural(restarts or 0, 'restart')}, "
-               f"{'?' if errors_24h is None else plural(errors_24h, 'error')} in the log "
-               f"(24h), prices {'live' if healthz.get('ws_connected') else 'NOT live'}"
-               + (f"; {gaps.get('detail') or 'price gaps'} (normal on thin symbols)"
-                  if gaps else "") + ". "
-               f"Experiment `{exp_id or '?'}`.")
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
              "verdict": "clear" if not problems else "attention", "problems": problems,
-             "day_closed": len(day_closed), "closed": n_closed, "exits_r": summary,
-             "experiment": exp_id, "equity_line": None if equity is None else f"{equity:,.2f}",
-             "health_line": "healthy" if healthy else "not healthy",
-             "day_of": title_day}
+             "closed": n_closed, "total_r": round(totals["r"], 2),
+             "total_pnl": round(totals["pnl"], 2), "experiment": exp_id,
+             "health_line": "healthy" if healthy else "not healthy", "day_of": title_day}
     return "\n".join(out) + "\n", facts, problems
 
 

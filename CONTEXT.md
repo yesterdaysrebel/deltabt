@@ -50,10 +50,13 @@ drawdown latch (terminal), 10% daily loss, 8 consecutive losses, 72 h time stop.
 **What it cannot say:** whether any exit has an edge (~0.1–0.17R standard error at 100 trades vs
 0.02–0.06R differences), or how Delta fills, attaches brackets or runs its own trailing stop.
 
-**Daily report** (#102, `scripts/brief_report.py`): one screen in plain English at 7:00 AM IST
-(01:30 UTC) by email and on the `monitor` run page — verdict first, progress to the read, the three
-exits side by side, would-be orders/refusals per symbol, the $250 account against its limits,
-health. The long `daily_report.py` remains for paper stacks.
+**Daily report** (`scripts/brief_report.py`, 7:00 AM IST / 01:30 UTC, email + the `monitor` run
+page): by owner instruction (2026-10-02) ONLY two parts — the attention list (unhealthy, restarts,
+log errors, latch, missing data, D7 self-check, entries the simulator did not open) and the trade
+journal (open now; every trade closed this run, carried-over ones marked *): IST times, side, qty,
+size, the leverage a real bot would set, entry/stop/target, exit, how, held, net R and $, totals.
+The three-exit comparison is read from the database at the pre-registered read, not mailed daily.
+The long `daily_report.py` remains for paper stacks.
 
 **After the read (owner's plan, not decided):** real money, $250 on each of two Delta sub-accounts
 (`baseline`, `ladder`), Trading keys IP-allowlisted, exit chosen from this record. Before any real
