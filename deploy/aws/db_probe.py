@@ -162,6 +162,13 @@ async def collect(con) -> dict:
     out["closed_trades_total"] = await con.fetchval(
         "select count(*) from positions where status = 'CLOSED' "
         "and ($1::timestamptz is null or opened_at >= $1)", since) or 0
+    # Positions opened per symbol this run, any status: the dry-run report
+    # compares them with the entries the live checks passed (DRY_RUN_ORDER).
+    # Counted here, not from /api/trades, which returns at most 50 rows.
+    out["opened_by_symbol"] = {r["symbol"]: r["n"] for r in await con.fetch(
+        "select symbol, count(*) n from positions "
+        "where ($1::timestamptz is null or opened_at >= $1) group by symbol",
+        since)}
     out["orders_run"] = await con.fetchval(
         "select count(*) from paper_orders "
         "where ($1::timestamptz is null or created_at >= $1)", since)

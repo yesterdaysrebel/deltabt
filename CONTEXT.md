@@ -27,7 +27,9 @@ safety claim to anyone.
 
 ## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
-Last read 2026-10-02 ~11:00 UTC. Pre-registration and the registration record:
+Last read 2026-10-02 ~11:15 UTC. **The first experiment (below) has a defect and restarts on
+the fixed image under a new id**: floor-sized AKEUSD entries could never fill in the simulator
+(addendum in the prereg). Pre-registration and the registration record:
 `docs/prod_dry_run_prereg.md` (frozen; read once at 100 closed positions, 21 days ≈ 2026-10-23, the
 20% latch, or a defect).
 

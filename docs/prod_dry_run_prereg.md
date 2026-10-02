@@ -84,3 +84,22 @@ resumes on its own when real bars arrive, as designed.
 
 **Daily report** (#102): one screen, 7:00 AM IST, emailed to the alarm topic. Its self-check line is
 D7 above: a closed position without a baseline shadow row is reported as needing attention.
+
+## Addendum 2026-10-02 — defect in the first experiment; restart under a new id
+
+**Defect (found by the first daily report, 11:08 UTC):** the paper broker could not fill an order the
+minimum-contract floor had sized at one contract. Three AKEUSD entries (10:45, 10:55, 11:05 UTC) were
+approved at 1 contract and passed every live check (`DRY_RUN_ORDER`), and the simulator opened none:
+"fill at 0.0323 leaves no room inside the $10.88 risk budget". The order's risk amount was exactly
+one contract's risk at the reference, so the broker's own 2 bps adverse slip cut the fill to zero
+contracts every time. The run therefore held nothing a real bot would have held on AKEUSD, and D2
+(AKEUSD under the floor rule) could never be measured. A real order would have gone through.
+
+**Fix:** the order carries the floor's cap (5% of equity) and the fill-time resize measures against
+it, only for floor-sized orders; every other order is unchanged. The daily report now flags any
+symbol where the simulator opened fewer positions than the live checks passed.
+
+**Per the defect rule:** `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-ed31cba` is retired with **0 closed
+positions**, so no data is lost. The run restarts on the fixed image under a new experiment id,
+recorded below when it registers. The frozen section is unchanged, and the 21 days count from the
+new registration.

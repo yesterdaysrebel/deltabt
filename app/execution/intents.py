@@ -49,6 +49,15 @@ class ApprovedOrderIntent:
     strategy_version: str
     bar_open: int
     checks_passed: tuple[str, ...] = field(default_factory=tuple)
+    #: The most a FILL may risk when that is more than `risk_amount`. Set only
+    #: by the minimum-contract floor (RiskConfig.min_contract_risk_cap): one
+    #: contract is then the whole order, `risk_amount` is exactly that
+    #: contract's risk at the reference, and the paper broker's fill-time
+    #: resize would cut it to zero on ANY adverse slip -- its own 2 bps
+    #: included -- so a floor-sized entry could never fill (found on the prod
+    #: dry run 2026-10-02: three AKEUSD entries passed the live checks and
+    #: none opened). 0 means "use risk_amount", which is every other order.
+    risk_cap: float = 0.0
 
     def __post_init__(self) -> None:
         if not self.risk_evaluation_id:
