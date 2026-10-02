@@ -64,6 +64,21 @@ case "$DELTA_ENV" in
 esac
 export DELTA_ENV
 
+# SIZING, PER STACK (live.tf live_sizing). No default: without it the breakers
+# measure 10,000 of equity the account does not have.
+SIZING="$(aws ssm get-parameter --region "$AWS_REGION" --name "${SSM_IMAGE_TAG_PARAM%/*}/sizing" \
+           --query Parameter.Value --output text 2>/dev/null || true)"
+SIZING_ENV="$(printf '%s' "$SIZING" | python3 -c '
+import json,sys
+d=json.load(sys.stdin); f={k:float(d[k]) for k in ("equity_usd","risk_per_trade","min_contract_risk_cap")}
+assert f["equity_usd"]>0 and 0<f["risk_per_trade"]<=0.1 and 0<=f["min_contract_risk_cap"]<=0.1 and d["dry_run"] in ("0","1")
+print("DELTABOT_EQUITY=%s\nDELTABOT_RISK_PER_TRADE=%s\nDELTABOT_MIN_CONTRACT_RISK_CAP=%s\nDELTABOT_DRY_RUN=%s"%(d["equity_usd"],d["risk_per_trade"],d["min_contract_risk_cap"],d["dry_run"]))
+' 2>/dev/null || true)"
+if [[ -z "$SIZING_ENV" ]]; then
+  log "sizing parameter missing or invalid ($SIZING); refusing to start"
+  exit 90
+fi
+
 # THE CREDENTIAL'S NAME IS DERIVED, NOT PASSED. Adding a variable to the
 # user_data template would change the rendered bytes for PAPER stacks too, and
 # that replaces their instances. SSM_IMAGE_TAG_PARAM is already in the
@@ -127,6 +142,7 @@ umask 077
   printf 'DELTA_API_KEY=%s\n' "$DELTA_API_KEY"
   printf 'DELTA_API_SECRET=%s\n' "$DELTA_API_SECRET"
   printf 'DELTA_ENV=%s\n' "$DELTA_ENV"
+  printf '%s\n' "$SIZING_ENV"
 } > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC DELTA_API_KEY DELTA_API_SECRET
 

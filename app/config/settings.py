@@ -49,6 +49,15 @@ class RiskConfig:
 
     starting_equity: float = 10_000.0
     risk_per_trade: float = 0.005          # 0.5%
+    #: THE MINIMUM-CONTRACT FLOOR, ADDED 2026-10-02 for the $250 prod pilot.
+    #: 0 = off, which every paper arm keeps. When the risk budget rounds to zero
+    #: contracts, one contract is taken anyway IF its risk is at most this
+    #: fraction of equity. Exists for AKEUSD: one contract is 10,000 AKE
+    #: (~$307 notional, ~$10 at a median 4xATR stop), so at $250 and a 2%
+    #: budget it would never trade; at a 5% cap it trades on ordinary days and
+    #: is skipped on volatile ones. The cap is the owner's chosen ceiling on a
+    #: single trade's loss, not a tuning knob.
+    min_contract_risk_cap: float = 0.0
     minimum_rr: float = 2.0
     max_open_positions: int = 1
     #: DISABLED ON 2026-08-20 (1.0 = equity would have to reach zero in a day).
@@ -166,6 +175,9 @@ class RiskConfig:
     def validate(self) -> None:
         if not 0 < self.risk_per_trade <= 0.1:
             raise ValueError(f"risk_per_trade must be in (0, 0.1], got {self.risk_per_trade}")
+        if not 0 <= self.min_contract_risk_cap <= 0.1:
+            raise ValueError("min_contract_risk_cap must be in [0, 0.1], got "
+                             f"{self.min_contract_risk_cap}")
         if self.minimum_rr <= 0:
             raise ValueError("minimum_rr must be > 0")
         if self.max_open_positions < 1:
@@ -235,6 +247,7 @@ class Settings:
         for key, field_name, cast in (
             ("DELTABOT_EQUITY", "starting_equity", float),
             ("DELTABOT_RISK_PER_TRADE", "risk_per_trade", float),
+            ("DELTABOT_MIN_CONTRACT_RISK_CAP", "min_contract_risk_cap", float),
             ("DELTABOT_MIN_RR", "minimum_rr", float),
             ("DELTABOT_MAX_OPEN", "max_open_positions", int),
             ("DELTABOT_MAX_DAILY_LOSS", "max_daily_loss_pct", float),

@@ -547,3 +547,42 @@ def test_the_git_sha_reaches_the_live_image():
     is not reproducible, and the container has no git."""
     job = _job(TESTNET_WF, "build-live")
     assert "GIT_SHA=${{ github.sha }}" in job
+
+
+# --- per-stack sizing and the dry-run switch (2026-10-02) ---------------------
+
+def test_every_live_stack_gets_a_sizing_parameter_its_host_may_read():
+    """Without DELTABOT_EQUITY the breakers measure 10,000 of equity the account
+    does not have: a "20% latch" on $250 would need a $2,000 loss."""
+    assert 'resource "aws_ssm_parameter" "live_sizing"' in LIVE_TF
+    assert '"${each.value.ssm_prefix}/sizing"' in LIVE_TF
+    assert "[for p in aws_ssm_parameter.live_sizing : p.arn]" in LIVE_TF, (
+        "the host role cannot read its own sizing parameter")
+    assert "contains(keys(var.live_sizing), each.key)" in LIVE_TF, (
+        "a live stack without a sizing entry must fail the plan, not boot at 10,000")
+
+
+def test_run_live_refuses_without_sizing_and_writes_it_to_the_shared_env_file():
+    run_live = (ROOT / "deploy/aws/run_live.sh").read_text()
+    assert '"${SSM_IMAGE_TAG_PARAM%/*}/sizing"' in run_live
+    i = run_live.index("SIZING_ENV=")
+    refusal = run_live[i:run_live.index("fi", run_live.index('if [[ -z "$SIZING_ENV" ]]'))]
+    assert "exit 90" in refusal, "a missing sizing parameter must refuse, not default"
+    for var in ("DELTABOT_EQUITY", "DELTABOT_RISK_PER_TRADE",
+                "DELTABOT_MIN_CONTRACT_RISK_CAP", "DELTABOT_DRY_RUN"):
+        assert var in run_live[i:], var
+    block = run_live[run_live.index("install -d -m 0700 /run/deltabt"):
+                     run_live.index("> /run/deltabt/env")]
+    assert '"$SIZING_ENV"' in block, (
+        "sizing must reach /run/deltabt/env, the one file the bot AND the "
+        "experiment document's CLI read, or the two compute different risk_hash")
+
+
+def test_an_image_without_dry_run_mode_refuses_a_dry_run_host():
+    """A host told to observe must never trade because the image ignored it."""
+
+    import live.__main__ as entry
+
+    assert entry.dry_run_requested({"DELTABOT_DRY_RUN": "1"})
+    assert not entry.dry_run_requested({"DELTABOT_DRY_RUN": "0"})
+    assert not entry.dry_run_requested({})
