@@ -171,3 +171,23 @@ keep the run alive and record all three exits for the full window.
 
 **What it does not change.** No exit rule is claimed to have an edge; the trail is chosen for the
 shape of its drawdown, not its mean. Nothing above the FROZEN line is edited.
+
+## Addendum 2026-10-03 — the amended experiment
+
+| field | value |
+|---|---|
+| experiment | `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` |
+| registered | 2026-10-03 11:55:35 UTC (5:25 PM IST); the 21 days run to 2026-10-24 |
+| image | `5683929` (#108 on master; carries #107) |
+| strategy | `manual_scalp_both_t3_trail@5m`, hash `cf9917a73c61c14dd0435d1aa56d4e15fa29d5ddaa7e6bc3cde39b7cccf96018` |
+| risk hash | `c530af7d32125746` |
+| recorded risk | equity 250, risk 0.02, `min_contract_risk_cap` 0.03, `max_drawdown_pct` 0.50, daily loss 0.10, 8 consecutive losses, 72 h max hold |
+| host | `i-0b59a7984b76f2154` (replaced by the amendment), EIP `15.207.211.127` (unchanged; the read-only key's allowlist) |
+| retired | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a`, by the deploy, through the database (#108) |
+
+The bot was down from 11:23 to 11:55 UTC while the host was replaced and the deploy fixed (#108); ticks
+in that window were not seen. Two positions opened under the previous experiment (a BEATUSD long and an
+AKEUSD long) were restored and count in this run (same entry rule; addendum 2026-10-02). They were
+opened under hold-to-3R, are now exited by the trail, and their shadow rows are marked observed from
+entry = false (restored after a restart). The simulated account restarts at $250, as every new
+experiment does; the previous experiment ended at $229.38.
