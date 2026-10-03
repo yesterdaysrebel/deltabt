@@ -275,7 +275,12 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append(f"the bot has restarted {plural(restarts, 'time')}")
     if errors_24h:
         problems.append(f"{plural(errors_24h, 'error')} in the bot's log in the last 24 hours")
-    dd = dr.num(risk_api.get("drawdown_pct")) if risk_api else None
+    # /api/risk reports drawdown in PERCENT (round(100 * fraction, 3), see
+    # app/api/app.py); the experiment's limit is a FRACTION (0.20). Comparing
+    # the two unconverted declared the 20% stop fired at a 0.2% drawdown --
+    # the 2026-10-03 report said "the run is over" at 9.3%.
+    dd_pct = dr.num(risk_api.get("drawdown_pct")) if risk_api else None
+    dd = None if dd_pct is None else dd_pct / 100.0
     dd_limit = dr.num(snap.get("max_drawdown_pct"))
     if dd is not None and dd_limit and dd >= dd_limit:
         problems.append("the 20% drawdown stop has fired: the run is over (no resume, by design)")

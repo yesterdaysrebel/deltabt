@@ -240,3 +240,22 @@ def test_trades_left_out_for_space_are_counted_and_said():
     assert "The oldest 40 closed trades are left out to fit the report's size limit" in text
     assert _block(text, "41*")[0].split()[1] == "AKEUSD", "numbers continue past the omitted"
     assert not problems and facts["closed"] == 42
+
+
+def _with_drawdown(pct):
+    sec, db = a_probe()
+    sec["RISK"] = json.dumps({"equity": 229.38, "drawdown_pct": pct, "daily_loss_pct": 4.6,
+                              "consecutive_losses": 2})
+    return br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+
+
+def test_a_9_percent_drawdown_does_not_read_as_the_20_percent_stop():
+    """/api/risk gives PERCENT; the limit is a fraction. The 2026-10-03 report
+    compared them raw and said the run was over at 9.27%."""
+    _, _, problems = _with_drawdown(9.27)
+    assert not any("drawdown stop" in p for p in problems), problems
+
+
+def test_the_20_percent_stop_is_still_reported_when_it_fires():
+    _, _, problems = _with_drawdown(20.4)
+    assert any("20% drawdown stop has fired" in p for p in problems)
