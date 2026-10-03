@@ -260,11 +260,13 @@ async def collect(con) -> dict:
                        r["why"], _dp(r["r"], 3), _dp(r["pnl"], 2),
                        _dp(r["costs"], 2), bool(r["carried"]), _dp(r["lev"], 1)]
                       for i, r in enumerate(rows)]
-    # THE OTHER TWO EXITS on each journal trade (owner, 2026-10-02: the
-    # journal is the three-exit comparison). The real position IS the hold-
-    # to-3R exit; ladder and trail come from shadow_exits, matched by
-    # position. Row = [journal index, rule, closed, exit price, reason, net R,
-    # observed from entry]; the index instead of the uid keeps it small.
+    # ALL THREE EXITS on each journal trade (owner, 2026-10-02: the journal
+    # is the three-exit comparison). The real position is whichever rule the
+    # experiment runs (forward_test.strategy_version says which; the report
+    # reads it) and its shadow row doubles as the D7 self-check; the other
+    # two are where the remaining rules would have closed the same trade.
+    # Row = [journal index, rule, closed, exit price, reason, net R, observed
+    # from entry]; the index instead of the uid keeps it small.
     out["exits_fields"] = ["i", "rule", "closed", "exit", "why", "r", "seen"]
     out["exits"] = []
     if out["journal"] and await con.fetchval(
@@ -279,7 +281,7 @@ async def collect(con) -> dict:
                           exit_price::float px, exit_reason why, net_r::float r,
                           observed_from_entry seen
                      from shadow_exits
-                    where position_uid = any($1::text[]) and rule <> 'baseline'
+                    where position_uid = any($1::text[])
                     order by closed_at""", list(index))]
     # Positions opened per symbol this run, any status: the dry-run report
     # compares them with the entries the live checks passed (DRY_RUN_ORDER).
@@ -305,7 +307,8 @@ async def collect(con) -> dict:
     # failure on the first day the limit was raised to six.
     out["experiments"] = [dict(r) for r in await con.fetch(
         "select experiment_id, status, started_at, planned_days, "
-        "strategy_hash, risk_hash, git_sha, snapshot->'risk' as risk "
+        "strategy_hash, risk_hash, git_sha, strategy_version, "
+        "snapshot->'risk' as risk "
         "from forward_test")]
 
     # --- what the run is actually measuring ---------------------------------

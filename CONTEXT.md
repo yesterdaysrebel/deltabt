@@ -27,25 +27,28 @@ safety claim to anyone.
 
 ## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
-Last read 2026-10-02 ~12:10 UTC. The first experiment (`…-ed31cba`) had a defect: floor-sized
-AKEUSD entries could never fill in the simulator. It was retired with 0 closed positions and
-restarted on the fixed image (#103) at 11:52:38 UTC. One AKEUSD short from the first experiment
-carried over and COUNTS in this run by owner decision (same setup); the report counts positions
-closed during the run, whenever they opened (prereg addendum).
+Last read 2026-10-03 ~06:30 UTC. First night: 4 closed (1 BEAT win, 3 AKEUSD losses of ~$11.9
+each), equity $229.38, 9.3% below peak. **Amendment 2026-10-03 (owner):** AKEUSD floor 5% → 3%, the
+simulated account runs the TRAIL exit (hold-to-3R and ladder stay as shadows and now keep running
+after the trail exits), drawdown latch 20% → 50% for the dry run (the report states when 20% would
+have fired). Host replaced; new experiment id in the prereg addendum once registered.
 
 | stack | venue | experiment | state |
 |---|---|---|---|
-| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a` | RUNNING since 11:52:38Z on `i-0a38139027a767607` (EIP `15.207.211.127`), image `c4b719a`, IAM-token DB login, `deltabt_dryrun` |
+| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a` → successor after the amendment (see prereg) | host replaced by the amendment PR; EIP `15.207.211.127` kept (the key's allowlist); IAM-token DB login, `deltabt_dryrun` |
 
 **What it is.** The live code path (`live/dry_run.py`) on prod books with a read-only key. Every
 approved entry runs the live checks (kill switch, entry deviation ≤ 0.25R, spread ≤ 0.5R, mark not
 beyond the stop, leverage plan) and is journaled as `DRY_RUN_ORDER` or `DRY_RUN_REFUSED` in
 `system_events`; the position itself is filled and exited by the paper fill model on prod ticks.
-Entries are the baseline spec (`manual_scalp_both_t3@5`, BEAT/AKE/BANK). Every position is shadowed
-under **baseline** (hold to 3R), **ladder** (rungs) and **trail** (0.5R behind the peak from +0.5R) —
-one row per position per rule in `shadow_exits`, one stop rule in `deltabt/exits.py`. Sizing is the
-real pilot's: equity $250, 2% risk ($5/R), AKEUSD may take 1 contract if it risks ≤ 5%; gates 20%
-drawdown latch (terminal), 10% daily loss, 8 consecutive losses, 72 h time stop.
+Entries are the baseline entry rule; since the 2026-10-03 amendment the account's exit is the
+**trail** (`manual_scalp_both_t3_trail@5`, BEAT/AKE/BANK). Every position is shadowed under
+**baseline** (hold to 3R), **ladder** (rungs) and **trail** (0.5R behind the peak from +0.5R) —
+one row per position per rule in `shadow_exits`, one stop rule in `deltabt/exits.py`; legs that
+outlive the real position keep running in-process (lost on restart → "not recorded"). Sizing:
+equity $250, 2% risk ($5/R), AKEUSD may take 1 contract if it risks ≤ 3%; gates 50% drawdown latch
+(dry run only; the plan's 20% is reported as a date), 10% daily loss, 8 consecutive losses, 72 h
+time stop.
 
 **What it cannot say:** whether any exit has an edge (~0.1–0.17R standard error at 100 trades vs
 0.02–0.06R differences), or how Delta fills, attaches brackets or runs its own trailing stop.

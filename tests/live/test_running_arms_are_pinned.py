@@ -60,6 +60,9 @@ MONITOR = (ROOT / ".github/workflows/monitor.yml").read_text()
 RUNNING_ARMS = {
     "manual_scalp_both_t3":
         "41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d",
+    # 2026-10-03: the prod dry run (`dryrun`) binds on the trail arm.
+    "manual_scalp_both_t3_trail":
+        "cf9917a73c61c14dd0435d1aa56d4e15fa29d5ddaa7e6bc3cde39b7cccf96018",
 }
 
 

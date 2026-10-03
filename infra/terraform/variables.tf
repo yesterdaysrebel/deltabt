@@ -1086,7 +1086,13 @@ variable "max_drawdown_pct" {
   # 2026-10-02: 0.20 for the prod pilot ($50 on a $250 account, terminal, no
   # resume), owner's choice. Every stack shares it; none other exists. The
   # ladder's paper fortnight drew 7.2R, so firing is a pre-registered outcome.
-  default = 0.20
+  # 2026-10-03 (owner, prereg amendment): 0.50 FOR THE DRY RUN ONLY. No money
+  # is at risk there, so a 20% latch only cuts the record short: the paired
+  # backtest's hold-to-3R drawdown was 43R against the 10R a 20% latch allows
+  # at $5/R. The daily report states the day the plan's 20% WOULD have fired
+  # (scripts/brief_report.py). Real money returns this to 0.20 before any
+  # trading key exists; live/guards.py still refuses the 1.0 off switch.
+  default = 0.50
 }
 
 variable "max_daily_loss_pct" {

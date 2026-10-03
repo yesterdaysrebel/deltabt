@@ -93,13 +93,18 @@ variable "live_stacks" {
 
     # 2026-10-02: `dryrun`, the prod pilot's DRY RUN (owner). The live code
     # path on Delta PROD with a READ-ONLY key and no order path at all
-    # (live/dry_run.py; live_sizing below says dry_run "1"). Entries under
-    # the baseline arm's identity; every position is shadowed under baseline,
-    # ladder and trail (app/execution/shadow_exits.py) into shadow_exits. Its
-    # experiment registers the PAPER execution profile and is named DRY-...
-    # Read per docs/prod_pilot_prereg.md once frozen; real money is decided
-    # after it, on separate stacks and accounts.
-    dryrun = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_dryrun" }
+    # (live/dry_run.py; live_sizing below says dry_run "1"). Every position
+    # is shadowed under baseline, ladder and trail
+    # (app/execution/shadow_exits.py) into shadow_exits. Its experiment
+    # registers the PAPER execution profile and is named DRY-...
+    # Read per docs/prod_dry_run_prereg.md; real money is decided after it,
+    # on separate stacks and accounts.
+    # 2026-10-03 (owner, prereg amendment): the simulated account now runs
+    # the TRAIL exit (same entry rule; 0.5R behind the peak from +0.5R). The
+    # paired backtest gives it the shallowest drawdown of the three (17R vs
+    # 43R) at the same ~zero mean, so the account survives long enough to
+    # record all three exits. Hold-to-3R and the ladder stay as shadows.
+    dryrun = { variant = "SPEC:manual_scalp_both_t3_trail@5", db_name = "deltabt_dryrun" }
   }
 }
 
@@ -262,9 +267,13 @@ variable "live_sizing" {
     min_contract_risk_cap = string
     dry_run               = string
   }))
-  # $250 at 2% with the AKEUSD one-contract floor at 5% (owner, 2026-10-02).
+  # $250 at 2%. The AKEUSD one-contract floor was 5% (owner, 2026-10-02);
+  # 2026-10-03 (owner, prereg amendment) it is 3%: at 5% every AKEUSD entry
+  # risked $8-11 (3.2-4.5% of equity) against $5 elsewhere, and three such
+  # losses took 14% of the account in one night. At 3% a contract is taken
+  # only when it risks <= $7.50, i.e. when AKEUSD's stop is under ~2.3%.
   default = {
-    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.05", dry_run = "1" }
+    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1" }
   }
 }
 
