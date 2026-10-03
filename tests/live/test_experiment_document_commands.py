@@ -160,3 +160,45 @@ def test_retire_leaves_the_service_running():
     assert "systemctl stop deltabt.service" not in stop, (
         "retire stops the bot; a CLI that hangs then leaves it down, which is "
         "exactly the 2026-09-16 tnet outage")
+
+
+# --- a REPLACED host, which shares the stack's database ----------------------
+#
+# Added 2026-10-03. A host Terraform REPLACES has no /run/deltabt/env (only
+# run_live.sh writes it, when the bot starts), but the stack's database may
+# hold the RUNNING experiment the old host left. The stop branch used to treat
+# "no env file" as "new stack, nothing to retire": the old experiment stayed
+# RUNNING, the new bot refused it as configuration drift, and the successor
+# could not be registered.
+
+def _branch(doc, name):
+    start = doc.index(f"            {name})")
+    return doc[start:doc.index(";;", start)]
+
+
+def test_a_replaced_host_retires_against_the_shared_database():
+    doc = document()
+    stop = _branch(doc, "stop")
+    assert stop.index('"$TAG" = "none"') < stop.index("[ ! -f /run/deltabt/env ]"), (
+        "only an undeployed image tag may mean 'new stack, nothing to retire'; "
+        "a missing env file on a deployed stack is a replaced host")
+    after = stop[stop.index("[ ! -f /run/deltabt/env ]"):]
+    assert "db_env" in after.split("fi", 1)[0], (
+        "a replaced host must build a database-only env and retire against "
+        "the database, not report 'nothing to retire'")
+
+
+def test_a_replaced_host_reports_a_running_experiment_from_the_database():
+    status = _branch(document(), "status")
+    assert "db_env" in status, (
+        "status on a replaced host must ask the database; otherwise the deploy "
+        "guard calls a host with a RUNNING experiment safe to roll")
+
+
+def test_the_database_only_env_carries_no_exchange_key():
+    doc = document()
+    helper = doc[doc.index("db_env() {"):doc.index("echo \"[experiment] replaced host")]
+    assert "DATABASE_URL" in helper and "DELTA_ENV" in helper
+    for secret in ("DELTA_API_KEY", "DELTA_API_SECRET", "delta_secret_id"):
+        assert secret not in helper, f"db_env must not write {secret}"
+    assert "umask 077" in helper and "-m 0700" in helper

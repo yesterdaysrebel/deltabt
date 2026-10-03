@@ -300,6 +300,33 @@ resource "aws_ssm_document" "experiment" {
               -e TZ=UTC -e PYTHONUNBUFFERED=1 \
               "$${ECR_REPOSITORY_URL}:$${TAG}" "$@"
           }
+          # A REPLACED HOST SHARES THE STACK'S DATABASE. /run/deltabt/env is
+          # written by run_live.sh when the bot starts, so a host Terraform
+          # has just REPLACED has none -- but its database may well hold the
+          # RUNNING experiment the old host left (2026-10-03: the dry-run
+          # host was replaced for an amendment; the retire below said
+          # "nothing to retire", the old experiment stayed RUNNING, and the
+          # new bot would have refused it as configuration drift). When an
+          # image has been deployed to this stack (TAG set) but this host has
+          # never started it, write a DATABASE-ONLY env the same way
+          # run_live.sh builds its DSN, so status and stop ask the database.
+          # No exchange key is written; run_live.sh overwrites the file when
+          # the bot starts.
+          db_env() {
+            venue="$(aws ssm get-parameter --region "$AWS_REGION" --name "$${SSM_IMAGE_TAG_PARAM%/*}/delta_env" --query Parameter.Value --output text)"
+            secret="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$DB_SECRET_ARN" --query SecretString --output text)"
+            db_user="$(printf '%s' "$secret" | python3 -c 'import json,sys;print(json.load(sys.stdin)["username"])')"
+            db_pass="$(printf '%s' "$secret" | python3 -c 'import json,sys,urllib.parse;print(urllib.parse.quote(json.load(sys.stdin)["password"], safe=""))')"
+            unset secret
+            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$${ECR_REPOSITORY_URL%%/*}" >/dev/null
+            install -d -m 0700 /run/deltabt
+            ( umask 077
+              printf 'DATABASE_URL=%s\nDELTA_ENV=%s\n' \
+                "postgresql://$${db_user}:$${db_pass}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=require" "$venue" \
+                > /run/deltabt/env )
+            unset db_pass
+            echo "[experiment] replaced host: wrote a database-only env to ask the stack's database"
+          }
           case "{{ Action }}" in
             status)
               # READ-ONLY. Exists so the deploy pipeline can decide for itself
@@ -313,9 +340,12 @@ resource "aws_ssm_document" "experiment" {
               # Exit 1 = nothing is running, rolling is safe.
               # A never-deployed host reports "safe", which is correct: there
               # is no run to lose.
-              if [ ! -f /run/deltabt/env ] || [ -z "$${TAG:-}" ] || [ "$TAG" = "none" ]; then
+              if [ -z "$${TAG:-}" ] || [ "$TAG" = "none" ]; then
                 echo "[experiment] host has never run a container; nothing to protect"
                 exit 1
+              fi
+              if [ ! -f /run/deltabt/env ]; then
+                db_env
               fi
               # The CLI already answers exactly this question, and its exit
               # code is the contract: 0 when an experiment is RUNNING, 1 on
@@ -341,13 +371,18 @@ resource "aws_ssm_document" "experiment" {
               #
               # Each guard below is a precondition only a never-deployed host
               # can fail. A genuine retire failure still fails the step.
-              if [ ! -f /run/deltabt/env ]; then
-                echo "[experiment] no container has ever run here; nothing to retire"
-                exit 0
-              fi
               if [ -z "$${TAG:-}" ] || [ "$TAG" = "none" ]; then
                 echo "[experiment] no image deployed yet; nothing to retire"
                 exit 0
+              fi
+              if [ ! -f /run/deltabt/env ]; then
+                # Never started on THIS host, but the stack has a deployed
+                # image: a replaced host. Ask the shared database (db_env).
+                # A new stack's first roll is the TAG=none case above, and
+                # an empty database still lands on "no experiment is
+                # RUNNING" below; "nothing to retire" is said there.
+                echo "[experiment] no container has ever run here; nothing to retire locally, asking the database"
+                db_env
               fi
               echo "[experiment] retiring any running experiment"
               # STOP THE SERVICE FIRST, exactly as `start` below does.
