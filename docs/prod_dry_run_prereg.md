@@ -133,3 +133,41 @@ entries, and its P&L moves the simulated $250 account, as it would a real accoun
 after a restart as observed from entry, though its path before the restart was never seen. From
 #104 such rows carry `observed_from_entry = false`, and the daily report calls their ladder and
 trail results approximate. The baseline result does not depend on the path.
+
+## Amendment 2026-10-03 — three changes, by owner decision, after the first night
+
+**Why.** The first night closed four trades: one BEATUSD win and three AKEUSD losses. Each AKEUSD
+loss was ~$11.9 (one contract under the 5% floor, 4.4–4.5% of equity) against $5 for a normal
+trade; the three together took 14% of the account, and AKEUSD produced 8 of the first 10 approved
+entries. At $250 and 2% the pre-registered 20% latch is 10R of room; the paired backtest's
+hold-to-3R drawdown was 42.7R with an 18-trade run of non-positive exits, so the latch was likely
+to end the run inside the 21 days with ~10 trades recorded — too few for D5. The owner chose to
+keep the run alive and record all three exits for the full window.
+
+**The three changes** (one PR; host replaced; new experiment id recorded below when it registers):
+
+| # | change | before | after |
+|---|---|---|---|
+| 1 | AKEUSD one-contract floor (`min_contract_risk_cap`) | 5% of equity ($12.50) | **3%** ($7.50): a contract is taken only when AKEUSD's stop is under ~2.3% of price; every AKEUSD entry so far would have been skipped |
+| 2 | the exit the simulated account runs | hold to 3R (`manual_scalp_both_t3`) | **trail** (`manual_scalp_both_t3_trail`, 0.5R behind the peak from +0.5R; same entry rule). Paired backtest: shallowest drawdown of the three (17.2R vs 42.7R), same ~zero mean |
+| 3 | drawdown latch (`max_drawdown_pct`) | 20%, terminal | **50%** for the dry run only. The daily report states the day the plan's 20% WOULD have fired. Real money returns to 20% before any trading key exists |
+
+**What this changes in the questions above.**
+- **D5** is unchanged in content: every position is still shadowed under baseline, ladder and trail.
+  Two mechanics change. (a) The entry stream is the trail's: the trail exits earlier than
+  hold-to-3R, so the per-symbol slot frees sooner and more entries are taken; the comparison stays
+  paired (identical entries for all three rules) but the entries are not the ones a hold-to-3R bot
+  would have taken. (b) When the real (trail) position closes by its own stop or target, the
+  hold-to-3R and ladder shadows keep running on ticks until each exits by its own rule, with the
+  72 h time stop applied; they live only in the running process, so a restart while they are open
+  loses them and the report shows "not recorded" for that trade. A time stop, flatten or halt of the
+  real position still closes all three together.
+- **D7** self-check: the **trail** shadow must agree with the real position on every trade.
+- **D8**: the 20% latch is read as a date ("would have fired on …") instead of ending the run; the
+  10% daily loss, 8 consecutive losses and 72 h time stop are unchanged.
+- **D2**: AKEUSD under the 3% floor — expected to be skipped on most days at current volatility.
+- **Stopping point**: 100 closed positions, 21 days from the new registration, the 50% latch, or a
+  defect. Positions closed during the run count whenever they opened (addendum above).
+
+**What it does not change.** No exit rule is claimed to have an edge; the trail is chosen for the
+shape of its drawdown, not its mean. Nothing above the FROZEN line is edited.

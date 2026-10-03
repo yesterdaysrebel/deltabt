@@ -158,3 +158,49 @@ async def test_the_bot_adopts_positions_it_recovers():
     await b.start()
     (p,) = b.broker.get_positions()
     assert p.position_uid in b.shadow_exits._adopted
+
+
+def test_the_trail_shadow_agrees_with_a_real_trail_position():
+    """2026-10-03: the dry run's simulated account runs the TRAIL exit, so
+    the D7 self-check compares the trail shadow with the real position."""
+    b = PaperBroker(COSTS, starting_equity=10_000.0, slippage_bps=2.0,
+                    trail_after_r=0.5, trail_r=0.5)
+    sh = ShadowExits(COSTS, PILOT_RULES, slippage_bps=2.0)
+    b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_500.0))
+    t0 = tick(63_000.0, ts=BAR_CLOSE)
+    b.process_market_event(t0)
+    assert sh.observe(t0, b.get_positions()) == []
+    pos = b.get_positions()[0]
+    e, r = pos.entry_price, pos.risk_per_unit
+    rows = drive(b, sh, [e + 0.6 * r, e + 1.2 * r, e + 0.8 * r, e + 0.6 * r])
+    assert not pos.is_open and pos.exit_reason == "STOP_LOSS"
+    assert rows["trail"].exit_reason == "STOP_LOSS"
+    assert rows["trail"].exit_price == pytest.approx(pos.exit_price, rel=1e-9)
+    assert rows["trail"].closed_at == pos.closed_at
+    # Hold-to-3R and the ladder are still IN the trade when the trail gets
+    # out; they must keep running, not be closed at the trail's exit.
+    assert "baseline" not in rows and "ladder" not in rows
+    later = drive(b, sh, [e + 0.2 * r, e - 1.1 * r], start=BAR_CLOSE + 600)
+    assert set(later) == {"baseline", "ladder"}
+    assert later["ladder"].exit_reason == "STOP_LOSS"
+    assert later["ladder"].final_stop == pytest.approx(e + 0.5 * r, abs=1.0)
+    assert later["baseline"].exit_reason == "STOP_LOSS" and later["baseline"].gross_r < -1.0
+    assert sh._tracked == {}, "a trade whose three legs have all closed is forgotten"
+
+
+def test_a_leg_that_outlives_the_real_position_still_gets_the_time_stop():
+    b = PaperBroker(COSTS, starting_equity=10_000.0, slippage_bps=2.0,
+                    trail_after_r=0.5, trail_r=0.5)
+    sh = ShadowExits(COSTS, PILOT_RULES, slippage_bps=2.0, max_hold_seconds=3_600)
+    b.submit_order(intent(entry=63_000.0, stop=62_500.0, target=64_500.0))
+    t0 = tick(63_000.0, ts=BAR_CLOSE)
+    b.process_market_event(t0)
+    sh.observe(t0, b.get_positions())
+    pos = b.get_positions()[0]
+    e, r = pos.entry_price, pos.risk_per_unit
+    first = drive(b, sh, [e + 0.6 * r, e + 1.2 * r, e + 0.6 * r])     # trail out at ~+0.7R
+    assert set(first) == {"trail"}
+    late = drive(b, sh, [e + 0.3 * r], start=BAR_CLOSE + 3_600)        # 1 h after entry
+    assert set(late) == {"baseline", "ladder"}
+    assert all(x.exit_reason == "TIME_EXIT" for x in late.values())
+    assert late["baseline"].gross_r == pytest.approx(0.3 - 0.025, abs=0.005)

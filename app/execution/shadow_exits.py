@@ -64,16 +64,30 @@ class _Tracked:
     initial_stop: float
     observed_from_entry: bool
     legs: list[_Leg] = field(default_factory=list)
+    #: The real position has closed by ITS OWN rule (stop or target) and the
+    #: other legs are still being followed on ticks (see observe()).
+    real_gone: bool = False
+
+
+#: Real exits that apply to every rule alike. When the real position closes
+#: this way the remaining legs close with it; when it closes by its own stop
+#: or target, the other rules may still be in the trade and keep running.
+SHARED_EXITS = ("TIME_EXIT", "MANUAL_CLOSE", "SETUP_INVALIDATED", "SYSTEM_SAFETY",
+                "DATA_FAILURE")
 
 
 class ShadowExits:
     """Follows open positions under several exit rules; returns closed rows."""
 
     def __init__(self, costs: dict, rules: tuple[ShadowRule, ...] = PILOT_RULES,
-                 slippage_bps: float = 2.0) -> None:
+                 slippage_bps: float = 2.0, max_hold_seconds: int | None = None) -> None:
         self.costs = costs
         self.rules = rules
         self.slip = slippage_bps / 10_000.0
+        #: The paper broker's time stop, applied to a leg that outlives the
+        #: real position (0/None = never). Legs closed BY the real position's
+        #: own time exit do not need it: SHARED_EXITS handles that.
+        self.max_hold_seconds = int(max_hold_seconds) if max_hold_seconds else None
         self._tracked: dict[str, _Tracked] = {}
         #: Positions restored from the journal at startup. Their path before
         #: this process started was never seen, so the ladder and trail legs
@@ -109,8 +123,23 @@ class ShadowExits:
             # exit (found by test, 2026-10-02).
             if tr.pos.symbol == tick.symbol:
                 out.extend(self._advance(tr, tick))
-            if uid not in open_now:
-                out.extend(self._close_with_real_exit(tr))
+            if uid not in open_now and not tr.real_gone:
+                # THE REAL POSITION HAS CLOSED. If by a route every rule shares
+                # (time stop, flatten, halt) the other legs close with it. If
+                # by ITS OWN stop or target, the rules still in the trade keep
+                # running on ticks until each exits by its own rule: the dry
+                # run's account follows the TRAIL (2026-10-03), which exits
+                # first, and closing hold-to-3R and the ladder at the trail's
+                # exit would have made the comparison worthless. (These legs
+                # live only in this process: a restart loses them, and the
+                # report then says "not recorded".)
+                reason = str(getattr(tr.pos, "exit_reason", None) or "UNKNOWN")
+                if reason in ("STOP_LOSS", "TAKE_PROFIT"):
+                    tr.real_gone = True
+                else:
+                    out.extend(self._close_with_real_exit(tr))
+            if all(leg.record is not None for leg in tr.legs) or (
+                    uid not in open_now and not tr.real_gone):
                 del self._tracked[uid]
         return out
 
@@ -130,8 +159,18 @@ class ShadowExits:
         if armed_after is not None and tick.ts_us <= armed_after:
             return []
         out = []
+        opened = getattr(p, "opened_at", None)
+        timed_out = (self.max_hold_seconds is not None and opened is not None
+                     and tick.ts - int(opened) >= self.max_hold_seconds)
         for leg in tr.legs:
             if leg.record is not None:
+                continue
+            if timed_out:
+                # The paper broker's time stop, for a leg that outlived the
+                # real position: filled as the broker would, at last traded.
+                px = tick.ltp * (1.0 - p.side * self.slip)
+                leg.record = self._row(tr, leg, px, "TIME_EXIT", tick.ts, maker=False)
+                out.append(leg.record)
                 continue
             hit_stop = tick.mark <= leg.stop if p.side > 0 else tick.mark >= leg.stop
             hit_target = (tick.ltp >= p.target_price if p.side > 0

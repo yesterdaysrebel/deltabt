@@ -130,7 +130,8 @@ def build(settings, *, client, venue, symbols, products, strategy, costs,
     bot = DryRunBot(settings, repo, costs, strategy=strategy, notifier=notifier,
                     backfiller=backfiller, lock=lock,
                     shadow_exits=ShadowExits(costs,
-                                             slippage_bps=settings.risk.slippage_bps))
+                                             slippage_bps=settings.risk.slippage_bps,
+                                             max_hold_seconds=settings.risk.max_hold_seconds))
     reader = LiveBroker(client, product_ids=product_ids(products),
                         experiment_id="dry-run", tick_size=tick_sizes(products),
                         kill_switch_path=kill_switch_path)

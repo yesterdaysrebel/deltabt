@@ -38,8 +38,17 @@ DEFAULT_EXITS = [
 ]
 
 
+BASELINE_EXITS = [
+    [0, "baseline", T("2026-10-03T03:42:00+00:00"), 0.0290679, "TAKE_PROFIT", 2.93, True],
+    [1, "baseline", T("2026-10-03T05:10:00+00:00"), 0.8812, "STOP_LOSS", -1.03, True],
+]
+VERSION = {"baseline": "manual_scalp_both_t3@5m@41e764beceaf",
+           "trail": "manual_scalp_both_t3_trail@5m@cf9917a73c61",
+           "ladder": "manual_scalp_both_t3_ladder@5m@2e8bd2529685"}
+
+
 def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, opened=None,
-            exits=None):
+            exits=None, real="baseline", risk=None):
     if journal is None:
         journal = [
             trade("p1", "AKEUSD", -1, "CLOSED", opened="2026-10-02T11:30:06+00:00",
@@ -64,7 +73,8 @@ def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, op
     }
     n_closed = sum(1 for j in journal if j[3] == "CLOSED")
     db = {"experiments": [{"experiment_id": "DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a",
-                           "status": "RUNNING", "started_at": STARTED, "risk": RISK}],
+                           "status": "RUNNING", "started_at": STARTED,
+                           "strategy_version": VERSION[real], "risk": risk or RISK}],
           "journal_fields": FIELDS, "journal": journal,
           "exits_fields": EXITS_FIELDS,
           "exits": DEFAULT_EXITS if exits is None else exits,
@@ -213,7 +223,7 @@ def test_a_real_health_failure_still_raises_it_next_to_gaps():
 
 def test_a_missing_shadow_record_is_flagged_by_the_self_check():
     _, _, problems = render(shadow={"baseline": 1, "ladder": 1, "trail": 1})
-    assert any("self-check: 2 closed trades but 1 baseline" in p for p in problems)
+    assert any("self-check: 2 closed trades but 1 hold to 3R shadow" in p for p in problems)
 
 
 def test_entries_the_simulator_did_not_open_are_flagged():
@@ -240,6 +250,77 @@ def test_trades_left_out_for_space_are_counted_and_said():
     assert "The oldest 40 closed trades are left out to fit the report's size limit" in text
     assert _block(text, "41*")[0].split()[1] == "AKEUSD", "numbers continue past the omitted"
     assert not problems and facts["closed"] == 42
+
+
+# -- the account runs the TRAIL (amendment 2026-10-03) ----------------------
+
+def test_when_the_account_runs_the_trail_its_line_is_the_real_one():
+    """The trail's line comes from the position; hold-to-3R and the ladder
+    come from their shadow rows."""
+    sec, db = a_probe(real="trail", exits=BASELINE_EXITS + DEFAULT_EXITS)
+    text, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not problems and facts["real_exit"] == "trail"
+    blk = _block_by_first(text, "1*")
+    assert blk[0].split()[0] == "1*" and "trail" in blk[0] and "+2.93" in blk[0]
+    assert blk[1].split()[0:3] == ["hold", "to", "3R"] and "+2.93" in blk[1]
+    assert blk[2].split()[0] == "ladder" and "+0.45" in blk[2]
+    assert "Trail is the real (simulated) trade; hold to 3R and ladder are where" in text
+
+
+def test_the_self_check_follows_the_real_rule():
+    _, _, problems = a_probe_problems(real="trail", shadow={"baseline": 2, "ladder": 2, "trail": 1})
+    assert any("self-check: 2 closed trades but 1 trail shadow" in p for p in problems)
+    _, _, problems = a_probe_problems(real="trail", shadow={"baseline": 1, "ladder": 2, "trail": 2})
+    assert not any("self-check" in p for p in problems), "a missing hold-to-3R row is not a D7 fault"
+
+
+def a_probe_problems(**kw):
+    sec, db = a_probe(**kw)
+    return br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+
+
+def _block_by_first(text, mark):
+    lines = text.splitlines()
+    i = next(k for k, ln in enumerate(lines) if ln.lstrip().startswith(mark + " "))
+    return lines[i:i + 3]
+
+
+def _losing_journal(n):
+    return [trade(f"L{i}", "AKEUSD", -1, "CLOSED", opened=f"2026-10-03T{10 + i:02d}:00:00+00:00",
+                  closed=f"2026-10-03T{11 + i:02d}:00:00+00:00", exit=0.0334, why="STOP_LOSS",
+                  r=-1.05, pnl=-11.5) for i in range(n)]
+
+
+def test_with_the_stop_lifted_the_report_states_when_20_percent_would_have_fired():
+    """Amendment 2026-10-03: the dry run runs under a 50% stop; the plan's 20%
+    is recorded, not enforced. Five $11.50 losses on $250 = 23%."""
+    lifted = dict(RISK, max_drawdown_pct=0.5)
+    sec, db = a_probe(risk=lifted, journal=_losing_journal(5), exits=[],
+                      shadow={"baseline": 5, "ladder": 5, "trail": 5})
+    sec["RISK"] = json.dumps({"equity": 192.5, "drawdown_pct": 23.0, "daily_loss_pct": 23.0,
+                              "consecutive_losses": 5})
+    text, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not any("drawdown stop has fired" in p for p in problems), "50% has not fired"
+    assert "**The plan's 20% drawdown stop would have fired on Sat 03 Oct, 8:30 PM IST.**" in text
+    assert "continues under the 50% stop" in text
+    assert facts["prereg_latch_at"] == T("2026-10-03T15:00:00+00:00")
+
+
+def test_under_the_lifted_stop_four_losses_do_not_trigger_the_note():
+    lifted = dict(RISK, max_drawdown_pct=0.5)
+    sec, db = a_probe(risk=lifted, journal=_losing_journal(4), exits=[],
+                      shadow={"baseline": 4, "ladder": 4, "trail": 4})
+    text, facts, _ = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "would have fired" not in text and facts["prereg_latch_at"] is None
+
+
+def test_the_configured_stop_is_named_when_it_fires():
+    lifted = dict(RISK, max_drawdown_pct=0.5)
+    sec, db = a_probe(risk=lifted)
+    sec["RISK"] = json.dumps({"equity": 120.0, "drawdown_pct": 52.0, "daily_loss_pct": 0.0,
+                              "consecutive_losses": 9})
+    _, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert any("the 50% drawdown stop has fired" in p for p in problems)
 
 
 def _with_drawdown(pct):

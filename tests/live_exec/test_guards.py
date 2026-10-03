@@ -143,11 +143,22 @@ def test_the_deployed_breakers_would_let_prod_start():
 
 
 def test_the_deployed_breakers_are_the_pre_registered_pilot_values():
-    """Pinned so a change is a decision, not an accident: 20% latch, 10% day,
-    8 in a row (docs/prod_pilot_prereg.md once frozen)."""
-    assert _tf_default("max_drawdown_pct") == 0.20
+    """Pinned so a change is a decision, not an accident: 10% day, 8 in a row,
+    and the drawdown latch at 50% FOR THE DRY RUN (docs/prod_dry_run_prereg.md,
+    amendment 2026-10-03: no money is at risk, and a 20% latch would have
+    ended the record early; the report states when 20% would have fired).
+    REAL MONEY RETURNS THIS TO 0.20 before any trading key exists -- the
+    real-money pre-registration must change this pin when it does."""
+    assert _tf_default("max_drawdown_pct") == 0.50
     assert _tf_default("max_daily_loss_pct") == 0.10
     assert _tf_default("max_consecutive_losses") == 8
+
+
+def test_the_drawdown_latch_is_still_a_latch():
+    """Lifted for the dry run, not removed: live/guards.py refuses only the
+    1.0 off switch (test_the_deployed_breakers_would_let_prod_start covers
+    that it passes); this pins that nobody quietly turns 0.50 into 1.0."""
+    assert 0 < _tf_default("max_drawdown_pct") < 1.0
 
 
 def test_the_pilot_gates_are_not_silently_inherited_by_a_paper_stack():

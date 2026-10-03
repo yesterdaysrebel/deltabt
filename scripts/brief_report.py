@@ -38,6 +38,34 @@ READ_AT_DAYS = 21
 GAPS_CHECK = "no_recent_gaps"
 EXITS = ("baseline", "ladder", "trail")
 EXIT_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
+#: The drawdown stop the plan pre-registered. The dry run may run with a looser
+#: configured stop (amendment 2026-10-03); the report then states the day this
+#: one WOULD have fired.
+PREREG_LATCH = 0.20
+
+
+def real_rule_of(strategy_version: str | None) -> str:
+    """Which exit the simulated account runs, from forward_test.strategy_version
+    (e.g. 'manual_scalp_both_t3_trail@5m@cf9917a73c61')."""
+    name = str(strategy_version or "").split("@")[0]
+    if name.endswith("_trail"):
+        return "trail"
+    if name.endswith("_ladder"):
+        return "ladder"
+    return "baseline"
+
+
+def would_have_latched(closed: list[dict], start_eq: float,
+                       limit: float = PREREG_LATCH) -> int | None:
+    """Close time of the trade at which equity first fell `limit` below its
+    peak, from the journal's closed trades in close order; None if never."""
+    eq = peak = start_eq
+    for r in sorted((r for r in closed if r.get("closed")), key=lambda r: r["closed"]):
+        eq += r.get("pnl") or 0.0
+        peak = max(peak, eq)
+        if peak > 0 and (peak - eq) / peak >= limit:
+            return int(r["closed"])
+    return None
 WHY = {"TAKE_PROFIT": "target", "STOP_LOSS": "stop", "TIME_EXIT": "time",
        "TIME_STOP": "time", "MAX_HOLD": "time", "MANUAL_CLOSE": "manual",
        "LIQUIDATION": "LIQUIDATED", "HALT": "halt"}
@@ -116,9 +144,14 @@ def journal_rows(db: dict) -> list[dict]:
 
 
 def journal(rows: list[dict], live: dict, exits: dict | None = None,
-            omitted: int = 0) -> tuple[list[str], dict]:
-    """Open positions, then every closed trade of the run under all three exits."""
+            omitted: int = 0, real: str = "baseline") -> tuple[list[str], dict]:
+    """Open positions, then every closed trade of the run under all three exits.
+
+    `real` is the rule the simulated account runs: its line comes from the
+    position itself; the other two rules' lines come from their shadow rows.
+    """
     exits = exits or {}
+    others = [rule for rule in EXITS if rule != real]
     out: list[str] = []
     side = {1: "long", -1: "short"}
     # Numbered in order of opening, counting any oldest trades the probe left
@@ -164,8 +197,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
             # dollars per R for this trade, from the real position, so the
             # other exits' R can be priced the same way
             per_r = (pnl / rr) if (pnl is not None and rr) else None
-            lines = [("hold to 3R", r.get("closed"), r.get("exit"), r.get("why"), rr, pnl, True)]
-            for rule in ("ladder", "trail"):
+            lines = [(real, r.get("closed"), r.get("exit"), r.get("why"), rr, pnl, True)]
+            for rule in others:
                 e = exits.get((r["uid"], rule))
                 if e is None:
                     lines.append((rule, None, None, "not recorded", None, None, True))
@@ -176,7 +209,7 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
             for k, (rule, c, px, why, er, epnl, seen) in enumerate(lines):
                 first = k == 0
                 held = (c - r["opened"]) if c and r.get("opened") else None
-                label = rule + ("" if seen else " ~")
+                label = EXIT_LABEL[rule] + ("" if seen else " ~")
                 partial = partial or not seen
                 body.append([
                     mark(r) if first else "", r["symbol"] if first else "",
@@ -187,9 +220,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
                     label, when(c), price(px),
                     WHY.get(str(why), str(why or "—").lower()), duration(held),
                     "—" if er is None else f"{er:+.2f}", money(epnl)])
-                key = "baseline" if first else rule
                 if er is not None:
-                    tot = totals[key]
+                    tot = totals[rule]
                     tot["n"] += 1
                     tot["won"] += 1 if er > 0 else 0
                     tot["tp"] += 1 if str(why).endswith("TAKE_PROFIT") else 0
@@ -220,11 +252,12 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
         out.append("Trades marked * opened under the previous run and count in this one (same setup).")
     if partial:
         out.append("~ the bot restarted while this trade was open, so this exit is approximate.")
-    out.append("Hold to 3R is the real (simulated) trade; ladder and trail are where the other "
+    out.append(f"{EXIT_LABEL[real][0].upper()}{EXIT_LABEL[real][1:]} is the real (simulated) "
+               f"trade; {EXIT_LABEL[others[0]]} and {EXIT_LABEL[others[1]]} are where the other "
                "two exits would have closed it. R and P&L are after fees and funding. Lev is "
                "the leverage a real bot would have set on Delta.")
-    real = totals["baseline"]
-    return out, {"n": real["n"], "r": real["r"], "pnl": real["pnl"],
+    tot = totals[real]
+    return out, {"n": tot["n"], "r": tot["r"], "pnl": tot["pnl"],
                  "by_exit": {k: round(v["r"], 2) for k, v in totals.items()}}
 
 
@@ -246,6 +279,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     snap = snap or {}
     started = parse_time(running.get("started_at")) if running else None
     exp_id = running.get("experiment_id") if running else None
+    real = real_rule_of(running.get("strategy_version")) if running else "baseline"
+    start_eq = dr.num(snap.get("starting_equity")) or 250.0
     if not db:
         problems.append("the database figures did not arrive (probe output missing or cut off)")
     if not running:
@@ -283,17 +318,31 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     dd = None if dd_pct is None else dd_pct / 100.0
     dd_limit = dr.num(snap.get("max_drawdown_pct"))
     if dd is not None and dd_limit and dd >= dd_limit:
-        problems.append("the 20% drawdown stop has fired: the run is over (no resume, by design)")
+        problems.append(f"the {100 * dd_limit:.0f}% drawdown stop has fired: the run is over "
+                        f"(no resume, by design)")
 
     rows = journal_rows(db)
-    n_closed = sum(1 for r in rows if str(r.get("status")).upper() == "CLOSED") \
-        + int(db.get("journal_omitted") or 0)
+    closed_rows = [r for r in rows if str(r.get("status")).upper() == "CLOSED"]
+    n_closed = len(closed_rows) + int(db.get("journal_omitted") or 0)
 
-    # the self-check (prereg D7): one baseline shadow per closed position
+    # The plan's 20% stop, when the configured stop is looser (dry run,
+    # amendment 2026-10-03): say when it would have fired, outside the
+    # attention list -- it is a recorded fact, not a fault.
+    notes = []
+    if dd_limit and dd_limit > PREREG_LATCH + 1e-9 and not db.get("journal_omitted"):
+        at = would_have_latched(closed_rows, start_eq)
+        if at is not None:
+            notes.append(f"**The plan's {100 * PREREG_LATCH:.0f}% drawdown stop would have fired on "
+                         f"{ist(at, with_day=True)} IST.** The dry run continues under the "
+                         f"{100 * dd_limit:.0f}% stop, by amendment; real money keeps "
+                         f"{100 * PREREG_LATCH:.0f}%.")
+
+    # the self-check (prereg D7): one shadow row under the REAL rule per
+    # closed position (the simulated account runs that rule)
     counts = db.get("shadow_counts")
-    if isinstance(counts, dict) and n_closed and counts.get("baseline", 0) != n_closed:
-        problems.append(f"self-check: {n_closed} closed trades but {counts.get('baseline', 0)} "
-                        f"baseline shadow records -- the exit comparison is incomplete")
+    if isinstance(counts, dict) and n_closed and counts.get(real, 0) != n_closed:
+        problems.append(f"self-check: {n_closed} closed trades but {counts.get(real, 0)} "
+                        f"{EXIT_LABEL[real]} shadow records -- the exit comparison is incomplete")
 
     # every entry the live checks passed should become a simulated position
     opened = db.get("opened_by_symbol")
@@ -313,6 +362,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         out += [f"- {p}" for p in problems]
     else:
         out.append("**✅ All normal — nothing needs you.**")
+    for n in notes:
+        out.append(n)
     out.append("")
     fields = db.get("exits_fields") or []
     exits = {}
@@ -322,14 +373,15 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
             if isinstance(e.get("i"), int) and 0 <= e["i"] < len(rows):
                 exits[(rows[e["i"]]["uid"], e["rule"])] = e
     omitted = int(db.get("journal_omitted") or 0)
-    lines, totals = journal(rows, live, exits, omitted)
+    lines, totals = journal(rows, live, exits, omitted, real)
     out += lines
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
              "verdict": "clear" if not problems else "attention", "problems": problems,
              "closed": n_closed, "total_r": round(totals["r"], 2),
              "total_pnl": round(totals["pnl"], 2), "exits_r": totals["by_exit"],
-             "experiment": exp_id,
+             "experiment": exp_id, "real_exit": real,
+             "prereg_latch_at": None if not notes else at,
              "health_line": "healthy" if healthy else "not healthy", "day_of": title_day}
     return "\n".join(out) + "\n", facts, problems
 
