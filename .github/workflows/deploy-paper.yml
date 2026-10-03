@@ -104,16 +104,23 @@ jobs:
             });
 
             while (true) {
-              // (1) our own commit, if infrastructure ran for it at all
+              // (1) our own commit, if infrastructure ran for it at all.
+              // Judged by the LATEST completed run, not by any failed one: a
+              // host replacement makes the push apply fail BY DESIGN, and the
+              // allow_replace dispatch that follows is the run that counts.
+              // 2026-10-03: the first deploy after replacing the dry-run host
+              // was refused for the push run's failure although the dispatch
+              // had applied cleanly minutes before; and a dispatch still in
+              // flight is waited for, not failed on. The API lists newest first.
               const mine = (await list({ head_sha: context.sha })).data.workflow_runs;
               const mineUnfinished = mine.filter(r => r.status !== 'completed');
-              const mineBad = mine.filter(
-                r => r.status === 'completed' && !['success', 'skipped'].includes(r.conclusion));
-              if (mineBad.length) {
+              const latest = mine.find(r => r.status === 'completed');
+              if (latest && mineUnfinished.length === 0
+                  && !['success', 'skipped'].includes(latest.conclusion)) {
                 core.setFailed(
-                  `infrastructure concluded '${mineBad[0].conclusion}' for this commit ` +
-                  `(${mineBad[0].html_url}). Refusing to roll an image onto infrastructure ` +
-                  `that did not apply cleanly.`);
+                  `infrastructure concluded '${latest.conclusion}' for this commit ` +
+                  `(${latest.html_url}) and nothing newer is running. Refusing to roll ` +
+                  `an image onto infrastructure that did not apply cleanly.`);
                 return;
               }
 
