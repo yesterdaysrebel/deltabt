@@ -31,11 +31,14 @@ Last read 2026-10-03 ~06:30 UTC. First night: 4 closed (1 BEAT win, 3 AKEUSD los
 each), equity $229.38, 9.3% below peak. **Amendment 2026-10-03 (owner):** AKEUSD floor 5% → 3%, the
 simulated account runs the TRAIL exit (hold-to-3R and ladder stay as shadows and now keep running
 after the trail exits), drawdown latch 20% → 50% for the dry run (the report states when 20% would
-have fired). Host replaced; new experiment id in the prereg addendum once registered.
+have fired). Host replaced; new experiment `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` registered
+11:55:35 UTC on `i-0b59a7984b76f2154` (same EIP), read due 2026-10-24. Replacing a host under a RUNNING
+experiment needed #108 (deploy waits on the LATEST infra run; the retire step asks the database on a
+replaced host).
 
 | stack | venue | experiment | state |
 |---|---|---|---|
-| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261002-c4b719a` → successor after the amendment (see prereg) | host replaced by the amendment PR; EIP `15.207.211.127` kept (the key's allowlist); IAM-token DB login, `deltabt_dryrun` |
+| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` | RUNNING since 2026-10-03 11:55:35Z on `i-0b59a7984b76f2154` (EIP `15.207.211.127`), image `5683929`, IAM-token DB login, `deltabt_dryrun` |
 
 **What it is.** The live code path (`live/dry_run.py`) on prod books with a read-only key. Every
 approved entry runs the live checks (kill switch, entry deviation ≤ 0.25R, spread ≤ 0.5R, mark not
@@ -293,7 +296,7 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
 
 ## Open threads
 
-1. **Dry run in progress** — read at the first of 100 closed positions, 2026-10-23, the latch, or a
+1. **Dry run in progress** — read at the first of 100 closed positions, 2026-10-24, the latch, or a
    defect (`docs/prod_dry_run_prereg.md`). No interim read changes anything.
 2. **Before any real money:** testnet probe of Delta's trailing stop on an open bracket; Trading keys
    for the `baseline`/`ladder` sub-accounts created only after their hosts exist (EIP allowlist);
