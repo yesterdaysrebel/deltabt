@@ -614,7 +614,9 @@ class TestMinimumContractFloorFills:
         return b.get_positions()
 
     def test_without_the_cap_the_broker_cannot_fill_it(self):
-        """The defect, pinned: no cap, no position, at the reference price."""
+        """The defect, pinned at the broker: an intent WITHOUT a budget has no
+        headroom. The risk engine no longer builds one (2026-10-05); this is
+        what a hand-built or legacy intent still gets."""
         assert self._fill(0.0) == []
 
     def test_with_the_floor_cap_it_fills_one_contract_inside_the_cap(self):
@@ -626,3 +628,78 @@ class TestMinimumContractFloorFills:
         """The cap is a ceiling: a fill whose one contract risks more is not taken."""
         rpu = self.ENTRY - self.STOP
         assert self._fill(10_000.0 * rpu * 0.999) == []
+
+
+class TestFillsKeepTheApprovedSize:
+    """End to end, risk engine -> paper broker, on a $250 account at 2%.
+
+    2026-10-05, the prod dry run: 20 AKEUSD entries passed the live checks and
+    10 opened. Every order was handed to the broker with a fill budget equal to
+    its realised risk at the reference price, so the broker's own 2 bps of
+    adverse slippage always cost one contract: 292 -> 288 on BEATUSD went
+    unnoticed, 3 -> 2 would have cut SOLUSD by a third, and 1 -> 0 refused a
+    one-contract order unless the next tick happened to be favourable -- which
+    also biased the recorded sample toward lucky entries.
+    """
+
+    @staticmethod
+    def _run(costs, entry, stop_pct, side=1, tick_bps=0.0, cap=0.03):
+        from dataclasses import replace
+        from app.config.settings import RiskConfig
+        from app.risk.engine import RiskEngine, RiskState
+        from app.strategy.explanation import Explanation, Outcome
+        cfg = replace(RiskConfig(starting_equity=250.0, risk_per_trade=0.02),
+                      min_contract_risk_cap=cap)
+        eng = RiskEngine(cfg, {costs.symbol: costs}, allowed_symbols=(costs.symbol,))
+        stop = entry * (1 - side * stop_pct)
+        exp = Explanation(symbol=costs.symbol, bar_open=BAR_CLOSE, primary_timeframe="5m",
+                          confirmation_timeframe="1m", strategy_version="x@1",
+                          strategy_config_hash="h", outcome=Outcome.DETECTED, direction=side)
+        exp.entry_price, exp.stop_price = entry, stop
+        exp.target_price = entry + side * 3 * abs(entry - stop)
+        exp.detail["risk_per_unit"] = abs(entry - stop)
+        exp.detail["idempotency_key"] = "k"
+        d = eng.evaluate(exp, RiskState.fresh(250.0), open_positions=[], now=BAR_CLOSE,
+                         market_can_trade=True)
+        assert d.approved, d.reason
+        b = PaperBroker({costs.symbol: costs}, starting_equity=250.0, slippage_bps=2.0)
+        b.submit_order(d.intent)
+        px = entry * (1 + tick_bps / 1e4)
+        b.process_market_event(Tick(costs.symbol, (BAR_CLOSE + 2) * US, px, px))
+        return d.intent, b.get_positions()
+
+    AKE = TestMinimumContractFloorFills.AKE
+    SOL = SymbolCosts(symbol="SOLUSD", tick_size=0.0001, contract_value=1.0,
+                      maker_fee=0.0002, taker_fee=0.0005, max_leverage=100.0,
+                      position_size_limit=11_111, funding_interval_seconds=28_800,
+                      slippage_bps=2.0)
+
+    @pytest.mark.parametrize("tick_bps", [0.0, +3.0, -3.0])
+    def test_a_one_contract_order_sized_the_normal_way_fills(self, tick_bps):
+        """~$4.65 at risk, inside the $5 budget: must open whichever way the
+        next tick goes. Before the fix it opened only on the -3 bps tick."""
+        intent, pos = self._run(self.AKE, 0.0344356, 0.0135, tick_bps=tick_bps)
+        assert intent.quantity == 1 and intent.risk_amount < 5.0
+        assert len(pos) == 1 and pos[0].quantity == 1
+        assert pos[0].initial_risk <= 5.0
+
+    def test_a_three_contract_order_keeps_three(self):
+        """SOLUSD at $120 with a 1.3% stop: 3 contracts, ~$4.68 at risk."""
+        intent, pos = self._run(self.SOL, 120.0, 0.013)
+        assert intent.quantity == 3
+        assert pos[0].quantity == 3, "2 bps of slippage must not cost a contract"
+        assert pos[0].initial_risk <= 5.0
+
+    def test_a_fill_that_really_breaches_the_budget_still_shrinks(self):
+        """The resize is kept for what it was for: a fill far enough from the
+        reference that the approved size would risk more than was approved."""
+        intent, pos = self._run(self.SOL, 120.0, 0.013, tick_bps=+12.0)   # +0.09R
+        assert intent.quantity == 3
+        assert pos[0].quantity == 2
+        assert pos[0].initial_risk <= 5.0
+
+    def test_a_floor_sized_order_is_unchanged(self):
+        """One contract above the 2% budget and inside the 3% cap ($6.03)."""
+        intent, pos = self._run(self.AKE, 0.0344356, 0.0175)
+        assert intent.quantity == 1 and intent.risk_cap == pytest.approx(7.5)
+        assert len(pos) == 1
