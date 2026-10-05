@@ -57,6 +57,9 @@ SERVICE_OF = {
     "aws_cloudwatch_metric_alarm": "cloudwatch",
     "aws_db_instance": "rds",
     "aws_db_subnet_group": "rds",
+    # Postgres on the bot host (db_host.tf): its data volume and attachment.
+    "aws_ebs_volume": "ec2",
+    "aws_volume_attachment": "ec2",
     "aws_ecr_lifecycle_policy": "ecr",
     "aws_ecr_repository": "ecr",
     "aws_eip": "ec2",
