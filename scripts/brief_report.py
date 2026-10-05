@@ -8,7 +8,7 @@ Two parts and nothing else (owner, 2026-10-02: "a journal only with error
 report like we have right now"):
 
 1. Does anything need you -- the bot unhealthy or restarted, errors in its
-   log, the 20% stop fired, data missing, the shadow self-check (prereg D7),
+   log (each shown; a Delta feed drop the bot recovered from is a note), the 20% stop fired, data missing, the shadow self-check (prereg D7),
    or an entry the live checks passed that the simulator did not open.
 2. The journal -- every trade of the run: what is open now and everything
    closed so far, with times in IST, side, size, the leverage a real bot
@@ -42,6 +42,78 @@ EXIT_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
 #: configured stop (amendment 2026-10-03); the report then states the day this
 #: one WOULD have fired.
 PREREG_LATCH = 0.20
+
+
+#: A Delta price-feed drop counts as RECOVERED if the bot logged "subscribed"
+#: within this many seconds after it. Drops happen a few times a day on the
+#: venue's side; the bot reconnects in 2-3 seconds (2026-10-04/05 log).
+FEED_RECOVERY_SECONDS = 60
+#: More recovered drops than this in 24 hours is itself worth a look.
+FEED_DROPS_ALARM = 6
+#: The pattern main() reads: every ERROR/CRITICAL line, plus the feed's
+#: "subscribed" lines that show a reconnect completed.
+LOG_PATTERN = '{ ($.level = "ERROR") || ($.level = "CRITICAL") || ($.message = "subscribed") }'
+
+
+def _log_time(event: dict) -> float | None:
+    t = parse_time(str(event.get("ts", "")).replace("Z", "+00:00"))
+    return t.timestamp() if t else None
+
+
+def _is_feed_drop(event: dict) -> bool:
+    msg = str(event.get("message", ""))
+    return (str(event.get("logger", "")).endswith("delta_ws")
+            and (msg.startswith("feed went silent") or msg.startswith("feed error")))
+
+
+def classify_log(events: list[dict], now: dt.datetime) -> tuple[list[str], list[str]]:
+    """(notes, problems) from the last 24 hours of the bot's log.
+
+    A Delta feed drop followed by "subscribed" within FEED_RECOVERY_SECONDS is
+    a note: the venue's socket stalled and the bot reconnected, which is the
+    safety check working. Every other ERROR/CRITICAL line is a problem, shown
+    with its time and message, as is a drop with no reconnect after it and a
+    day with more than FEED_DROPS_ALARM drops.
+    """
+    errors = [e for e in events if str(e.get("level")) in ("ERROR", "CRITICAL")]
+    subs = sorted(t for t in (_log_time(e) for e in events
+                              if str(e.get("message")) == "subscribed") if t is not None)
+    recovered, unrecovered, pending, other = [], [], [], []
+    for e in errors:
+        t = _log_time(e)
+        if _is_feed_drop(e) and t is not None:
+            if any(t < s <= t + FEED_RECOVERY_SECONDS for s in subs):
+                recovered.append(t)
+            elif now.timestamp() - t < FEED_RECOVERY_SECONDS + 30:
+                pending.append(t)
+            else:
+                unrecovered.append(e)
+        else:
+            other.append(e)
+    notes, problems = [], []
+    if recovered:
+        when = ", ".join(ist(t) for t in recovered[:6]) + (" ..." if len(recovered) > 6 else "")
+        notes.append(f"Delta's price feed dropped {plural(len(recovered), 'time')} and the bot "
+                     f"reconnected within seconds each time ({when} IST). Nothing needs you.")
+        if len(recovered) > FEED_DROPS_ALARM:
+            problems.append(f"Delta's price feed dropped {len(recovered)} times in 24 hours (each "
+                            f"recovered) -- more than the usual few; worth a look")
+    if pending:
+        notes.append(f"Delta's price feed dropped at {ist(pending[-1])} IST, moments before this "
+                     f"report; the reconnect was not yet logged.")
+    for e in unrecovered:
+        problems.append(f"Delta's price feed dropped at {ist(_log_time(e))} IST and no reconnect "
+                        f"followed within {FEED_RECOVERY_SECONDS} s")
+
+    def line(e):
+        msg = str(e.get("message", "")).splitlines()[0][:140]
+        t = _log_time(e)
+        return f"{ist(t) if t else '?'} IST {e.get('level')} ({str(e.get('logger', '?')).split('.')[-1]}): {msg}"
+    if other:
+        shown = "; ".join(line(e) for e in other[:3])
+        more = f"; and {len(other) - 3} more" if len(other) > 3 else ""
+        problems.append(f"{plural(len(other), 'error')} in the bot's log in the last 24 hours: {shown}{more}")
+    return notes, problems
 
 
 def real_rule_of(strategy_version: str | None) -> str:
@@ -262,7 +334,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
 
 
 def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
-          errors_24h: int | None, probe_problems: list[str]) -> tuple[str, dict, list[str]]:
+          errors_24h: int | None, probe_problems: list[str],
+          log_events: list[dict] | None = None) -> tuple[str, dict, list[str]]:
     problems = list(probe_problems)
     healthz = dr.as_json(sec.get("HEALTHZ", ""))
     risk_api = dr.as_json(sec.get("RISK", ""))
@@ -308,7 +381,12 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
                 pass
     if restarts:
         problems.append(f"the bot has restarted {plural(restarts, 'time')}")
-    if errors_24h:
+    log_notes = []
+    if log_events is not None:
+        # The log lines themselves (main() fetches them): classify, show what each was.
+        log_notes, log_problems = classify_log(log_events, now)
+        problems += log_problems
+    elif errors_24h:
         problems.append(f"{plural(errors_24h, 'error')} in the bot's log in the last 24 hours")
     # /api/risk reports drawdown in PERCENT (round(100 * fraction, 3), see
     # app/api/app.py); the experiment's limit is a FRACTION (0.20). Comparing
@@ -364,6 +442,9 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         out.append("**✅ All normal — nothing needs you.**")
     for n in notes:
         out.append(n)
+    if log_notes:
+        out.append("")
+        out += [f"*Note:* {n}" for n in log_notes]
     out.append("")
     fields = db.get("exits_fields") or []
     exits = {}
@@ -411,15 +492,12 @@ def main() -> int:
     sec = dr.sections(raw)
     persist = dr.gunzip_section(sec, "PERSISTENCE")
     db = dr.as_json(persist.splitlines()[-1]) if persist.strip() else {}
-    errors = None
+    events = None
     if args.log_group:
         since_ms = int((now - dt.timedelta(hours=24)).timestamp() * 1000)
-        evs, _trunc = dr.log_events(args.log_group, since_ms,
-                                    '{ ($.level = "ERROR") || ($.level = "CRITICAL") }',
-                                    region=args.region)
-        errors = len(evs) if evs is not None else None
-    text, facts, problems = build(sec, db, now, stack=args.stack, errors_24h=errors,
-                                  probe_problems=list(dr.problems))
+        events, _trunc = dr.log_events(args.log_group, since_ms, LOG_PATTERN, region=args.region)
+    text, facts, problems = build(sec, db, now, stack=args.stack, errors_24h=None,
+                                  probe_problems=list(dr.problems), log_events=events)
     print(text)
     if args.facts_json:
         pathlib.Path(args.facts_json).write_text(json.dumps(facts, default=str))

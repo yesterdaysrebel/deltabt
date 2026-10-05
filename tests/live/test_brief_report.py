@@ -340,3 +340,67 @@ def test_a_9_percent_drawdown_does_not_read_as_the_20_percent_stop():
 def test_the_20_percent_stop_is_still_reported_when_it_fires():
     _, _, problems = _with_drawdown(20.4)
     assert any("20% drawdown stop has fired" in p for p in problems)
+
+
+# -- the log: show each error; a Delta feed drop that recovered is a note -----
+
+def _ev(ts, level, message, logger="app.market_data.delta_ws"):
+    return {"ts": ts, "level": level, "logger": logger, "message": message}
+
+
+#: The two real ERROR lines of 2026-10-04/05, each followed by a reconnect.
+TODAYS_LOG = [
+    _ev("2026-10-03T17:58:59.830Z", "ERROR", "feed error: no close frame received or sent"),
+    _ev("2026-10-03T17:59:01.120Z", "INFO", "subscribed"),
+    _ev("2026-10-04T01:04:47.660Z", "ERROR", "feed went silent with the socket still open; forcing a reconnect"),
+    _ev("2026-10-04T01:04:50.300Z", "INFO", "subscribed"),
+]
+
+
+def _with_log(events):
+    sec, db = a_probe()
+    return br.build(sec, db, NOW, stack="dryrun", errors_24h=None, probe_problems=[], log_events=events)
+
+
+def test_feed_drops_the_bot_recovered_from_are_a_note_not_an_alarm():
+    """2026-10-05: both 'errors' were Delta's feed stalling; the bot was back in
+    2-3 seconds. The report called that 'needs your attention' every day."""
+    text, facts, problems = _with_log(TODAYS_LOG)
+    assert not problems and facts["verdict"] == "clear"
+    assert ("*Note:* Delta's price feed dropped 2 times and the bot reconnected within seconds each time "
+            "(11:28 PM, 6:34 AM IST). Nothing needs you.") in text
+
+
+def test_a_feed_drop_with_no_reconnect_is_an_alarm():
+    _, _, problems = _with_log(TODAYS_LOG[:1] + TODAYS_LOG[2:])
+    assert problems == ["Delta's price feed dropped at 11:28 PM IST and no reconnect followed within 60 s"]
+
+
+def test_many_recovered_drops_in_a_day_are_worth_a_look():
+    events = []
+    for h in range(7):
+        events += [_ev(f"2026-10-04T{h:02d}:10:00.000Z", "ERROR", "feed went silent with the socket still open"),
+                   _ev(f"2026-10-04T{h:02d}:10:03.000Z", "INFO", "subscribed")]
+    _, _, problems = _with_log(events)
+    assert problems == ["Delta's price feed dropped 7 times in 24 hours (each recovered) -- more than the usual "
+                        "few; worth a look"]
+
+
+def test_any_other_error_is_an_alarm_with_its_time_and_message():
+    events = TODAYS_LOG + [_ev("2026-10-04T00:15:00.000Z", "ERROR", "shadow exits failed on a tick; continuing\nTraceback ...",
+                               logger="app.runtime.bot")]
+    text, _, problems = _with_log(events)
+    assert problems == ["1 error in the bot's log in the last 24 hours: "
+                        "5:45 AM IST ERROR (bot): shadow exits failed on a tick; continuing"]
+    assert "Delta's price feed dropped 2 times" in text, "the feed note still appears"
+
+
+def test_a_drop_moments_before_the_report_is_not_called_unrecovered():
+    events = [_ev("2026-10-04T01:29:50.000Z", "ERROR", "feed went silent with the socket still open")]
+    text, _, problems = _with_log(events)
+    assert not problems and "moments before this report" in text
+
+
+def test_a_quiet_log_says_nothing():
+    text, facts, problems = _with_log([])
+    assert not problems and "price feed" not in text
