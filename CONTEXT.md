@@ -102,6 +102,19 @@ reasoning about what is on master.**
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
 
+**Symbol choice cannot rescue `manual_scalp_both_t3` (2026-10-05, `scripts/symbol_screen.py`).** The
+dry run's own spec on 32 Delta India perps (the 27 most-traded with history, plus the cached five),
+2025-12-20..2026-09-30, 4,950 paired trades: the entries earn **nothing before fees** (gross −0.009R
+per trade) and lose **−0.083R / −0.085R / −0.082R** per trade after them under hold-to-3R / ladder /
+trail (t clustered by close day −2.2 / −5.4 / −5.7; net positive on 8 / 5 / 5 of 32). **Backtest P&L
+does not persist across halves** (rank correlation −0.12 and −0.08; first-half winners −0.077R in the
+second half, first-half losers −0.078R), so picking symbols by past result picks noise. The cost law
+holds (fees 0.11–0.13R on 1.2–1.4% major stops, 0.02R on thin wide-stop symbols). Only ETHUSD, XRPUSD
+and SOLUSD are *measurable* on $250 (size cleanly, trade every minute, ≥ 15 trades / 21 days);
+BEATUSD is idle 31% of minutes at $0.3M/day; AKEUSD is one $325 contract. More symbols = more trades
+= more fees: on $250 the trail lost $57 (BEAT only), $164 (SOL+BEAT), $337 (ETH+SOL+XRP), $393
+(+BEAT) over the nine months (`scripts/paired_exits_universe.py`).
+
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
 ladder (-0.048R vs +0.127R, t=-2.55, 3R targets reached collapse 73 → 9); adverse tightening, 16
