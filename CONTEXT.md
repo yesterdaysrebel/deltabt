@@ -122,6 +122,16 @@ helps is the cost law — the coins with the lowest fee cost per R — and it li
 breakeven, not profit: by fee cost per trade, net R is +0.034/−0.008 (under 0.03R), −0.035/−0.051,
 −0.103/−0.097, −0.176/−0.142 (over 0.10R) for hold-to-3R/trail. Those cheap coins are the thin ones,
 where the simulated fill is least trustworthy.
+**An ML entry filter on candle features finds nothing (`scripts/entry_filter_ml_lab.py`).** The
+memecoin repo's method applied here — LightGBM on 29 features known before the entry bar, labels used
+only once a trade has closed, threshold fixed from the previous month, walk-forward April..September,
+5 seeds, judged on net R against random picking. Out-of-sample AUC 0.490 (months 0.42–0.52); the
+model's picks are no better than random on hold-to-3R at 10/25/50% depth and worse than trading
+everything; shuffled labels look the same (leak check passes). The one-line cost rule beats it at
+every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). **Not tested, because
+the data does not exist here:** trade flow by aggressor side, order-book imbalance, open interest,
+liquidations — the exchange analogue of what carried the memecoin stack (who is trading). The archive
+holds 1m candles and funding only; that data would have to be recorded forward first.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
