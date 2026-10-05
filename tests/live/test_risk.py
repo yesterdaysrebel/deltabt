@@ -659,7 +659,20 @@ class TestMinimumContractFloor:
         any adverse slip (prod dry run, 2026-10-02)."""
         d = self._decide(0.035, min_contract_risk_cap=0.05)
         assert d.intent.risk_cap == pytest.approx(12.5)
-        assert approve().intent.risk_cap == 0.0, "only floor-sized orders carry it"
+
+    def test_every_order_carries_its_approved_budget(self):
+        """2026-10-05: an order sized the NORMAL way carried no budget, so the
+        paper broker measured its fill against the realised risk at the
+        reference -- zero headroom, one contract lost on every fill."""
+        d = approve()                                    # BTC at the defaults
+        cfg = RiskConfig()
+        assert d.intent.risk_cap == pytest.approx(cfg.starting_equity * cfg.risk_per_trade)
+        assert d.intent.risk_amount <= d.intent.risk_cap, "realised risk never exceeds it"
+        # One AKEUSD contract inside the plain 2% budget: budget $5, not the floor's cap.
+        d = self._decide(0.0135, min_contract_risk_cap=0.03)      # ~$4.14 for one contract
+        assert d.approved and d.intent.quantity == 1
+        assert d.intent.risk_cap == pytest.approx(5.0)
+        assert d.intent.risk_amount < 5.0
 
     def test_a_volatile_day_is_still_skipped(self):
         """Above the cap the old rejection stands: the cap is a ceiling."""

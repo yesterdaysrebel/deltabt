@@ -1,0 +1,26 @@
+4950 entries with features (0 dropped for thin history), 29 features, base rate of a 3R hit 24.6%; test months 2026-04..2026-09
+
+ALL entries of the test months: n 3138, 3R hit 24.4%, hold-to-3R net -0.083R (gross -0.012), trail net -0.093R, fee 0.071R, months in profit 1/6
+
+selector               depth  trades 3R hit%  fee R gross 3R  net 3R p rand net trail p rand months +  seed spread (net 3R)
+model, all features      10%     301    22.2  0.062   -0.116  -0.178   0.73    -0.043   0.21   0.2/6   -0.263 .. -0.149
+model, no fee feature    10%     315    23.2  0.062   -0.081  -0.143   0.62    -0.041   0.38   0.8/6   -0.210 .. -0.096
+model, shuffled labels   10%     275    22.2  0.063   -0.106  -0.169   0.87    -0.095   0.92   1.8/6   -0.307 .. -0.037
+cheap fees only          10%     356    27.8  0.018   +0.130  +0.112   0.02    -0.004   0.01     4/6
+
+model, all features      25%     780    24.0  0.064   -0.040  -0.104   0.71    -0.048   0.02   1.6/6   -0.139 .. -0.047
+model, no fee feature    25%     788    23.5  0.065   -0.063  -0.128   0.88    -0.057   0.27   1.0/6   -0.162 .. -0.088
+model, shuffled labels   25%     734    24.2  0.066   -0.026  -0.092   0.75    -0.103   0.72   2.2/6   -0.146 .. -0.049
+cheap fees only          25%     814    25.4  0.024   +0.041  +0.017   0.07    -0.017   0.00     4/6
+
+model, all features      50%    1612    24.2  0.068   -0.029  -0.097   0.45    -0.069   0.01   1.2/6   -0.132 .. -0.076
+model, no fee feature    50%    1624    23.8  0.068   -0.048  -0.116   0.81    -0.080   0.16   1.2/6   -0.133 .. -0.091
+model, shuffled labels   50%    1562    24.0  0.068   -0.033  -0.101   0.97    -0.107   0.91   1.4/6   -0.130 .. -0.069
+cheap fees only          50%    1559    26.0  0.038   +0.048  +0.010   0.01    -0.074   0.14     2/6
+
+OUT-OF-SAMPLE SCORE (no fee feature) against what happened, test months, ranked within each month (analysis only: a live rule cannot rank a month):
+  bottom third  n  1045  3R hit  24.4%  gross 3R +0.015R  net 3R -0.060R  net trail -0.110R
+  middle third  n  1045  3R hit  25.6%  gross 3R +0.026R  net 3R -0.045R  net trail -0.113R
+  top third     n  1048  3R hit  23.2%  gross 3R -0.078R  net 3R -0.143R  net trail -0.057R
+  AUC by month: 0.495, 0.491, 0.500, 0.424, 0.511, 0.518  (0.500 = no information); mean 0.490
+  top features by gain (last fold, all features): sym_recent_r 7%, mkt_recent_r 6%, al_24h 6%, al_btc_24h 6%, hour_sin 5%, al_pos_24h 5%, hour_cos 5%, ret_15m 5%

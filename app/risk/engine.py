@@ -519,9 +519,10 @@ class RiskEngine:
             strategy_version=exp.strategy_version,
             bar_open=exp.bar_open,
             checks_passed=tuple(passed),
-            # The floor's cap, so the fill-time resize measures against it.
-            risk_cap=(budget if exp.detail.get("sized_at_minimum_contract")
-                      else 0.0),
+            # The approved budget (equity x risk_per_trade, or the floor's cap
+            # when the floor sized the order), so the fill-time resize has the
+            # headroom the engine granted. See ApprovedOrderIntent.risk_cap.
+            risk_cap=budget,
         )
         exp.outcome = Outcome.APPROVED
         return RiskDecision(True, ev, passed, intent=intent)

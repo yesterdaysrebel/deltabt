@@ -1,0 +1,147 @@
+##### SOLUSD,BEATUSD
+window 2025-12-21 .. 2026-09-30  universe ['SOLUSD', 'BEATUSD']  (filler bars dropped)
+baseline entries 585; replayed under all three rules, paired: 585
+
+rule          n     sumR   meanR  win% 3R hit promoted  fees $
+baseline    585    -9.33  -0.016    28    144        0    1525
+ladder      585   -41.10  -0.070    38     16      395    1522
+trail       585   -38.63  -0.066    56      4      395    1512
+
+ladder - baseline, paired: mean -0.054R/trade  t=-0.90  better 232 same 208 worse 145
+trail - baseline, paired: mean -0.050R/trade  t=-0.80  better 234 same 194 worse 157
+trail - ladder,   paired: mean +0.004R/trade  t=+0.27
+
+per symbol, meanR (n):
+  SOLUSD   n= 291  baseline -0.069  ladder -0.089  trail -0.096
+  BEATUSD  n= 294  baseline +0.037  ladder -0.052  trail -0.036
+per anchored quarter of the sample, meanR:
+  q0 n= 146  baseline +0.068  ladder -0.072  trail -0.112
+  q1 n= 146  baseline -0.175  ladder -0.093  trail -0.095
+  q2 n= 146  baseline -0.116  ladder -0.096  trail -0.048
+  q3 n= 147  baseline +0.158  ladder -0.020  trail -0.009
+
+risk shape on the same trades (in R, by exit time):
+  baseline  max drawdown  64.3R   longest run of non-positive exits  33   sd 1.76R   worst trade -2.57R
+  ladder    max drawdown  43.2R   longest run of non-positive exits  11   sd 0.93R   worst trade -2.02R
+  trail     max drawdown  44.6R   longest run of non-positive exits   6   sd 0.84R   worst trade -2.02R
+
+== per symbol: stop width, cost, and sizing on $250 at 2% (floor cap 3%, leverage cap 3x)
+  SOLUSD   n= 291 (22 per 21 days)  stop% median 1.40 (p10 1.08, p90 2.37)  cost/R median 0.113  contracts median 3 (skipped 0%, floor-sized 0%)  $ at risk median 4.43 (1.8%)  price 121.1
+  BEATUSD  n= 294 (23 per 21 days)  stop% median 7.08 (p10 3.06, p90 9.61)  cost/R median 0.022  contracts median 11 (skipped 1%, floor-sized 3%)  $ at risk median 4.82 (1.9%)  price 0.0902
+
+== the account in dollars on $250 (each exit rule on its own), trades skipped by sizing removed
+  baseline  trades  581  total $    -60  max drawdown $  295  21-day windows hitting 20%  55%  50%   7%   by symbol SOLUSD $-82  BEATUSD $+22
+  ladder    trades  581  total $   -177  max drawdown $  190  21-day windows hitting 20%  21%  50%   0%   by symbol SOLUSD $-96  BEATUSD $-82
+  trail     trades  581  total $   -164  max drawdown $  194  21-day windows hitting 20%  18%  50%   0%   by symbol SOLUSD $-108  BEATUSD $-57
+
+##### ETHUSD,SOLUSD,XRPUSD
+window 2025-12-21 .. 2026-09-30  universe ['ETHUSD', 'SOLUSD', 'XRPUSD']  (filler bars dropped)
+baseline entries 818; replayed under all three rules, paired: 818
+
+rule          n     sumR   meanR  win% 3R hit promoted  fees $
+baseline    818   -20.17  -0.025    30    200        0    3232
+ladder      818   -71.60  -0.088    36     24      557    3124
+trail       818   -75.14  -0.092    54      7      557    3116
+
+ladder - baseline, paired: mean -0.063R/trade  t=-1.23  better 325 same 287 worse 206
+trail - baseline, paired: mean -0.067R/trade  t=-1.27  better 325 same 269 worse 224
+trail - ladder,   paired: mean -0.004R/trade  t=-0.31
+
+per symbol, meanR (n):
+  ETHUSD   n= 251  baseline -0.074  ladder -0.089  trail -0.071
+  SOLUSD   n= 291  baseline -0.069  ladder -0.089  trail -0.096
+  XRPUSD   n= 276  baseline +0.067  ladder -0.085  trail -0.106
+per anchored quarter of the sample, meanR:
+  q0 n= 205  baseline -0.094  ladder -0.109  trail -0.100
+  q1 n= 204  baseline +0.095  ladder -0.065  trail -0.098
+  q2 n= 204  baseline -0.212  ladder -0.122  trail -0.104
+  q3 n= 205  baseline +0.112  ladder -0.054  trail -0.065
+
+risk shape on the same trades (in R, by exit time):
+  baseline  max drawdown  71.5R   longest run of non-positive exits  26   sd 1.75R   worst trade -2.57R
+  ladder    max drawdown  71.6R   longest run of non-positive exits  10   sd 0.94R   worst trade -2.37R
+  trail     max drawdown  77.6R   longest run of non-positive exits   7   sd 0.85R   worst trade -2.37R
+
+== per symbol: stop width, cost, and sizing on $250 at 2% (floor cap 3%, leverage cap 3x)
+  ETHUSD   n= 251 (19 per 21 days)  stop% median 1.42 (p10 1.09, p90 2.28)  cost/R median 0.111  contracts median 15 (skipped 0%, floor-sized 0%)  $ at risk median 4.84 (1.9%)  price 2670
+  SOLUSD   n= 291 (22 per 21 days)  stop% median 1.40 (p10 1.08, p90 2.37)  cost/R median 0.113  contracts median 3 (skipped 0%, floor-sized 0%)  $ at risk median 4.43 (1.8%)  price 121.1
+  XRPUSD   n= 276 (21 per 21 days)  stop% median 1.41 (p10 1.10, p90 2.68)  cost/R median 0.112  contracts median 234 (skipped 0%, floor-sized 0%)  $ at risk median 4.99 (2.0%)  price 1.551
+
+== the account in dollars on $250 (each exit rule on its own), trades skipped by sizing removed
+  baseline  trades  817  total $    -79  max drawdown $  335  21-day windows hitting 20%  80%  50%  15%   by symbol ETHUSD $-90  SOLUSD $-82  XRPUSD $+93
+  ladder    trades  817  total $   -316  max drawdown $  316  21-day windows hitting 20%  37%  50%   0%   by symbol ETHUSD $-105  SOLUSD $-96  XRPUSD $-116
+  trail     trades  817  total $   -337  max drawdown $  352  21-day windows hitting 20%  33%  50%   0%   by symbol ETHUSD $-83  SOLUSD $-108  XRPUSD $-146
+
+##### ETHUSD,SOLUSD,XRPUSD,BEATUSD
+window 2025-12-21 .. 2026-09-30  universe ['ETHUSD', 'SOLUSD', 'XRPUSD', 'BEATUSD']  (filler bars dropped)
+baseline entries 1112; replayed under all three rules, paired: 1112
+
+rule          n     sumR   meanR  win% 3R hit promoted  fees $
+baseline   1112    -9.37  -0.008    29    275        0    3507
+ladder     1112   -86.85  -0.078    38     32      752    3313
+trail      1112   -85.71  -0.077    56      9      752    3299
+
+ladder - baseline, paired: mean -0.070R/trade  t=-1.59  better 436 same 395 worse 281
+trail - baseline, paired: mean -0.069R/trade  t=-1.51  better 437 same 370 worse 305
+trail - ladder,   paired: mean +0.001R/trade  t=+0.09
+
+per symbol, meanR (n):
+  ETHUSD   n= 251  baseline -0.074  ladder -0.089  trail -0.071
+  SOLUSD   n= 291  baseline -0.069  ladder -0.089  trail -0.096
+  XRPUSD   n= 276  baseline +0.067  ladder -0.085  trail -0.106
+  BEATUSD  n= 294  baseline +0.037  ladder -0.052  trail -0.036
+per anchored quarter of the sample, meanR:
+  q0 n= 277  baseline +0.041  ladder -0.054  trail -0.095
+  q1 n= 279  baseline -0.145  ladder -0.121  trail -0.097
+  q2 n= 278  baseline -0.048  ladder -0.061  trail -0.039
+  q3 n= 278  baseline +0.119  ladder -0.076  trail -0.078
+
+risk shape on the same trades (in R, by exit time):
+  baseline  max drawdown  94.9R   longest run of non-positive exits  27   sd 1.76R   worst trade -2.57R
+  ladder    max drawdown  86.8R   longest run of non-positive exits  12   sd 0.94R   worst trade -2.37R
+  trail     max drawdown  88.1R   longest run of non-positive exits   8   sd 0.85R   worst trade -2.37R
+
+== per symbol: stop width, cost, and sizing on $250 at 2% (floor cap 3%, leverage cap 3x)
+  ETHUSD   n= 251 (19 per 21 days)  stop% median 1.42 (p10 1.09, p90 2.28)  cost/R median 0.111  contracts median 15 (skipped 0%, floor-sized 0%)  $ at risk median 4.84 (1.9%)  price 2670
+  SOLUSD   n= 291 (22 per 21 days)  stop% median 1.40 (p10 1.08, p90 2.37)  cost/R median 0.113  contracts median 3 (skipped 0%, floor-sized 0%)  $ at risk median 4.43 (1.8%)  price 121.1
+  XRPUSD   n= 276 (21 per 21 days)  stop% median 1.41 (p10 1.10, p90 2.68)  cost/R median 0.112  contracts median 234 (skipped 0%, floor-sized 0%)  $ at risk median 4.99 (2.0%)  price 1.551
+  BEATUSD  n= 294 (23 per 21 days)  stop% median 7.08 (p10 3.06, p90 9.61)  cost/R median 0.022  contracts median 11 (skipped 1%, floor-sized 3%)  $ at risk median 4.82 (1.9%)  price 0.0902
+
+== the account in dollars on $250 (each exit rule on its own), trades skipped by sizing removed
+  baseline  trades 1108  total $    -58  max drawdown $  444  21-day windows hitting 20%  87%  50%  21%   by symbol ETHUSD $-90  SOLUSD $-82  XRPUSD $+93  BEATUSD $+22
+  ladder    trades 1108  total $   -398  max drawdown $  398  21-day windows hitting 20%  50%  50%   0%   by symbol ETHUSD $-105  SOLUSD $-96  XRPUSD $-116  BEATUSD $-82
+  trail     trades 1108  total $   -393  max drawdown $  408  21-day windows hitting 20%  52%  50%   0%   by symbol ETHUSD $-83  SOLUSD $-108  XRPUSD $-146  BEATUSD $-57
+
+##### BEATUSD
+window 2026-01-06 .. 2026-09-28  universe ['BEATUSD']  (filler bars dropped)
+baseline entries 294; replayed under all three rules, paired: 294
+
+rule          n     sumR   meanR  win% 3R hit promoted  fees $
+baseline    294   +10.79  +0.037    28     75        0     348
+ladder      294   -15.25  -0.052    42      8      195     353
+trail       294   -10.57  -0.036    60      2      195     356
+
+ladder - baseline, paired: mean -0.089R/trade  t=-1.05  better 111 same 108 worse 75
+trail - baseline, paired: mean -0.073R/trade  t=-0.82  better 112 same 101 worse 81
+trail - ladder,   paired: mean +0.016R/trade  t=+0.77
+
+per symbol, meanR (n):
+  BEATUSD  n= 294  baseline +0.037  ladder -0.052  trail -0.036
+per anchored quarter of the sample, meanR:
+  q0 n=  74  baseline -0.076  ladder -0.010  trail -0.036
+  q1 n=  73  baseline -0.219  ladder -0.194  trail -0.126
+  q2 n=  73  baseline +0.338  ladder +0.030  trail +0.020
+  q3 n=  74  baseline +0.105  ladder -0.034  trail -0.002
+
+risk shape on the same trades (in R, by exit time):
+  baseline  max drawdown  42.7R   longest run of non-positive exits  16   sd 1.78R   worst trade -2.02R
+  ladder    max drawdown  25.1R   longest run of non-positive exits  15   sd 0.93R   worst trade -2.02R
+  trail     max drawdown  17.2R   longest run of non-positive exits   7   sd 0.85R   worst trade -2.02R
+
+== per symbol: stop width, cost, and sizing on $250 at 2% (floor cap 3%, leverage cap 3x)
+  BEATUSD  n= 294 (23 per 21 days)  stop% median 7.08 (p10 3.06, p90 9.61)  cost/R median 0.022  contracts median 11 (skipped 1%, floor-sized 3%)  $ at risk median 4.82 (1.9%)  price 0.0902
+
+== the account in dollars on $250 (each exit rule on its own), trades skipped by sizing removed
+  baseline  trades  291  total $    +22  max drawdown $  204  21-day windows hitting 20%  28%  50%   0%   by symbol BEATUSD $+22
+  ladder    trades  291  total $    -82  max drawdown $  119  21-day windows hitting 20%   0%  50%   0%   by symbol BEATUSD $-82
+  trail     trades  291  total $    -57  max drawdown $   83  21-day windows hitting 20%   0%  50%   0%   by symbol BEATUSD $-57

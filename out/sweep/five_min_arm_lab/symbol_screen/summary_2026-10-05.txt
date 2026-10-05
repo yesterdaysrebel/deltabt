@@ -1,0 +1,91 @@
+RULES (a symbol must pass all four to be a candidate for a $250 prod dry run):
+  SIZE    the 2% budget buys a position: skipped <= 5% of entries and at most
+          25% of entries are a single contract (one contract = coarse risk).
+  LIQUID  it trades: <= 5% of minutes without a trade, 24h turnover >= $1M,
+          and the live spread is <= 0.05R of the typical stop.
+  ACTIVE  >= 15 trades per 21 days in the backtest (a 21-day run needs data).
+  COST    fee cost per trade is below what these entries earn BEFORE fees,
+          pooled over every screened symbol (the cost law: fees / stop width).
+Backtest P&L is reported but is NOT a rule: see the persistence check.
+
+32 symbols, 4950 paired trades. Pooled per trade: baseline net -0.083R gross -0.009R; ladder net -0.085R gross -0.012R; trail net -0.082R gross -0.009R
+COST rule threshold = pooled gross edge of the entries (hold to 3R) = -0.009R per trade
+
+symbol      trades  /21d  stop%  fee R  1 ctr $ ctrs skip% 1ctr% idle%  turn $M sprd R  SIZE LIQ ACT COST   hold3R  trail ladder   trail $
+ETHUSD         251    19   1.42  0.111    26.70   15     0     0     0    325.6  0.003  ok   ok  ok  NO     -0.074 -0.071 -0.089       -83
+XRPUSD         276    21   1.41  0.112     1.55  234     0     0     3     10.8  0.009  ok   ok  ok  NO     +0.067 -0.106 -0.085      -146
+SOLUSD         291    22   1.40  0.113   121.10    3     0     8     1    115.7  0.007  ok   ok  ok  NO     -0.069 -0.096 -0.089      -108
+VELVETUSD       71    15   8.06  0.020     0.62   12     0     0    33      2.7  0.018  ok   NO  ok  NO     +0.098 -0.078 -0.028       -27
+BEATUSD        294    23   7.08  0.022     0.90   11     1    10    31      0.3  0.032  ok   NO  ok  NO     +0.037 -0.036 -0.052       -57
+VVVUSD         291    22   3.64  0.043    29.81   12     0     0    43      1.2  0.004  ok   NO  ok  NO     -0.009 -0.107 -0.096      -145
+UNIUSD         220    16   2.51  0.063     9.09   44     0     0    52      7.7  0.013  ok   NO  ok  NO     -0.102 -0.083 -0.024       -90
+ZECUSD         413    31   2.13  0.074   166.38    5     0     9    27      8.8  0.001  ok   NO  ok  NO     -0.033 -0.135 -0.160      -261
+LINKUSD        215    16   1.80  0.088    14.13   27     0     0    54      2.5  0.008  ok   NO  ok  NO     -0.196 -0.152 -0.128      -160
+DOGEUSD        256    19   1.50  0.106     9.61   33     0     0    29      8.0  0.014  ok   NO  ok  NO     -0.100 -0.076 -0.061       -97
+LTCUSD         205    15   1.49  0.106     7.03   59     0     0    49      4.3  0.019  ok   NO  ok  NO     -0.329 -0.141 -0.140      -143
+BTCUSD         194    15   1.22  0.130    83.71    5     0     0     0    677.5  0.000  ok   ok  NO  NO     -0.205 -0.199 -0.224      -179
+BANKUSD         29    10   8.49  0.019     3.32    8     0    14    58      0.1  0.016  ok   NO  NO  NO     +0.167 +0.231 +0.366       +27
+MUBARAKUSD      42     3   8.34  0.019     0.60  323     0     0    80      9.2  0.009  ok   NO  NO  NO     -0.031 +0.230 +0.258       +48
+AINUSD          80     6   7.84  0.020     2.27   10     0     0    75     74.8  0.014  ok   NO  NO  NO     +0.096 -0.001 +0.055        -2
+BLESSUSD       137    10   7.83  0.020     0.83   89     0     0    58      0.7  0.003  ok   NO  NO  NO     +0.108 -0.040 -0.041       -27
+STRKUSD         14     2   7.95  0.020     4.99   16     0     0    95     10.6  0.006  ok   NO  NO  NO     -0.202 -0.199 -0.077       -14
+AKEUSD         105    32   7.12  0.022   325.25    1    46    34     6     12.3  0.001  NO   NO  ok  NO     -0.001 +0.052 -0.025       +18
+WIFUSD          23     2   6.86  0.023     0.21  290     0     0    87      0.0  0.012  ok   NO  NO  NO     -0.134 +0.457 +0.357       +52
+AIOUSD         115     9   6.29  0.025     4.12    9     0     0    71      5.0  0.025  ok   NO  NO  NO     -0.264 -0.094 -0.137       -57
+AXSUSD          25     4   5.97  0.026    11.13    4     0     0    89      1.2  0.026  ok   NO  NO  NO     -0.268 -0.094 -0.102       -11
+ZROUSD          52     4   5.16  0.031     1.67   64     0     0    84      1.0  0.002  ok   NO  NO  NO     -0.196 -0.145 -0.185       -37
+NEARUSD         52     4   4.68  0.034     4.90   44     0     0    80      0.7  0.013  ok   NO  NO  NO     +0.099 -0.041 -0.068       -11
+PUMPUSD         79     6   4.64  0.034     5.62   39     0     0    77      2.5  0.010  ok   NO  NO  NO     -0.283 -0.115 -0.054       -45
+SUIUSD          85     6   3.09  0.051     1.19  146     0     0    72      1.2  0.005  ok   NO  NO  NO     +0.151 +0.080 +0.008       +34
+HYPEUSD        150    11   2.87  0.055     8.76   34     0     0    61      0.7  0.001  ok   NO  NO  NO     -0.005 -0.007 -0.047        -4
+DOTUSD         152    11   2.51  0.063     1.24  151     0     0    57      1.0  0.033  ok   NO  NO  NO     -0.198 -0.171 -0.215      -129
+ADAUSD         200    15   2.26  0.070     0.25  879     0     0    47      3.1  0.050  ok   NO  NO  NO     -0.137 -0.062 -0.031       -62
+AVAXUSD        149    11   2.22  0.071    11.74   23     0     0    60      2.0  0.016  ok   NO  NO  NO     -0.231 -0.157 -0.170      -113
+BCHUSD         194    14   1.81  0.087     3.39   72     0     0    53      1.3  0.021  ok   NO  NO  NO     -0.143 -0.047 -0.028       -46
+BNBUSD         151    11   1.24  0.127    75.64    5     0     1    51      5.8  0.002  ok   NO  NO  NO     -0.167 -0.041 -0.109       -29
+AAVEUSD        139    10   2.43  0.065   171.53    1     2    55    64      8.5  0.007  NO   NO  NO  NO     -0.117 -0.091 -0.112       -52
+
+PERSISTENCE over 21 symbols with >= 100 trades (rank correlation of first-half vs second-half average R):
+  baseline  rho -0.12   best 5 in first half -> second half -0.077R   worst 5 in first half -> second half -0.078R
+  trail     rho -0.08   best 5 in first half -> second half -0.120R   worst 5 in first half -> second half -0.072R
+  cost law: rank correlation of (low fee cost) with net R per trade, hold to 3R: +0.33; with trail: +0.39
+
+POOLED RESULT, 4950 trades on 32 symbols:
+  baseline  -0.083R per trade (gross -0.009R, fees 0.073R)  per-trade t -3.3  by day: 285 days, t -2.2  by week: 41 weeks, t -2.5  symbols net positive 8 of 32
+  ladder    -0.085R per trade (gross -0.012R, fees 0.073R)  per-trade t -6.1  by day: 285 days, t -5.4  by week: 41 weeks, t -5.1  symbols net positive 5 of 32
+  trail     -0.082R per trade (gross -0.009R, fees 0.073R)  per-trade t -6.5  by day: 285 days, t -5.7  by week: 41 weeks, t -5.9  symbols net positive 5 of 32
+
+LAST 60 DAYS against the nine months (stop width drifts with volatility):
+symbol      stop% 9m  fee R  /21d  ctrs | stop% 60d  fee R  /21d  ctrs skip% 1ctr%
+ETHUSD          1.42  0.111    19    15 |      1.34  0.118    15    15     0     0
+XRPUSD          1.41  0.112    21   234 |      1.79  0.088    19   207     0     0
+SOLUSD          1.40  0.113    22     3 |      1.37  0.116    18     3     2     8
+VELVETUSD       8.06  0.020    15    12 |      7.30  0.022    13    19     0     0
+BEATUSD         7.08  0.022    23    11 |      7.38  0.021    27    35     0     8
+VVVUSD          3.64  0.043    22    12 |      3.17  0.050    15     6     0     0
+UNIUSD          2.51  0.063    16    44 |      2.60  0.061    30    30     0     0
+ZECUSD          2.13  0.074    31     5 |      1.96  0.081    31     2     1    36
+LINKUSD         1.80  0.088    16    27 |      1.63  0.097    23    24     0     0
+DOGEUSD         1.50  0.106    19    33 |      1.59  0.099    15    35     0     0
+LTCUSD          1.49  0.106    15    59 |      1.76  0.090    15    51     0     0
+BTCUSD          1.22  0.130    15     5 |      1.28  0.123     9     4     0     0
+BANKUSD         8.49  0.019    10     8 |      8.49  0.019    10     8     0    14
+MUBARAKUSD      8.34  0.019     3   323 |      9.18  0.017     9   228     0     0
+AINUSD          7.84  0.020     6    10 |      6.35  0.025     5    34     0     0
+BLESSUSD        7.83  0.020    10    89 |      5.09  0.031    22   106     0     0
+STRKUSD         7.95  0.020     2    16 |      6.26  0.025     3    19     0     0
+AKEUSD          7.12  0.022    32     1 |      7.02  0.023    31     0    55    27
+WIFUSD          6.86  0.023     2   290 |   fewer than 8 trades in the last 60 days
+AIOUSD          6.29  0.025     9     9 |      7.10  0.022    15    15     0     0
+AXSUSD          5.97  0.026     4     4 |   fewer than 8 trades in the last 60 days
+ZROUSD          5.16  0.031     4    64 |      5.81  0.027     4    75     0     0
+NEARUSD         4.68  0.034     4    44 |      4.05  0.039     8    37     0     0
+PUMPUSD         4.64  0.034     6    39 |      4.08  0.039    12    32     0     0
+SUIUSD          3.09  0.051     6   146 |      3.00  0.053     8   198     0     0
+HYPEUSD         2.87  0.055    11    34 |      2.14  0.074    12    30     0     0
+DOTUSD          2.51  0.063    11   151 |      2.78  0.057    14   172     0     0
+ADAUSD          2.26  0.070    15   879 |      2.49  0.063    14   968     0     0
+AVAXUSD         2.22  0.071    11    23 |      2.41  0.066    12    22     0     0
+BCHUSD          1.81  0.087    14    72 |      2.19  0.072     9    90     0     0
+BNBUSD          1.24  0.127    11     5 |      1.19  0.132    12     5     0     0
+AAVEUSD         2.43  0.065    10     1 |      2.41  0.065    15     1     0    70

@@ -283,11 +283,12 @@ def broker_params(risk) -> dict:
 
 
 def _fill_budget(intent: ApprovedOrderIntent) -> float:
-    """The most a fill may risk: the approved risk, or the floor's cap.
+    """The most a fill may risk: the budget the risk engine approved.
 
-    `risk_cap` is set only for an order the minimum-contract floor sized at
-    one contract (see ApprovedOrderIntent.risk_cap); for every other order it
-    is 0 and this is `risk_amount`, exactly as before.
+    `risk_cap` carries that budget (see ApprovedOrderIntent.risk_cap).
+    `risk_amount` is the realised risk at the reference price and is never
+    above it; the max() only matters for an intent built without a budget
+    (risk_cap 0), which keeps the old behaviour.
     """
     return max(intent.risk_amount, intent.risk_cap)
 

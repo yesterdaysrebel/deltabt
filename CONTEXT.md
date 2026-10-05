@@ -102,6 +102,37 @@ reasoning about what is on master.**
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
 
+**Symbol choice cannot rescue `manual_scalp_both_t3` (2026-10-05, `scripts/symbol_screen.py`).** The
+dry run's own spec on 32 Delta India perps (the 27 most-traded with history, plus the cached five),
+2025-12-20..2026-09-30, 4,950 paired trades: the entries earn **nothing before fees** (gross −0.009R
+per trade) and lose **−0.083R / −0.085R / −0.082R** per trade after them under hold-to-3R / ladder /
+trail (t clustered by close day −2.2 / −5.4 / −5.7; net positive on 8 / 5 / 5 of 32). **Backtest P&L
+does not persist across halves** (rank correlation −0.12 and −0.08; first-half winners −0.077R in the
+second half, first-half losers −0.078R), so picking symbols by past result picks noise. The cost law
+holds (fees 0.11–0.13R on 1.2–1.4% major stops, 0.02R on thin wide-stop symbols). Only ETHUSD, XRPUSD
+and SOLUSD are *measurable* on $250 (size cleanly, trade every minute, ≥ 15 trades / 21 days);
+BEATUSD is idle 31% of minutes at $0.3M/day; AKEUSD is one $325 contract. More symbols = more trades
+= more fees: on $250 the trail lost $57 (BEAT only), $164 (SOL+BEAT), $337 (ETH+SOL+XRP), $393
+(+BEAT) over the nine months (`scripts/paired_exits_universe.py`).
+**Re-selecting "the profitable coins" daily does not work either
+(`scripts/daily_symbol_selection_lab.py`, walk-forward, 40 selector cells per exit, judged against
+random picking).** Under the trail every recent-profit selector is negative and worse than trading
+everything, and recent winners lost to recent LOSERS in 12 of 12 matched cells. The one selector that
+helps is the cost law — the coins with the lowest fee cost per R — and it lifts the result to about
+breakeven, not profit: by fee cost per trade, net R is +0.034/−0.008 (under 0.03R), −0.035/−0.051,
+−0.103/−0.097, −0.176/−0.142 (over 0.10R) for hold-to-3R/trail. Those cheap coins are the thin ones,
+where the simulated fill is least trustworthy.
+**An ML entry filter on candle features finds nothing (`scripts/entry_filter_ml_lab.py`).** The
+memecoin repo's method applied here — LightGBM on 29 features known before the entry bar, labels used
+only once a trade has closed, threshold fixed from the previous month, walk-forward April..September,
+5 seeds, judged on net R against random picking. Out-of-sample AUC 0.490 (months 0.42–0.52); the
+model's picks are no better than random on hold-to-3R at 10/25/50% depth and worse than trading
+everything; shuffled labels look the same (leak check passes). The one-line cost rule beats it at
+every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). **Not tested, because
+the data does not exist here:** trade flow by aggressor side, order-book imbalance, open interest,
+liquidations — the exchange analogue of what carried the memecoin stack (who is trading). The archive
+holds 1m candles and funding only; that data would have to be recorded forward first.
+
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
 ladder (-0.048R vs +0.127R, t=-2.55, 3R targets reached collapse 73 → 9); adverse tightening, 16

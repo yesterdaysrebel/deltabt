@@ -49,14 +49,24 @@ class ApprovedOrderIntent:
     strategy_version: str
     bar_open: int
     checks_passed: tuple[str, ...] = field(default_factory=tuple)
-    #: The most a FILL may risk when that is more than `risk_amount`. Set only
-    #: by the minimum-contract floor (RiskConfig.min_contract_risk_cap): one
-    #: contract is then the whole order, `risk_amount` is exactly that
-    #: contract's risk at the reference, and the paper broker's fill-time
-    #: resize would cut it to zero on ANY adverse slip -- its own 2 bps
-    #: included -- so a floor-sized entry could never fill (found on the prod
-    #: dry run 2026-10-02: three AKEUSD entries passed the live checks and
-    #: none opened). 0 means "use risk_amount", which is every other order.
+    #: THE APPROVED RISK BUDGET: the most a FILL may risk. `risk_amount` above
+    #: is the REALISED risk of `quantity` at the reference price -- after
+    #: rounding down to whole contracts it is at or below the budget, and it
+    #: is the number the journal records. The paper broker's fill-time resize
+    #: must measure against the budget, not against `risk_amount`: measured
+    #: against `risk_amount` there is no headroom at all, so the broker's own
+    #: 2 bps of adverse slippage cost every fill one contract, and an order
+    #: of ONE contract could only fill when the next tick happened to be
+    #: favourable.
+    #:   2026-10-02  found on the prod dry run for orders the minimum-contract
+    #:               floor sized (three AKEUSD entries, none opened); fixed for
+    #:               those only, by carrying the floor's cap here.
+    #:   2026-10-05  found again for one-contract orders sized the NORMAL way
+    #:               (risk <= budget): 20 AKEUSD entries passed the live
+    #:               checks, 10 opened -- the ones with a favourable next
+    #:               tick. Now every order carries its budget: equity x
+    #:               risk_per_trade, or the floor's cap when the floor sized it.
+    #: 0 means "unknown, use risk_amount" (an intent rebuilt without it).
     risk_cap: float = 0.0
 
     def __post_init__(self) -> None:
