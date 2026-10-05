@@ -114,6 +114,14 @@ and SOLUSD are *measurable* on $250 (size cleanly, trade every minute, ≥ 15 tr
 BEATUSD is idle 31% of minutes at $0.3M/day; AKEUSD is one $325 contract. More symbols = more trades
 = more fees: on $250 the trail lost $57 (BEAT only), $164 (SOL+BEAT), $337 (ETH+SOL+XRP), $393
 (+BEAT) over the nine months (`scripts/paired_exits_universe.py`).
+**Re-selecting "the profitable coins" daily does not work either
+(`scripts/daily_symbol_selection_lab.py`, walk-forward, 40 selector cells per exit, judged against
+random picking).** Under the trail every recent-profit selector is negative and worse than trading
+everything, and recent winners lost to recent LOSERS in 12 of 12 matched cells. The one selector that
+helps is the cost law — the coins with the lowest fee cost per R — and it lifts the result to about
+breakeven, not profit: by fee cost per trade, net R is +0.034/−0.008 (under 0.03R), −0.035/−0.051,
+−0.103/−0.097, −0.176/−0.142 (over 0.10R) for hold-to-3R/trail. Those cheap coins are the thin ones,
+where the simulated fill is least trustworthy.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
