@@ -77,7 +77,7 @@ def a_probe(*, healthy=True, restarts=0, journal=None, shadow=None, dry=None, op
                            "strategy_version": VERSION[real], "risk": risk or RISK}],
           "journal_fields": FIELDS, "journal": journal,
           "exits_fields": EXITS_FIELDS,
-          "exits": DEFAULT_EXITS if exits is None else exits,
+          "exits": BASELINE_EXITS + DEFAULT_EXITS if exits is None else exits,
           "shadow_counts": shadow if shadow is not None else
           {"baseline": n_closed, "ladder": n_closed, "trail": n_closed},
           "opened_by_symbol": opened if opened is not None else {"BEATUSD": 1, "BANKUSD": 1},
@@ -146,10 +146,47 @@ def test_totals_compare_the_three_exits_on_the_same_trades():
     assert "not whether any has an edge" in text
 
 
-def test_a_missing_shadow_exit_says_not_recorded():
-    text, _, problems = render(exits=[], shadow={"baseline": 2, "ladder": 0, "trail": 0})
+def test_an_exit_still_running_after_the_real_trade_says_still_open():
+    """The other rules keep running after the real position's own stop or
+    target; their rows arrive when each closes (2026-10-06: the report said
+    "not recorded", which read as data lost)."""
+    text, _, problems = render(exits=BASELINE_EXITS, shadow={"baseline": 2, "ladder": 0, "trail": 0})
     _, ladder, trail = _block(text, "2")
-    assert "not recorded" in ladder and "not recorded" in trail
+    assert "still open" in ladder and "still open" in trail
+    assert "still open: the real trade has closed" in text and "lost: restart:" not in text
+    assert not problems, "an exit still running is not a fault"
+
+
+def test_an_exit_lost_in_a_restart_after_the_real_close_says_so():
+    """The running legs live in memory; a restart after the real close loses them."""
+    sec, db = a_probe(exits=BASELINE_EXITS, shadow={"baseline": 2, "ladder": 0, "trail": 0})
+    sec["HEALTHZ"] = sec["HEALTHZ"].replace('"uptime_seconds": 140000', '"uptime_seconds": 3600')
+    text, _, _ = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    _, ladder, trail = _block(text, "2")
+    assert "lost: restart" in ladder and "lost: restart" in trail
+    assert "lost: restart: the bot restarted after the real trade closed" in text
+
+
+def test_an_exit_older_than_the_time_stop_is_not_still_open():
+    late = dt.datetime(2026, 10, 7, 1, 30, tzinfo=dt.timezone.utc)
+    sec, db = a_probe(exits=BASELINE_EXITS, shadow={"baseline": 2, "ladder": 0, "trail": 0})
+    sec["HEALTHZ"] = sec["HEALTHZ"].replace('"uptime_seconds": 140000', '"uptime_seconds": 400000')
+    text, _, _ = br.build(sec, db, late, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "lost: restart" in _block(text, "2")[1]
+
+
+def test_trades_are_listed_newest_first_and_keep_their_numbers():
+    journal = [trade(f"p{i}", "AKEUSD", -1, "CLOSED", opened=f"2026-10-03T{10 + i:02d}:00:00+00:00",
+                     closed=f"2026-10-03T{11 + i:02d}:00:00+00:00", exit=0.0334, why="STOP_LOSS",
+                     r=-1.0, pnl=-10.0) for i in range(3)]
+    journal += [trade(f"o{i}", "BEATUSD", 1, "OPEN", opened=f"2026-10-04T0{i}:10:00+00:00",
+                      qty=258, entry=0.0859, sl=0.0839, tp=0.0918) for i in range(2)]
+    text, _, _ = render(journal=journal, exits=[])
+    lines = text.splitlines()
+    closed = [ln.split()[0] for ln in lines if "AKEUSD" in ln and "hold to 3R" in ln]
+    assert closed == ["3", "2", "1"]
+    open_ = [ln.split()[0] for ln in lines if "BEATUSD" in ln]
+    assert open_ == ["5", "4"]
 
 
 def test_an_exit_open_across_a_restart_is_marked_approximate():
@@ -180,7 +217,9 @@ def test_every_closed_trade_is_listed_past_the_apis_50_row_limit():
     journal = [trade(f"p{i}", "BEATUSD", 1, "CLOSED", opened="2026-10-03T04:00:00+00:00",
                      closed="2026-10-03T05:00:00+00:00", exit=0.88, why="STOP_LOSS",
                      r=-1.0, pnl=-5.0) for i in range(73)]
-    text, _, problems = render(journal=journal, exits=[])
+    exits = [[i, "baseline", T("2026-10-03T05:00:00+00:00"), 0.88, "STOP_LOSS", -1.0, True]
+             for i in range(73)]
+    text, _, problems = render(journal=journal, exits=exits)
     assert "## Closed so far (73 of 100 for the read)" in text
     assert sum(1 for ln in text.splitlines() if "BEATUSD" in ln and "hold to 3R" in ln) == 73
     assert not problems
@@ -222,8 +261,18 @@ def test_a_real_health_failure_still_raises_it_next_to_gaps():
 
 
 def test_a_missing_shadow_record_is_flagged_by_the_self_check():
+    _, _, problems = render(exits=BASELINE_EXITS[:1] + DEFAULT_EXITS)
+    assert any("self-check: 1 closed trade (#2) has no hold to 3R shadow record" in p
+               for p in problems)
+
+
+def test_the_self_check_counts_a_carried_trades_row_from_the_previous_run():
+    """2026-10-06: 16 closed, 15 trail rows tagged with this run. Trade 1's row
+    was written by the previous run (one row per position and rule, first
+    wins), so counting rows by run ID raised a false alarm. The check goes
+    trade by trade."""
     _, _, problems = render(shadow={"baseline": 1, "ladder": 1, "trail": 1})
-    assert any("self-check: 2 closed trades but 1 hold to 3R shadow" in p for p in problems)
+    assert not any("self-check" in p for p in problems)
 
 
 def test_entries_the_simulator_did_not_open_are_flagged():
@@ -268,9 +317,11 @@ def test_when_the_account_runs_the_trail_its_line_is_the_real_one():
 
 
 def test_the_self_check_follows_the_real_rule():
-    _, _, problems = a_probe_problems(real="trail", shadow={"baseline": 2, "ladder": 2, "trail": 1})
-    assert any("self-check: 2 closed trades but 1 trail shadow" in p for p in problems)
-    _, _, problems = a_probe_problems(real="trail", shadow={"baseline": 1, "ladder": 2, "trail": 2})
+    no_trail_2 = [e for e in BASELINE_EXITS + DEFAULT_EXITS if (e[0], e[1]) != (1, "trail")]
+    _, _, problems = a_probe_problems(real="trail", exits=no_trail_2)
+    assert any("self-check: 1 closed trade (#2) has no trail shadow" in p for p in problems)
+    no_base_2 = [e for e in BASELINE_EXITS + DEFAULT_EXITS if (e[0], e[1]) != (1, "baseline")]
+    _, _, problems = a_probe_problems(real="trail", exits=no_base_2)
     assert not any("self-check" in p for p in problems), "a missing hold-to-3R row is not a D7 fault"
 
 
