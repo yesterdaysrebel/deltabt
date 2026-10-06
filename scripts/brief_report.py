@@ -42,6 +42,12 @@ EXIT_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
 #: configured stop (amendment 2026-10-03); the report then states the day this
 #: one WOULD have fired.
 PREREG_LATCH = 0.20
+#: The time stop (variables.tf max_hold_seconds, 72 h). A shadow exit that
+#: outlives the real position closes by then at the latest.
+MAX_HOLD_SECONDS = 259_200
+#: The real position's own exits; after these the other rules keep running
+#: (app/execution/shadow_exits.py). Any other real exit closes them with it.
+OWN_EXITS = ("STOP_LOSS", "TAKE_PROFIT")
 
 
 #: A Delta price-feed drop counts as RECOVERED if the bot logged "subscribed"
@@ -215,14 +221,34 @@ def journal_rows(db: dict) -> list[dict]:
             if isinstance(row, list) and len(row) == len(fields)]
 
 
+def missing_exit(r: dict, now_ts: int, proc_start: int | None) -> str:
+    """Why a closed trade has no row yet for one of the other exits.
+
+    The other rules keep running after the real position closes by its own
+    stop or target, and a row is written only when each closes. Those legs
+    live in the bot's memory alone: a restart after the real close loses
+    them (app/execution/shadow_exits.py).
+    """
+    c = r.get("closed")
+    if (str(r.get("why")) in OWN_EXITS and c is not None
+            and (proc_start is None or proc_start <= c)
+            and r.get("opened") is not None and now_ts - r["opened"] < MAX_HOLD_SECONDS):
+        return "still open"
+    return "lost: restart"
+
+
 def journal(rows: list[dict], live: dict, exits: dict | None = None,
-            omitted: int = 0, real: str = "baseline") -> tuple[list[str], dict]:
+            omitted: int = 0, real: str = "baseline", *, now_ts: int | None = None,
+            proc_start: int | None = None) -> tuple[list[str], dict]:
     """Open positions, then every closed trade of the run under all three exits.
 
     `real` is the rule the simulated account runs: its line comes from the
     position itself; the other two rules' lines come from their shadow rows.
+    Newest first in both tables (owner, 2026-10-06); numbers stay in order of
+    opening.
     """
     exits = exits or {}
+    now_ts = int(now_ts if now_ts is not None else dt.datetime.now(dt.timezone.utc).timestamp())
     others = [rule for rule in EXITS if rule != real]
     out: list[str] = []
     side = {1: "long", -1: "short"}
@@ -232,8 +258,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
     lev = lambda r: "—" if r.get("lev") is None else f"{r['lev']:.0f}x"
     mark = lambda r: f"{num[r['uid']]}{'*' if r.get('carried') else ''}"
 
-    open_ = [r for r in rows if str(r.get("status")).upper() != "CLOSED"]
-    closed = [r for r in rows if str(r.get("status")).upper() == "CLOSED"]
+    open_ = [r for r in rows if str(r.get("status")).upper() != "CLOSED"][::-1]
+    closed = [r for r in rows if str(r.get("status")).upper() == "CLOSED"][::-1]
 
     out.append(f"## Open now ({len(open_)})")
     if open_:
@@ -261,7 +287,7 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
                    f"report's size limit; the database has every trade, and the totals "
                    f"below cover only the trades shown.")
     totals = {rule: {"n": 0, "won": 0, "tp": 0, "r": 0.0, "pnl": 0.0} for rule in EXITS}
-    partial = False
+    partial = waiting = lost = False
     if closed:
         body = []
         for r in closed:
@@ -273,7 +299,10 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
             for rule in others:
                 e = exits.get((r["uid"], rule))
                 if e is None:
-                    lines.append((rule, None, None, "not recorded", None, None, True))
+                    why_missing = missing_exit(r, now_ts, proc_start)
+                    waiting = waiting or why_missing == "still open"
+                    lost = lost or why_missing != "still open"
+                    lines.append((rule, None, None, why_missing, None, None, True))
                 else:
                     lines.append((rule, e.get("closed"), e.get("exit"), e.get("why"), e.get("r"),
                                   None if (per_r is None or e.get("r") is None) else e["r"] * per_r,
@@ -324,6 +353,12 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
         out.append("Trades marked * opened under the previous run and count in this one (same setup).")
     if partial:
         out.append("~ the bot restarted while this trade was open, so this exit is approximate.")
+    if waiting:
+        out.append("still open: the real trade has closed, but this exit has not reached its "
+                   "own stop or target yet (72 h at most); it fills in when it does.")
+    if lost:
+        out.append("lost: restart: the bot restarted after the real trade closed, and the exits "
+                   "still running were lost with it; they cannot be recovered.")
     out.append(f"{EXIT_LABEL[real][0].upper()}{EXIT_LABEL[real][1:]} is the real (simulated) "
                f"trade; {EXIT_LABEL[others[0]]} and {EXIT_LABEL[others[1]]} are where the other "
                "two exits would have closed it. R and P&L are after fees and funding. Lev is "
@@ -415,12 +450,35 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
                          f"{100 * dd_limit:.0f}% stop, by amendment; real money keeps "
                          f"{100 * PREREG_LATCH:.0f}%.")
 
+    fields = db.get("exits_fields") or []
+    exits = {}
+    for row in db.get("exits") or []:
+        if isinstance(row, list) and len(row) == len(fields):
+            e = dict(zip(fields, row))
+            if isinstance(e.get("i"), int) and 0 <= e["i"] < len(rows):
+                exits[(rows[e["i"]]["uid"], e["rule"])] = e
+
     # the self-check (prereg D7): one shadow row under the REAL rule per
-    # closed position (the simulated account runs that rule)
-    counts = db.get("shadow_counts")
-    if isinstance(counts, dict) and n_closed and counts.get(real, 0) != n_closed:
-        problems.append(f"self-check: {n_closed} closed trades but {counts.get(real, 0)} "
-                        f"{EXIT_LABEL[real]} shadow records -- the exit comparison is incomplete")
+    # closed position (the simulated account runs that rule). Checked trade by
+    # trade, not by counting rows tagged with this run: a carried trade's row
+    # may have been written by the previous run, and the table keeps the
+    # first row per (position, rule) -- the 2026-10-06 report flagged trade 1
+    # for exactly that.
+    if "exits" in db and isinstance(db.get("shadow_counts"), dict):
+        omitted_n = int(db.get("journal_omitted") or 0)
+        number = {r["uid"]: omitted_n + i + 1 for i, r in enumerate(rows)}
+        lacking = [number[r["uid"]] for r in closed_rows if (r["uid"], real) not in exits]
+        if lacking:
+            problems.append(f"self-check: {plural(len(lacking), 'closed trade')} "
+                            f"(#{', #'.join(map(str, lacking))}) "
+                            f"{'has' if len(lacking) == 1 else 'have'} no {EXIT_LABEL[real]} "
+                            f"shadow record -- the exit comparison is incomplete")
+    else:
+        counts = db.get("shadow_counts")
+        if isinstance(counts, dict) and n_closed and counts.get(real, 0) != n_closed:
+            problems.append(f"self-check: {n_closed} closed trades but {counts.get(real, 0)} "
+                            f"{EXIT_LABEL[real]} shadow records -- the exit comparison is "
+                            f"incomplete")
 
     # every entry the live checks passed should become a simulated position
     opened = db.get("opened_by_symbol")
@@ -446,15 +504,11 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         out.append("")
         out += [f"*Note:* {n}" for n in log_notes]
     out.append("")
-    fields = db.get("exits_fields") or []
-    exits = {}
-    for row in db.get("exits") or []:
-        if isinstance(row, list) and len(row) == len(fields):
-            e = dict(zip(fields, row))
-            if isinstance(e.get("i"), int) and 0 <= e["i"] < len(rows):
-                exits[(rows[e["i"]]["uid"], e["rule"])] = e
     omitted = int(db.get("journal_omitted") or 0)
-    lines, totals = journal(rows, live, exits, omitted, real)
+    uptime = dr.num(healthz.get("uptime_seconds")) if healthz else None
+    proc_start = None if uptime is None else int(now.timestamp() - uptime)
+    lines, totals = journal(rows, live, exits, omitted, real,
+                            now_ts=int(now.timestamp()), proc_start=proc_start)
     out += lines
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),

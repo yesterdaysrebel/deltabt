@@ -132,7 +132,7 @@ class ShadowExits:
                 # first, and closing hold-to-3R and the ladder at the trail's
                 # exit would have made the comparison worthless. (These legs
                 # live only in this process: a restart loses them, and the
-                # report then says "not recorded".)
+                # report then says "lost: restart".)
                 reason = str(getattr(tr.pos, "exit_reason", None) or "UNKNOWN")
                 if reason in ("STOP_LOSS", "TAKE_PROFIT"):
                     tr.real_gone = True
