@@ -35,6 +35,7 @@ ORDERING WITHIN A TIMESTAMP
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -54,7 +55,9 @@ GATE_REASONS = ("max_open_positions", "max_trades_per_day", "max_daily_loss",
                 # rounds DOWN to zero contracts. A run that skipped those
                 # silently would look like the strategy firing less often
                 # rather than like the account being too small to express it.
-                "zero_contracts", "cost_per_r", "stop_too_close")
+                "zero_contracts", "cost_per_r", "stop_too_close",
+                # Research-only per-symbol pause (RiskGates.pause_seconds).
+                "pause")
 
 
 @dataclass(frozen=True)
@@ -91,6 +94,15 @@ class RiskGates:
     #: policy here is how you ask what the system would have done had somebody
     #: restarted it.
     resume_after_days: int = 0
+
+    #: Per-SYMBOL pause after a closed trade that ``pause_after`` selects (a
+    #: loss, say): no entry on THAT symbol until the exit bar's time plus this
+    #: many seconds. 0 or ``pause_after=None`` disables it, and is the default,
+    #: so nothing that predates it moves. Research only
+    #: (scripts/loss_pause_exact.py): the live engine has no per-symbol pause,
+    #: only the GLOBAL ``cooldown_after_loss_seconds``.
+    pause_seconds: int = 0
+    pause_after: Callable[[Trade], bool] | None = None
 
     @classmethod
     def off(cls) -> "RiskGates":
@@ -169,6 +181,7 @@ class _Series:
     tradable: np.ndarray
     funding: dict
     last_exit_index: int = -(10 ** 9)
+    pause_until: int = -(10 ** 18)
 
 
 def _prepare(book: Book) -> _Series:
@@ -556,6 +569,8 @@ def run_portfolio(
             ))
             del open_positions[sym]
             s.last_exit_index = i
+            if gates.pause_seconds and gates.pause_after is not None and gates.pause_after(result.trades[-1]):
+                s.pause_until = int(s.time[i]) + gates.pause_seconds
             # The streak is updated at CLOSE, on the day the close happens.
             consecutive_losses = 0 if pnl > 0 else consecutive_losses + 1
 
@@ -611,6 +626,9 @@ def run_portfolio(
             if not s.tradable[i]:
                 continue
             if params.cooldown_bars and (i - s.last_exit_index) < params.cooldown_bars:
+                continue
+            if ts < s.pause_until:
+                result.rejects["pause"] += 1
                 continue
 
             side = LONG if want_long else SHORT
