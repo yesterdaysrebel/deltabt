@@ -1,0 +1,131 @@
+STEP 1 -- does a loss on a coin predict the next trade on that coin?
+  A prod universe, hold-to-3R: all n 428 win 28.5% mean +0.044R
+    after a WIN on the coin    n   120  win  36.7%  mean +0.355R
+    after a LOSS on the coin   n   305  win  24.9%  mean -0.093R
+    after a win (0 losses)     n   120  win  36.7%  mean +0.355R
+    after 1 losses in a row    n    76  win  22.4%  mean -0.181R
+    after 2 losses in a row    n    59  win  35.6%  mean +0.289R
+    after 3+ losses in a row   n   170  win  22.4%  mean -0.187R
+  A prod universe, trail: all n 1540 win 59.4% mean -0.033R
+    after a WIN on the coin    n   914  win  60.0%  mean -0.033R
+    after a LOSS on the coin   n   623  win  58.4%  mean -0.035R
+    after a win (0 losses)     n   914  win  60.0%  mean -0.033R
+    after 1 losses in a row    n   365  win  57.5%  mean -0.064R
+    after 2 losses in a row    n   154  win  63.6%  mean +0.086R
+    after 3+ losses in a row   n   104  win  53.8%  mean -0.113R
+  B 32 coins, hold-to-3R: all n 4950 win 26.6% mean -0.083R
+    after a WIN on the coin    n  1310  win  29.9%  mean +0.042R
+    after a LOSS on the coin   n  3608  win  25.4%  mean -0.128R
+    after a win (0 losses)     n  1310  win  29.9%  mean +0.042R
+    after 1 losses in a row    n   935  win  25.8%  mean -0.104R
+    after 2 losses in a row    n   691  win  26.9%  mean -0.087R
+    after 3+ losses in a row   n  1982  win  24.7%  mean -0.153R
+  B 32 coins, trail: all n 4950 win 54.6% mean -0.082R
+    after a WIN on the coin    n  2688  win  55.5%  mean -0.049R
+    after a LOSS on the coin   n  2230  win  53.6%  mean -0.122R
+    after a win (0 losses)     n  2688  win  55.5%  mean -0.049R
+    after 1 losses in a row    n  1203  win  54.3%  mean -0.108R
+    after 2 losses in a row    n   548  win  52.9%  mean -0.136R
+    after 3+ losses in a row   n   479  win  52.6%  mean -0.140R
+
+STEP 2 -- the rules, judged on A
+
+  A hold-to-3R: take everything n 428  mean +0.044R  win 28.5%  total +19.0R
+  cell                       taken  mean R  win%  total R      z  h1 mean  h2 mean
+  coin pause 1h                355  +0.074  29.3    +26.1  +0.73   +0.034   +0.112
+  coin pause 2h                288  +0.072  29.5    +20.6  +0.43   +0.155   -0.014
+  coin pause 4h                264  +0.235  33.3    +61.9  +2.82   +0.222   +0.247
+  coin pause 8h                233  +0.228  33.5    +53.2  +2.36   +0.219   +0.238
+  coin pause 12h               210  +0.230  33.3    +48.3  +2.08   +0.216   +0.244
+  coin pause 24h               167  +0.231  33.5    +38.6  +1.70   +0.318   +0.141
+  coin pause 48h               123  +0.162  32.5    +20.0  +0.83   +0.254   +0.069
+  virtual N2 M1 coin           199  +0.170  31.7    +33.8  +1.35   +0.271   +0.075
+  virtual N2 M2 coin            92  +0.249  32.6    +22.9  +1.23   +0.250   +0.247
+  virtual N3 M1 coin           258  +0.197  32.6    +50.8  +2.19   +0.259   +0.140
+  virtual N3 M2 coin           146  +0.206  32.9    +30.1  +1.36   +0.279   +0.132
+  virtual N4 M1 coin           296  +0.147  31.1    +43.5  +1.76   +0.153   +0.142
+  virtual N4 M2 coin           197  +0.168  31.5    +33.0  +1.27   +0.123   +0.201
+  virtual N2 M1 account        190  +0.110  30.5    +20.9  +0.71   +0.191   +0.035
+  virtual N2 M2 account         85  -0.057  25.9     -4.8  -0.56   +0.009   -0.121
+  virtual N3 M1 account        249  +0.169  32.1    +42.1  +1.64   +0.236   +0.104
+  virtual N3 M2 account        147  +0.091  29.9    +13.3  +0.43   +0.204   -0.019
+  virtual N4 M1 account        285  +0.097  30.2    +27.7  +0.84   +0.133   +0.062
+  virtual N4 M2 account        187  -0.055  26.2    -10.3  -1.02   +0.054   -0.140
+  P1 best cell 'coin pause 4h' z +2.82, family-wise p 0.043 (<= 0.05): PASS
+  P2 first-half pick 'coin pause 24h' (h1 +0.318R): second half +0.141R vs everything +0.045R, p vs random skip 0.298 (<= 0.10): fail
+
+  A trail: take everything n 1540  mean -0.033R  win 59.4%  total -51.6R
+  cell                       taken  mean R  win%  total R      z  h1 mean  h2 mean
+  coin pause 1h               1332  -0.016  59.9    -21.0  +2.08   -0.047   +0.016
+  coin pause 2h               1179  -0.013  60.5    -15.5  +1.64   -0.049   +0.023
+  coin pause 4h               1028  -0.015  60.5    -15.0  +1.13   -0.056   +0.025
+  coin pause 8h                830  -0.030  59.0    -24.9  +0.17   -0.061   -0.000
+  coin pause 12h               727  -0.006  60.8     -4.2  +1.15   -0.011   -0.001
+  coin pause 24h               500  -0.048  60.2    -24.2  -0.46   -0.040   -0.057
+  coin pause 48h               315  +0.003  60.0     +1.1  +0.79   -0.033   +0.038
+  virtual N2 M1 coin          1282  -0.041  59.4    -53.0  -0.81   -0.086   +0.003
+  virtual N2 M2 coin           990  -0.029  59.8    -28.8  +0.18   -0.082   +0.023
+  virtual N3 M1 coin          1436  -0.028  59.8    -39.8  +0.93   -0.064   +0.009
+  virtual N3 M2 coin          1272  -0.016  60.8    -20.0  +1.69   -0.054   +0.022
+  virtual N4 M1 coin          1492  -0.036  59.4    -53.1  -0.46   -0.070   -0.001
+  virtual N4 M2 coin          1380  -0.028  60.1    -38.5  +0.83   -0.064   +0.007
+  virtual N2 M1 account       1253  -0.050  59.0    -62.4  -1.60   -0.090   -0.008
+  virtual N2 M2 account        984  -0.054  58.3    -53.4  -1.32   -0.088   -0.022
+  virtual N3 M1 account       1427  -0.039  59.4    -56.2  -0.94   -0.064   -0.014
+  virtual N3 M2 account       1292  -0.036  60.1    -46.1  -0.29   -0.054   -0.018
+  virtual N4 M1 account       1484  -0.037  59.2    -55.3  -0.82   -0.070   -0.004
+  virtual N4 M2 account       1388  -0.039  59.8    -54.4  -0.82   -0.064   -0.016
+  P1 best cell 'coin pause 1h' z +2.08, family-wise p 0.302 (<= 0.05): fail
+  P2 first-half pick 'coin pause 12h' (h1 -0.011R): second half -0.001R vs everything -0.003R, p vs random skip 0.495 (<= 0.10): fail
+
+REPORTED, NOT JUDGED -- B, 32 coins
+
+  B hold-to-3R: take everything n 4950  mean -0.083R  win 26.6%  total -409.8R
+  cell                       taken  mean R  win%  total R      z  h1 mean  h2 mean
+  coin pause 1h               4314  -0.077  26.7   -331.9  +0.91   -0.108   -0.045
+  coin pause 2h               3559  -0.078  26.8   -276.5  +0.50   -0.141   -0.015
+  coin pause 4h               3224  -0.051  27.5   -163.8  +1.77   -0.100   -0.000
+  coin pause 8h               2894  -0.024  28.2    -68.5  +2.86   -0.047   +0.000
+  coin pause 12h              2653  -0.015  28.3    -41.1  +2.89   -0.051   +0.020
+  coin pause 24h              2191  -0.002  28.8     -4.3  +2.99   -0.058   +0.055
+  coin pause 48h              1733  +0.038  29.8    +66.3  +3.59   -0.050   +0.129
+  virtual N2 M1 coin          2277  -0.020  28.2    -45.9  +2.00   -0.043   +0.002
+  virtual N2 M2 coin           911  -0.038  27.8    -34.9  +0.41   -0.109   +0.036
+  virtual N3 M1 coin          2968  -0.036  27.9   -105.9  +1.95   -0.090   +0.017
+  virtual N3 M2 coin          1355  -0.051  27.7    -68.5  +0.17   -0.129   +0.027
+  virtual N4 M1 coin          3471  -0.060  27.2   -206.9  +1.01   -0.096   -0.024
+  virtual N4 M2 coin          1815  -0.085  26.6   -153.6  -0.66   -0.113   -0.054
+  virtual N2 M1 account       2179  -0.070  27.2   -153.2  +0.48   -0.081   -0.060
+  virtual N2 M2 account       1223  -0.104  26.3   -126.7  -0.50   -0.107   -0.101
+  virtual N3 M1 account       2481  -0.046  27.7   -114.0  +1.47   -0.052   -0.041
+  virtual N3 M2 account       1483  -0.111  26.1   -164.6  -0.79   -0.144   -0.080
+  virtual N4 M1 account       2715  -0.071  26.9   -194.1  +0.55   -0.049   -0.092
+  virtual N4 M2 account       1671  -0.103  26.2   -172.6  -0.61   -0.123   -0.086
+  P1 best cell 'coin pause 48h' z +3.59, family-wise p 0.004 (<= 0.05): PASS
+  P2 first-half pick 'virtual N2 M1 coin' (h1 -0.043R): second half +0.002R vs everything -0.054R, p vs random skip 0.176 (<= 0.10): fail
+
+  B trail: take everything n 4950  mean -0.082R  win 54.6%  total -407.7R
+  cell                       taken  mean R  win%  total R      z  h1 mean  h2 mean
+  coin pause 1h               4631  -0.079  54.4   -367.8  +0.78   -0.076   -0.083
+  coin pause 2h               4170  -0.072  54.6   -301.5  +1.54   -0.077   -0.068
+  coin pause 4h               3897  -0.071  54.4   -278.5  +1.33   -0.081   -0.062
+  coin pause 8h               3605  -0.064  54.5   -231.5  +2.00   -0.067   -0.061
+  coin pause 12h              3349  -0.063  54.4   -210.7  +1.92   -0.055   -0.071
+  coin pause 24h              2876  -0.046  55.6   -133.6  +2.99   -0.041   -0.052
+  coin pause 48h              2332  -0.053  55.6   -124.6  +1.74   -0.060   -0.047
+  virtual N2 M1 coin          3923  -0.068  55.1   -266.3  +1.82   -0.077   -0.059
+  virtual N2 M2 coin          2868  -0.069  55.2   -196.5  +0.63   -0.081   -0.056
+  virtual N3 M1 coin          4471  -0.076  54.8   -340.6  +1.12   -0.083   -0.070
+  virtual N3 M2 coin          3801  -0.076  54.8   -289.1  +0.17   -0.084   -0.068
+  virtual N4 M1 coin          4726  -0.078  54.7   -370.2  +1.21   -0.081   -0.075
+  virtual N4 M2 coin          4340  -0.076  54.8   -331.2  +0.63   -0.079   -0.074
+  virtual N2 M1 account       3366  -0.060  55.9   -203.0  +2.48   -0.063   -0.057
+  virtual N2 M2 account       2644  -0.084  54.0   -222.8  -0.30   -0.087   -0.082
+  virtual N3 M1 account       3988  -0.087  54.1   -347.7  -0.89   -0.090   -0.085
+  virtual N3 M2 account       3381  -0.085  53.9   -287.2  -0.51   -0.088   -0.082
+  virtual N4 M1 account       4466  -0.082  54.5   -364.4  +0.01   -0.080   -0.083
+  virtual N4 M2 account       4087  -0.079  54.7   -322.5  +0.30   -0.075   -0.082
+  P1 best cell 'coin pause 24h' z +2.99, family-wise p 0.026 (<= 0.05): PASS
+  P2 first-half pick 'coin pause 24h' (h1 -0.041R): second half -0.052R vs everything -0.083R, p vs random skip 0.029 (<= 0.10): PASS
+
+VERDICT (decision exit = trail): FAIL; hold-to-3R fail

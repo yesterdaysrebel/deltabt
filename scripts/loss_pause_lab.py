@@ -42,6 +42,26 @@ a later signal the list does not hold. The paired filter is used because
 unpaired re-runs here swing by more than any effect ever found (cooldown_bars
 11 -> 12 moved sumR from -7.8 to +49.6). A pass would be re-run exactly before
 anything is built.
+
+RESULT 2026-10-09 (out/sweep/five_min_arm_lab/loss_pause/result_2026-10-09.txt):
+VERDICT FAIL on the decision exit (trail); hold-to-3R also fails (P1 pass, P2 fail).
+  * STEP 1 FINDS A REAL DEPENDENCE ON HOLD-TO-3R: the trade after a WIN on a coin
+    does better than the trade after a LOSS -- A 36.7% vs 24.9% wins (+0.355R vs
+    -0.093R, n 120 / 305); B 29.9% vs 25.4% (+0.042R vs -0.128R, n 1,310 / 3,608).
+    On the trail it is small: A 60.0% vs 58.4%, B 55.5% vs 53.6%.
+  * A trail: best cell 'coin pause 1h' z +2.08, family-wise p 0.30; the first-half
+    pick (12h) is -0.001R vs -0.003R on the second half. Nothing.
+  * A hold-to-3R: coin pause 4h +0.235R vs +0.044R (264 of 428 trades), family-wise
+    p 0.043; 4h/8h/12h are +0.22 to +0.25R in BOTH halves. But the rule's own
+    first-half pick was 24h, which fell to +0.141R (p 0.30): P2 fails.
+  * B (reported only): coin pause 48h on hold-to-3R +0.038R vs -0.083R (family-wise
+    p 0.004); coin pause 24h on the trail -0.046R vs -0.082R (p 0.026) and passes
+    its second-half check (p 0.029) -- still losing money.
+  * Virtual mode (equity-curve filter) is weaker than a plain coin pause
+    everywhere, and account-wide virtual mode is worse than doing nothing.
+  A LEAD, NOT A RESULT: a per-coin pause after a loss on hold-to-3R. It needs the
+  exact engine re-run (a skipped trade frees the slot) with ONE cell fixed in
+  advance before anything is built.
 """
 import dataclasses, glob, sys
 from dataclasses import replace

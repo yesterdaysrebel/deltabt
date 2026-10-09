@@ -149,6 +149,17 @@ candle-only 0.490). **Still untested, because no history exists:** trade flow by
 (public trades endpoint returns the last 50 only; the bot's `all_trades` feed carries the side but
 `normalize_trade` drops it and nothing is saved), order book, liquidations. Those need a forward
 recorder.
+**A daily trade cap does not raise the win rate (2026-10-09).** Prod universe backtest, engine's own
+`max_trades_per_day`: hold-to-3R +0.044R uncapped → −0.084R at 2/day; trail −0.028R → −0.048R; the
+first 2 entries of a day did no better than 2 random ones. The dry run's own 46 closed trades agree
+(win rate lower under the cap; p 0.24–0.42 vs random) — far too few to decide anything.
+**Pausing after losses: FAIL as pre-registered, one lead (2026-10-09, `scripts/loss_pause_lab.py`,
+rules committed before the run).** Virtual mode after N losses (equity-curve filter) does nothing on
+the trail and account-wide is worse than nothing. But on hold-to-3R the trade after a win on a coin
+beats the trade after a loss (prod universe 36.7% vs 24.9% wins; 32 coins 29.9% vs 25.4%), and a
+per-coin pause after a loss lifts hold-to-3R from +0.044R to +0.23R at 4–12h in both halves
+(family-wise p 0.043) — yet the rule's own first-half pick (24h) failed the second half. Lead only:
+needs an exact engine re-run with one pause length fixed in advance.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
