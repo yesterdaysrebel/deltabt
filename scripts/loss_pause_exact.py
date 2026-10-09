@@ -38,6 +38,20 @@ FORWARD CHECK, registered now, run after 2026-12-31 only if E1 and E2 pass:
   universe A, 2026-10-01..2026-12-31, hold-to-3R, same arms. Confirmed if the
   loss pause beats no pause and beats random pausing at p <= 0.10. Nothing is
   built into the bot before that.
+
+RESULT 2026-10-09 (out/sweep/five_min_arm_lab/loss_pause/exact_2026-10-09.txt):
+THE LEAD IS CLOSED. No forward check.
+  * A hold-to-3R: no pause +0.044R (428 trades); loss pause 8h -0.015R (398),
+    halves -0.095 / +0.061; 32% of 200 random pauses did as well (p 0.32).
+    E1 fail, E2 fail. The filter lab's +0.228R at 8h was the filter's own
+    artefact: a skipped trade frees the coin, and the bot's next entry comes
+    sooner than the filtered list assumed.
+  * A trail: -0.033R -> -0.029R, p 0.19 vs random. Nothing.
+  * Random pauses alone spread hold-to-3R from -0.151R to +0.049R (5-95%): the
+    unpaired noise floor is wider than the effect the filter promised.
+  * B (reported): the trail loss pause beat all 40 random runs (-0.079R vs
+    -0.091R; no pause -0.097R) -- a ~0.02R loss reduction on a strategy still
+    losing ~0.08R a trade. Not a filter worth building.
 """
 import dataclasses, glob, sys
 from concurrent.futures import ProcessPoolExecutor
