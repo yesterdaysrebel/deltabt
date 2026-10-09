@@ -1,0 +1,14 @@
+
+== hold-to-3R ==
+cap 20/day: trades  428 (2.53/active day)  net +0.044R  win 29%  3R hit 26.2%  sum +19.0R  blocks -0.23 +0.32 +0.24 -0.15
+cap  3/day: trades  400 (2.20/active day)  net -0.092R  win 25%  3R hit 23.8%  sum -36.9R  blocks -0.15 +0.04 -0.11 -0.14
+cap  2/day: trades  321 (1.70/active day)  net -0.084R  win 26%  3R hit 24.3%  sum -27.0R  blocks -0.07 -0.15 -0.03 -0.09
+cap  1/day: trades  211 (1.00/active day)  net +0.042R  win 28%  3R hit 28.0%  sum +8.8R  blocks +0.13 +0.22 -0.04 -0.14
+subset check: first 2 of each day -0.004R (n 273) vs random 2 of the same days +0.097R; p(random >= first-2) 0.98
+
+== trail ==
+cap 20/day: trades 1542 (6.37/active day)  net -0.028R  win 60%  3R hit 1.6%  sum -42.8R  blocks -0.06 -0.06 +0.01 +0.01
+cap  3/day: trades  673 (2.75/active day)  net -0.045R  win 60%  3R hit 1.5%  sum -30.0R  blocks +0.01 -0.01 -0.05 -0.13
+cap  2/day: trades  471 (1.91/active day)  net -0.048R  win 59%  3R hit 1.5%  sum -22.4R  blocks +0.01 -0.10 -0.02 -0.08
+cap  1/day: trades  252 (1.00/active day)  net -0.076R  win 58%  3R hit 2.0%  sum -19.3R  blocks -0.03 -0.01 -0.14 -0.12
+subset check: first 2 of each day -0.046R (n 457) vs random 2 of the same days -0.035R; p(random >= first-2) 0.64

@@ -1,0 +1,3 @@
+plant strength 0.0: planted feature alone AUC 0.502; walk-forward model AUC 0.494
+plant strength 0.25: planted feature alone AUC 0.576; walk-forward model AUC 0.534
+plant strength 0.5: planted feature alone AUC 0.614; walk-forward model AUC 0.591
