@@ -27,6 +27,48 @@ log() { echo "[run_live] $*"; }
 # shellcheck disable=SC1091
 set -a; . /opt/deltabt/env; set +a
 
+# POSTGRES ON THIS HOST (db_location = "host"): docs/db_on_host.md.
+PG_LOCAL=172.17.0.1
+P="${SSM_IMAGE_TAG_PARAM%/*}"
+sm() { aws secretsmanager "$@" --region "$AWS_REGION" --secret-id "$DB_SECRET_ARN"; }
+ensure_pg() {
+  local d=/var/lib/deltabt-pg n pw
+  mountpoint -q $d || {
+    for n in $(seq 60); do [ -e /dev/sdf ] && break; sleep 2; done
+    [ -e /dev/sdf ] || { log "no pgdata volume at /dev/sdf"; exit 90; }
+    blkid /dev/sdf >/dev/null || mkfs.ext4 -q -L deltabt-pg /dev/sdf
+    install -d $d && mount /dev/sdf $d
+  }
+  ip -4 a show docker0 | grep -q "inet $PG_LOCAL/" || { log "docker0 is not $PG_LOCAL"; exit 90; }
+  sm get-secret-value >/dev/null 2>&1 || {
+    [ -d $d/data ] && { log "pg data exists, its secret is empty"; exit 90; }
+    sm put-secret-value --secret-string "{\"username\":\"deltabt\",\"password\":\"$(openssl rand -hex 24)\"}" >/dev/null
+  }
+  docker start deltabt-pg >/dev/null 2>&1 || {
+    pw=$(sm get-secret-value --query SecretString --output text | python3 -c 'import json,sys;print(json.load(sys.stdin)["password"])')
+    docker run -d --name deltabt-pg -p $PG_LOCAL:5432:5432 --memory 600m -v $d:/var/lib/postgresql/data \
+      -e PGDATA=/var/lib/postgresql/data/data -e POSTGRES_USER=deltabt -e POSTGRES_PASSWORD="$pw" postgres:16 >/dev/null
+  }
+  for n in $(seq 60); do docker exec deltabt-pg pg_isready -qU deltabt && break; sleep 2; done
+  docker exec deltabt-pg pg_isready -qU deltabt || { log "postgres not ready"; exit 1; }
+  n=/etc/systemd/system/deltabt-pg-backup
+  [ -f $n.timer ] || { printf '[Service]\nType=oneshot\nExecStart=/opt/deltabt/run.sh --backup-db\n' >$n.service
+    printf '[Timer]\nOnCalendar=*-*-* 18:30\nPersistent=true\n[Install]\nWantedBy=timers.target\n' >$n.timer
+    systemctl daemon-reload && systemctl enable --now deltabt-pg-backup.timer; }
+}
+case "${1:-}" in
+  --ensure-db) ensure_pg; exit 0 ;;
+  --backup-db) v=$(aws ssm get-parameter --region "$AWS_REGION" --name "$P/pgdata_volume" --query Parameter.Value --output text)
+    k=$(echo "$v" | python3 -c 'import json,sys;print(json.load(sys.stdin)["keep_days"])'); v=$(echo "$v" | python3 -c 'import json,sys;print(json.load(sys.stdin)["volume"])')
+    docker exec deltabt-pg psql -qU deltabt -c CHECKPOINT
+    aws ec2 create-snapshot --region "$AWS_REGION" --volume-id "$v" --description "deltabt pg ${P##*/}" --tag-specifications \
+      "ResourceType=snapshot,Tags=[{Key=Role,Value=pgdata-backup},{Key=Stack,Value=${P##*/}}]" >/dev/null
+    for s in $(aws ec2 describe-snapshots --region "$AWS_REGION" --owner-ids self --filters Name=volume-id,Values="$v" \
+      Name=tag:Role,Values=pgdata-backup --query "Snapshots[?StartTime<'$(date -ud "-$k days" +%FT%T)'].SnapshotId" --output text)
+    do aws ec2 delete-snapshot --region "$AWS_REGION" --snapshot-id "$s"; done; exit 0 ;;
+esac
+[ "$DB_HOST" = "$PG_LOCAL" ] && ensure_pg
+
 TAG="$(aws ssm get-parameter --region "$AWS_REGION" --name "$SSM_IMAGE_TAG_PARAM" \
         --query Parameter.Value --output text)"
 if [[ -z "$TAG" || "$TAG" == "none" ]]; then
@@ -123,7 +165,8 @@ DB_PASS="$(printf '%s' "$SECRET" | python3 -c 'import json,sys;print(json.load(s
 unset SECRET
 DB_PASS_ENC="$(printf '%s' "$DB_PASS" | python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.stdin.read(), safe=""))')"
 unset DB_PASS
-DATABASE_URL="postgresql://${DB_USER}:${DB_PASS_ENC}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
+SSLM=require; [ "$DB_HOST" = "$PG_LOCAL" ] && SSLM=disable
+DATABASE_URL="postgresql://${DB_USER}:${DB_PASS_ENC}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=$SSLM"
 
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "${ECR_REPOSITORY_URL%%/*}"
@@ -143,6 +186,7 @@ umask 077
   printf 'DELTA_API_SECRET=%s\n' "$DELTA_API_SECRET"
   printf 'DELTA_ENV=%s\n' "$DELTA_ENV"
   printf '%s\n' "$SIZING_ENV"
+  [ "$DB_HOST" = "$PG_LOCAL" ] && printf 'DB_IAM_AUTH=0\n'
 } > /run/deltabt/env
 unset DATABASE_URL DB_PASS_ENC DELTA_API_KEY DELTA_API_SECRET
 

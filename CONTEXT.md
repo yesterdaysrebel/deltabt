@@ -332,9 +332,13 @@ cannot be `exec`'d — use `docker run --entrypoint python`.
 2. **Before any real money:** testnet probe of Delta's trailing stop on an open bracket; Trading keys
    for the `baseline`/`ladder` sub-accounts created only after their hosts exist (EIP allowlist);
    a real-money pre-registration frozen before the first order.
-3. Housekeeping the owner may choose: delete the old global secret
+3. **Postgres on the bot host instead of RDS — built, NOT merged** (draft PR, branch `infra/db-on-host`,
+   `docs/db_on_host.md`). RDS is ~80% of a ~$41/month bill; after the switch and phase B (RDS removed)
+   about $8/month. Owner decides on merge after the dry run's read; merging replaces the host and
+   starts a new experiment.
+4. Housekeeping the owner may choose: delete the old global secret
    `deltabt-paper/live/venue-credentials`; delete the snapshot `deltabt-paper-pre-resize-20261002`.
-4. The RDS master password rotates ~2026-10-08; the live image logs in with IAM tokens, and #102 moves
+5. The RDS master password rotates ~2026-10-08; the live image logs in with IAM tokens, and #102 moves
    the monitor probe to tokens too.
-5. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
+6. Whether stop-limit + fallback is worth carrying is decidable only with **tick data**; the entire
    overshoot is worth at most +0.0154R/trade.

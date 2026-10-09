@@ -160,6 +160,7 @@ jobs:
             --document "${{ vars[matrix.document_var] || format('deltabt-paper-{0}-monitor', matrix.stack) }}" \
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --facts-json facts.json \
+            --expect-db-snapshots \
             > report.md
           echo "exitcode=$?" >> "$GITHUB_OUTPUT"
           cat report.md >> "$GITHUB_STEP_SUMMARY"
