@@ -135,10 +135,20 @@ only once a trade has closed, threshold fixed from the previous month, walk-forw
 5 seeds, judged on net R against random picking. Out-of-sample AUC 0.490 (months 0.42–0.52); the
 model's picks are no better than random on hold-to-3R at 10/25/50% depth and worse than trading
 everything; shuffled labels look the same (leak check passes). The one-line cost rule beats it at
-every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). **Not tested, because
-the data does not exist here:** trade flow by aggressor side, order-book imbalance, open interest,
-liquidations — the exchange analogue of what carried the memecoin stack (who is trading). The archive
-holds 1m candles and funding only; that data would have to be recorded forward first.
+every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). Reproduced byte for
+byte 2026-10-09; a planted weak signal (alone AUC 0.576) comes back at 0.534, so the null is not a
+blind pipeline.
+**Open interest, the signal bar and regime beyond 24h do not rescue it either (2026-10-09,
+pre-registered in `docs/entry_filter_bundle_prereg.md` before the data was fetched,
+`scripts/entry_filter_bundle_lab.py`).** Delta serves full perp OI history through the undocumented
+`OI:<SYMBOL>` candle series (`scripts/fetch_oi_history.py`; 1m/5m/1h agree exactly on 3,744 checked
+pairs). 25 new features on top of the 29, no fee inputs, 5-seed mean, random pickers matched by day:
+VALID (planted 0.560) and FAIL on all three rules — AUC 0.516 (bar 0.530); 25% picks −0.053R /
+−0.028R (p 0.66 / 0.062); below the cheap-fee rule on both exits. OI adds nothing (AUC 0.487 vs
+candle-only 0.490). **Still untested, because no history exists:** trade flow by aggressor side
+(public trades endpoint returns the last 50 only; the bot's `all_trades` feed carries the side but
+`normalize_trade` drops it and nothing is saved), order book, liquidations. Those need a forward
+recorder.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
