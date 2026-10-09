@@ -162,7 +162,10 @@ engine (`RiskGates.pause_seconds`, off by default) it is −0.015R**, beaten by 
 pauses: a skipped trade frees the coin and the next entry comes sooner than the filter assumed.
 Random 8h pauses alone spread hold-to-3R from −0.151R to +0.049R — judge any gate against random
 firing of the same gate, never one baseline run. A 4h pause on hold-to-3R, run post-hoc at the
-owner's request: +0.022R vs +0.044R with no pause, halves +0.108 / −0.057, p 0.21 vs random — also fails.
+owner's request: +0.022R vs +0.044R with no pause, halves +0.108 / −0.057, p 0.21 vs random — also fails. Per coin (same exact runs vs random pauses on that coin):
+BEAT 4h +0.133R vs +0.037R (p 0.06) but 8h +0.015R (p 0.43); AKE −0.293R / −0.207R, as bad as random
+pauses (AKE's result swings −0.3R from ANY pause — path dependence); BANK 29–41 trades. Six post-hoc looks,
+none below 0.05, and the same coin flips between 4h and 8h: no per-coin rule either.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
