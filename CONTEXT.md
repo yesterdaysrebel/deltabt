@@ -27,12 +27,12 @@ safety claim to anyone.
 
 ## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
-**2026-10-09, amendment 2 (owner): the trail experiment is being retired.** The account returns to
-the baseline exit (hold to 3R) with a NEW 4h per-coin pause after a loss
-(`RiskConfig.pause_symbol_after_loss_seconds`, `live_sizing.pause_symbol_after_loss_seconds`,
-forwarded by `run_live.sh` as `DELTABOT_PAUSE_SYMBOL_AFTER_LOSS`). The research did not support the
-pause (`scripts/loss_pause_exact.py` on the research branch). Host replacement + `deploy prod`
-pending; the table below is the state BEFORE it until the new id is recorded.
+**2026-10-09, amendment 2 (owner): baseline exit (hold to 3R) + a 4h per-coin pause after a loss**
+(`RiskConfig.pause_symbol_after_loss_seconds` = 14400, delivered via `live_sizing` → `run_live.sh` →
+`DELTABOT_PAUSE_SYMBOL_AFTER_LOSS`). The research did not support the pause (`scripts/loss_pause_exact.py`,
+research branch). New experiment `DRY-MANUAL_SCALP_BOTH_T3-5-20261009-ca7ddd5` registered 12:23:31 UTC on
+`i-0d484d4c927b3a7f8` (same EIP), image `ca7ddd5` (#113), read due 2026-10-30; the trail experiment
+stopped 12:22:24 UTC with 46 closed trades.
 
 Last read 2026-10-03 ~06:30 UTC. First night: 4 closed (1 BEAT win, 3 AKEUSD losses of ~$11.9
 each), equity $229.38, 9.3% below peak. **Amendment 2026-10-03 (owner):** AKEUSD floor 5% → 3%, the
@@ -45,14 +45,14 @@ replaced host).
 
 | stack | venue | experiment | state |
 |---|---|---|---|
-| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` | RUNNING since 2026-10-03 11:55:35Z on `i-0b59a7984b76f2154` (EIP `15.207.211.127`), image `5683929`, IAM-token DB login, `deltabt_dryrun` |
+| `dryrun` | Delta India **PROD**, read-only key | `DRY-MANUAL_SCALP_BOTH_T3-5-20261009-ca7ddd5` | RUNNING since 2026-10-09 12:23:31Z on `i-0d484d4c927b3a7f8` (EIP `15.207.211.127`), image `ca7ddd5`, IAM-token DB login, `deltabt_dryrun` |
 
 **What it is.** The live code path (`live/dry_run.py`) on prod books with a read-only key. Every
 approved entry runs the live checks (kill switch, entry deviation ≤ 0.25R, spread ≤ 0.5R, mark not
 beyond the stop, leverage plan) and is journaled as `DRY_RUN_ORDER` or `DRY_RUN_REFUSED` in
 `system_events`; the position itself is filled and exited by the paper fill model on prod ticks.
-Entries are the baseline entry rule; since the 2026-10-03 amendment the account's exit is the
-**trail** (`manual_scalp_both_t3_trail@5`, BEAT/AKE/BANK). Every position is shadowed under
+Entries are the baseline entry rule; since amendment 2 (2026-10-09) the account's exit is
+**hold to 3R** (`manual_scalp_both_t3@5`, BEAT/AKE/BANK) and a coin is paused 4h after a loss on it. Every position is shadowed under
 **baseline** (hold to 3R), **ladder** (rungs) and **trail** (0.5R behind the peak from +0.5R) —
 one row per position per rule in `shadow_exits`, one stop rule in `deltabt/exits.py`; legs that
 outlive the real position keep running in-process (lost on restart → "not recorded"). Sizing:

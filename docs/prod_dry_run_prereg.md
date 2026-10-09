@@ -231,3 +231,20 @@ Everything else is unchanged: $250 at 2%, AKEUSD floor 3%, 50% latch (the plan's
 **Retired at the roll:** `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` (46 closed trades by
 2026-10-09 05:55 UTC); its records stay in the database. Positions open at the roll carry over and
 are exited by hold-to-3R from then on. Nothing above the FROZEN line is edited.
+
+## Addendum 2026-10-09 — the amendment-2 experiment
+
+| field | value |
+|---|---|
+| experiment | `DRY-MANUAL_SCALP_BOTH_T3-5-20261009-ca7ddd5` |
+| registered | 2026-10-09 12:23:31 UTC (5:53 PM IST); the 21 days run to 2026-10-30 |
+| image | `ca7ddd5` (#113) |
+| strategy | `manual_scalp_both_t3@5m` (hold to 3R), hash `41e764beceaf787f4b54ec25106b4c366e375478f4dbf3660d1a3b20c686f88d` |
+| risk hash | `af209b5896a83484` |
+| recorded risk | equity 250, risk 0.02, `min_contract_risk_cap` 0.03, `max_drawdown_pct` 0.50, daily loss 0.10, 8 consecutive losses, 72 h max hold, both global cooldowns 0, **`pause_symbol_after_loss_seconds` 14400** |
+| host | `i-0d484d4c927b3a7f8` (replaced by the amendment, launched 12:03 UTC), EIP `15.207.211.127` (unchanged) |
+| retired | `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929`, stopped 12:22:24 UTC by the roll |
+
+The bot was not trading from the host replacement (~12:03 UTC) to the bind (12:23:41 UTC). One BEATUSD
+long opened under the trail experiment (08:30 UTC) was restored and counts in this run; it is now exited
+by hold-to-3R. The simulated account restarts at $250.
