@@ -163,6 +163,13 @@ class RiskConfig:
     max_leverage: float = 3.0
     cooldown_after_trade_seconds: int = 900     # 15m
     cooldown_after_loss_seconds: int = 3600     # 60m
+    #: PER-SYMBOL pause after a losing close on THAT symbol, in seconds; the
+    #: other symbols keep trading. 0 disables it, and is the default, so every
+    #: configuration that predates it is unchanged. Added 2026-10-09 for the
+    #: dry run by owner decision (4h, baseline exit). The research did NOT
+    #: support it: an exact backtest gave +0.022R vs +0.044R without it, p 0.21
+    #: against random pauses (scripts/loss_pause_exact.py). This is a trial.
+    pause_symbol_after_loss_seconds: int = 0
     #: Slippage assumption in basis points of notional, applied to taker fills.
     slippage_bps: float = 2.0
     #: When a limit is breached, new entries are blocked. Existing positions
@@ -197,6 +204,9 @@ class RiskConfig:
                 f"got {self.max_consecutive_losses}")
         if self.max_trades_per_day < 1:
             raise ValueError("max_trades_per_day must be >= 1")
+        if self.pause_symbol_after_loss_seconds < 0:
+            raise ValueError("pause_symbol_after_loss_seconds must be >= 0 (0 disables it), got "
+                             f"{self.pause_symbol_after_loss_seconds}")
         if self.max_hold_seconds < 0:
             raise ValueError(
                 f"max_hold_seconds must be >= 0 (0 disables the time stop), "
@@ -271,6 +281,7 @@ class Settings:
             # population. That is the censoring an ungated run exists to avoid.
             ("DELTABOT_COOLDOWN_AFTER_TRADE", "cooldown_after_trade_seconds", int),
             ("DELTABOT_COOLDOWN_AFTER_LOSS", "cooldown_after_loss_seconds", int),
+            ("DELTABOT_PAUSE_SYMBOL_AFTER_LOSS", "pause_symbol_after_loss_seconds", int),
         ):
             # Guard left EXACTLY as it was. "0" is a non-empty string and so is
             # already truthy, which is what this experiment needs to set the

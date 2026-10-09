@@ -792,7 +792,7 @@ class LiveTradingBot(TradingBot):
         closed = apply_close(record, close_facts(closing, requested=requested))
         await self.repo.update_position(closed)
         self.state.apply_close(closed.realized_pnl or 0.0,
-                               closed.closed_at or self.clock.now())
+                               closed.closed_at or self.clock.now(), symbol=closed.symbol)
         await self._save_state()
         if closed.exit_reason == "LIQUIDATION":
             # Leverage is chosen so liquidation sits three stop-distances away

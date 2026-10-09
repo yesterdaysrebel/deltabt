@@ -27,6 +27,13 @@ safety claim to anyone.
 
 ## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
+**2026-10-09, amendment 2 (owner): the trail experiment is being retired.** The account returns to
+the baseline exit (hold to 3R) with a NEW 4h per-coin pause after a loss
+(`RiskConfig.pause_symbol_after_loss_seconds`, `live_sizing.pause_symbol_after_loss_seconds`,
+forwarded by `run_live.sh` as `DELTABOT_PAUSE_SYMBOL_AFTER_LOSS`). The research did not support the
+pause (`scripts/loss_pause_exact.py` on the research branch). Host replacement + `deploy prod`
+pending; the table below is the state BEFORE it until the new id is recorded.
+
 Last read 2026-10-03 ~06:30 UTC. First night: 4 closed (1 BEAT win, 3 AKEUSD losses of ~$11.9
 each), equity $229.38, 9.3% below peak. **Amendment 2026-10-03 (owner):** AKEUSD floor 5% → 3%, the
 simulated account runs the TRAIL exit (hold-to-3R and ladder stay as shadows and now keep running
