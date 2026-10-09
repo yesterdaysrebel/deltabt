@@ -199,6 +199,18 @@ class TestCooldownsAreConfigurable:
         assert s.risk.cooldown_after_trade_seconds == 900
         assert s.risk.cooldown_after_loss_seconds == 3600
 
+    def test_the_symbol_pause_reaches_the_risk_config_and_its_hash(self):
+        with mock.patch.dict(os.environ, {"DELTABOT_PAUSE_SYMBOL_AFTER_LOSS": "14400"}, clear=False):
+            s = Settings.from_env()
+        assert s.risk.pause_symbol_after_loss_seconds == 14_400
+        off = build_identity("E", FROZEN, RiskConfig(), {}, ("BTCUSD",))
+        on = build_identity("E", FROZEN, s.risk, {}, ("BTCUSD",))
+        assert off.risk_hash != on.risk_hash
+
+    def test_a_negative_symbol_pause_is_refused(self):
+        with pytest.raises(ValueError, match="pause_symbol_after_loss_seconds"):
+            replace(RiskConfig(), pause_symbol_after_loss_seconds=-1).validate()
+
     def test_disabling_the_cooldowns_moves_the_risk_hash(self):
         """An ungated run must not be mistakable for a gated one.
 

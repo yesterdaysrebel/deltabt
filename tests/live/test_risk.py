@@ -389,6 +389,46 @@ class TestLimits:
         s.last_loss_at = NOW - 5000
         assert approve(state=s).approved
 
+    # --- per-symbol pause after a loss (2026-10-09, dry run trial) ------
+    def _cooled(self):
+        """A state whose global cooldowns are long past."""
+        s = RiskState.fresh(10_000.0)
+        s.roll_day(NOW)
+        s.last_trade_at = s.last_loss_at = NOW - 100_000
+        return s
+
+    def test_symbol_pause_is_off_by_default(self):
+        s = self._cooled()
+        s.last_loss_at_by_symbol["BTCUSD"] = NOW - 60
+        assert approve(eng=engine(cooldown_after_trade_seconds=0, cooldown_after_loss_seconds=0), state=s).approved
+
+    def test_symbol_pause_blocks_only_the_symbol_that_lost(self):
+        eng = engine(cooldown_after_trade_seconds=0, cooldown_after_loss_seconds=0,
+                     pause_symbol_after_loss_seconds=14_400)
+        s = self._cooled()
+        s.last_loss_at_by_symbol["BTCUSD"] = NOW - 3_600
+        d = approve(eng=eng, state=s)
+        assert not d.approved
+        assert d.limit_name == "pause_symbol_after_loss_seconds"
+        assert "3600s elapsed of 14400s" in d.reason
+        assert approve(eng=eng, state=s, exp=setup(symbol="SOLUSD", entry=150.0, stop=148.0, target=156.0)).approved
+
+    def test_symbol_pause_expires(self):
+        eng = engine(cooldown_after_trade_seconds=0, cooldown_after_loss_seconds=0,
+                     pause_symbol_after_loss_seconds=14_400)
+        s = self._cooled()
+        s.last_loss_at_by_symbol["BTCUSD"] = NOW - 14_400
+        assert approve(eng=eng, state=s).approved
+
+    def test_a_close_records_the_loss_against_its_symbol_only(self):
+        s = RiskState.fresh(10_000.0)
+        s.apply_close(-50.0, NOW, symbol="BTCUSD")
+        s.apply_close(+80.0, NOW + 10, symbol="SOLUSD")
+        s.apply_close(-20.0, NOW + 20)                  # no symbol: account-wide only
+        assert s.last_loss_at_by_symbol == {"BTCUSD": NOW}
+        assert s.last_loss_at == NOW + 20
+        assert RiskState.from_dict(s.to_dict()).last_loss_at_by_symbol == {"BTCUSD": NOW}
+
     def test_max_position_notional(self):
         d = approve(eng=engine(max_position_notional=10.0))
         assert not d.approved

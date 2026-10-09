@@ -1220,7 +1220,7 @@ class TradingBot:
             self.identity.config_hash if self.identity else None)
         await self.repo.update_position(rec)
         self.state.apply_close(pos.realized_pnl or 0.0,
-                               pos.closed_at or self.clock.now())
+                               pos.closed_at or self.clock.now(), symbol=pos.symbol)
         self.broker.equity = self.state.equity
         await self._save_state()
         self.metrics.closed_positions += 1

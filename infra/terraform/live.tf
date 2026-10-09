@@ -104,7 +104,10 @@ variable "live_stacks" {
     # paired backtest gives it the shallowest drawdown of the three (17R vs
     # 43R) at the same ~zero mean, so the account survives long enough to
     # record all three exits. Hold-to-3R and the ladder stay as shadows.
-    dryrun = { variant = "SPEC:manual_scalp_both_t3_trail@5", db_name = "deltabt_dryrun" }
+    # 2026-10-09 (owner, prereg amendment 2): the trail experiment is retired and
+    # the account goes back to the BASELINE exit (hold to 3R), with a 4h pause on
+    # a coin after a loss on it (live_sizing below). Ladder and trail stay shadows.
+    dryrun = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_dryrun" }
   }
 }
 
@@ -266,6 +269,9 @@ variable "live_sizing" {
     risk_per_trade        = string
     min_contract_risk_cap = string
     dry_run               = string
+    # Seconds a coin is paused after a losing close on it (2026-10-09). Optional:
+    # "0" (off) unless a stack sets it; run_live.sh forwards it to the bot.
+    pause_symbol_after_loss_seconds = optional(string, "0")
   }))
   # $250 at 2%. The AKEUSD one-contract floor was 5% (owner, 2026-10-02);
   # 2026-10-03 (owner, prereg amendment) it is 3%: at 5% every AKEUSD entry
@@ -273,7 +279,9 @@ variable "live_sizing" {
   # losses took 14% of the account in one night. At 3% a contract is taken
   # only when it risks <= $7.50, i.e. when AKEUSD's stop is under ~2.3%.
   default = {
-    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1" }
+    # 2026-10-09: 4h per-coin pause after a loss, owner's trial (docs/prod_dry_run_prereg.md
+    # amendment 2). The exact backtest did not support it (scripts/loss_pause_exact.py).
+    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400" }
   }
 }
 

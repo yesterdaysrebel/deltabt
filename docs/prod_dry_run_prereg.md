@@ -191,3 +191,43 @@ AKEUSD long) were restored and count in this run (same entry rule; addendum 2026
 opened under hold-to-3R, are now exited by the trail, and their shadow rows are marked observed from
 entry = false (restored after a restart). The simulated account restarts at $250, as every new
 experiment does; the previous experiment ended at $229.38.
+
+## Amendment 2026-10-09 — baseline exit, and a 4h pause on a coin after a loss (owner decision)
+
+**Why.** The owner wants to try a loss filter on the account: after a losing close on a coin, take no
+new entry on THAT coin for 4 hours; the other coins keep trading. The account goes back to the
+baseline exit (hold to 3R), which is the exit the owner intends to trade.
+
+**What the research says, recorded before the run.** It does not support the pause.
+`scripts/loss_pause_exact.py` (exact engine, prod universe, 2025-12-20..2026-09-30, hold-to-3R):
+no pause +0.044R per trade (428 trades); 4h pause +0.022R (419), halves +0.108 / −0.057, and 20.5% of
+200 random 4h pauses did as well (p 0.21); the pre-registered 8h cell was −0.015R (p 0.32). On this
+run's own first 41 baseline shadow results a 4h pause kept +0.266R against +0.231R for random skips
+of the same count (p 0.36), and cut the total from +7.49R to +4.78R. This is a trial of the owner's
+rule, not a test this run can settle: there is no control arm, and ~±0.1–0.17R of noise at 100
+trades is larger than any effect measured.
+
+**The changes** (one PR; host replaced; new experiment id recorded below when it registers):
+
+| # | change | before | after |
+|---|---|---|---|
+| 1 | the exit the simulated account runs | trail (`manual_scalp_both_t3_trail`) | **hold to 3R** (`manual_scalp_both_t3`, hash `41e764beceaf…`). Ladder and trail stay shadows |
+| 2 | per-coin pause after a loss (`pause_symbol_after_loss_seconds`, NEW) | none | **14,400 s (4h)** from the losing position's close, on that coin only. A loss is net realised P&L < 0 |
+
+Everything else is unchanged: $250 at 2%, AKEUSD floor 3%, 50% latch (the plan's 20% read as a date),
+10% daily loss, 8 consecutive losses, 72 h time stop, both global cooldowns 0.
+
+**What this changes in the questions above.**
+- **Entries** are hold-to-3R's own stream (a slot frees only when the 3R trade closes) minus the
+  entries the pause refuses. Each refusal is recorded in `strategy_signals` with the limit name
+  `pause_symbol_after_loss_seconds`, so the report can count them; what a refused entry would have
+  made is NOT recorded.
+- **D5**: unchanged — every position is still shadowed under baseline, ladder and trail on identical
+  entries.
+- **D7** self-check: the **baseline** shadow must agree with the real position on every trade.
+- **Stopping point**: 100 closed positions, 21 days from the new registration, the 50% latch, or a
+  defect.
+
+**Retired at the roll:** `DRY-MANUAL_SCALP_BOTH_T3_TRAIL-5-20261003-5683929` (46 closed trades by
+2026-10-09 05:55 UTC); its records stay in the database. Positions open at the roll carry over and
+are exited by hold-to-3R from then on. Nothing above the FROZEN line is edited.

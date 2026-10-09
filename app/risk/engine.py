@@ -47,6 +47,9 @@ class RiskState:
     consecutive_losses: int = 0
     last_trade_at: int = 0
     last_loss_at: int = 0
+    #: symbol -> unix time of its last losing close. Read only by
+    #: pause_symbol_after_loss_seconds.
+    last_loss_at_by_symbol: dict = field(default_factory=dict)
     realized_pnl: float = 0.0
     wins: int = 0
     losses: int = 0
@@ -150,7 +153,7 @@ class RiskState:
         self.halt_reason = ""
         self.peak_equity = self.equity
 
-    def apply_close(self, pnl: float, now: int) -> None:
+    def apply_close(self, pnl: float, now: int, symbol: str | None = None) -> None:
         self.equity += pnl
         self.realized_pnl += pnl
         self.daily_pnl += pnl
@@ -158,6 +161,8 @@ class RiskState:
         if pnl < 0:
             self.consecutive_losses += 1
             self.last_loss_at = now
+            if symbol:
+                self.last_loss_at_by_symbol[symbol] = now
             self.losses += 1
         else:
             self.consecutive_losses = 0
@@ -373,6 +378,17 @@ class RiskEngine:
                 name="cooldown_after_loss_seconds",
                 limit=cfg.cooldown_after_loss_seconds, observed=since_loss)
         ok("cooldown_after_loss")
+
+        if cfg.pause_symbol_after_loss_seconds:
+            last = state.last_loss_at_by_symbol.get(exp.symbol, 0)
+            since_sym = now - last if last else 1 << 30
+            if since_sym < cfg.pause_symbol_after_loss_seconds:
+                return reject(
+                    f"{exp.symbol} paused after a loss: {since_sym}s elapsed of "
+                    f"{cfg.pause_symbol_after_loss_seconds}s",
+                    name="pause_symbol_after_loss_seconds",
+                    limit=cfg.pause_symbol_after_loss_seconds, observed=since_sym)
+            ok("pause_symbol_after_loss")
 
         # --- geometry ------------------------------------------------------
         entry = exp.entry_price
