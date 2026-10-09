@@ -135,10 +135,37 @@ only once a trade has closed, threshold fixed from the previous month, walk-forw
 5 seeds, judged on net R against random picking. Out-of-sample AUC 0.490 (months 0.42–0.52); the
 model's picks are no better than random on hold-to-3R at 10/25/50% depth and worse than trading
 everything; shuffled labels look the same (leak check passes). The one-line cost rule beats it at
-every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). **Not tested, because
-the data does not exist here:** trade flow by aggressor side, order-book imbalance, open interest,
-liquidations — the exchange analogue of what carried the memecoin stack (who is trading). The archive
-holds 1m candles and funding only; that data would have to be recorded forward first.
+every depth (lowest-fee 10%: +0.112R, 356 trades, not distinguishable from zero). Reproduced byte for
+byte 2026-10-09; a planted weak signal (alone AUC 0.576) comes back at 0.534, so the null is not a
+blind pipeline.
+**Open interest, the signal bar and regime beyond 24h do not rescue it either (2026-10-09,
+pre-registered in `docs/entry_filter_bundle_prereg.md` before the data was fetched,
+`scripts/entry_filter_bundle_lab.py`).** Delta serves full perp OI history through the undocumented
+`OI:<SYMBOL>` candle series (`scripts/fetch_oi_history.py`; 1m/5m/1h agree exactly on 3,744 checked
+pairs). 25 new features on top of the 29, no fee inputs, 5-seed mean, random pickers matched by day:
+VALID (planted 0.560) and FAIL on all three rules — AUC 0.516 (bar 0.530); 25% picks −0.053R /
+−0.028R (p 0.66 / 0.062); below the cheap-fee rule on both exits. OI adds nothing (AUC 0.487 vs
+candle-only 0.490). **Still untested, because no history exists:** trade flow by aggressor side
+(public trades endpoint returns the last 50 only; the bot's `all_trades` feed carries the side but
+`normalize_trade` drops it and nothing is saved), order book, liquidations. Those need a forward
+recorder.
+**A daily trade cap does not raise the win rate (2026-10-09).** Prod universe backtest, engine's own
+`max_trades_per_day`: hold-to-3R +0.044R uncapped → −0.084R at 2/day; trail −0.028R → −0.048R; the
+first 2 entries of a day did no better than 2 random ones. The dry run's own 46 closed trades agree
+(win rate lower under the cap; p 0.24–0.42 vs random) — far too few to decide anything.
+**Pausing after losses does not filter losing trades (2026-10-09, `scripts/loss_pause_lab.py` then
+`scripts/loss_pause_exact.py`, both pre-registered).** Virtual mode after N losses (equity-curve filter)
+does nothing; account-wide it is worse than nothing. On hold-to-3R the trade after a win on a coin does
+beat the trade after a loss (prod universe 36.7% vs 24.9% wins; 32 coins 29.9% vs 25.4%), and a
+filter on the trade list made a 4–12h per-coin pause look like +0.044R → +0.23R. **Re-run inside the
+engine (`RiskGates.pause_seconds`, off by default) it is −0.015R**, beaten by 32% of 200 random
+pauses: a skipped trade frees the coin and the next entry comes sooner than the filter assumed.
+Random 8h pauses alone spread hold-to-3R from −0.151R to +0.049R — judge any gate against random
+firing of the same gate, never one baseline run. A 4h pause on hold-to-3R, run post-hoc at the
+owner's request: +0.022R vs +0.044R with no pause, halves +0.108 / −0.057, p 0.21 vs random — also fails. Per coin (same exact runs vs random pauses on that coin):
+BEAT 4h +0.133R vs +0.037R (p 0.06) but 8h +0.015R (p 0.43); AKE −0.293R / −0.207R, as bad as random
+pauses (AKE's result swings −0.3R from ANY pause — path dependence); BANK 29–41 trades. Six post-hoc looks,
+none below 0.05, and the same coin flips between 4h and 8h: no per-coin rule either.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase

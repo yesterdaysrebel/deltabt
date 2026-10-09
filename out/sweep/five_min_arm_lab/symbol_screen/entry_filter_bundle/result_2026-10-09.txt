@@ -1,0 +1,44 @@
+4950 entries, 54 features (29 base + 9 OI + 9 signal bar + 7 regime); PRIMARY = 52 (no fee_r, vol_24h); test months 2026-04..2026-09; seeds (11, 22, 33, 44, 55) averaged; day-matched random x2000
+entries matching an engine signal of the same side at entry_time: 4950/4950
+OI 5m bars unchanged from the bar before (share): AAVEUSD 0.37, ADAUSD 0.13, AINUSD 0.54, AIOUSD 0.44, AKEUSD 0.03, AVAXUSD 0.28, AXSUSD 0.81, BANKUSD 0.39, BCHUSD 0.21, BEATUSD 0.11, BLESSUSD 0.31, BNBUSD 0.23, BTCUSD 0.00, DOGEUSD 0.07, DOTUSD 0.24, ETHUSD 0.00, HYPEUSD 0.32, LINKUSD 0.22, LTCUSD 0.18, MUBARAKUSD 0.63, NEARUSD 0.59, PUMPUSD 0.56, SOLUSD 0.00, STRKUSD 0.88, SUIUSD 0.36, UNIUSD 0.23, VELVETUSD 0.15, VVVUSD 0.23, WIFUSD 0.65, XRPUSD 0.00, ZECUSD 0.08, ZROUSD 0.68
+missing share, new features: al_ret_3d 0.01, al_ret_7d 0.03, al_ret_30d 0.13, vol_regime 0.05, al_btc_7d 0.02
+
+V1 planted signal (0.25*label + N(0,1)) in PRIMARY: mean AUC 0.560 (needs >= 0.520) -> OK
+V2 shuffled labels, PRIMARY at 25%: p vs day-matched random hold-to-3R 0.069, trail 0.917 (needs > 0.05 on both) -> OK
+
+ALL entries of the test months: n 3138, 3R hit 24.4%, hold-to-3R net -0.083R, trail net -0.093R, fee 0.071R
+
+PRIMARY AUC by month: 0.496, 0.484, 0.501, 0.534, 0.567, 0.517; mean 0.516
+
+selector                       depth trades 3R hit%  fee R gross 3R  net 3R  p day net trail  p day months +
+PRIMARY (no fee inputs)          10%    332    24.4  0.059   -0.009  -0.068  0.637    -0.058  0.457     1/6
+cheap fees only                  10%    356    27.8  0.018   +0.130  +0.112  0.005    -0.004  0.019     4/6
+
+PRIMARY (no fee inputs)          25%    815    25.0  0.063   +0.010  -0.053  0.662    -0.028  0.062     1/6
+cheap fees only                  25%    814    25.4  0.024   +0.041  +0.017  0.037    -0.017  0.007     4/6
+
+PRIMARY (no fee inputs)          50%   1623    25.1  0.068   +0.015  -0.054  0.408    -0.042  0.002     1/6
+cheap fees only                  50%   1559    26.0  0.038   +0.048  +0.010  0.066    -0.074  0.347     2/6
+
+P1 mean AUC 0.516 >= 0.530: fail
+P2 25% beats day-matched random, p hold-to-3R 0.662, trail 0.062 (both <= 0.05): fail
+P3 25% above cheap-fee rule, hold-to-3R -0.053 vs +0.017, trail -0.028 vs -0.017: fail
+
+VERDICT: FAIL
+
+REPORTED, NOT JUDGED (25% depth unless shown)
+selector                       depth trades 3R hit%  fee R gross 3R  net 3R  p day net trail  p day months +
+all features (with fee)          25%    820    26.1  0.065   +0.049  -0.016  0.441    -0.035  0.124     2/6
+                                mean AUC 0.520
+candle-only (base, no fee)       25%    779    23.7  0.064   -0.055  -0.119  0.944    -0.049  0.299     2/6
+                                mean AUC 0.490
+base + OI                        25%    796    22.9  0.065   -0.075  -0.139  0.967    -0.048  0.196     1/6
+                                mean AUC 0.487
+base + signal bar                25%    778    24.7  0.063   -0.009  -0.073  0.760    -0.027  0.050     2/6
+                                mean AUC 0.507
+base + regime                    25%    847    25.1  0.066   +0.008  -0.058  0.644    -0.027  0.033     3/6
+                                mean AUC 0.510
+PRIMARY without the 11 patchy-OI   25%    703    23.3  0.074   -0.035  -0.109  0.671    -0.061  0.055     1/6
+cheap fees, same symbols         25%    671    27.9  0.032   +0.159  +0.127  0.001    -0.034  0.002     4/6
+                                mean AUC 0.498; 777 entries dropped
+top PRIMARY features by gain (last fold, seed 11): al_btc_7d 7%, al_ret_7d 5%, al_ret_30d 4%, al_btc_24h 4%, breadth_ret_al 4%, vol_regime 4%, sb_vol_rel 4%, sym_recent_r 3%, hour_sin 3%, mkt_recent_n 3%

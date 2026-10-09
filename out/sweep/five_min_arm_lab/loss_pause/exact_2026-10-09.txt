@@ -1,0 +1,32 @@
+
+==== A: 3 coins ====
+
+  hold-to-3R  (random pauses fire with p = 0.715, the no-pause loss share; cooldown_bars 10)
+  no pause                 trades   428  net +0.044R  win  28.5%  total    +19.0R  halves +0.044 / +0.045
+  loss pause 8h            trades   398  net -0.015R  win  27.4%  total     -6.0R  halves -0.095 / +0.061
+  win pause 8h (reported)  trades   441  net -0.047R  win  25.9%  total    -20.8R  halves -0.032 / -0.062
+  random pause 8h x200: mean -0.040R, 5-95% -0.151 .. +0.049; loss pause beaten by 32.0% of them (p 0.320)
+  E1 beats no pause and p <= 0.05 vs random: fail   E2 beats no pause in both halves: fail
+
+  trail  (random pauses fire with p = 0.406, the no-pause loss share; cooldown_bars 10)
+  no pause                 trades  1540  net -0.033R  win  59.4%  total    -51.6R  halves -0.064 / -0.003
+  loss pause 8h            trades   995  net -0.029R  win  60.0%  total    -29.2R  halves -0.033 / -0.025
+  win pause 8h (reported)  trades   848  net -0.068R  win  57.2%  total    -57.4R  halves -0.058 / -0.078
+  random pause 8h x200: mean -0.052R, 5-95% -0.087 .. -0.016; loss pause beaten by 19.0% of them (p 0.190)
+  E1 beats no pause and p <= 0.05 vs random: fail   E2 beats no pause in both halves: fail
+
+==== B: 32 coins ====
+
+  hold-to-3R  (random pauses fire with p = 0.736, the no-pause loss share; cooldown_bars 10)
+  no pause                 trades  4952  net -0.092R  win  26.4%  total   -453.6R  halves -0.112 / -0.071
+  loss pause 8h            trades  4326  net -0.067R  win  27.0%  total   -288.9R  halves -0.124 / -0.011
+  win pause 8h (reported)  trades  4859  net -0.075R  win  26.6%  total   -366.8R  halves -0.071 / -0.080
+  random pause 8h x40: mean -0.087R, 5-95% -0.123 .. -0.056; loss pause beaten by 17.5% of them (p 0.175)
+
+  trail  (random pauses fire with p = 0.463, the no-pause loss share; cooldown_bars 10)
+  no pause                 trades 13027  net -0.097R  win  53.7%  total  -1259.3R  halves -0.083 / -0.110
+  loss pause 8h            trades 10380  net -0.079R  win  54.2%  total   -821.4R  halves -0.080 / -0.078
+  win pause 8h (reported)  trades  9548  net -0.096R  win  52.9%  total   -914.6R  halves -0.102 / -0.091
+  random pause 8h x40: mean -0.091R, 5-95% -0.102 .. -0.081; loss pause beaten by 0.0% of them (p 0.000)
+
+VERDICT hold-to-3R (the lead): CLOSED; trail fails (reported)

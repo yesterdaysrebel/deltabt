@@ -1,0 +1,15 @@
+hold-to-3R, prod coins, exact engine; pause = that coin only, timed from the losing trade's exit bar
+
+no pause         AKEUSD   trades  105  net +0.032R  win  28.6%  total    +3.4R  halves +3.040 (3) / -0.056 (102)
+no pause         BANKUSD  trades   29  net +0.167R  win  31.0%  total    +4.8R  halves +1.069 (4) / +0.023 (25)
+no pause         BEATUSD  trades  294  net +0.037R  win  28.2%  total   +10.8R  halves -0.020 (207) / +0.171 (87)
+
+--- pause 4h after a loss on the coin ---
+loss pause 4h    AKEUSD   trades  104  net -0.293R  win  21.2%  total   -30.5R  halves +3.040 (3) / -0.392 (101)  | random 4h pauses on this coin: mid -0.243R, p 0.65
+loss pause 4h    BANKUSD  trades   41  net +0.083R  win  29.3%  total    +3.4R  halves +1.655 (3) / -0.041 (38)  | random 4h pauses on this coin: mid +0.224R, p 0.76
+loss pause 4h    BEATUSD  trades  274  net +0.133R  win  30.3%  total   +36.4R  halves +0.039 (194) / +0.360 (80)  | random 4h pauses on this coin: mid +0.024R, p 0.06
+
+--- pause 8h after a loss on the coin ---
+loss pause 8h    AKEUSD   trades  102  net -0.207R  win  24.5%  total   -21.1R  halves +3.040 (3) / -0.306 (99)  | random 8h pauses on this coin: mid -0.207R, p 0.51
+loss pause 8h    BANKUSD  trades   40  net +0.280R  win  35.0%  total   +11.2R  halves +1.655 (3) / +0.168 (37)  | random 8h pauses on this coin: mid +0.129R, p 0.31
+loss pause 8h    BEATUSD  trades  256  net +0.015R  win  27.3%  total    +3.9R  halves -0.172 (189) / +0.545 (67)  | random 8h pauses on this coin: mid -0.002R, p 0.43
