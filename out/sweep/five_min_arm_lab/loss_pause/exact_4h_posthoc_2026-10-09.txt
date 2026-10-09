@@ -1,0 +1,12 @@
+POST-HOC: pause 4h after a loss on the coin, exit hold-to-3R, universe A
+
+==== A: 3 coins ====
+
+  hold-to-3R  (random pauses fire with p = 0.715, the no-pause loss share; cooldown_bars 10)
+  no pause                 trades   428  net +0.044R  win  28.5%  total    +19.0R  halves +0.044 / +0.045
+  loss pause 4h            trades   419  net +0.022R  win  27.9%  total     +9.3R  halves +0.108 / -0.057
+  win pause 4h (reported)  trades   440  net +0.017R  win  27.5%  total     +7.6R  halves +0.165 / -0.111
+  random pause 4h x200: mean -0.022R, 5-95% -0.117 .. +0.063; loss pause beaten by 20.5% of them (p 0.205)
+  E1 beats no pause and p <= 0.05 vs random: fail   E2 beats no pause in both halves: fail
+
+POST-HOC VERDICT: fails

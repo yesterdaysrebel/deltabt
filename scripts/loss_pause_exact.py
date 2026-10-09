@@ -1,6 +1,7 @@
 """Exact engine re-run of the per-coin pause after a loss (2026-10-09).
 
     PYTHONPATH=. .venv/bin/python scripts/loss_pause_exact.py
+    PYTHONPATH=. .venv/bin/python scripts/loss_pause_exact.py 4 hold-to-3R   # post-hoc: hours, one exit, A only
 
 WHY. scripts/loss_pause_lab.py filtered the uncapped trade list and found one
 lead: on hold-to-3R, pausing a coin for 4-12h after a loss on it lifted net R
@@ -52,6 +53,9 @@ THE LEAD IS CLOSED. No forward check.
   * B (reported): the trail loss pause beat all 40 random runs (-0.079R vs
     -0.091R; no pause -0.097R) -- a ~0.02R loss reduction on a strategy still
     losing ~0.08R a trade. Not a filter worth building.
+  POST-HOC 4h on hold-to-3R (owner's request, exact_4h_posthoc_2026-10-09.txt):
+    +0.022R vs +0.044R no pause (419 vs 428 trades), halves +0.108 / -0.057,
+    20.5% of 200 random 4h pauses did as well (p 0.21). Fails too.
 """
 import dataclasses, glob, sys
 from concurrent.futures import ProcessPoolExecutor
@@ -116,9 +120,9 @@ def report(key, n_random, judged):
             return (f"  {name:24s} trades {len(r):5d}  net {r.mean():+.3f}R  win {100 * (r > 0).mean():5.1f}%  total {r.sum():+8.1f}R"
                     f"  halves {h1:+.3f} / {h2:+.3f}")
         print(f"\n  {ex}  (random pauses fire with p = {p:.3f}, the no-pause loss share; cooldown_bars {params_for(SPEC, 5, 72).cooldown_bars})")
-        print(line("no pause", et0, r0)); print(line("loss pause 8h", etl, rl)); print(line("win pause 8h (reported)", etw, rw))
+        print(line("no pause", et0, r0)); h = f"{PAUSE / 3600:g}h"; print(line(f"loss pause {h}", etl, rl)); print(line(f"win pause {h} (reported)", etw, rw))
         pr = float((null >= rl.mean()).mean())
-        print(f"  random pause 8h x{n_random}: mean {null.mean():+.3f}R, 5-95% {np.percentile(null, 5):+.3f} .. {np.percentile(null, 95):+.3f}; "
+        print(f"  random pause {PAUSE / 3600:g}h x{n_random}: mean {null.mean():+.3f}R, 5-95% {np.percentile(null, 5):+.3f} .. {np.percentile(null, 95):+.3f}; "
               f"loss pause beaten by {100 * pr:.1f}% of them (p {pr:.3f})")
         if judged:
             E1 = rl.mean() > r0.mean() and pr <= 0.05
@@ -128,7 +132,16 @@ def report(key, n_random, judged):
     return verdict
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and len(sys.argv) > 1:
+    # POST-HOC variant (2026-10-09, owner's request after 8h failed): another
+    # pause length on one exit, universe A only. Not part of the pre-registered
+    # run; a pass here is a lead for the October-December check, nothing more.
+    PAUSE = int(float(sys.argv[1]) * 3600); EXITS = {sys.argv[2]: EXITS[sys.argv[2]]}
+    print(f"POST-HOC: pause {sys.argv[1]}h after a loss on the coin, exit {sys.argv[2]}, universe A")
+    BOOKS["A"], FUND["A"] = load(["BEATUSD", "AKEUSD", "BANKUSD"])
+    v = report("A", 200, True)[sys.argv[2]]
+    print(f"\nPOST-HOC VERDICT: {'E1 and E2 pass -- a lead for October-December only' if all(v) else 'fails'}")
+elif __name__ == "__main__":
     BOOKS["A"], FUND["A"] = load(["BEATUSD", "AKEUSD", "BANKUSD"])
     v = report("A", 200, True)
     B = sorted(f.split("/")[-1][:-4] for f in glob.glob("out/sweep/five_min_arm_lab/symbol_screen/trades/*.csv"))

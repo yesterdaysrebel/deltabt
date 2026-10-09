@@ -161,7 +161,8 @@ filter on the trade list made a 4–12h per-coin pause look like +0.044R → +0.
 engine (`RiskGates.pause_seconds`, off by default) it is −0.015R**, beaten by 32% of 200 random
 pauses: a skipped trade frees the coin and the next entry comes sooner than the filter assumed.
 Random 8h pauses alone spread hold-to-3R from −0.151R to +0.049R — judge any gate against random
-firing of the same gate, never one baseline run.
+firing of the same gate, never one baseline run. A 4h pause on hold-to-3R, run post-hoc at the
+owner's request: +0.022R vs +0.044R with no pause, halves +0.108 / −0.057, p 0.21 vs random — also fails.
 
 **Every loss-cutting exit mechanism on `manual_scalp_both_t3` is dead.** Breakeven at every
 threshold; trailing across 33 cells; scale-out, 8 of 8 ladders negative; the operator's staircase
