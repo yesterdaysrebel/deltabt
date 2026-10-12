@@ -1,6 +1,6 @@
 # Discovery programme — draft plan v1 (2026-10-13)
 
-**Status: DRAFT for the owner's review. Nothing here is approved or pre-registered.** When agreed, each
+**Status: WITHDRAWN 2026-10-13 after the panel review (see docs/discovery_plan_v1_panel_review.md). Kept as the record of what was proposed and why it does not hold.** When agreed, each
 stage gets its own pre-registration file before it runs, as every test since 9 Oct has.
 
 ## 1. What this is, in one paragraph

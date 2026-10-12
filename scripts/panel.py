@@ -12,7 +12,7 @@ import argparse, datetime as dt, json, os, pathlib, re, sys, time
 import requests
 
 API = "https://openrouter.ai/api/v1"
-MODELS = {                                                    # one per family, roles split
+MODELS = {                                                    # one per family, roles split (breadth dropped 10-13: its proposals were all on the kill list)
     "leakage":  "openai/gpt-5.6-terra-pro",
     "code":     "anthropic/claude-sonnet-5.5",
     "devil":    "x-ai/grok-4.7",
@@ -47,7 +47,7 @@ def context():
     return facts + "\n\nKILL LIST (what is already closed on this venue, from CONTEXT.md):\n" + closed
 
 
-def call(model, system, user, max_tokens=4000):
+def call(model, system, user, max_tokens=12000):
     r = requests.post(f"{API}/chat/completions", headers={"Authorization": f"Bearer {key()}", "HTTP-Referer": "https://github.com/yesterdaysrebel/deltabt", "X-Title": "deltabt panel"},
                       json={"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "max_tokens": max_tokens, "temperature": 0.3},
                       timeout=600)
@@ -69,8 +69,8 @@ if __name__ == "__main__":
     if a.mode == "estimate":
         pr = prices(); tot = 0
         for role in roles:
-            cin, cout = pr[role]; cost = toks * cin + 3000 * cout; tot += cost
-            print(f"  {role:8s} {MODELS[role]:32s} ~{toks:,} in / 3,000 out -> ${cost:.3f}")
+            cin, cout = pr[role]; cost = toks * cin + 8000 * cout; tot += cost
+            print(f"  {role:8s} {MODELS[role]:32s} ~{toks:,} in / 8,000 out -> ${cost:.3f}")
         print(f"  total ~${tot:.2f} for {len(roles)} models"); sys.exit(0)
     tag = a.tag or re.sub(r"\W+", "-", pathlib.Path(a.doc).stem); out = pathlib.Path("out/panel") / tag; out.mkdir(parents=True, exist_ok=True)
     log = {"doc": a.doc, "when": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "models": {}}
