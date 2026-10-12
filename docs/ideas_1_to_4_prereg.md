@@ -84,3 +84,17 @@ manifest in `out/sweep/five_min_arm_lab/forced_selling/`.
 | 4 forced-selling reversal | step 0: 37 forced-event days (< 60) | 61 | **CANNOT ANSWER** — stopped before outcomes were read; not loosened after the fact |
 
 Reported only: prod 3 coins, limit entry +0.051R vs +0.002R market (DEV only; those coins did not exist in OLD).
+
+## Idea 6 (added 2026-10-13, owner: "consider all coins") — trade a coin only after a win on it
+
+The one real pattern found so far: a coin's next trade does better after a win than after a loss
+(prod coins 36.7 % vs 24.9 % wins; 32 coins 29.9 % vs 25.4 %, hold-to-3R). The pause tried to use it
+through the engine and failed. This is the direct form: per coin, money goes on a signal only when
+the coin's **last closed trade was a win**; after a loss the bot follows the coin's signals **on
+paper** until a paper trade wins, then goes real again. Every signal is still followed, so the
+virtual bot holds exactly the slots the real one would — the base trade list is labelled, no re-run.
+
+- Label at ENTRY from trades on that coin CLOSED before it. A coin's first trade is "real".
+- Judged on hold-to-3R, 32 coins DEV / 27 coins OLD. **W1** real beats virtual on DEV, day-clustered
+  p ≤ 0.05. **W2** the same on OLD. **W3** real net R per trade > 0 on OLD. **PASS = W1, W2, W3.**
+- Reported: share of trades that are real, the trail, prod 3 (DEV), after-win / after-loss tables.
