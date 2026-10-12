@@ -98,3 +98,10 @@ virtual bot holds exactly the slots the real one would — the base trade list i
 - Judged on hold-to-3R, 32 coins DEV / 27 coins OLD. **W1** real beats virtual on DEV, day-clustered
   p ≤ 0.05. **W2** the same on OLD. **W3** real net R per trade > 0 on OLD. **PASS = W1, W2, W3.**
 - Reported: share of trades that are real, the trail, prod 3 (DEV), after-win / after-loss tables.
+
+**Idea 6 result 2026-10-13** (`out/sweep/five_min_arm_lab/ideas_2026-10-13/idea6_win_follow_result.txt`): **FAIL**
+— W1 PASS (DEV real +0.026R vs virtual −0.138R, p 0.007), W2 fail (OLD −0.020R vs −0.097R, p 0.056),
+W3 fail (OLD real net −0.020R). The direction held on the untouched window (after a win beats after a
+loss by ~0.08R in both), which no other rule has done; the size is "lose less", not profit. Real mode
+takes 27 % of signals. Prod 3 coins, DEV only: real +0.381R on 122 trades (reported). On the trail the
+pattern is absent (p 0.72 / 0.36).

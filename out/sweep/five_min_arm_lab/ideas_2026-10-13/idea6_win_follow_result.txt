@@ -1,0 +1,43 @@
+
+==== DEV 2025-12..2026-09: 32 coins ====
+  hold-to-3R (judged)
+
+  DEV 2025-12..2026-09
+    all trades                         trades  4928  net -0.094R  win  26.4%  total   -463.3R  halves -0.116 / -0.072
+    REAL (after a win / first)         trades  1330  net +0.026R  win  29.5%  total    +34.1R  halves -0.012 / +0.063  share 27%
+    virtual (after a loss)             trades  3598  net -0.138R  win  25.3%  total   -497.4R  halves -0.151 / -0.126
+    after a win +0.029R win 29.7% (n 1298) | after a loss -0.138R win 25.3% (n 3598) | real beats virtual p 0.007
+  trail (reported)
+
+  DEV 2025-12..2026-09
+    all trades                         trades 12545  net -0.104R  win  53.0%  total  -1301.0R  halves -0.090 / -0.118
+    REAL (after a win / first)         trades  6656  net -0.108R  win  52.9%  total   -719.6R  halves -0.111 / -0.106  share 53%
+    virtual (after a loss)             trades  5889  net -0.099R  win  53.1%  total   -581.4R  halves -0.068 / -0.130
+    after a win -0.108R win 52.8% (n 6625) | after a loss -0.099R win 53.1% (n 5889) | real beats virtual p 0.717
+  prod 3 coins, hold-to-3R (reported)
+
+  DEV 2025-12..2026-09
+    all trades                         trades   433  net +0.002R  win  27.9%  total     +0.7R  halves +0.042 / -0.038
+    REAL (after a win / first)         trades   122  net +0.381R  win  37.7%  total    +46.4R  halves +0.455 / +0.306  share 28%
+    virtual (after a loss)             trades   311  net -0.147R  win  24.1%  total    -45.7R  halves -0.147 / -0.147
+    after a win +0.349R win 37.0% (n 119) | after a loss -0.147R win 24.1% (n 311) | real beats virtual p 0.010
+
+==== OLD 2024-06..2025-12: 27 coins ====
+  hold-to-3R (judged)
+
+  OLD 2024-06..2025-12
+    all trades                         trades  8671  net -0.076R  win  26.6%  total   -661.5R  halves -0.055 / -0.097
+    REAL (after a win / first)         trades  2322  net -0.020R  win  28.2%  total    -46.6R  halves +0.046 / -0.086  share 27%
+    virtual (after a loss)             trades  6349  net -0.097R  win  26.0%  total   -614.9R  halves -0.093 / -0.101
+    after a win -0.017R win 28.2% (n 2295) | after a loss -0.097R win 26.0% (n 6349) | real beats virtual p 0.056
+  trail (reported)
+
+  OLD 2024-06..2025-12
+    all trades                         trades 16004  net -0.096R  win  53.2%  total  -1543.8R  halves -0.095 / -0.098
+    REAL (after a win / first)         trades  8525  net -0.094R  win  53.1%  total   -800.3R  halves -0.092 / -0.096  share 53%
+    virtual (after a loss)             trades  7479  net -0.099R  win  53.4%  total   -743.5R  halves -0.098 / -0.101
+    after a win -0.094R win 53.1% (n 8502) | after a loss -0.099R win 53.4% (n 7479) | real beats virtual p 0.362
+
+  W1 DEV p 0.007: PASS   W2 OLD p 0.056: fail   W3 OLD real net -0.020R > 0: fail
+
+IDEA 6: FAIL

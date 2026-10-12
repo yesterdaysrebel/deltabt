@@ -164,6 +164,9 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**Trade a coin only after a win on it (idea 6, 2026-10-13): FAIL as pre-registered, but the only rule whose
+direction held on the untouched window.** Hold-to-3R: after a win +0.029R vs after a loss −0.138R (DEV, p 0.007);
+−0.017R vs −0.097R (OLD, p 0.056, real net still < 0). Lose-less, not profit; 27 % of signals; absent on the trail.
 **Pausing after losses does not filter losing trades (2026-10-09, `scripts/loss_pause_lab.py` then
 `scripts/loss_pause_exact.py`, both pre-registered).** Virtual mode after N losses (equity-curve filter)
 does nothing; account-wide it is worse than nothing. On hold-to-3R the trade after a win on a coin does
