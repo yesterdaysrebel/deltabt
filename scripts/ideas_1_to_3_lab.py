@@ -1,4 +1,4 @@
-"""Ideas 1-3 of the 2026-10-13 list, as pre-registered (docs/ideas_1_to_4_prereg.md).
+"""Ideas 1-3 of the 2026-10-12 list, as pre-registered (docs/ideas_1_to_4_prereg.md).
 
     PYTHONPATH=. .venv/bin/python scripts/ideas_1_to_3_lab.py
 

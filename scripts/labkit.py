@@ -1,4 +1,4 @@
-"""Shared pieces for the 2026-10-13 labs (docs/ideas_1_to_4_prereg.md).
+"""Shared pieces for the 2026-10-12 labs (docs/ideas_1_to_4_prereg.md).
 
 Two windows loaded straight from their cache directories (the harness's
 load_symbol reads one fixed directory), per-coin spread slippage, the engine

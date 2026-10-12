@@ -1,4 +1,4 @@
-"""Idea 6: trade a coin only after a win on it (2026-10-13, docs/ideas_1_to_4_prereg.md).
+"""Idea 6: trade a coin only after a win on it (2026-10-12, docs/ideas_1_to_4_prereg.md).
 
     PYTHONPATH=. .venv/bin/python scripts/win_follow_lab.py
 """

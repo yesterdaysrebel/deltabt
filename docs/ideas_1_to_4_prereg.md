@@ -1,4 +1,4 @@
-# Pre-registration — ideas 1–4 of the 2026-10-13 list (owner: "run 1–5 right now")
+# Pre-registration — ideas 1–4 of the 2026-10-12 list (owner: "run 1–5 right now")
 
 Written and committed before any of the four ran. Idea 5 (a trade-flow recorder) is a deploy and
 is handled separately. All four are local, ₹0, on `manual_scalp_both_t3` (the %R entry, 4×ATR stop,
@@ -68,13 +68,13 @@ next hour's open and exited at +24h, both taker, 0.158 % round trip. Statistics 
 Judged on DEV: F1 forced fade > 0, day-clustered t ≥ 2.5; F2 forced beats ordinary, t ≥ 2; F3 positive
 after costs; F4 same sign in both halves. Then OLD: F5 fade > 0 after costs, t ≥ 2. **PASS = F1–F5.**
 
-### Idea 4 implementation details, fixed 2026-10-13 before its run
+### Idea 4 implementation details, fixed 2026-10-12 before its run
 Trailing thresholds need ≥ 30 days of a coin's history (`min_periods` 720 hours); the liquidity median
 needs ≥ 10 days; the trailing daily vol uses ≥ 20 of the previous 24 hourly returns. The 24h exit is the
 close of the hour that ends 24h after entry (4h likewise). The OI 1h fetch: `scripts/fetch_oi_1h.py`,
 manifest in `out/sweep/five_min_arm_lab/forced_selling/`.
 
-## RESULTS 2026-10-13 (`out/sweep/five_min_arm_lab/ideas_2026-10-13/`) — all four closed or unanswerable
+## RESULTS 2026-10-12 (`out/sweep/five_min_arm_lab/ideas_2026-10-12/`) — all four closed or unanswerable
 
 | idea | DEV (2025-12..2026-09) | OLD (2024-06..2025-12) | verdict |
 |---|---|---|---|
@@ -85,7 +85,7 @@ manifest in `out/sweep/five_min_arm_lab/forced_selling/`.
 
 Reported only: prod 3 coins, limit entry +0.051R vs +0.002R market (DEV only; those coins did not exist in OLD).
 
-## Idea 6 (added 2026-10-13, owner: "consider all coins") — trade a coin only after a win on it
+## Idea 6 (added 2026-10-12, owner: "consider all coins") — trade a coin only after a win on it
 
 The one real pattern found so far: a coin's next trade does better after a win than after a loss
 (prod coins 36.7 % vs 24.9 % wins; 32 coins 29.9 % vs 25.4 %, hold-to-3R). The pause tried to use it
@@ -99,14 +99,14 @@ virtual bot holds exactly the slots the real one would — the base trade list i
   p ≤ 0.05. **W2** the same on OLD. **W3** real net R per trade > 0 on OLD. **PASS = W1, W2, W3.**
 - Reported: share of trades that are real, the trail, prod 3 (DEV), after-win / after-loss tables.
 
-**Idea 6 result 2026-10-13** (`out/sweep/five_min_arm_lab/ideas_2026-10-13/idea6_win_follow_result.txt`): **FAIL**
+**Idea 6 result 2026-10-12** (`out/sweep/five_min_arm_lab/ideas_2026-10-12/idea6_win_follow_result.txt`): **FAIL**
 — W1 PASS (DEV real +0.026R vs virtual −0.138R, p 0.007), W2 fail (OLD −0.020R vs −0.097R, p 0.056),
 W3 fail (OLD real net −0.020R). The direction held on the untouched window (after a win beats after a
 loss by ~0.08R in both), which no other rule has done; the size is "lose less", not profit. Real mode
 takes 27 % of signals. Prod 3 coins, DEV only: real +0.381R on 122 trades (reported). On the trail the
 pattern is absent (p 0.72 / 0.36).
 
-## Idea 7 (added 2026-10-13, owner) — the same entry on 1h and 4h bars, with and without the after-a-win rule
+## Idea 7 (added 2026-10-12, owner) — the same entry on 1h and 4h bars, with and without the after-a-win rule
 
 `manual_scalp_both_t3` at a **60m primary (12m confirmation)** and a **240m primary (48m)**, 4×ATR stop,
 3R target, hold caps 10 and 30 days, per-coin spread slippage, the 0.15 cost gate. Smoke test before
@@ -117,7 +117,7 @@ Arms: every signal; money only after a win on the coin (idea 6 labelling). Both 
 Judged on hold-to-3R per cell (timeframe × arm): **PASS = net R > 0 in both windows and pooled
 day-clustered t ≥ 2.5**; fewer than 100 trades in a window = cannot answer. The trail is reported.
 
-**Idea 7 result 2026-10-13** (`out/sweep/five_min_arm_lab/ideas_2026-10-13/idea7_slow_timeframe_result.txt`): **FAIL at 1h,
+**Idea 7 result 2026-10-12** (`out/sweep/five_min_arm_lab/ideas_2026-10-12/idea7_slow_timeframe_result.txt`): **FAIL at 1h,
 cannot answer at 4h.** 1h, hold-to-3R: every signal −0.044R (DEV, 296 trades) / −0.027R (OLD, 605); after a win −0.055R /
 +0.024R; pooled day-t −0.52 / −0.04. Cost per R did fall (median 0.040 / 0.029 vs ~0.08 at 5m) and the win rate rose to
 31 %, but the entry still earns nothing before fees. 4h: 48 / 116 trades (5–6 a month across every coin) — below the

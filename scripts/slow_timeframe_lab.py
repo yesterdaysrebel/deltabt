@@ -1,4 +1,4 @@
-"""Idea 7: the same entry on 1h and 4h bars, with and without the after-a-win rule (2026-10-13).
+"""Idea 7: the same entry on 1h and 4h bars, with and without the after-a-win rule (2026-10-12).
 
     PYTHONPATH=. .venv/bin/python scripts/slow_timeframe_lab.py
 

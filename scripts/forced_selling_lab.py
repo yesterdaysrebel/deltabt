@@ -1,4 +1,4 @@
-"""Idea 4: does forced selling reverse? (2026-10-13, docs/ideas_1_to_4_prereg.md)
+"""Idea 4: does forced selling reverse? (2026-10-12, docs/ideas_1_to_4_prereg.md)
 
     PYTHONPATH=. .venv/bin/python scripts/forced_selling_lab.py
 
@@ -123,4 +123,4 @@ if __name__ == "__main__":
     for k, v in F.items():
         print(f"  {k}: {'PASS' if v else 'fail'}")
     print(f"\nIDEA 4: {'PASS' if all(F.values()) else 'FAIL'}")
-    E.to_csv("out/sweep/five_min_arm_lab/ideas_2026-10-13/forced_selling_events.csv", index=False)
+    E.to_csv("out/sweep/five_min_arm_lab/ideas_2026-10-12/forced_selling_events.csv", index=False)

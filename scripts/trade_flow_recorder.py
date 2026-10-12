@@ -1,4 +1,4 @@
-"""Record Delta's public trade prints, with the taker side, for the screen coins (idea 5, 2026-10-13).
+"""Record Delta's public trade prints, with the taker side, for the screen coins (idea 5, 2026-10-12).
 
     PYTHONPATH=. .venv/bin/python scripts/trade_flow_recorder.py [OUT_DIR]
 
