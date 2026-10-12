@@ -105,3 +105,14 @@ W3 fail (OLD real net −0.020R). The direction held on the untouched window (af
 loss by ~0.08R in both), which no other rule has done; the size is "lose less", not profit. Real mode
 takes 27 % of signals. Prod 3 coins, DEV only: real +0.381R on 122 trades (reported). On the trail the
 pattern is absent (p 0.72 / 0.36).
+
+## Idea 7 (added 2026-10-13, owner) — the same entry on 1h and 4h bars, with and without the after-a-win rule
+
+`manual_scalp_both_t3` at a **60m primary (12m confirmation)** and a **240m primary (48m)**, 4×ATR stop,
+3R target, hold caps 10 and 30 days, per-coin spread slippage, the 0.15 cost gate. Smoke test before
+the run (BTCUSD, DEV): median stop 1.3 % at 5m → 2.3 % at 1h → 4.6 % at 4h, so fee drag roughly halves
+and quarters — not the 10× first guessed. **Thin coins mostly drop out** (the completeness rule refuses
+bars with missing minutes: BEATUSD keeps 13 signals at 1h, none at 4h); the test is mainly on liquid coins.
+Arms: every signal; money only after a win on the coin (idea 6 labelling). Both windows, all screen coins.
+Judged on hold-to-3R per cell (timeframe × arm): **PASS = net R > 0 in both windows and pooled
+day-clustered t ≥ 2.5**; fewer than 100 trades in a window = cannot answer. The trail is reported.
