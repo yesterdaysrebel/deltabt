@@ -164,6 +164,10 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**New-listing drift (2026-10-13, `docs/new_listing_drift_prereg.md`, 177 Delta launches): FAIL on the t bar, direction
+held in both windows.** A 21-day short from the day-2 close: +6.8 % (OLD, 105 listings) / +2.8 % (DEV, 70) net, beating
+the same coins shorted later in life (p 0.00 both) — but launch-day t 1.6 / 0.6 (bar 2), 30–42 % stopped out at 30 %,
+and the liquid subset flips sign (−13.6 % / +4.6 %). Listing data in `data/listings/` (gitignored, `scripts/fetch_listings.py`).
 **Liquidation-cascade reversion (2026-10-13, `docs/liquidation_reversion_prereg.md`): CANNOT ANSWER.** With the
 owner's thresholds (3×ATR hourly move, 3.5× volume, −3 % OI, $1M liquidity) there are 17 events in DEV and 19 in OLD
 against floors of 50 / 25 days; no outcome read. Genuine cascades on liquid coins run ~2 a month across 32 coins.

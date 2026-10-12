@@ -53,3 +53,21 @@ own screen floor), since a $250 account cannot short the rest.
 ## Conduct
 
 One run per window; a bug found after: fix, log here, rerun, report both. Trade tables committed.
+
+## RESULT 2026-10-13 — FAIL (`out/sweep/five_min_arm_lab/new_listing/result_2026-10-13.txt`)
+
+177 listings fetched (all with early data, 163 with a later-life block); 105 / 70 produced a trade.
+
+| window | 21-day short, net per trade | launch-day t | control (same coins, random later start) | stopped out | N1 / N2 / N3 |
+|---|---|---|---|---|---|
+| OLD (105) | **+6.8 %** (+0.23R), win 58 % | +1.63 | −0.3 %, p 0.00 | 42 % | PASS / fail / PASS |
+| DEV (70) | **+2.8 %** (+0.09R), win 59 % | +0.59 | −2.7 %, p 0.00 | 30 % | PASS / fail / PASS |
+
+Direction replicated: shorting a new perp beats shorting the same perp later in its life, in both
+windows, and the 7 → 14 → 21-day profile rises in both. The size is modest and noisy — the launch-day t
+is 1.6 and 0.6 against a bar of 2 — because new perps are wild: a 30 % stop was hit on 30–42 % of
+trades and the winners are the ones that kept falling. **The tradeable subset is inconsistent:** liquid
+listings (median daily $ volume ≥ $250k) were −13.6 % on OLD (18 listings) and +4.6 % on DEV (40). One
+position at a time: 18 trades +2.0 % (OLD), 8 trades +8.7 % (DEV). Funding cost 0.2–0.5 % a trade.
+Survivorship runs against the hypothesis (delisted launches are missing), so the true drift is if
+anything larger — but on perps a $250 account could not short. Verdict unchanged: FAIL on N2.

@@ -1,0 +1,2413 @@
+{
+ "fetched_utc": "2026-10-12T15:14:25+00:00",
+ "listings": {
+  "NOTUSD": {
+   "launch": 1717545600,
+   "early": {
+    "rows": 64801,
+    "first": 1717590600,
+    "last": 1721478600
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1725366780,
+    "last": 1729254600
+   },
+   "funding_rows": 3357
+  },
+  "ETHFIUSD": {
+   "launch": 1717545600,
+   "early": {
+    "rows": 64801,
+    "first": 1717611840,
+    "last": 1721499840
+   },
+   "late": {
+    "rows": 64582,
+    "first": 1725400980,
+    "last": 1729275840
+   },
+   "funding_rows": 3355
+  },
+  "BBUSD": {
+   "launch": 1717545600,
+   "early": {
+    "rows": 64801,
+    "first": 1717595520,
+    "last": 1721483520
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1725371520,
+    "last": 1729259520
+   },
+   "funding_rows": 3358
+  },
+  "PEOPLEUSD": {
+   "launch": 1717545600,
+   "early": {
+    "rows": 64801,
+    "first": 1717591320,
+    "last": 1721479320
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1725367380,
+    "last": 1729255320
+   },
+   "funding_rows": 3357
+  },
+  "ZKUSD": {
+   "launch": 1719792000,
+   "early": {
+    "rows": 64801,
+    "first": 1719926580,
+    "last": 1723814580
+   },
+   "late": {
+    "rows": 64739,
+    "first": 1727706300,
+    "last": 1731590580
+   },
+   "funding_rows": 3358
+  },
+  "IOUSD": {
+   "launch": 1719792000,
+   "early": {
+    "rows": 64801,
+    "first": 1719932340,
+    "last": 1723820340
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1727708760,
+    "last": 1731596340
+   },
+   "funding_rows": 3359
+  },
+  "ZROUSD": {
+   "launch": 1719792000,
+   "early": {
+    "rows": 64801,
+    "first": 1719919440,
+    "last": 1723807440
+   },
+   "late": {
+    "rows": 64753,
+    "first": 1727698320,
+    "last": 1731583440
+   },
+   "funding_rows": 3356
+  },
+  "LISTAUSD": {
+   "launch": 1719878400,
+   "early": {
+    "rows": 64801,
+    "first": 1719930300,
+    "last": 1723818300
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1727706300,
+    "last": 1731594300
+   },
+   "funding_rows": 3359
+  },
+  "TAOUSD": {
+   "launch": 1719878400,
+   "early": {
+    "rows": 64801,
+    "first": 1719928680,
+    "last": 1723816680
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1727704860,
+    "last": 1731592680
+   },
+   "funding_rows": 3358
+  },
+  "MANTAUSD": {
+   "launch": 1720656000,
+   "early": {
+    "rows": 64801,
+    "first": 1720783860,
+    "last": 1724671860
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1728560280,
+    "last": 1732447860
+   },
+   "funding_rows": 3356
+  },
+  "BLURUSD": {
+   "launch": 1720656000,
+   "early": {
+    "rows": 64801,
+    "first": 1720787400,
+    "last": 1724675400
+   },
+   "late": {
+    "rows": 64682,
+    "first": 1728570540,
+    "last": 1732451400
+   },
+   "funding_rows": 3357
+  },
+  "GALAUSD": {
+   "launch": 1720656000,
+   "early": {
+    "rows": 64801,
+    "first": 1720784040,
+    "last": 1724672040
+   },
+   "late": {
+    "rows": 64790,
+    "first": 1728560700,
+    "last": 1732448040
+   },
+   "funding_rows": 3356
+  },
+  "SAGAUSD": {
+   "launch": 1728345600,
+   "early": {
+    "rows": 64801,
+    "first": 1728390720,
+    "last": 1732278720
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1736166720,
+    "last": 1740054720
+   },
+   "funding_rows": 3357
+  },
+  "POLUSD": {
+   "launch": 1728345600,
+   "early": {
+    "rows": 64801,
+    "first": 1728390600,
+    "last": 1732278600
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1736166600,
+    "last": 1740054600
+   },
+   "funding_rows": 3357
+  },
+  "NEIROUSD": {
+   "launch": 1728345600,
+   "early": {
+    "rows": 64801,
+    "first": 1728390600,
+    "last": 1732278600
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1736166600,
+    "last": 1740054600
+   },
+   "funding_rows": 3357
+  },
+  "EIGENUSD": {
+   "launch": 1728345600,
+   "early": {
+    "rows": 64801,
+    "first": 1728390600,
+    "last": 1732278600
+   },
+   "late": {
+    "rows": 64766,
+    "first": 1736168700,
+    "last": 1740054600
+   },
+   "funding_rows": 3357
+  },
+  "POPCATUSD": {
+   "launch": 1731628800,
+   "early": {
+    "rows": 64801,
+    "first": 1731673860,
+    "last": 1735561860
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1739449860,
+    "last": 1743337860
+   },
+   "funding_rows": 3357
+  },
+  "PNUTUSD": {
+   "launch": 1731628800,
+   "early": {
+    "rows": 64801,
+    "first": 1731673800,
+    "last": 1735561800
+   },
+   "late": {
+    "rows": 64772,
+    "first": 1739451540,
+    "last": 1743337800
+   },
+   "funding_rows": 3357
+  },
+  "ACTUSD": {
+   "launch": 1731628800,
+   "early": {
+    "rows": 64801,
+    "first": 1731673800,
+    "last": 1735561800
+   },
+   "late": {
+    "rows": 64789,
+    "first": 1739450520,
+    "last": 1743337800
+   },
+   "funding_rows": 3357
+  },
+  "XLMUSD": {
+   "launch": 1732579200,
+   "early": {
+    "rows": 64801,
+    "first": 1732631400,
+    "last": 1736519400
+   },
+   "late": {
+    "rows": 64781,
+    "first": 1740408600,
+    "last": 1744295400
+   },
+   "funding_rows": 3359
+  },
+  "KSMUSD": {
+   "launch": 1732579200,
+   "early": {
+    "rows": 64801,
+    "first": 1732631700,
+    "last": 1736519700
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1740407760,
+    "last": 1744295700
+   },
+   "funding_rows": 3359
+  },
+  "GOATUSD": {
+   "launch": 1732579200,
+   "early": {
+    "rows": 64801,
+    "first": 1732631460,
+    "last": 1736519460
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1740407460,
+    "last": 1744295460
+   },
+   "funding_rows": 3359
+  },
+  "MANAUSD": {
+   "launch": 1732579200,
+   "early": {
+    "rows": 64801,
+    "first": 1732631640,
+    "last": 1736519640
+   },
+   "late": {
+    "rows": 64793,
+    "first": 1740408120,
+    "last": 1744295640
+   },
+   "funding_rows": 3359
+  },
+  "IOTAUSD": {
+   "launch": 1733356800,
+   "early": {
+    "rows": 64801,
+    "first": 1733405400,
+    "last": 1737293400
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1741181460,
+    "last": 1745069400
+   },
+   "funding_rows": 3358
+  },
+  "RSRUSD": {
+   "launch": 1733356800,
+   "early": {
+    "rows": 64801,
+    "first": 1733405400,
+    "last": 1737293400
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1741181520,
+    "last": 1745069400
+   },
+   "funding_rows": 3358
+  },
+  "SUNUSD": {
+   "launch": 1733356800,
+   "early": {
+    "rows": 64801,
+    "first": 1733405700,
+    "last": 1737293700
+   },
+   "late": {
+    "rows": 64779,
+    "first": 1741183020,
+    "last": 1745069700
+   },
+   "funding_rows": 3358
+  },
+  "MOODENGUSD": {
+   "launch": 1733356800,
+   "early": {
+    "rows": 64801,
+    "first": 1733405520,
+    "last": 1737293520
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1741181580,
+    "last": 1745069520
+   },
+   "funding_rows": 3358
+  },
+  "DOGSUSD": {
+   "launch": 1733788800,
+   "early": {
+    "rows": 64801,
+    "first": 1733920200,
+    "last": 1737808200
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1741696320,
+    "last": 1745584200
+   },
+   "funding_rows": 3357
+  },
+  "JASMYUSD": {
+   "launch": 1733788800,
+   "early": {
+    "rows": 64801,
+    "first": 1733920380,
+    "last": 1737808380
+   },
+   "late": {
+    "rows": 64765,
+    "first": 1741698540,
+    "last": 1745584380
+   },
+   "funding_rows": 3357
+  },
+  "1MBABYDOGEUSD": {
+   "launch": 1733961600,
+   "early": {
+    "rows": 64801,
+    "first": 1734013800,
+    "last": 1737901800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1741789800,
+    "last": 1745677800
+   },
+   "funding_rows": 3360
+  },
+  "1000SATSUSD": {
+   "launch": 1733961600,
+   "early": {
+    "rows": 64801,
+    "first": 1734013800,
+    "last": 1737901800
+   },
+   "late": {
+    "rows": 64768,
+    "first": 1741791780,
+    "last": 1745677800
+   },
+   "funding_rows": 3360
+  },
+  "FARTCOINUSD": {
+   "launch": 1736121600,
+   "early": {
+    "rows": 64801,
+    "first": 1736170200,
+    "last": 1740058200
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1743946200,
+    "last": 1747834200
+   },
+   "funding_rows": 3358
+  },
+  "AIXBTUSD": {
+   "launch": 1736121600,
+   "early": {
+    "rows": 64801,
+    "first": 1736170200,
+    "last": 1740058200
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1743946380,
+    "last": 1747834200
+   },
+   "funding_rows": 3358
+  },
+  "USUALUSD": {
+   "launch": 1736121600,
+   "early": {
+    "rows": 64801,
+    "first": 1736170200,
+    "last": 1740058200
+   },
+   "late": {
+    "rows": 64795,
+    "first": 1743946560,
+    "last": 1747834200
+   },
+   "funding_rows": 3358
+  },
+  "VIRTUALUSD": {
+   "launch": 1736121600,
+   "early": {
+    "rows": 64801,
+    "first": 1736170200,
+    "last": 1740058200
+   },
+   "late": {
+    "rows": 64792,
+    "first": 1743946740,
+    "last": 1747834200
+   },
+   "funding_rows": 3358
+  },
+  "SPXUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515920,
+    "last": 1740403920
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1744291980,
+    "last": 1748179920
+   },
+   "funding_rows": 3358
+  },
+  "MOVEUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515860,
+    "last": 1740403860
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1744292280,
+    "last": 1748179860
+   },
+   "funding_rows": 3358
+  },
+  "BIOUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515800,
+    "last": 1740403800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1744291800,
+    "last": 1748179800
+   },
+   "funding_rows": 3358
+  },
+  "HIVEUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515860,
+    "last": 1740403860
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1744291860,
+    "last": 1748179860
+   },
+   "funding_rows": 3358
+  },
+  "SONICUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515800,
+    "last": 1740403800
+   },
+   "late": {
+    "rows": 64788,
+    "first": 1744292580,
+    "last": 1748179800
+   },
+   "funding_rows": 3358
+  },
+  "PENGUUSD": {
+   "launch": 1736467200,
+   "early": {
+    "rows": 64801,
+    "first": 1736515800,
+    "last": 1740403800
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1744291980,
+    "last": 1748179800
+   },
+   "funding_rows": 3358
+  },
+  "TRUMPUSD": {
+   "launch": 1737158400,
+   "early": {
+    "rows": 64801,
+    "first": 1737218700,
+    "last": 1741106700
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1744994760,
+    "last": 1748882700
+   },
+   "funding_rows": 3353
+  },
+  "JUPUSD": {
+   "launch": 1737504000,
+   "early": {
+    "rows": 64801,
+    "first": 1737554400,
+    "last": 1741442400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1745330400,
+    "last": 1749218400
+   },
+   "funding_rows": 3359
+  },
+  "MELANIAUSD": {
+   "launch": 1737504000,
+   "early": {
+    "rows": 64801,
+    "first": 1737554400,
+    "last": 1741442400
+   },
+   "late": {
+    "rows": 64792,
+    "first": 1745330940,
+    "last": 1749218400
+   },
+   "funding_rows": 3359
+  },
+  "GRIFFAINUSD": {
+   "launch": 1737504000,
+   "early": {
+    "rows": 64801,
+    "first": 1737554400,
+    "last": 1741442400
+   },
+   "late": {
+    "rows": 64796,
+    "first": 1745330700,
+    "last": 1749218400
+   },
+   "funding_rows": 3359
+  },
+  "SWARMSUSD": {
+   "launch": 1737504000,
+   "early": {
+    "rows": 64801,
+    "first": 1737554400,
+    "last": 1741442400
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1745330460,
+    "last": 1749218400
+   },
+   "funding_rows": 3359
+  },
+  "VANAUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64797,
+    "first": 1745498040,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "SOLVUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1745497860,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "ARCUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1745497980,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "COOKIEUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1745497860,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "AVAAIUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1745497800,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "SUSD": {
+   "launch": 1737676800,
+   "early": {
+    "rows": 64801,
+    "first": 1737721800,
+    "last": 1741609800
+   },
+   "late": {
+    "rows": 64778,
+    "first": 1745499180,
+    "last": 1749385800
+   },
+   "funding_rows": 3357
+  },
+  "VVVUSD": {
+   "launch": 1738108800,
+   "early": {
+    "rows": 64801,
+    "first": 1738222800,
+    "last": 1742110800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1745998800,
+    "last": 1749886800
+   },
+   "funding_rows": 3360
+  },
+  "BERAUSD": {
+   "launch": 1738886400,
+   "early": {
+    "rows": 64801,
+    "first": 1738935000,
+    "last": 1742823000
+   },
+   "late": {
+    "rows": 64780,
+    "first": 1746712260,
+    "last": 1750599000
+   },
+   "funding_rows": 3358
+  },
+  "GLMUSD": {
+   "launch": 1740009600,
+   "early": {
+    "rows": 64801,
+    "first": 1740054720,
+    "last": 1743942720
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1747830780,
+    "last": 1751718720
+   },
+   "funding_rows": 3357
+  },
+  "TSTUSD": {
+   "launch": 1740009600,
+   "early": {
+    "rows": 64801,
+    "first": 1740054600,
+    "last": 1743942600
+   },
+   "late": {
+    "rows": 64774,
+    "first": 1747832220,
+    "last": 1751718600
+   },
+   "funding_rows": 3357
+  },
+  "CAKEUSD": {
+   "launch": 1740009600,
+   "early": {
+    "rows": 64801,
+    "first": 1740054600,
+    "last": 1743942600
+   },
+   "late": {
+    "rows": 64786,
+    "first": 1747831500,
+    "last": 1751718600
+   },
+   "funding_rows": 3357
+  },
+  "PIUSD": {
+   "launch": 1740009600,
+   "early": {
+    "rows": 64801,
+    "first": 1740061800,
+    "last": 1743949800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1747837800,
+    "last": 1751725800
+   },
+   "funding_rows": 3359
+  },
+  "KAITOUSD": {
+   "launch": 1740096000,
+   "early": {
+    "rows": 64801,
+    "first": 1740141000,
+    "last": 1744029000
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1747917060,
+    "last": 1751805000
+   },
+   "funding_rows": 3357
+  },
+  "LAYERUSD": {
+   "launch": 1742169600,
+   "early": {
+    "rows": 64801,
+    "first": 1742220000,
+    "last": 1746108000
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1749996120,
+    "last": 1753884000
+   },
+   "funding_rows": 3359
+  },
+  "REDUSD": {
+   "launch": 1742169600,
+   "early": {
+    "rows": 64801,
+    "first": 1742218200,
+    "last": 1746106200
+   },
+   "late": {
+    "rows": 64711,
+    "first": 1749999600,
+    "last": 1753882200
+   },
+   "funding_rows": 3358
+  },
+  "RAREUSD": {
+   "launch": 1742169600,
+   "early": {
+    "rows": 64801,
+    "first": 1742220000,
+    "last": 1746108000
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1749996060,
+    "last": 1753884000
+   },
+   "funding_rows": 3359
+  },
+  "AUCTIONUSD": {
+   "launch": 1742169600,
+   "early": {
+    "rows": 64801,
+    "first": 1742218200,
+    "last": 1746106200
+   },
+   "late": {
+    "rows": 64625,
+    "first": 1750004760,
+    "last": 1753882200
+   },
+   "funding_rows": 3358
+  },
+  "MUBARAKUSD": {
+   "launch": 1742515200,
+   "early": {
+    "rows": 64801,
+    "first": 1742545800,
+    "last": 1746433800
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1750322220,
+    "last": 1754209800
+   },
+   "funding_rows": 3353
+  },
+  "API3USD": {
+   "launch": 1742515200,
+   "early": {
+    "rows": 64801,
+    "first": 1742545800,
+    "last": 1746433800
+   },
+   "late": {
+    "rows": 64778,
+    "first": 1750323180,
+    "last": 1754209800
+   },
+   "funding_rows": 3353
+  },
+  "BMTUSD": {
+   "launch": 1742515200,
+   "early": {
+    "rows": 64801,
+    "first": 1742545800,
+    "last": 1746433800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1750321800,
+    "last": 1754209800
+   },
+   "funding_rows": 3353
+  },
+  "WCTUSD": {
+   "launch": 1746403200,
+   "early": {
+    "rows": 64801,
+    "first": 1746448200,
+    "last": 1750336200
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1754224260,
+    "last": 1758112200
+   },
+   "funding_rows": 3357
+  },
+  "INITUSD": {
+   "launch": 1746403200,
+   "early": {
+    "rows": 64801,
+    "first": 1746448200,
+    "last": 1750336200
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1754224620,
+    "last": 1758112200
+   },
+   "funding_rows": 3357
+  },
+  "DEEPUSD": {
+   "launch": 1746403200,
+   "early": {
+    "rows": 64801,
+    "first": 1746448200,
+    "last": 1750336200
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1754224320,
+    "last": 1758112200
+   },
+   "funding_rows": 3357
+  },
+  "SIGNUSD": {
+   "launch": 1746403200,
+   "early": {
+    "rows": 64801,
+    "first": 1746448200,
+    "last": 1750336200
+   },
+   "late": {
+    "rows": 64786,
+    "first": 1754225100,
+    "last": 1758112200
+   },
+   "funding_rows": 3357
+  },
+  "MEUSD": {
+   "launch": 1748995200,
+   "early": {
+    "rows": 64801,
+    "first": 1749040200,
+    "last": 1752928200
+   },
+   "late": {
+    "rows": 64786,
+    "first": 1756817100,
+    "last": 1760704200
+   },
+   "funding_rows": 3357
+  },
+  "MASKUSD": {
+   "launch": 1748995200,
+   "early": {
+    "rows": 64801,
+    "first": 1749040200,
+    "last": 1752928200
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1756816380,
+    "last": 1760704200
+   },
+   "funding_rows": 3357
+  },
+  "HYPEUSD": {
+   "launch": 1748995200,
+   "early": {
+    "rows": 64801,
+    "first": 1749040200,
+    "last": 1752928200
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1756816200,
+    "last": 1760704200
+   },
+   "funding_rows": 3357
+  },
+  "SOPHUSD": {
+   "launch": 1748995200,
+   "early": {
+    "rows": 64801,
+    "first": 1749040200,
+    "last": 1752928200
+   },
+   "late": {
+    "rows": 64783,
+    "first": 1756817280,
+    "last": 1760704200
+   },
+   "funding_rows": 3357
+  },
+  "AINUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1760441460,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "HUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1760441400,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "SAHARAUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1760441520,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "PUMPUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1760441400,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "MUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1760441460,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "CROSSUSD": {
+   "launch": 1752624000,
+   "early": {
+    "rows": 64801,
+    "first": 1752665400,
+    "last": 1756553400
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1760441580,
+    "last": 1764329400
+   },
+   "funding_rows": 3356
+  },
+  "TOWNSUSD": {
+   "launch": 1755129600,
+   "early": {
+    "rows": 64801,
+    "first": 1755171000,
+    "last": 1759059000
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1762947060,
+    "last": 1766835000
+   },
+   "funding_rows": 3358
+  },
+  "AIOUSD": {
+   "launch": 1755129600,
+   "early": {
+    "rows": 64801,
+    "first": 1755171000,
+    "last": 1759059000
+   },
+   "late": {
+    "rows": 64778,
+    "first": 1762948380,
+    "last": 1766835000
+   },
+   "funding_rows": 3358
+  },
+  "SKLUSD": {
+   "launch": 1755129600,
+   "early": {
+    "rows": 64801,
+    "first": 1755171000,
+    "last": 1759059000
+   },
+   "late": {
+    "rows": 64791,
+    "first": 1762947600,
+    "last": 1766835000
+   },
+   "funding_rows": 3358
+  },
+  "PROVEUSD": {
+   "launch": 1755129600,
+   "early": {
+    "rows": 64801,
+    "first": 1755171000,
+    "last": 1759059000
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1762947420,
+    "last": 1766835000
+   },
+   "funding_rows": 3358
+  },
+  "ZORAUSD": {
+   "launch": 1755129600,
+   "early": {
+    "rows": 64801,
+    "first": 1755171000,
+    "last": 1759059000
+   },
+   "late": {
+    "rows": 64793,
+    "first": 1762947480,
+    "last": 1766835000
+   },
+   "funding_rows": 3358
+  },
+  "WLFIUSD": {
+   "launch": 1756684800,
+   "early": {
+    "rows": 64801,
+    "first": 1756735200,
+    "last": 1760623200
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1764511320,
+    "last": 1768399200
+   },
+   "funding_rows": 3359
+  },
+  "ASTERUSD": {
+   "launch": 1758672000,
+   "early": {
+    "rows": 64801,
+    "first": 1758717000,
+    "last": 1762605000
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1766493060,
+    "last": 1770381000
+   },
+   "funding_rows": 3357
+  },
+  "XPLUSD": {
+   "launch": 1758931200,
+   "early": {
+    "rows": 64801,
+    "first": 1758979800,
+    "last": 1762867800
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1766755800,
+    "last": 1770643800
+   },
+   "funding_rows": 3358
+  },
+  "FFUSD": {
+   "launch": 1759276800,
+   "early": {
+    "rows": 64801,
+    "first": 1759318200,
+    "last": 1763206200
+   },
+   "late": {
+    "rows": 64726,
+    "first": 1767098700,
+    "last": 1770982200
+   },
+   "funding_rows": 3356
+  },
+  "EDENUSD": {
+   "launch": 1759276800,
+   "early": {
+    "rows": 64801,
+    "first": 1759318200,
+    "last": 1763206200
+   },
+   "late": {
+    "rows": 64737,
+    "first": 1767098040,
+    "last": 1770982200
+   },
+   "funding_rows": 3356
+  },
+  "XANUSD": {
+   "launch": 1759276800,
+   "early": {
+    "rows": 64801,
+    "first": 1759318200,
+    "last": 1763206200
+   },
+   "late": {
+    "rows": 64797,
+    "first": 1767094440,
+    "last": 1770982200
+   },
+   "funding_rows": 3356
+  },
+  "ORDERUSD": {
+   "launch": 1759276800,
+   "early": {
+    "rows": 64801,
+    "first": 1759318200,
+    "last": 1763206200
+   },
+   "late": {
+    "rows": 64768,
+    "first": 1767096180,
+    "last": 1770982200
+   },
+   "funding_rows": 3356
+  },
+  "STBLUSD": {
+   "launch": 1759276800,
+   "early": {
+    "rows": 64801,
+    "first": 1759318200,
+    "last": 1763206200
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1767094200,
+    "last": 1770982200
+   },
+   "funding_rows": 3356
+  },
+  "ZECUSD": {
+   "launch": 1759708800,
+   "early": {
+    "rows": 64801,
+    "first": 1759757400,
+    "last": 1763645400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1767533400,
+    "last": 1771421400
+   },
+   "funding_rows": 3358
+  },
+  "COAIUSD": {
+   "launch": 1759708800,
+   "early": {
+    "rows": 64801,
+    "first": 1759757400,
+    "last": 1763645400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1767533400,
+    "last": 1771421400
+   },
+   "funding_rows": 3358
+  },
+  "EVAAUSD": {
+   "launch": 1759795200,
+   "early": {
+    "rows": 64801,
+    "first": 1759836600,
+    "last": 1763724600
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1767612720,
+    "last": 1771500600
+   },
+   "funding_rows": 3356
+  },
+  "HANAUSD": {
+   "launch": 1759795200,
+   "early": {
+    "rows": 64801,
+    "first": 1759836600,
+    "last": 1763724600
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1767612600,
+    "last": 1771500600
+   },
+   "funding_rows": 3356
+  },
+  "BLESSUSD": {
+   "launch": 1759795200,
+   "early": {
+    "rows": 64801,
+    "first": 1759836600,
+    "last": 1763724600
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1767612600,
+    "last": 1771500600
+   },
+   "funding_rows": 3356
+  },
+  "STRKUSD": {
+   "launch": 1762905600,
+   "early": {
+    "rows": 64801,
+    "first": 1762943400,
+    "last": 1766831400
+   },
+   "late": {
+    "rows": 64736,
+    "first": 1770723300,
+    "last": 1774607400
+   },
+   "funding_rows": 3359
+  },
+  "ZENUSD": {
+   "launch": 1762905600,
+   "early": {
+    "rows": 64801,
+    "first": 1762943400,
+    "last": 1766831400
+   },
+   "late": {
+    "rows": 64676,
+    "first": 1770726900,
+    "last": 1774607400
+   },
+   "funding_rows": 3355
+  },
+  "GIGGLEUSD": {
+   "launch": 1762905600,
+   "early": {
+    "rows": 64801,
+    "first": 1762943400,
+    "last": 1766831400
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1770719820,
+    "last": 1774607400
+   },
+   "funding_rows": 3359
+  },
+  "KITEUSD": {
+   "launch": 1762905600,
+   "early": {
+    "rows": 64801,
+    "first": 1762943400,
+    "last": 1766831400
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1770719400,
+    "last": 1774607400
+   },
+   "funding_rows": 3359
+  },
+  "MMTUSD": {
+   "launch": 1762905600,
+   "early": {
+    "rows": 64801,
+    "first": 1762943400,
+    "last": 1766831400
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1770719820,
+    "last": 1774607400
+   },
+   "funding_rows": 3359
+  },
+  "PIPPINUSD": {
+   "launch": 1764547200,
+   "early": {
+    "rows": 64801,
+    "first": 1764592200,
+    "last": 1768480200
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1772368200,
+    "last": 1776256200
+   },
+   "funding_rows": 3360
+  },
+  "TNSRUSD": {
+   "launch": 1764547200,
+   "early": {
+    "rows": 64801,
+    "first": 1764592200,
+    "last": 1768480200
+   },
+   "late": {
+    "rows": 64751,
+    "first": 1772371200,
+    "last": 1776256200
+   },
+   "funding_rows": 3360
+  },
+  "PARTIUSD": {
+   "launch": 1764547200,
+   "early": {
+    "rows": 64801,
+    "first": 1764592200,
+    "last": 1768480200
+   },
+   "late": {
+    "rows": 64788,
+    "first": 1772368980,
+    "last": 1776256200
+   },
+   "funding_rows": 3357
+  },
+  "MONUSD": {
+   "launch": 1764547200,
+   "early": {
+    "rows": 64801,
+    "first": 1764592200,
+    "last": 1768480200
+   },
+   "late": {
+    "rows": 64755,
+    "first": 1772370960,
+    "last": 1776256200
+   },
+   "funding_rows": 3357
+  },
+  "1000SHIBUSD": {
+   "launch": 1766966400,
+   "early": {
+    "rows": 64801,
+    "first": 1767004200,
+    "last": 1770892200
+   },
+   "late": {
+    "rows": 64784,
+    "first": 1774781220,
+    "last": 1778668200
+   },
+   "funding_rows": 3359
+  },
+  "1000FLOKIUSD": {
+   "launch": 1766966400,
+   "early": {
+    "rows": 64801,
+    "first": 1767004260,
+    "last": 1770892260
+   },
+   "late": {
+    "rows": 64770,
+    "first": 1774782120,
+    "last": 1778668260
+   },
+   "funding_rows": 3359
+  },
+  "1000PEPEUSD": {
+   "launch": 1766966400,
+   "early": {
+    "rows": 64801,
+    "first": 1767004260,
+    "last": 1770892260
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1774780440,
+    "last": 1778668260
+   },
+   "funding_rows": 3359
+  },
+  "1000BONKUSD": {
+   "launch": 1766966400,
+   "early": {
+    "rows": 64801,
+    "first": 1767004320,
+    "last": 1770892320
+   },
+   "late": {
+    "rows": 64797,
+    "first": 1774780560,
+    "last": 1778668320
+   },
+   "funding_rows": 3359
+  },
+  "BEATUSD": {
+   "launch": 1767571200,
+   "early": {
+    "rows": 64801,
+    "first": 1767619920,
+    "last": 1771507920
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1775395980,
+    "last": 1779283920
+   },
+   "funding_rows": 3358
+  },
+  "RIVERUSD": {
+   "launch": 1767571200,
+   "early": {
+    "rows": 64801,
+    "first": 1767619980,
+    "last": 1771507980
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1775395980,
+    "last": 1779283980
+   },
+   "funding_rows": 3360
+  },
+  "LIGHTUSD": {
+   "launch": 1767571200,
+   "early": {
+    "rows": 64801,
+    "first": 1767619980,
+    "last": 1771507980
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1775395980,
+    "last": 1779283980
+   },
+   "funding_rows": 3358
+  },
+  "LITUSD": {
+   "launch": 1767571200,
+   "early": {
+    "rows": 64801,
+    "first": 1767619920,
+    "last": 1771507920
+   },
+   "late": {
+    "rows": 64796,
+    "first": 1775396220,
+    "last": 1779283920
+   },
+   "funding_rows": 3358
+  },
+  "DASHUSD": {
+   "launch": 1768435200,
+   "early": {
+    "rows": 64801,
+    "first": 1768480200,
+    "last": 1772368200
+   },
+   "late": {
+    "rows": 64797,
+    "first": 1776256440,
+    "last": 1780144200
+   },
+   "funding_rows": 3357
+  },
+  "XMRUSD": {
+   "launch": 1768435200,
+   "early": {
+    "rows": 64801,
+    "first": 1768480260,
+    "last": 1772368260
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1776256320,
+    "last": 1780144260
+   },
+   "funding_rows": 3357
+  },
+  "FRAXUSD": {
+   "launch": 1768867200,
+   "early": {
+    "rows": 64801,
+    "first": 1768912260,
+    "last": 1772800260
+   },
+   "late": {
+    "rows": 64787,
+    "first": 1776689100,
+    "last": 1780576260
+   },
+   "funding_rows": 3357
+  },
+  "DUSKUSD": {
+   "launch": 1768867200,
+   "early": {
+    "rows": 64801,
+    "first": 1768912320,
+    "last": 1772800320
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1776688320,
+    "last": 1780576320
+   },
+   "funding_rows": 3360
+  },
+  "AXSUSD": {
+   "launch": 1768867200,
+   "early": {
+    "rows": 64801,
+    "first": 1768912440,
+    "last": 1772800440
+   },
+   "late": {
+    "rows": 64756,
+    "first": 1776691140,
+    "last": 1780576440
+   },
+   "funding_rows": 3360
+  },
+  "AMZNXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509840,
+    "last": 1775397840
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1779285840,
+    "last": 1783173840
+   },
+   "funding_rows": 3359
+  },
+  "TSLAXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509720,
+    "last": 1775397720
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1779285720,
+    "last": 1783173720
+   },
+   "funding_rows": 3359
+  },
+  "METAXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509540,
+    "last": 1775397540
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1779285600,
+    "last": 1783173540
+   },
+   "funding_rows": 3358
+  },
+  "GOOGLXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509480,
+    "last": 1775397480
+   },
+   "late": {
+    "rows": 64799,
+    "first": 1779285600,
+    "last": 1783173480
+   },
+   "funding_rows": 3358
+  },
+  "PAXGUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509240,
+    "last": 1775397240
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1779285240,
+    "last": 1783173240
+   },
+   "funding_rows": 3358
+  },
+  "AAPLXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771510620,
+    "last": 1775398620
+   },
+   "late": {
+    "rows": 64794,
+    "first": 1779287040,
+    "last": 1783174620
+   },
+   "funding_rows": 3359
+  },
+  "NVDAXUSD": {
+   "launch": 1771459200,
+   "early": {
+    "rows": 64801,
+    "first": 1771509480,
+    "last": 1775397480
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1779285480,
+    "last": 1783173480
+   },
+   "funding_rows": 3358
+  },
+  "SLVONUSD": {
+   "launch": 1772064000,
+   "early": {
+    "rows": 64801,
+    "first": 1772111880,
+    "last": 1775999880
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1779887880,
+    "last": 1783775880
+   },
+   "funding_rows": 3358
+  },
+  "CRCLXUSD": {
+   "launch": 1772755200,
+   "early": {
+    "rows": 64801,
+    "first": 1772803680,
+    "last": 1776691680
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1780579740,
+    "last": 1784467680
+   },
+   "funding_rows": 3358
+  },
+  "COINXUSD": {
+   "launch": 1772755200,
+   "early": {
+    "rows": 64801,
+    "first": 1772803680,
+    "last": 1776691680
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1780579680,
+    "last": 1784467680
+   },
+   "funding_rows": 3358
+  },
+  "SPYXUSD": {
+   "launch": 1775520000,
+   "early": {
+    "rows": 64801,
+    "first": 1775552580,
+    "last": 1779440580
+   },
+   "late": {
+    "rows": 64753,
+    "first": 1783331460,
+    "last": 1787216580
+   },
+   "funding_rows": 3354
+  },
+  "QQQXUSD": {
+   "launch": 1775520000,
+   "early": {
+    "rows": 64801,
+    "first": 1775552640,
+    "last": 1779440640
+   },
+   "late": {
+    "rows": 64800,
+    "first": 1783328700,
+    "last": 1787216640
+   },
+   "funding_rows": 3354
+  },
+  "SIRENUSD": {
+   "launch": 1776124800,
+   "early": {
+    "rows": 64801,
+    "first": 1776175980,
+    "last": 1780063980
+   },
+   "late": {
+    "rows": 64798,
+    "first": 1783952160,
+    "last": 1787839980
+   },
+   "funding_rows": 3360
+  },
+  "AIOTUSD": {
+   "launch": 1776124800,
+   "early": {
+    "rows": 64801,
+    "first": 1776175920,
+    "last": 1780063920
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1783951920,
+    "last": 1787839920
+   },
+   "funding_rows": 3359
+  },
+  "ARIAUSD": {
+   "launch": 1776124800,
+   "early": {
+    "rows": 64801,
+    "first": 1776175920,
+    "last": 1780063920
+   },
+   "late": {
+    "rows": 64736,
+    "first": 1783955820,
+    "last": 1787839920
+   },
+   "funding_rows": 3360
+  },
+  "RAVEUSD": {
+   "launch": 1776124800,
+   "early": {
+    "rows": 64801,
+    "first": 1776175920,
+    "last": 1780063920
+   },
+   "late": {
+    "rows": 64797,
+    "first": 1783952160,
+    "last": 1787839920
+   },
+   "funding_rows": 3360
+  },
+  "ENJUSD": {
+   "launch": 1776384000,
+   "early": {
+    "rows": 64801,
+    "first": 1776429900,
+    "last": 1780317900
+   },
+   "late": {
+    "rows": 64795,
+    "first": 1784206260,
+    "last": 1788093900
+   },
+   "funding_rows": 3360
+  },
+  "XAUTUSD": {
+   "launch": 1776384000,
+   "early": {
+    "rows": 64801,
+    "first": 1776429900,
+    "last": 1780317900
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1784205900,
+    "last": 1788093900
+   },
+   "funding_rows": 3357
+  },
+  "BASEDUSD": {
+   "launch": 1776384000,
+   "early": {
+    "rows": 64801,
+    "first": 1776429900,
+    "last": 1780317900
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1784205900,
+    "last": 1788093900
+   },
+   "funding_rows": 3357
+  },
+  "CHIPUSD": {
+   "launch": 1776816000,
+   "early": {
+    "rows": 64801,
+    "first": 1776862500,
+    "last": 1780750500
+   },
+   "late": {
+    "rows": 64790,
+    "first": 1784639160,
+    "last": 1788526500
+   },
+   "funding_rows": 3357
+  },
+  "PIEVERSEUSD": {
+   "launch": 1776816000,
+   "early": {
+    "rows": 64801,
+    "first": 1776862500,
+    "last": 1780750500
+   },
+   "late": {
+    "rows": 64690,
+    "first": 1784645160,
+    "last": 1788526500
+   },
+   "funding_rows": 3357
+  },
+  "LABUSD": {
+   "launch": 1777852800,
+   "early": {
+    "rows": 64801,
+    "first": 1777902780,
+    "last": 1781790780
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1785678780,
+    "last": 1789566780
+   },
+   "funding_rows": 3358
+  },
+  "SKYAIUSD": {
+   "launch": 1777852800,
+   "early": {
+    "rows": 64801,
+    "first": 1777902780,
+    "last": 1781790780
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1785678780,
+    "last": 1789566780
+   },
+   "funding_rows": 3358
+  },
+  "BUSD": {
+   "launch": 1777852800,
+   "early": {
+    "rows": 64801,
+    "first": 1777902780,
+    "last": 1781790780
+   },
+   "late": {
+    "rows": 64801,
+    "first": 1785678780,
+    "last": 1789566780
+   },
+   "funding_rows": 3358
+  },
+  "AIGENSYNUSD": {
+   "launch": 1778803200,
+   "early": {
+    "rows": 64801,
+    "first": 1778843580,
+    "last": 1782731580
+   },
+   "late": {
+    "rows": 64690,
+    "first": 1786626240,
+    "last": 1790507580
+   },
+   "funding_rows": 3360
+  },
+  "BILLUSD": {
+   "launch": 1778803200,
+   "early": {
+    "rows": 64801,
+    "first": 1778843580,
+    "last": 1782731580
+   },
+   "late": {
+    "rows": 64792,
+    "first": 1786620120,
+    "last": 1790507580
+   },
+   "funding_rows": 3360
+  },
+  "OPNUSD": {
+   "launch": 1780963200,
+   "early": {
+    "rows": 64801,
+    "first": 1781001600,
+    "last": 1784889600
+   },
+   "late": {
+    "rows": 50605,
+    "first": 1788781800,
+    "last": 1791818040
+   },
+   "funding_rows": 3004
+  },
+  "ALLOUSD": {
+   "launch": 1780963200,
+   "early": {
+    "rows": 64801,
+    "first": 1781001480,
+    "last": 1784889480
+   },
+   "late": {
+    "rows": 50650,
+    "first": 1788779100,
+    "last": 1791818040
+   },
+   "funding_rows": 3004
+  },
+  "SPCXXUSD": {
+   "launch": 1781568000,
+   "early": {
+    "rows": 64801,
+    "first": 1781616660,
+    "last": 1785504660
+   },
+   "late": {
+    "rows": 40424,
+    "first": 1789392660,
+    "last": 1791818040
+   },
+   "funding_rows": 2832
+  },
+  "VELVETUSD": {
+   "launch": 1781568000,
+   "early": {
+    "rows": 64801,
+    "first": 1781603040,
+    "last": 1785491040
+   },
+   "late": {
+    "rows": 40651,
+    "first": 1789379040,
+    "last": 1791818040
+   },
+   "funding_rows": 2836
+  },
+  "GRAMUSD": {
+   "launch": 1783382400,
+   "early": {
+    "rows": 64801,
+    "first": 1783428600,
+    "last": 1787316600
+   },
+   "late": {
+    "rows": 10131,
+    "first": 1791210240,
+    "last": 1791818040
+   },
+   "funding_rows": 2328
+  },
+  "TACUSD": {
+   "launch": 1783382400,
+   "early": {
+    "rows": 64801,
+    "first": 1783428600,
+    "last": 1787316600
+   },
+   "late": {
+    "rows": 10222,
+    "first": 1791204780,
+    "last": 1791818040
+   },
+   "funding_rows": 2328
+  },
+  "INUSD": {
+   "launch": 1783382400,
+   "early": {
+    "rows": 64801,
+    "first": 1783428600,
+    "last": 1787316600
+   },
+   "late": {
+    "rows": 10185,
+    "first": 1791207000,
+    "last": 1791818040
+   },
+   "funding_rows": 2328
+  },
+  "SOXLBUSD": {
+   "launch": 1783555200,
+   "early": {
+    "rows": 64801,
+    "first": 1783598700,
+    "last": 1787486700
+   },
+   "late": {
+    "rows": 7390,
+    "first": 1791374700,
+    "last": 1791818040
+   },
+   "funding_rows": 2280
+  },
+  "SNDKBUSD": {
+   "launch": 1783555200,
+   "early": {
+    "rows": 64801,
+    "first": 1783598700,
+    "last": 1787486700
+   },
+   "late": {
+    "rows": 7389,
+    "first": 1791374760,
+    "last": 1791818040
+   },
+   "funding_rows": 2280
+  },
+  "DRAMBUSD": {
+   "launch": 1783555200,
+   "early": {
+    "rows": 64801,
+    "first": 1783598700,
+    "last": 1787486700
+   },
+   "late": {
+    "rows": 7385,
+    "first": 1791375000,
+    "last": 1791818040
+   },
+   "funding_rows": 2280
+  },
+  "MUBUSD": {
+   "launch": 1783555200,
+   "early": {
+    "rows": 64801,
+    "first": 1783598700,
+    "last": 1787486700
+   },
+   "late": {
+    "rows": 7390,
+    "first": 1791374700,
+    "last": 1791818040
+   },
+   "funding_rows": 2280
+  },
+  "MSTRBUSD": {
+   "launch": 1783555200,
+   "early": {
+    "rows": 64801,
+    "first": 1783598700,
+    "last": 1787486700
+   },
+   "late": {
+    "rows": 7382,
+    "first": 1791375180,
+    "last": 1791818040
+   },
+   "funding_rows": 2280
+  },
+  "WDCBUSD": {
+   "launch": 1783641600,
+   "early": {
+    "rows": 64801,
+    "first": 1783690800,
+    "last": 1787578800
+   },
+   "late": {
+    "rows": 5855,
+    "first": 1791466800,
+    "last": 1791818040
+   },
+   "funding_rows": 2256
+  },
+  "CBRSBUSD": {
+   "launch": 1783641600,
+   "early": {
+    "rows": 64801,
+    "first": 1783691340,
+    "last": 1787579340
+   },
+   "late": {
+    "rows": 5842,
+    "first": 1791467580,
+    "last": 1791818040
+   },
+   "funding_rows": 2256
+  },
+  "EWYBUSD": {
+   "launch": 1783641600,
+   "early": {
+    "rows": 64801,
+    "first": 1783691220,
+    "last": 1787579220
+   },
+   "late": {
+    "rows": 5842,
+    "first": 1791467580,
+    "last": 1791818040
+   },
+   "funding_rows": 2256
+  },
+  "INTCBUSD": {
+   "launch": 1783641600,
+   "early": {
+    "rows": 64801,
+    "first": 1783690800,
+    "last": 1787578800
+   },
+   "late": {
+    "rows": 5855,
+    "first": 1791466800,
+    "last": 1791818040
+   },
+   "funding_rows": 2256
+  },
+  "AMDBUSD": {
+   "launch": 1783641600,
+   "early": {
+    "rows": 64801,
+    "first": 1783690860,
+    "last": 1787578860
+   },
+   "late": {
+    "rows": 5854,
+    "first": 1791466860,
+    "last": 1791818040
+   },
+   "funding_rows": 2256
+  },
+  "SKHYBUSD": {
+   "launch": 1784073600,
+   "early": {
+    "rows": 64801,
+    "first": 1784118840,
+    "last": 1788006840
+   },
+   "funding_rows": 2136
+  },
+  "LITEBUSD": {
+   "launch": 1784073600,
+   "early": {
+    "rows": 64801,
+    "first": 1784118660,
+    "last": 1788006660
+   },
+   "funding_rows": 2136
+  },
+  "NBISBUSD": {
+   "launch": 1784073600,
+   "early": {
+    "rows": 64801,
+    "first": 1784118600,
+    "last": 1788006600
+   },
+   "funding_rows": 2136
+  },
+  "PLTRBUSD": {
+   "launch": 1784073600,
+   "early": {
+    "rows": 64801,
+    "first": 1784118600,
+    "last": 1788006600
+   },
+   "funding_rows": 2136
+  },
+  "BABABUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296260,
+    "last": 1788184260
+   },
+   "funding_rows": 2088
+  },
+  "HOODBUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296380,
+    "last": 1788184380
+   },
+   "funding_rows": 2088
+  },
+  "MRVLBUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296200,
+    "last": 1788184200
+   },
+   "funding_rows": 2088
+  },
+  "RKLBBUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296200,
+    "last": 1788184200
+   },
+   "funding_rows": 2088
+  },
+  "TSMBUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296320,
+    "last": 1788184320
+   },
+   "funding_rows": 2088
+  },
+  "ARMBUSD": {
+   "launch": 1784246400,
+   "early": {
+    "rows": 64801,
+    "first": 1784296320,
+    "last": 1788184320
+   },
+   "funding_rows": 2088
+  },
+  "BANKUSD": {
+   "launch": 1784678400,
+   "early": {
+    "rows": 64801,
+    "first": 1784729040,
+    "last": 1788617040
+   },
+   "funding_rows": 1968
+  },
+  "AKEUSD": {
+   "launch": 1784678400,
+   "early": {
+    "rows": 64801,
+    "first": 1784729280,
+    "last": 1788617280
+   },
+   "funding_rows": 1968
+  },
+  "ESPORTSUSD": {
+   "launch": 1784678400,
+   "early": {
+    "rows": 64801,
+    "first": 1784728980,
+    "last": 1788616980
+   },
+   "funding_rows": 1969
+  },
+  "TLMUSD": {
+   "launch": 1784678400,
+   "early": {
+    "rows": 64801,
+    "first": 1784729220,
+    "last": 1788617220
+   },
+   "funding_rows": 1968
+  }
+ }
+}

@@ -1,0 +1,20 @@
+
+==== OLD (launched 2024-06..2025-12): 105 listings with a trade (floor 30) ====
+   7-day short: net +1.88% per trade (launch-day t +0.58)  gross +2.10%  funding -0.10%  win 59%  = +0.063R
+  14-day short: net +5.21% per trade (launch-day t +1.23)  gross +5.54%  funding -0.22%  win 55%  = +0.174R
+  21-day short: net +6.79% per trade (launch-day t +1.63)  gross +7.42%  funding -0.52%  win 58%  = +0.226R
+  control (same coins, random start in days 90..135, 21-day short) x50: mean -0.34%, 5-95% -3.91%..+2.81%; p(control >= real) 0.00
+  exits: {'time': 61, 'stop': 44}; stopped out 42%
+  liquid only (median daily $ volume >= $250k): 18 listings, net 21d -13.59%  |  one position at a time: 18 trades, net 21d +1.99%
+  N1 net > 0: PASS   N2 launch-day t >= 2: fail   N3 beats control p <= 0.05: PASS
+
+==== DEV (launched 2025-12-20..2026-09-01): 70 listings with a trade (floor 30) ====
+   7-day short: net -0.56% per trade (launch-day t -0.17)  gross -0.26%  funding -0.18%  win 59%  = -0.019R
+  14-day short: net +1.29% per trade (launch-day t +0.31)  gross +1.56%  funding -0.15%  win 57%  = +0.043R
+  21-day short: net +2.77% per trade (launch-day t +0.59)  gross +3.06%  funding -0.17%  win 59%  = +0.092R
+  control (same coins, random start in days 90..135, 21-day short) x50: mean -2.73%, 5-95% -6.19%..+0.27%; p(control >= real) 0.00
+  exits: {'time': 49, 'stop': 21}; stopped out 30%
+  liquid only (median daily $ volume >= $250k): 40 listings, net 21d +4.57%  |  one position at a time: 8 trades, net 21d +8.74%
+  N1 net > 0: PASS   N2 launch-day t >= 2: fail   N3 beats control p <= 0.05: PASS
+
+NEW-LISTING DRIFT: FAIL
