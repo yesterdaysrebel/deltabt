@@ -239,6 +239,18 @@ class StrategyParams:
 
     stop_fill_fraction: float = 0.0
 
+    #: Rest a LIMIT entry instead of taking market at the signal bar's close.
+    #: None (the default) keeps the market entry, so nothing recorded moves.
+    #: A value places the limit at close -/+ entry_limit_atr * ATR (0.0 = at
+    #: the close); it fills only when a later 1m bar trades THROUGH it
+    #: (strictly beyond -- a touch is not a fill), at the limit, with the
+    #: maker rate and no slippage (SymbolCosts.maker_entry must be set for the
+    #: fee); it is cancelled after entry_limit_wait_bars primary bars; a new
+    #: signal while one rests replaces it. Research only
+    #: (scripts/limit_entry_lab.py, docs/ideas_1_to_4_prereg.md).
+    entry_limit_atr: float | None = None
+    entry_limit_wait_bars: int = 3
+
     #: Rest the stop as a LIMIT at the stop price instead of taking market on
     #: trigger. It cannot fill worse than the stop -- and it can fail to fill
     #: at all, leaving an open position with no protection, which is the whole

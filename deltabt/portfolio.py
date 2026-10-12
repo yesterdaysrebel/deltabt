@@ -59,7 +59,11 @@ GATE_REASONS = ("max_open_positions", "max_trades_per_day", "max_daily_loss",
                 # Research-only per-symbol pause (RiskGates.pause_seconds).
                 "pause",
                 # Research-only entry hook (RiskGates.entry_filter).
-                "entry_filter")
+                "entry_filter",
+                # Research-only limit entries (StrategyParams.entry_limit_atr):
+                # cancelled unfilled, replaced by a newer signal, limit on the
+                # wrong side of the stop, no slot free when it filled.
+                "limit_unfilled", "limit_replaced", "limit_geometry", "limit_full")
 
 
 @dataclass(frozen=True)
@@ -157,6 +161,18 @@ class _Position:
     cost_per_r: float
     accrued_funding: float = 0.0
     stop_promoted: bool = False
+
+
+@dataclass
+class _Pending:
+    """A resting limit entry (StrategyParams.entry_limit_atr)."""
+
+    side: int
+    limit: float
+    stop_price: float
+    placed_index: int
+    expire_index: int
+    cost_per_r: float
 
 
 @dataclass
@@ -266,6 +282,17 @@ def _fill_at_cross(s: "_Series", i: int, side: int, stop: float,
     return px * (1.0 - side * slip_rate)
 
 
+def _limit_filled(s: "_Series", i: int, pnd: _Pending) -> bool:
+    """Did bar ``i`` trade THROUGH the resting limit? Read on 1m LTP when the
+    pair exists, else on the bar's LTP extreme. A touch is not a fill."""
+    if s.f_close is not None:
+        lo, hi = int(s.f_lo[i]), int(s.f_hi[i])
+        if hi > lo:
+            seg = s.f_llo[lo:hi] if pnd.side == LONG else s.f_lhi[lo:hi]
+            return bool((seg < pnd.limit).any()) if pnd.side == LONG else bool((seg > pnd.limit).any())
+    return bool(s.ltp_low[i] < pnd.limit) if pnd.side == LONG else bool(s.ltp_high[i] > pnd.limit)
+
+
 def _protects(params: StrategyParams) -> bool:
     """A profit-protecting stop rule is configured (ladder or trail)."""
     return bool(params.ladder_rungs) or params.trail_r is not None
@@ -371,6 +398,7 @@ def run_portfolio(
     equity = initial_capital
     peak_equity = initial_capital
     open_positions: dict[str, _Position] = {}
+    pending: dict[str, _Pending] = {}
 
     current_day = None
     day_start_equity = initial_capital
@@ -585,6 +613,40 @@ def run_portfolio(
         for _, sym, i in same:
             s = series[sym]
             sig = s.book.signals
+            pnd = pending.get(sym)
+            if pnd is not None and sym not in open_positions:
+                if s.tradable[i] and _limit_filled(s, i, pnd):
+                    del pending[sym]
+                    if len(open_positions) >= gates.max_open_positions:
+                        result.rejects["limit_full"] += 1
+                        continue
+                    costs = s.book.costs
+                    px = pnd.limit
+                    rpu = (px - pnd.stop_price) if pnd.side == LONG else (pnd.stop_price - px)
+                    units = (equity * params.risk_percent / 100.0) / rpu
+                    if np.isfinite(params.max_leverage):
+                        units = min(units, (equity * params.max_leverage) / px)
+                    contracts = costs.contracts_for(units)
+                    if contracts <= 0:
+                        result.rejects["zero_contracts"] += 1
+                        continue
+                    target = (px + rpu * params.reward_risk if pnd.side == LONG
+                              else px - rpu * params.reward_risk)
+                    entry_fee = costs.entry_cost(contracts, px)
+                    equity -= entry_fee
+                    # Filled inside bar i: first exit check at i + 1, like a
+                    # market entry at this bar's close. A stop or target hit
+                    # later inside the fill bar is missed (stated in the prereg).
+                    open_positions[sym] = _Position(
+                        symbol=sym, side=pnd.side, contracts=contracts, entry_price=px,
+                        entry_index=i, entry_time=int(s.time[i]), stop_price=pnd.stop_price,
+                        target_price=costs.round_price(target, direction=1 if pnd.side == LONG else -1),
+                        risk_per_unit=rpu, entry_fee=entry_fee, cost_per_r=costs.cost_per_r(px, rpu))
+                    trades_today += 1
+                    continue
+                if i >= pnd.expire_index:
+                    del pending[sym]
+                    result.rejects["limit_unfilled"] += 1
             if sym in open_positions or i < sig.warmup:
                 continue
             want_long = bool(sig.long_entry[i])
@@ -660,6 +722,19 @@ def run_portfolio(
                 continue
             if gates.entry_filter is not None and not gates.entry_filter(sym, ts, cpr):
                 result.rejects["entry_filter"] += 1
+                continue
+
+            if params.entry_limit_atr is not None:
+                atr = sig.atr[i] if np.isfinite(sig.atr[i]) else 0.0
+                limit = costs.round_price(px - side * params.entry_limit_atr * atr,
+                                          direction=-1 if side == LONG else 1)
+                if (limit <= stop_px) if side == LONG else (limit >= stop_px):
+                    result.rejects["limit_geometry"] += 1
+                    continue
+                if sym in pending:
+                    result.rejects["limit_replaced"] += 1
+                pending[sym] = _Pending(side=side, limit=limit, stop_price=stop_px, placed_index=i,
+                                        expire_index=i + params.entry_limit_wait_bars, cost_per_r=cpr)
                 continue
 
             risk_capital = equity * params.risk_percent / 100.0
