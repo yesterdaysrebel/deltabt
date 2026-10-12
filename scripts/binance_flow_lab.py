@@ -82,7 +82,7 @@ def flow_features(T):
 
 def fit(X, cols, tr, te, seed, labels):
     mdl = lgb.LGBMClassifier(n_estimators=200, learning_rate=0.03, num_leaves=8, min_child_samples=40, subsample=0.8, subsample_freq=1,
-                             colsample_bytree=0.8, reg_lambda=5.0, random_state=seed, verbose=-1)
+                             colsample_bytree=0.8, reg_lambda=5.0, random_state=seed, verbose=-1, n_jobs=8)
     mdl.fit(X.loc[tr, cols], labels[tr]); return mdl.predict_proba(X.loc[te, cols])[:, 1]
 
 

@@ -57,3 +57,8 @@ Fewer than 1,500 test entries with non-NaN flow features in a window = that wind
 
 One run per window. No change to features, settings or depth after a result is seen. A bug found
 after a run: fix, log here, rerun, report both. The feature tables are committed with the result.
+
+**Run log 2026-10-12.** Two aborted starts before any result was seen: (1) the metrics timestamp bug
+(fixed in the fetch, files re-fetched); (2) LightGBM with its default thread count ran 200× slower in
+this process (labkit imports numba; two OpenMP runtimes oversubscribed 20 cores: 101 s per fit vs 0.5 s
+pinned). `n_jobs=8` is now set in the classifier. Thread count does not change the model's output.
