@@ -160,6 +160,10 @@ the frozen rule on 2024-06..2025-12 (27 coins; survivor-biased universe, 2026 sp
 **−0.212R** on 983 trades vs −0.076R for all, worse than 97% of random-refusal runs; negative in both halves.
 On the trail cheap trades lose less (−0.050R vs −0.096R) but still lose. Stage 1's number was the threshold
 fitted to its own window. Old-window candles are in `data_old/` (gitignored).
+**Ideas 1–4 of 2026-10-13 all fail or cannot answer (`docs/ideas_1_to_4_prereg.md`, two windows).** Limit entries
+(`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
+a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
+negative on OLD; the forced-selling reversal has too few events (37 days) to test.
 **Pausing after losses does not filter losing trades (2026-10-09, `scripts/loss_pause_lab.py` then
 `scripts/loss_pause_exact.py`, both pre-registered).** Virtual mode after N losses (equity-curve filter)
 does nothing; account-wide it is worse than nothing. On hold-to-3R the trade after a win on a coin does

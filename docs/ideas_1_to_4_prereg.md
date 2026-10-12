@@ -73,3 +73,14 @@ Trailing thresholds need ≥ 30 days of a coin's history (`min_periods` 720 hour
 needs ≥ 10 days; the trailing daily vol uses ≥ 20 of the previous 24 hourly returns. The 24h exit is the
 close of the hour that ends 24h after entry (4h likewise). The OI 1h fetch: `scripts/fetch_oi_1h.py`,
 manifest in `out/sweep/five_min_arm_lab/forced_selling/`.
+
+## RESULTS 2026-10-13 (`out/sweep/five_min_arm_lab/ideas_2026-10-13/`) — all four closed or unanswerable
+
+| idea | DEV (2025-12..2026-09) | OLD (2024-06..2025-12) | verdict |
+|---|---|---|---|
+| 1 limit entry at the close | −0.134R vs −0.094R market (p 0.98); fill 88%; fee $1.10 → $0.48 a trade, win rate 26.4% → 24.7% | −0.097R vs −0.076R (p 0.90) | **FAIL** — fees halve, but the fills are the trades that went against you (adverse selection) |
+| 2 leg_extreme stop | −0.154R vs −0.094R (4×ATR), −0.077R (width-matched ATR) | −0.087R vs −0.076R / −0.047R (p 0.66 / 0.94) | **FAIL** — structure adds nothing over a same-size ATR stop |
+| 3 splits (long / Thursday / 12–18 UTC) | chosen as the best groups | long −0.095R, Thu −0.036R, 12–18 UTC −0.084R; none > 0 | **FAIL** all three |
+| 4 forced-selling reversal | step 0: 37 forced-event days (< 60) | 61 | **CANNOT ANSWER** — stopped before outcomes were read; not loosened after the fact |
+
+Reported only: prod 3 coins, limit entry +0.051R vs +0.002R market (DEV only; those coins did not exist in OLD).

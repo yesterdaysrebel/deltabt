@@ -1,0 +1,55 @@
+
+==== DEV 2025-12..2026-09: 32 coins ====
+
+==== OLD 2024-06..2025-12: 27 coins ====
+
+#### IDEA 1 -- limit-order entries (maker fee, fill only when price trades THROUGH the limit, 15 min wait)
+
+  DEV 2025-12..2026-09
+    market entry (today)               trades  4928  net -0.094R  win  26.4%  total   -463.3R  halves -0.116 / -0.072
+    limit at the close (k 0)           trades  5023  net -0.134R  win  24.7%  total   -673.9R  halves -0.148 / -0.121  fill rate 88%
+    limit 0.25 ATR better (reported)   trades  5427  net -0.082R  win  25.9%  total   -446.8R  halves -0.103 / -0.062  fill rate 77%
+    limit (k 0) beats market: day-clustered p 0.983; avg fee 1.10$ -> 0.48$ per trade
+    trail, market (reported)           trades 12545  net -0.104R  win  53.0%  total  -1301.0R  halves -0.090 / -0.118
+    trail, limit k 0 (reported)        trades 11394  net -0.117R  win  53.2%  total  -1337.2R  halves -0.101 / -0.133
+    prod 3, market (reported)          trades   433  net +0.002R  win  27.9%  total     +0.7R  halves +0.042 / -0.038
+    prod 3, limit k 0 (reported)       trades   440  net +0.051R  win  28.4%  total    +22.5R  halves +0.073 / +0.029
+
+  OLD 2024-06..2025-12
+    market entry (today)               trades  8671  net -0.076R  win  26.6%  total   -661.5R  halves -0.055 / -0.097
+    limit at the close (k 0)           trades  8374  net -0.097R  win  25.3%  total   -808.9R  halves -0.092 / -0.101  fill rate 81%
+    limit 0.25 ATR better (reported)   trades  8956  net -0.122R  win  24.6%  total  -1095.4R  halves -0.118 / -0.127  fill rate 55%
+    limit (k 0) beats market: day-clustered p 0.902; avg fee 0.79$ -> 0.38$ per trade
+    trail, market (reported)           trades 16004  net -0.096R  win  53.2%  total  -1543.8R  halves -0.095 / -0.098
+    trail, limit k 0 (reported)        trades 13188  net -0.124R  win  53.2%  total  -1633.3R  halves -0.119 / -0.129
+
+  L1 (DEV) fail   L2 (OLD) fail   IDEA 1: FAIL
+
+#### IDEA 2 -- stop on price structure (leg_extreme) instead of 4xATR
+
+  DEV 2025-12..2026-09
+    4xATR stop (today)                 trades  4928  net -0.094R  win  26.4%  total   -463.3R  halves -0.116 / -0.072  median stop 2.34%
+    leg_extreme stop                   trades  5341  net -0.154R  win  25.7%  total   -825.0R  halves -0.197 / -0.112  median stop 2.32%
+    ATR x3.96 (width-matched control)  trades  4951  net -0.077R  win  26.9%  total   -383.2R  halves -0.109 / -0.046  median stop 2.32%
+    leg_extreme, trail (reported)      trades 11508  net -0.130R  win  51.1%  total  -1497.4R  halves -0.126 / -0.134
+    leg_extreme beats 4xATR p 0.960; beats width-matched ATR p 0.991
+
+  OLD 2024-06..2025-12
+    4xATR stop (today)                 trades  8671  net -0.076R  win  26.6%  total   -661.5R  halves -0.055 / -0.097  median stop 2.01%
+    leg_extreme stop                   trades  8474  net -0.087R  win  27.3%  total   -738.9R  halves -0.060 / -0.115  median stop 1.85%
+    ATR x3.96 (width-matched control)  trades  8757  net -0.047R  win  27.3%  total   -408.6R  halves -0.041 / -0.053  median stop 2.03%
+    leg_extreme, trail (reported)      trades 16387  net -0.098R  win  52.8%  total  -1603.3R  halves -0.091 / -0.105
+    leg_extreme beats 4xATR p 0.657; beats width-matched ATR p 0.936
+
+  S1 (OLD, vs 4xATR) fail   S2 (OLD, vs width-matched) fail   IDEA 2: FAIL
+
+#### IDEA 3 -- simple splits (subgroup chosen on DEV, judged on OLD)
+
+  side: DEV by group short -0.152R (n 2462), long -0.036R (n 2466)
+    chosen on DEV: long. OLD: long -0.095R (n 4388) vs the rest -0.057R (n 4283), p 0.673 -> FAIL
+
+  weekday: DEV by group Mon -0.205R (n 591), Tue -0.258R (n 860), Wed -0.147R (n 761), Thu +0.042R (n 747), Fri +0.031R (n 739), Sat -0.034R (n 739), Sun -0.078R (n 491)
+    chosen on DEV: Thu. OLD: Thu -0.036R (n 1197) vs the rest -0.083R (n 7474), p 0.309 -> FAIL
+
+  block: DEV by group 00-06 UTC -0.200R (n 1126), 06-12 UTC -0.176R (n 1059), 12-18 UTC -0.009R (n 1955), 18-24 UTC -0.043R (n 788)
+    chosen on DEV: 12-18 UTC. OLD: 12-18 UTC -0.084R (n 3268) vs the rest -0.072R (n 5403), p 0.574 -> FAIL

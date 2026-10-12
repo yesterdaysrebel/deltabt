@@ -1,0 +1,4 @@
+STEP 0 -- event counts before any outcome is read
+  DEV: forced 51 events on 37 days; ordinary 103 on 61 days; coins with forced events 14
+  OLD: forced 139 events on 61 days; ordinary 177 on 100 days; coins with forced events 16
+STOP: fewer than 60 forced-event days in a window; the test cannot answer.
