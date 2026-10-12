@@ -31,6 +31,15 @@ RULES, written before the fetch. Judged on hold-to-3R, normal costs, 0.03 gate:
 Reported, not judged: the trail, 2x spreads, 0.02 / 0.05, t against zero.
 Even CONFIRMED means "worth a forward check", not an edge: stage 1's +0.027R was
 indistinguishable from zero.
+RESULT 2026-10-12 (out/sweep/five_min_arm_lab/cheap_gate/stage2_result_2026-10-12.txt):
+CLOSED. 27 of the 32 coins had data (AKE, AXS, BANK, BEAT, VELVET listed later).
+  * Hold-to-3R, normal costs: base -0.076R (8,671 trades); 0.03 gate -0.212R
+    (983 trades), halves -0.246 / -0.170; 97% of 100 random-refusal runs did
+    better (p 0.97). C1, C2, C3 all fail. 0.02: -0.140R; 0.05: -0.072R.
+  * 2x spreads: 0.03 gate -0.180R.
+  * Trail: the cheap gate loses LESS than taking everything (-0.050R vs
+    -0.096R, p 0.02 vs random) -- the cost law -- but loses at every threshold.
+  Stage 1's +0.027R was the threshold fitted to the window it was read from.
 """
 import datetime as dt, glob, importlib.util, json, os, pathlib, shutil, sys
 sys.path.insert(0, ".")

@@ -1,0 +1,32 @@
+STAGE 2: 27 of 32 coins have data in 2024-06-01..2025-12-19: AAVEUSD, ADAUSD, AINUSD, AIOUSD, AVAXUSD, BCHUSD, BLESSUSD, BNBUSD, BTCUSD, DOGEUSD, DOTUSD, ETHUSD, HYPEUSD, LINKUSD, LTCUSD, MUBARAKUSD, NEARUSD, PUMPUSD, SOLUSD, STRKUSD, SUIUSD, UNIUSD, VVVUSD, WIFUSD, XRPUSD, ZECUSD, ZROUSD
+
+  hold-to-3R, normal costs
+    base (0.15 gate)       trades  8671 (461.1/month)  net -0.076R  win  26.6%  total   -661.5R  halves -0.055 / -0.097  avg cost 0.085R
+    cost per R <= 0.03     trades   983 ( 52.6/month)  net -0.212R  win  23.9%  total   -208.5R  halves -0.246 / -0.170  avg cost 0.025R
+    cost per R <= 0.02     trades   292 ( 16.0/month)  net -0.140R  win  27.7%  total    -40.9R  halves -0.125 / -0.156  avg cost 0.018R
+    cost per R <= 0.05     trades  2730 (145.6/month)  net -0.072R  win  26.8%  total   -195.8R  halves -0.042 / -0.112  avg cost 0.038R
+    random refusal (keep 0% of entries) x100: mean -0.103R, 5-95% -0.195 .. -0.019; the 0.03 gate is beaten by 97.0% of them (p 0.970)
+    S1 net > 0: fail   S2 p <= 0.05 vs random: fail   S3 > 0 in both halves: fail
+
+  hold-to-3R, 2x spread costs
+    base (0.15 gate)       trades  8253 (439.0/month)  net -0.083R  win  26.5%  total   -685.1R  halves -0.073 / -0.093  avg cost 0.089R
+    cost per R <= 0.03     trades   731 ( 39.6/month)  net -0.180R  win  25.3%  total   -131.2R  halves -0.228 / -0.115  avg cost 0.025R
+    cost per R <= 0.02     trades   218 ( 12.0/month)  net -0.209R  win  25.7%  total    -45.6R  halves -0.232 / -0.186  avg cost 0.018R
+    cost per R <= 0.05     trades  2246 (119.7/month)  net -0.074R  win  27.0%  total   -165.3R  halves +0.003 / -0.174  avg cost 0.039R
+    random refusal (keep 0% of entries) x100: mean -0.104R, 5-95% -0.198 .. -0.010; the 0.03 gate is beaten by 86.0% of them (p 0.860)
+
+  trail, normal costs
+    base (0.15 gate)       trades 16004 (851.2/month)  net -0.096R  win  53.2%  total  -1543.8R  halves -0.095 / -0.098  avg cost 0.091R
+    cost per R <= 0.03     trades  1719 ( 91.7/month)  net -0.050R  win  58.6%  total    -85.4R  halves -0.063 / -0.042  avg cost 0.025R
+    cost per R <= 0.02     trades   426 ( 22.9/month)  net -0.052R  win  57.7%  total    -22.3R  halves -0.003 / -0.078  avg cost 0.018R
+    cost per R <= 0.05     trades  5941 (316.8/month)  net -0.058R  win  57.0%  total   -345.1R  halves -0.043 / -0.067  avg cost 0.039R
+    random refusal (keep 1% of entries) x100: mean -0.098R, 5-95% -0.131 .. -0.057; the 0.03 gate is beaten by 2.0% of them (p 0.020)
+
+  trail, 2x spread costs
+    base (0.15 gate)       trades 15352 (816.5/month)  net -0.094R  win  53.3%  total  -1448.7R  halves -0.094 / -0.095  avg cost 0.093R
+    cost per R <= 0.03     trades  1263 ( 67.7/month)  net -0.036R  win  58.8%  total    -45.9R  halves -0.038 / -0.035  avg cost 0.025R
+    cost per R <= 0.02     trades   302 ( 16.2/month)  net -0.039R  win  58.6%  total    -11.9R  halves +0.018 / -0.077  avg cost 0.018R
+    cost per R <= 0.05     trades  4708 (251.0/month)  net -0.059R  win  56.9%  total   -278.7R  halves -0.039 / -0.071  avg cost 0.039R
+    random refusal (keep 1% of entries) x100: mean -0.099R, 5-95% -0.140 .. -0.064; the 0.03 gate is beaten by 0.0% of them (p 0.000)
+
+STAGE 2 VERDICT: CLOSED

@@ -153,12 +153,13 @@ recorder.
 `max_trades_per_day`: hold-to-3R +0.044R uncapped → −0.084R at 2/day; trail −0.028R → −0.048R; the
 first 2 entries of a day did no better than 2 random ones. The dry run's own 46 closed trades agree
 (win rate lower under the cap; p 0.24–0.42 vs random) — far too few to decide anything.
-**Cheap trades only (cost per R ≤ 0.03), realistic spreads (2026-10-12, `scripts/cheap_fee_gate_lab.py`,
-pre-registered): survives stage 1 by the letter, and is weak.** 32 coins, hold-to-3R, per-coin slippage =
-half the 10-05 quoted spread: +0.027R per trade on 713 trades (base −0.094R), positive in both halves, beats
-random refusal at p 0.04 — but t +0.41 vs zero, the 0.02 and 0.05 thresholds are negative, 2× spreads turn it
-to −0.042R, and the trail loses at every threshold. 0.03 was read from seen data; only an older untouched
-window (stage 2, needs a candle download) can decide it.
+**Cheap trades only (cost per R ≤ 0.03) is CLOSED (2026-10-12, `scripts/cheap_fee_gate_lab.py` +
+`scripts/cheap_fee_gate_stage2.py`, both pre-registered).** Stage 1 (Dec 2025–Sep 2026, per-coin spread
+slippage) survived by the letter: +0.027R per trade on 713 trades, t +0.41, knife-edge thresholds. Stage 2,
+the frozen rule on 2024-06..2025-12 (27 coins; survivor-biased universe, 2026 spread snapshot): hold-to-3R
+**−0.212R** on 983 trades vs −0.076R for all, worse than 97% of random-refusal runs; negative in both halves.
+On the trail cheap trades lose less (−0.050R vs −0.096R) but still lose. Stage 1's number was the threshold
+fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 **Pausing after losses does not filter losing trades (2026-10-09, `scripts/loss_pause_lab.py` then
 `scripts/loss_pause_exact.py`, both pre-registered).** Virtual mode after N losses (equity-curve filter)
 does nothing; account-wide it is worse than nothing. On hold-to-3R the trade after a win on a coin does

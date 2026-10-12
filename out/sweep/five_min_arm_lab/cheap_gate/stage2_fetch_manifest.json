@@ -1,0 +1,167 @@
+{
+ "fetched_utc": "2026-10-12T05:25:18+00:00",
+ "start": 1717200000,
+ "end": 1766188740,
+ "symbols": {
+  "AAVEUSD": {
+   "ltp_rows": 816245,
+   "first": 1717214100,
+   "mark_rows": 816480
+  },
+  "ADAUSD": {
+   "ltp_rows": 816479,
+   "first": 1717200060,
+   "mark_rows": 816480
+  },
+  "AINUSD": {
+   "ltp_rows": 225390,
+   "first": 1752665400,
+   "mark_rows": 225728
+  },
+  "AIOUSD": {
+   "ltp_rows": 183630,
+   "first": 1755171000,
+   "mark_rows": 183921
+  },
+  "AKEUSD": {
+   "ltp_rows": 0,
+   "first": null,
+   "mark_rows": 0
+  },
+  "AVAXUSD": {
+   "ltp_rows": 816470,
+   "first": 1717200600,
+   "mark_rows": 816480
+  },
+  "AXSUSD": {
+   "ltp_rows": 0,
+   "first": null,
+   "mark_rows": 0
+  },
+  "BANKUSD": {
+   "ltp_rows": 0,
+   "first": null,
+   "mark_rows": 0
+  },
+  "BCHUSD": {
+   "ltp_rows": 816473,
+   "first": 1717200420,
+   "mark_rows": 816480
+  },
+  "BEATUSD": {
+   "ltp_rows": 0,
+   "first": null,
+   "mark_rows": 0
+  },
+  "BLESSUSD": {
+   "ltp_rows": 105870,
+   "first": 1759836600,
+   "mark_rows": 106185
+  },
+  "BNBUSD": {
+   "ltp_rows": 816438,
+   "first": 1717202520,
+   "mark_rows": 816480
+  },
+  "BTCUSD": {
+   "ltp_rows": 816480,
+   "first": 1717200000,
+   "mark_rows": 816480
+  },
+  "DOGEUSD": {
+   "ltp_rows": 816476,
+   "first": 1717200240,
+   "mark_rows": 816480
+  },
+  "DOTUSD": {
+   "ltp_rows": 816383,
+   "first": 1717205820,
+   "mark_rows": 816480
+  },
+  "ETHUSD": {
+   "ltp_rows": 816480,
+   "first": 1717200000,
+   "mark_rows": 816480
+  },
+  "HYPEUSD": {
+   "ltp_rows": 285810,
+   "first": 1749040200,
+   "mark_rows": 286126
+  },
+  "LINKUSD": {
+   "ltp_rows": 816480,
+   "first": 1717200000,
+   "mark_rows": 816480
+  },
+  "LTCUSD": {
+   "ltp_rows": 816456,
+   "first": 1717201440,
+   "mark_rows": 816480
+  },
+  "MUBARAKUSD": {
+   "ltp_rows": 394050,
+   "first": 1742545800,
+   "mark_rows": 394277
+  },
+  "NEARUSD": {
+   "ltp_rows": 816353,
+   "first": 1717207620,
+   "mark_rows": 816480
+  },
+  "PUMPUSD": {
+   "ltp_rows": 225390,
+   "first": 1752665400,
+   "mark_rows": 225728
+  },
+  "SOLUSD": {
+   "ltp_rows": 816478,
+   "first": 1717200120,
+   "mark_rows": 816480
+  },
+  "STRKUSD": {
+   "ltp_rows": 54090,
+   "first": 1762943400,
+   "mark_rows": 54383
+  },
+  "SUIUSD": {
+   "ltp_rows": 816472,
+   "first": 1717200480,
+   "mark_rows": 816480
+  },
+  "UNIUSD": {
+   "ltp_rows": 816476,
+   "first": 1717200240,
+   "mark_rows": 816480
+  },
+  "VELVETUSD": {
+   "ltp_rows": 0,
+   "first": null,
+   "mark_rows": 0
+  },
+  "VVVUSD": {
+   "ltp_rows": 466100,
+   "first": 1738222800,
+   "mark_rows": 466980
+  },
+  "WIFUSD": {
+   "ltp_rows": 816471,
+   "first": 1717200540,
+   "mark_rows": 816480
+  },
+  "XRPUSD": {
+   "ltp_rows": 816469,
+   "first": 1717200660,
+   "mark_rows": 816480
+  },
+  "ZECUSD": {
+   "ltp_rows": 107190,
+   "first": 1759757400,
+   "mark_rows": 107323
+  },
+  "ZROUSD": {
+   "ltp_rows": 771156,
+   "first": 1719919440,
+   "mark_rows": 772640
+  }
+ }
+}
