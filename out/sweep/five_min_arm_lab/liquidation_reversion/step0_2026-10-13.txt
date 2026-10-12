@@ -1,0 +1,5 @@
+STEP 0 -- event counts (no outcomes read)
+  DEV 2025-12..2026-09: 17 events on 14 distinct days, 12 coins; longs 14, shorts 3; floors 50 events / 25 days -> CANNOT ANSWER
+     by coin: AKEUSD 3, BLESSUSD 2, BTCUSD 2, VELVETUSD 2, ADAUSD 1, AIOUSD 1, AVAXUSD 1, BCHUSD 1, DOGEUSD 1, DOTUSD 1, MUBARAKUSD 1, UNIUSD 1
+  OLD 2024-06..2025-12: 19 events on 15 distinct days, 12 coins; longs 11, shorts 8; floors 50 events / 25 days -> CANNOT ANSWER
+     by coin: BCHUSD 2, BTCUSD 2, DOGEUSD 2, DOTUSD 2, LINKUSD 2, SOLUSD 2, SUIUSD 2, BNBUSD 1, ETHUSD 1, MUBARAKUSD 1, UNIUSD 1, XRPUSD 1

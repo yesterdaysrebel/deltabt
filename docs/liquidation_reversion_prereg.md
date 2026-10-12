@@ -64,3 +64,12 @@ as a fail, and that is accepted in advance.
 
 Step 0 is printed and committed before `run`. One run per window; a bug found after: fix, log here,
 rerun, report both.
+
+## STEP 0 RESULT 2026-10-13 — CANNOT ANSWER (`out/sweep/five_min_arm_lab/liquidation_reversion/step0_2026-10-13.txt`)
+
+DEV: 17 events on 14 days (12 coins; 14 longs, 3 shorts). OLD: 19 events on 15 days (12 coins; 11 longs,
+8 shorts). Both windows are far below the 50-event / 25-day floors. No trade outcome was read. With the
+owner's thresholds (3×ATR move, 3.5× volume, −3 % OI, $1M liquidity) a genuine cascade on a liquid coin
+happens about twice a month across all 32 coins — about 40 a year — so this setup cannot be tested on
+two years of history, and would give one or two trades a month live. Closed as unanswerable; the
+thresholds are not loosened after the fact.

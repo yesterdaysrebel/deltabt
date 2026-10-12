@@ -164,6 +164,9 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**Liquidation-cascade reversion (2026-10-13, `docs/liquidation_reversion_prereg.md`): CANNOT ANSWER.** With the
+owner's thresholds (3×ATR hourly move, 3.5× volume, −3 % OI, $1M liquidity) there are 17 events in DEV and 19 in OLD
+against floors of 50 / 25 days; no outcome read. Genuine cascades on liquid coins run ~2 a month across 32 coins.
 **Multi-day trend on 12h / 1D bars (2026-10-13, `docs/daily_trend_prereg.md`): FAIL on all four pre-registered
 cells — but ATR-momentum on 1D bars is the strongest lead of the programme:** +0.208R (DEV, 195 trades) / +0.091R
 (OLD, 349), beats random entries with the same 2.5×ATR trail in each window (p 0.06 / 0.02), misses the pooled
