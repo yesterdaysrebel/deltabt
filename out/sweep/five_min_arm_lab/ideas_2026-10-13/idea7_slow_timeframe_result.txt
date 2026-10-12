@@ -1,0 +1,40 @@
+
+==== DEV 2025-12..2026-09 @ 60m: 28 of 32 coins have usable bars ====
+  hold-to-3R (judged): 296 trades, 31/month, 4 coins with >= 30 trades, median cost/R 0.040, median hold 79h
+    every signal                       trades   296  net -0.044R  win  31.4%  total    -12.9R  halves -0.136 / +0.048  day-t -0.41
+    after a win on the coin only       trades   107  net -0.055R  win  28.0%  total     -5.9R  halves -0.092 / -0.018  day-t -0.33  share 36%
+  trail (reported): 771 trades, 81/month, 6 coins with >= 30 trades, median cost/R 0.044, median hold 23h
+    every signal                       trades   771  net -0.006R  win  60.8%  total     -4.7R  halves +0.009 / -0.021  day-t -0.15
+    after a win on the coin only       trades   475  net -0.024R  win  59.6%  total    -11.3R  halves -0.009 / -0.038  day-t -0.49  share 62%
+
+==== DEV 2025-12..2026-09 @ 240m: 12 of 32 coins have usable bars ====
+  hold-to-3R (judged): 48 trades, 5/month, 0 coins with >= 30 trades, median cost/R 0.023, median hold 400h
+    every signal                       trades    48  net +0.380R  win  52.1%  total    +18.2R  halves +0.079 / +0.681  day-t +1.43
+    after a win on the coin only       trades    27  net +0.055R  win  44.4%  total     +1.5R  halves -0.871 / +0.915  day-t +0.18  share 56%
+  trail (reported): 139 trades, 15/month, 4 coins with >= 30 trades, median cost/R 0.024, median hold 84h
+    every signal                       trades   139  net +0.025R  win  67.6%  total     +3.4R  halves -0.119 / +0.166  day-t +0.32
+    after a win on the coin only       trades    95  net -0.040R  win  65.3%  total     -3.8R  halves -0.193 / +0.110  day-t -0.45  share 68%
+
+==== OLD 2024-06..2025-12 @ 60m: 22 of 27 coins have usable bars ====
+  hold-to-3R (judged): 605 trades, 32/month, 8 coins with >= 30 trades, median cost/R 0.029, median hold 96h
+    every signal                       trades   605  net -0.027R  win  30.7%  total    -16.3R  halves -0.043 / -0.010  day-t -0.35
+    after a win on the coin only       trades   199  net +0.024R  win  33.2%  total     +4.7R  halves -0.126 / +0.172  day-t +0.18  share 33%
+  trail (reported): 1641 trades, 87/month, 10 coins with >= 30 trades, median cost/R 0.032, median hold 26h
+    every signal                       trades  1641  net -0.034R  win  60.8%  total    -56.2R  halves -0.031 / -0.037  day-t -1.46
+    after a win on the coin only       trades  1005  net -0.045R  win  60.9%  total    -44.8R  halves -0.038 / -0.051  day-t -1.55  share 61%
+
+==== OLD 2024-06..2025-12 @ 240m: 11 of 27 coins have usable bars ====
+  hold-to-3R (judged): 116 trades, 6/month, 2 coins with >= 30 trades, median cost/R 0.018, median hold 216h
+    every signal                       trades   116  net +0.056R  win  32.8%  total     +6.4R  halves +0.273 / -0.162  day-t +0.36
+    after a win on the coin only       trades    43  net -0.053R  win  27.9%  total     -2.3R  halves +0.417 / -0.501  day-t -0.21  share 37%
+  trail (reported): 262 trades, 14/month, 4 coins with >= 30 trades, median cost/R 0.020, median hold 74h
+    every signal                       trades   262  net +0.114R  win  69.1%  total    +29.8R  halves +0.139 / +0.088  day-t +2.09
+    after a win on the coin only       trades   182  net +0.152R  win  71.4%  total    +27.7R  halves +0.099 / +0.204  day-t +2.30  share 69%
+
+#### VERDICT (hold-to-3R): a cell passes if net > 0 in BOTH windows and the pooled day-clustered t >= 2.5; fewer than 100 trades in a window = cannot answer
+  60m all       : DEV -0.044R (n 296)  OLD -0.027R (n 605)  pooled day-t -0.52 -> fail
+  60m after-win : DEV -0.055R (n 107)  OLD +0.024R (n 199)  pooled day-t -0.04 -> fail
+  240m all       : CANNOT ANSWER (trades 48 / 116)
+  240m after-win : CANNOT ANSWER (trades 27 / 43)
+
+IDEA 7: FAIL

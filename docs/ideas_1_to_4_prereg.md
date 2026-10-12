@@ -116,3 +116,10 @@ bars with missing minutes: BEATUSD keeps 13 signals at 1h, none at 4h); the test
 Arms: every signal; money only after a win on the coin (idea 6 labelling). Both windows, all screen coins.
 Judged on hold-to-3R per cell (timeframe × arm): **PASS = net R > 0 in both windows and pooled
 day-clustered t ≥ 2.5**; fewer than 100 trades in a window = cannot answer. The trail is reported.
+
+**Idea 7 result 2026-10-13** (`out/sweep/five_min_arm_lab/ideas_2026-10-13/idea7_slow_timeframe_result.txt`): **FAIL at 1h,
+cannot answer at 4h.** 1h, hold-to-3R: every signal −0.044R (DEV, 296 trades) / −0.027R (OLD, 605); after a win −0.055R /
++0.024R; pooled day-t −0.52 / −0.04. Cost per R did fall (median 0.040 / 0.029 vs ~0.08 at 5m) and the win rate rose to
+31 %, but the entry still earns nothing before fees. 4h: 48 / 116 trades (5–6 a month across every coin) — below the
+100-trade floor; reported only: hold-to-3R +0.380R (DEV) / +0.056R (OLD), trail +0.025R / +0.114R (OLD day-t +2.09 on
+262 trades). Too few trades to judge, and far too few to run on a $250 account.

@@ -164,6 +164,9 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**The same entry on 1h / 4h bars (idea 7, 2026-10-13): FAIL at 1h, cannot answer at 4h.** 1h hold-to-3R −0.044R /
+−0.027R (DEV / OLD; after-a-win −0.055R / +0.024R) — cost per R halves, the win rate rises to 31 %, the entry still
+earns nothing. 4h gives 5–6 trades a month across all coins (48 / 116 trades): unjudgeable, and unusable on $250.
 **Trade a coin only after a win on it (idea 6, 2026-10-13): FAIL as pre-registered, but the only rule whose
 direction held on the untouched window.** Hold-to-3R: after a win +0.029R vs after a loss −0.138R (DEV, p 0.007);
 −0.017R vs −0.097R (OLD, p 0.056, real net still < 0). Lose-less, not profit; 27 % of signals; absent on the trail.
