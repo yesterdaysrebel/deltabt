@@ -1,0 +1,165 @@
+{
+ "fetched_utc": "2026-10-12T09:49:50+00:00",
+ "files": {
+  "AAVEUSD": {
+   "rows": 20446,
+   "first": 1717210800,
+   "sha256": "9caf04a59e0fe1c31d99ba3aec9a01995256ae8a62f49a9c1d7a10f489c970eb"
+  },
+  "ADAUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "7a9d30393971c349acc0eff17b93c52b30607747c4eff9a614a147309368590a"
+  },
+  "AINUSD": {
+   "rows": 10598,
+   "first": 1752663600,
+   "sha256": "182b4ad55680c2e83419318042a2940caf5516669484367845f957f02cd1ce94"
+  },
+  "AIOUSD": {
+   "rows": 9902,
+   "first": 1755169200,
+   "sha256": "1d90990b6bdf8940acb240a37d2b3394c2c8dfa8b41d681c7130572069848eb4"
+  },
+  "AKEUSD": {
+   "rows": 1691,
+   "first": 1784728800,
+   "sha256": "5561b875077013f5e8a29c9409c477596c7bd5fef957b6458a26849d2d0d1848"
+  },
+  "AVAXUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "e37ac51b3377bcb6375b148ff09d66d396424df0f6cf2c508039f2735c51f27e"
+  },
+  "AXSUSD": {
+   "rows": 6085,
+   "first": 1768910400,
+   "sha256": "ade1387df68cb144d1b251cbd4b1e97da14fd022543578e48754339cf2dbc033"
+  },
+  "BANKUSD": {
+   "rows": 1691,
+   "first": 1784728800,
+   "sha256": "7f7bb9f271b9e0108c62afcf3899988430d8f4bf5445fc5632c8f7c2127b4577"
+  },
+  "BCHUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "b152bee765d112c7a452bd24005d05a9442315dfc80d9bd5a2c54b4a93026ef4"
+  },
+  "BEATUSD": {
+   "rows": 6444,
+   "first": 1767618000,
+   "sha256": "12c2f29593aaa0730cafc9493be25f4ecd9793f3de8d37848c9fabafbfa5ec13"
+  },
+  "BLESSUSD": {
+   "rows": 8606,
+   "first": 1759834800,
+   "sha256": "2fa8373375193b5c70caea414d19d010be67c06d764b0aef69cab67ce2f621ad"
+  },
+  "BNBUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "ead4216d212781852af9b6f2d7d9fc6dcea076e0ea867bc55543ea1cc886d816"
+  },
+  "BTCUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "e2fb4982f47fc717400ac4fa647832fc6184ce2ae58d871bfc98294254e4ae15"
+  },
+  "DOGEUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "5123b1f7adf274ca187ed482454b9b70671a8fa22ce291d30976059f60bdbc91"
+  },
+  "DOTUSD": {
+   "rows": 20448,
+   "first": 1717203600,
+   "sha256": "b46d7d75679213a1c420f04c39f318517cc27a138d9c96404629f6411db963d5"
+  },
+  "ETHUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "d8425319dcda85457f16e1d0f5aaa18f7ba0628b876124ce9d765b38364d4df5"
+  },
+  "HYPEUSD": {
+   "rows": 11605,
+   "first": 1749038400,
+   "sha256": "367472cc9ab3e8c41ee4decaf5dc71eee210b8c8ea7f837f4c6a507fe69337fb"
+  },
+  "LINKUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "2dcb8ca0e8d4515afd2b77c587c718da0f21257c0ff81c1f4094704b25d0ec2d"
+  },
+  "LTCUSD": {
+   "rows": 20447,
+   "first": 1717207200,
+   "sha256": "528ebebb55665db9345c862ea98116bf799a4741220341b27a858c5b361f7bba"
+  },
+  "MUBARAKUSD": {
+   "rows": 13409,
+   "first": 1742544000,
+   "sha256": "b46e5ca95041646f9c084213c46f57b15ced4314f3dcb438f855a28ca4fd8947"
+  },
+  "NEARUSD": {
+   "rows": 20447,
+   "first": 1717207200,
+   "sha256": "56602f6ada7cc37136d5ee1e23510a4301aa1ff5b297ecac1c5ca0d13f67d4b6"
+  },
+  "PUMPUSD": {
+   "rows": 10598,
+   "first": 1752663600,
+   "sha256": "7ed13735d55fa9fce3db8494aa97f95b550772a0743fb8819e2d543baabe5853"
+  },
+  "SOLUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "45404aeef5a1f0bb649a102fe3d05d013411bcbeed86f2e1df32602d0b5d35f9"
+  },
+  "STRKUSD": {
+   "rows": 7743,
+   "first": 1762941600,
+   "sha256": "3007e58e22b1e5d983157f8dae710bb02afcab82bbdcec9638d6fdee765fa315"
+  },
+  "SUIUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "7b9535236df8420a52755d6d366655e90235780fcf92f2db6399182cfd5baa0e"
+  },
+  "UNIUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "02ede4d3efe94b2722f07c74ad3686ec04a48b9ef0710569f5c09bb5555b1de3"
+  },
+  "VELVETUSD": {
+   "rows": 2562,
+   "first": 1781593200,
+   "sha256": "599892192dee3122e0330ee32a355a5408c0b5d8159b8b93d315136ea0513b91"
+  },
+  "VVVUSD": {
+   "rows": 14610,
+   "first": 1738220400,
+   "sha256": "6a12696e9ee7914cfc2de6fbf8ebb9f81d048e54e2ddc59be7e0fa04e6e6ce0f"
+  },
+  "WIFUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "7e1847e57dd2ff9e4b3170c1e64c93f70128961a85ad37ca8189ec3f749e7099"
+  },
+  "XRPUSD": {
+   "rows": 20449,
+   "first": 1717200000,
+   "sha256": "009eb2f0713e2166522007dbe60bd6e34042f1338c14bd997198e821a8340575"
+  },
+  "ZECUSD": {
+   "rows": 8628,
+   "first": 1759755600,
+   "sha256": "c7073d0427ea357d0f0b7f166c8f1c923bfddb2ac565e4ed91fe2581b4e935e4"
+  },
+  "ZROUSD": {
+   "rows": 19694,
+   "first": 1719918000,
+   "sha256": "9b86183a5d592a751c7e0ef780d8df99103fd24a75125d0e2f7e0f3e3ac0bdb9"
+  }
+ }
+}

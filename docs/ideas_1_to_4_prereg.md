@@ -67,3 +67,9 @@ Outcome: the fade return over the next 24h (4h reported) in units of trailing 24
 next hour's open and exited at +24h, both taker, 0.158 % round trip. Statistics clustered by day.
 Judged on DEV: F1 forced fade > 0, day-clustered t ≥ 2.5; F2 forced beats ordinary, t ≥ 2; F3 positive
 after costs; F4 same sign in both halves. Then OLD: F5 fade > 0 after costs, t ≥ 2. **PASS = F1–F5.**
+
+### Idea 4 implementation details, fixed 2026-10-13 before its run
+Trailing thresholds need ≥ 30 days of a coin's history (`min_periods` 720 hours); the liquidity median
+needs ≥ 10 days; the trailing daily vol uses ≥ 20 of the previous 24 hourly returns. The 24h exit is the
+close of the hour that ends 24h after entry (4h likewise). The OI 1h fetch: `scripts/fetch_oi_1h.py`,
+manifest in `out/sweep/five_min_arm_lab/forced_selling/`.
