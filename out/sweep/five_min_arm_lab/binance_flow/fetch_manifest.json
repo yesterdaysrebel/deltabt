@@ -1,0 +1,425 @@
+{
+ "fetched_utc": "2026-10-12T10:39:58+00:00",
+ "months": [
+  "2024-06",
+  "2026-09"
+ ],
+ "symbols": {
+  "AAVEUSD": {
+   "binance": "AAVEUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "ADAUSD": {
+   "binance": "ADAUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "AINUSD": {
+   "binance": "AINUSDT",
+   "klines": {
+    "rows": 644475,
+    "first": 1752144300,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 128891,
+    "first": 1752144300,
+    "last": 1790812500
+   }
+  },
+  "AIOUSD": {
+   "binance": "AIOUSDT",
+   "klines": {
+    "rows": 595470,
+    "first": 1755084600,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 119091,
+    "first": 1755084600,
+    "last": 1790812500
+   }
+  },
+  "AKEUSD": {
+   "binance": "AKEUSDT",
+   "klines": {
+    "rows": 532050,
+    "first": 1758889800,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 106410,
+    "first": 1758889800,
+    "last": 1790812500
+   }
+  },
+  "AVAXUSD": {
+   "binance": "AVAXUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "AXSUSD": {
+   "binance": "AXSUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "BANKUSD": {
+   "binance": "BANKUSDT",
+   "klines": {
+    "rows": 763530,
+    "first": 1745001000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 152703,
+    "first": 1745001000,
+    "last": 1790812500
+   }
+  },
+  "BCHUSD": {
+   "binance": "BCHUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "BEATUSD": {
+   "binance": "BEATUSDT",
+   "klines": {
+    "rows": 464385,
+    "first": 1762949700,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 92877,
+    "first": 1762949700,
+    "last": 1790812500
+   }
+  },
+  "BLESSUSD": {
+   "binance": "BLESSUSDT",
+   "klines": {
+    "rows": 536550,
+    "first": 1758619800,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 107310,
+    "first": 1758619800,
+    "last": 1790812500
+   }
+  },
+  "BNBUSD": {
+   "binance": "BNBUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "BTCUSD": {
+   "binance": "BTCUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "DOGEUSD": {
+   "binance": "DOGEUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "DOTUSD": {
+   "binance": "DOTUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "ETHUSD": {
+   "binance": "ETHUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "HYPEUSD": {
+   "binance": "HYPEUSDT",
+   "klines": {
+    "rows": 703530,
+    "first": 1748601000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 140703,
+    "first": 1748601000,
+    "last": 1790812500
+   }
+  },
+  "LINKUSD": {
+   "binance": "LINKUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "LTCUSD": {
+   "binance": "LTCUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "MUBARAKUSD": {
+   "binance": "MUBARAKUSDT",
+   "klines": {
+    "rows": 809895,
+    "first": 1742219100,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 161975,
+    "first": 1742219100,
+    "last": 1790812500
+   }
+  },
+  "NEARUSD": {
+   "binance": "NEARUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "PUMPUSD": {
+   "binance": "PUMPUSDT",
+   "klines": {
+    "rows": 771960,
+    "first": 1744468200,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 146760,
+    "first": 1744468500,
+    "last": 1790812500
+   }
+  },
+  "SOLUSD": {
+   "binance": "SOLUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "STRKUSD": {
+   "binance": "STRKUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "SUIUSD": {
+   "binance": "SUIUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "UNIUSD": {
+   "binance": "UNIUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "VELVETUSD": {
+   "binance": "VELVETUSDT",
+   "klines": {
+    "rows": 637365,
+    "first": 1752570900,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 127470,
+    "first": 1752570900,
+    "last": 1790812500
+   }
+  },
+  "VVVUSD": {
+   "binance": "VVVUSDT",
+   "klines": {
+    "rows": 877905,
+    "first": 1738138500,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 175577,
+    "first": 1738138500,
+    "last": 1790812500
+   }
+  },
+  "WIFUSD": {
+   "binance": "WIFUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "XRPUSD": {
+   "binance": "XRPUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "ZECUSD": {
+   "binance": "ZECUSDT",
+   "klines": {
+    "rows": 1226880,
+    "first": 1717200000,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 245371,
+    "first": 1717200000,
+    "last": 1790812500
+   }
+  },
+  "ZROUSD": {
+   "binance": "ZROUSDT",
+   "klines": {
+    "rows": 1198650,
+    "first": 1718893800,
+    "last": 1790812740
+   },
+   "metrics": {
+    "rows": 239725,
+    "first": 1718893800,
+    "last": 1790812500
+   }
+  }
+ }
+}

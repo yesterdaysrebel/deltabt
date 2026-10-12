@@ -1,0 +1,31 @@
+
+==== DEV 2025-12..2026-09: 4928 trades, 16 flow + 27 base features; test months 2026-04..2026-09; 3131 test entries, 3131 with flow features ====
+flow coverage: al_tbs_5 100%, al_tbs_15 100%, vol_surge_15 100%, cnt_surge_15 100%, size_15 100%, al_tbs_30 100% ...
+  V1 planted AUC 0.544 (>= 0.52) ; V2 shuffled p 0.270 (> 0.05) -> valid
+  all test entries: n 3131  3R hit 24.2%  net 3R -0.099R  trail -0.105R
+  PRIMARY AUC by month: 0.491, 0.509, 0.535, 0.460, 0.516, 0.525; mean 0.506
+    PRIMARY 25%                n   762  3R hit  25.1%  fee 0.070R  net 3R -0.066R (p day 0.503)  trail -0.007R (p 0.064)  months+ 2/6
+    cheap fees 25%             n   840  3R hit  26.5%  fee 0.033R  net 3R +0.050R (p day 0.009)  trail -0.096R (p 1.000)  months+ 3/6
+    flow only 25%              n   727  3R hit  24.8%  fee 0.072R  net 3R -0.057R (p day 0.162)  trail -0.040R (p 0.738)  months+ 1/6
+                               mean AUC 0.500
+    base only 25%              n   790  3R hit  23.4%  fee 0.071R  net 3R -0.138R (p day 0.895)  trail -0.055R (p 0.993)  months+ 1/6
+                               mean AUC 0.495
+  P1 AUC >= 0.530: fail   P2 beats day-matched random p <= 0.05: fail   P3 above cheap rule: fail   -> FAIL
+
+==== OLD 2024-06..2025-12: 8671 trades, 16 flow + 27 base features; test months 2024-10..2025-12; 7876 test entries, 7876 with flow features ====
+flow coverage: al_tbs_5 100%, al_tbs_15 100%, vol_surge_15 100%, cnt_surge_15 100%, size_15 100%, al_tbs_30 100% ...
+  V1 planted AUC 0.541 (>= 0.52) ; V2 shuffled p 0.194 (> 0.05) -> valid
+  all test entries: n 7876  3R hit 25.0%  net 3R -0.075R  trail -0.093R
+  PRIMARY AUC by month: 0.540, 0.522, 0.444, 0.503, 0.581, 0.535, 0.531, 0.548, 0.491, 0.522, 0.501, 0.520, 0.510, 0.520, 0.458; mean 0.515
+    PRIMARY 25%                n  1982  3R hit  26.2%  fee 0.089R  net 3R -0.054R (p day 0.192)  trail -0.050R (p 1.000)  months+ 6/15
+    cheap fees 25%             n  1999  3R hit  24.8%  fee 0.039R  net 3R -0.029R (p day 0.290)  trail +0.009R (p 0.001)  months+ 6/15
+    flow only 25%              n  1896  3R hit  27.8%  fee 0.089R  net 3R +0.028R (p day 0.004)  trail -0.022R (p 0.638)  months+ 6/15
+                               mean AUC 0.527
+    base only 25%              n  1972  3R hit  25.2%  fee 0.085R  net 3R -0.094R (p day 0.582)  trail -0.065R (p 1.000)  months+ 5/15
+                               mean AUC 0.497
+  P1 AUC >= 0.530: fail   P2 beats day-matched random p <= 0.05: fail   P3 above cheap rule: fail   -> FAIL
+
+VERDICT: CANNOT ANSWER
+
+CORRECTION (same run, 2026-10-12): both windows printed FAIL above; the summary line said "CANNOT ANSWER" because the
+script compared a numpy bool with Python False. The verdict is FAIL. The comparison is fixed in the script.

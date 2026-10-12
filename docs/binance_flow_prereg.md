@@ -62,3 +62,17 @@ after a run: fix, log here, rerun, report both. The feature tables are committed
 (fixed in the fetch, files re-fetched); (2) LightGBM with its default thread count ran 200× slower in
 this process (labkit imports numba; two OpenMP runtimes oversubscribed 20 cores: 101 s per fit vs 0.5 s
 pinned). `n_jobs=8` is now set in the classifier. Thread count does not change the model's output.
+
+## RESULT 2026-10-12 — FAIL on both windows (`out/sweep/five_min_arm_lab/binance_flow/result_2026-10-12.txt`)
+
+Both runs valid (planted 0.544 / 0.541; shuffled p 0.27 / 0.19). Flow coverage 100 % of test entries.
+
+| window | PRIMARY AUC | PRIMARY 25 % picks | cheap rule 25 % | flow-only AUC / picks |
+|---|---|---|---|---|
+| DEV (3,131 test entries) | **0.506** | −0.066R, p 0.50 vs random | +0.050R | **0.500**, −0.057R (p 0.16) |
+| OLD (7,876) | **0.515** | −0.054R, p 0.19 | −0.029R | 0.527, +0.028R (p 0.004) |
+
+P1, P2 and P3 fail in both windows. The one cell that looked alive — flow-only on OLD (+0.028R, p 0.004) — is
+dead-flat on the more recent window (0.500, p 0.16), which is what noise looks like across two windows, not
+signal. Binance's taker flow and positioning in the hour before a Delta entry do not tell this entry's
+winners from its losers. Feature tables: `features_DEV.csv.gz`, `features_OLD.csv.gz`.

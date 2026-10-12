@@ -159,7 +159,7 @@ def test_window(win, root):
 
 if __name__ == "__main__":
     res = {win: test_window(win, root) for win, root in K.WINDOWS.items()}
-    print("\nVERDICT:", "PASS on both windows -- a lead for a plain-rule follow-up, not a bot change" if all(v is True for v in res.values())
-          else "FAIL" if any(v is False for v in res.values()) else "CANNOT ANSWER")
+    print("\nVERDICT:", "PASS on both windows -- a lead for a plain-rule follow-up, not a bot change" if all(bool(v) for v in res.values() if v is not None) and all(v is not None for v in res.values())
+          else "FAIL" if any(v is not None and not bool(v) for v in res.values()) else "CANNOT ANSWER")
     import lightgbm, sklearn
     (OUT / "versions.json").write_text(json.dumps(dict(lightgbm=lightgbm.__version__, numpy=np.__version__, pandas=pd.__version__, sklearn=sklearn.__version__)))

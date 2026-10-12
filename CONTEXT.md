@@ -164,6 +164,11 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**Order flow does not predict this entry either (2026-10-12, `docs/binance_flow_prereg.md`, Binance's public
+archive: 1m taker-buy volume and 5m positioning for all 32 coins, Jun 2024–Sep 2026).** Valid runs on both
+windows; flow-only AUC 0.500 (DEV) / 0.527 (OLD); with the base features 0.506 / 0.515; 25 % picks lose and
+do not beat day-matched random. The one live-looking cell (flow-only on OLD, +0.028R, p 0.004) is flat on DEV.
+Binance data is under `data/binance/` (gitignored, `scripts/fetch_binance_flow.py` rebuilds it).
 **The same entry on 1h / 4h bars (idea 7, 2026-10-12): FAIL at 1h, cannot answer at 4h.** 1h hold-to-3R −0.044R /
 −0.027R (DEV / OLD; after-a-win −0.055R / +0.024R) — cost per R halves, the win rate rises to 31 %, the entry still
 earns nothing. 4h gives 5–6 trades a month across all coins (48 / 116 trades): unjudgeable, and unusable on $250.
