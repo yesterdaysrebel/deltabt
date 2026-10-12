@@ -1,0 +1,69 @@
+# Pre-registration — ideas 1–4 of the 2026-10-13 list (owner: "run 1–5 right now")
+
+Written and committed before any of the four ran. Idea 5 (a trade-flow recorder) is a deploy and
+is handled separately. All four are local, ₹0, on `manual_scalp_both_t3` (the %R entry, 4×ATR stop,
+3R / 72h) unless an idea changes exactly one of those parts.
+
+## Shared machinery
+
+- **Two windows.** DEV = `data/` (2025-12-20..2026-09-30, 32 coins) — every rule so far was read from
+  it. OLD = `data_old/` (2024-06-01..2025-12-19, the 27 of those coins that existed; survivor-biased
+  and stated as such). OLD has been touched only by the cheap-trade gate (closed 10-12).
+- **Costs.** Per-coin slippage = max(2 bps, half the 2026-10-05 quoted spread); taker 0.05 %, maker
+  0.02 %, both ×1.18 GST; funding charged. The 0.15R cost gate stays on in every arm so the entry set
+  is comparable.
+- **Noise.** Any comparison of two runs is unpaired, and unpaired runs here swing by more than most
+  effects. The test is a **day-clustered bootstrap** of the difference in net R per trade (2,000
+  draws of entry-days with replacement, both runs resampled on the same days). p = share of draws
+  where the difference is ≤ 0.
+- **Exits.** hold-to-3R is judged; the trail is reported.
+- **One run per idea.** A bug found after a run: fix, log it here, rerun, report both.
+
+## Idea 1 — limit-order entries
+
+Engine change (`StrategyParams.entry_limit_atr`, `entry_limit_wait_bars`; `None` = today's market
+entry): at a signal, rest a limit at `close ∓ k·ATR` (k = 0 means at the close); it fills only when a
+later 1m bar trades **through** it (strictly beyond, a touch is not a fill), at the limit, maker fee,
+no slippage; cancelled after 3 primary bars (15 min) unfilled; a new signal while one rests replaces
+it. A position filled inside bar *i* is first checked for exits at bar *i+1* (same as a market entry
+at bar *i*'s close) — a stop or target hit later in the fill bar is missed; stated. Stop price is the
+one the signal computed; R and target are measured from the fill.
+
+Judged cell: 32 coins, hold-to-3R, k = 0, wait 3. L1: limit beats market on DEV, p ≤ 0.05. L2: the
+same on OLD. **PASS = L1 and L2.** Reported: fill rate, signals per month, k = 0.25, the trail,
+prod 3 coins. Expectation: fees fall ~0.025R per trade; unfilled signals are biased toward the
+winners (price ran without dipping), so the net is unclear.
+
+## Idea 2 — stop on price structure (`leg_extreme`: the swing low/high of the current leg)
+
+One change: `stop = "leg_extreme"` instead of 4×ATR. Median stop width on BEATUSD: 2.54 % vs 4.41 %.
+Control: an ATR stop with its multiplier set so the pooled median width on DEV matches leg_extreme's
+(a stop of the same size placed without structure). Judged on OLD only (DEV is where it would be
+chosen): S1 leg_extreme beats 4×ATR, p ≤ 0.05; S2 leg_extreme beats the width-matched ATR stop,
+p ≤ 0.05. **PASS = S1 and S2.** DEV is reported.
+
+## Idea 3 — simple splits
+
+Three one-line rules on the base trade list: **side** (long vs short); **weekday** (the best single UTC
+weekday on DEV, ≥ 200 trades); **hour block** (best of four 6-hour UTC blocks on DEV, ≥ 200 trades).
+The subgroup is chosen on DEV. On OLD it must have net R > 0 **and** beat its complement at
+day-clustered p ≤ 0.05. **PASS per split = both.** The ML already saw hour and side and found nothing,
+so the prior is that all three fail.
+
+## Idea 4 — forced selling reverses (open interest)
+
+New entry, not a filter. Data: 1h bars from the 1m LTP cache (both windows), plus Delta's `OI:<coin>`
+1h history 2024-06-01..2026-10-01 for the 32 coins (one fetch, ~200 read-only requests, gitignored).
+**Event** at hour *t* on coin *c*: |1h log return| in the top 0.5 % of *c*'s trailing 90-day
+distribution **and** the 1h log change in OI in the bottom 1 % of its trailing 90 days (forced), or
+the same move with OI change above its trailing median (ordinary). A coin counts only in hours
+where its trailing 30-day median daily dollar volume (from the candles) ≥ $1M. Two events on one coin
+within 24h: keep the first.
+
+**Step 0 (before any outcome is read):** forced events on ≥ 60 distinct days in DEV and ≥ 60 in OLD,
+else STOP (the test cannot answer).
+
+Outcome: the fade return over the next 24h (4h reported) in units of trailing 24h vol, entered at the
+next hour's open and exited at +24h, both taker, 0.158 % round trip. Statistics clustered by day.
+Judged on DEV: F1 forced fade > 0, day-clustered t ≥ 2.5; F2 forced beats ordinary, t ≥ 2; F3 positive
+after costs; F4 same sign in both halves. Then OLD: F5 fade > 0 after costs, t ≥ 2. **PASS = F1–F5.**
