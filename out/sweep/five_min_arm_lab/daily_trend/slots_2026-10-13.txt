@@ -1,0 +1,6 @@
+DEV 2025-12..2026-09 | 1 slot(s):  11 trades (1.2/month)  net +0.087R  win 36%  total +1.0R  day-t +0.32  | random x30 mean +0.099R, p(random >= real) 0.43
+DEV 2025-12..2026-09 | 3 slot(s):  45 trades (4.8/month)  net +0.483R  win 51%  total +21.7R  day-t +2.20  | random x30 mean +0.074R, p(random >= real) 0.00
+DEV 2025-12..2026-09 | all coins: 195 trades (20.7/month)  net +0.208R  win 45%  total +40.5R  day-t +1.95  | random x30 mean +0.117R, p(random >= real) 0.10
+OLD 2024-06..2025-12 | 1 slot(s):  39 trades (2.1/month)  net -0.093R  win 44%  total -3.6R  day-t -0.77  | random x30 mean -0.032R, p(random >= real) 0.60
+OLD 2024-06..2025-12 | 3 slot(s): 108 trades (5.8/month)  net -0.005R  win 43%  total -0.5R  day-t -0.04  | random x30 mean -0.032R, p(random >= real) 0.30
+OLD 2024-06..2025-12 | all coins: 349 trades (18.9/month)  net +0.091R  win 47%  total +31.7R  day-t +1.23  | random x30 mean -0.010R, p(random >= real) 0.00

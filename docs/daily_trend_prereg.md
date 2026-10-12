@@ -76,3 +76,10 @@ mixes DEV's high random mean (+0.114R, a trending window) with OLD's (−0.015R)
 windows can still read as "no better than random" pooled. A confirmation would be on data no rule has
 touched: Binance daily candles 2019–2024 for the majors (close-to-close execution, 0.158 % costs), with
 the cell frozen exactly as here. That needs its own yes.
+
+**Addendum 2026-10-13 (owner's question, reported only): B-1D with 1 or 3 positions at a time**
+(`scripts/daily_trend_slots.py`, `slots_2026-10-13.txt`; ties go to the alphabetically first coin).
+1 slot: DEV +0.087R on 11 trades (1.2/month), OLD −0.093R on 39 (2.1/month) — no better than random
+(p 0.43 / 0.60). 3 slots: DEV +0.483R on 45 (p 0.00), OLD −0.005R on 108 (p 0.30) — does not replicate.
+One slot per coin (the tested cell): +0.208R / +0.091R, p 0.10 / 0.00 with this 30-run control. Whatever
+edge exists is a breadth effect across coins; a single slot turns it into a coin-flip with 1–2 trades a month.
