@@ -1,0 +1,32 @@
+
+== A-12h | DEV 2025-12..2026-09: 401 trades (42.1/month, 30 coins)  net +0.101R/trade  win 45%  total +40.6R  day-t +1.15  median hold 4.5d  median cost/R 0.016  funding/trade $+0.14  long +0.078 (n 229) short +0.132  exits {'stop': 325, 'max_hold': 76}
+   random x50: mean +0.053R, 5-95% -0.023..+0.124; p(random >= real) 0.14
+
+== B-12h | DEV 2025-12..2026-09: 449 trades (47.2/month, 30 coins)  net +0.052R/trade  win 40%  total +23.1R  day-t +0.72  median hold 6.0d  median cost/R 0.016  funding/trade $+0.11  long +0.092 (n 259) short -0.003  exits {'stop': 342, 'max_hold': 107}
+   random x50: mean +0.040R, 5-95% -0.025..+0.115; p(random >= real) 0.34
+
+== A-1D | DEV 2025-12..2026-09: 176 trades (18.5/month, 27 coins)  net +0.226R/trade  win 47%  total +39.9R  day-t +1.46  median hold 10.0d  median cost/R 0.011  funding/trade $+0.21  long +0.153 (n 108) short +0.344  exits {'stop': 146, 'max_hold': 30}
+   random x50: mean +0.171R, 5-95% +0.050..+0.279; p(random >= real) 0.28
+
+== B-1D | DEV 2025-12..2026-09: 195 trades (20.5/month, 27 coins)  net +0.208R/trade  win 45%  total +40.5R  day-t +1.95  median hold 13.0d  median cost/R 0.011  funding/trade $-0.03  long +0.302 (n 109) short +0.089  exits {'stop': 150, 'max_hold': 45}
+   random x50: mean +0.114R, 5-95% +0.014..+0.212; p(random >= real) 0.06
+
+== A-12h | OLD 2024-06..2025-12: 636 trades (33.7/month, 26 coins)  net -0.045R/trade  win 38%  total -28.8R  day-t -0.89  median hold 5.0d  median cost/R 0.014  funding/trade $+0.18  long +0.039 (n 331) short -0.137  exits {'stop': 524, 'max_hold': 112}
+   random x50: mean +0.007R, 5-95% -0.037..+0.057; p(random >= real) 0.96
+
+== B-12h | OLD 2024-06..2025-12: 750 trades (39.7/month, 26 coins)  net +0.030R/trade  win 43%  total +22.2R  day-t +0.61  median hold 6.0d  median cost/R 0.014  funding/trade $+0.21  long +0.005 (n 369) short +0.054  exits {'stop': 564, 'max_hold': 186}
+   random x50: mean +0.014R, 5-95% -0.053..+0.061; p(random >= real) 0.34
+
+== A-1D | OLD 2024-06..2025-12: 295 trades (15.6/month, 24 coins)  net -0.000R/trade  win 42%  total -0.0R  day-t -0.00  median hold 9.0d  median cost/R 0.009  funding/trade $+0.25  long +0.126 (n 147) short -0.125  exits {'stop': 232, 'max_hold': 63}
+   random x50: mean -0.010R, 5-95% -0.080..+0.044; p(random >= real) 0.44
+
+== B-1D | OLD 2024-06..2025-12: 349 trades (18.5/month, 24 coins)  net +0.091R/trade  win 47%  total +31.7R  day-t +1.23  median hold 11.0d  median cost/R 0.009  funding/trade $+0.17  long +0.050 (n 151) short +0.122  exits {'stop': 253, 'max_hold': 96}
+   random x50: mean -0.015R, 5-95% -0.087..+0.053; p(random >= real) 0.02
+
+#### VERDICT: a cell passes if net > 0 in BOTH windows, pooled day-t >= 2.5 and pooled p vs random <= 0.05; < 60 trades in a window = cannot answer
+  A-12h: DEV +0.101R (n 401)  OLD -0.045R (n 636)  pooled day-t +0.24  p vs random 0.63 -> fail
+  A-1D: DEV +0.226R (n 176)  OLD -0.000R (n 295)  pooled day-t +1.12  p vs random 0.43 -> fail
+  B-12h: DEV +0.052R (n 449)  OLD +0.030R (n 750)  pooled day-t +0.93  p vs random 0.30 -> fail
+  B-1D: DEV +0.208R (n 195)  OLD +0.091R (n 349)  pooled day-t +2.19  p vs random 0.23 -> fail
+
+DAILY TREND: FAIL

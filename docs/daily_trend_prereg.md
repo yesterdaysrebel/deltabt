@@ -54,3 +54,25 @@ median cost per R, funding per trade, win rate, long vs short.
 3. funding charged (shown per trade in the smoke log); 4. first bar per coin, no forward fill;
 5. the four cells above, nothing else; 6. BTCUSD smoke run with the first trades recomputed by hand:
 net R = side × (exit − entry) × contracts × contract value − fees − funding, over risk per trade.
+
+## RESULT 2026-10-13 — FAIL on all four cells (`out/sweep/five_min_arm_lab/daily_trend/result_2026-10-13.txt`)
+
+| cell | DEV net R (n) | OLD net R (n) | p vs random DEV / OLD | pooled day-t | verdict |
+|---|---|---|---|---|---|
+| A-12h Donchian | +0.101 (401) | **−0.045** (636) | 0.14 / 0.96 | +0.24 | fail |
+| A-1D Donchian | +0.226 (176) | −0.000 (295) | 0.28 / 0.44 | +1.12 | fail |
+| B-12h ATR momentum | +0.052 (449) | +0.030 (750) | 0.34 / 0.34 | +0.93 | fail |
+| **B-1D ATR momentum** | **+0.208 (195)** | **+0.091 (349)** | **0.06 / 0.02** | +2.19 (bar 2.5) | fail on t and pooled p |
+
+What the control showed: on DEV, random entries with the same 2.5×ATR trailing exit also earn money
+(+0.05R at 12h, +0.17R at 1D) — the window trended, and a trailing stop with a 20-bar hold harvests
+that whatever the entry. Three cells are no better than that. Donchian 12h is *worse* than random on OLD.
+
+**B-1D is a lead, not a pass.** Positive in both windows, beats random in each window on its own
+(p 0.06 and 0.02), 47 % wins, cost per R 0.009–0.011, ~19 trades a month across ~25 coins. It misses
+the pre-registered bar on pooled day-t (+2.19 vs 2.5) and on the pooled random p (0.23). The pooled
+random p is a weakness of this design, noted after the fact and not used to change the verdict: pooling
+mixes DEV's high random mean (+0.114R, a trending window) with OLD's (−0.015R), so a real effect in both
+windows can still read as "no better than random" pooled. A confirmation would be on data no rule has
+touched: Binance daily candles 2019–2024 for the majors (close-to-close execution, 0.158 % costs), with
+the cell frozen exactly as here. That needs its own yes.

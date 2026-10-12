@@ -164,6 +164,12 @@ fitted to its own window. Old-window candles are in `data_old/` (gitignored).
 (`StrategyParams.entry_limit_atr`) halve fees but fill the losers (−0.134R vs −0.094R DEV, −0.097R vs −0.076R OLD);
 a leg_extreme stop is worse than a same-width ATR stop; the best side / weekday / hour block on DEV are all
 negative on OLD; the forced-selling reversal has too few events (37 days) to test.
+**Multi-day trend on 12h / 1D bars (2026-10-13, `docs/daily_trend_prereg.md`): FAIL on all four pre-registered
+cells — but ATR-momentum on 1D bars is the strongest lead of the programme:** +0.208R (DEV, 195 trades) / +0.091R
+(OLD, 349), beats random entries with the same 2.5×ATR trail in each window (p 0.06 / 0.02), misses the pooled
+bars (day-t +2.19 vs 2.5; pooled p 0.23, a design weakness noted post hoc). Random entries with that exit were
+themselves positive on DEV (+0.17R at 1D): the exit harvests trends whatever the entry. Donchian 12h is worse
+than random on OLD. Confirmation would be Binance daily 2019–2024, frozen cell, own yes.
 **Order flow does not predict this entry either (2026-10-12, `docs/binance_flow_prereg.md`, Binance's public
 archive: 1m taker-buy volume and 5m positioning for all 32 coins, Jun 2024–Sep 2026).** Valid runs on both
 windows; flow-only AUC 0.500 (DEV) / 0.527 (OLD); with the base features 0.506 / 0.515; 25 % picks lose and
