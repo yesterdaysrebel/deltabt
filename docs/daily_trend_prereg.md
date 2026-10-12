@@ -83,3 +83,6 @@ the cell frozen exactly as here. That needs its own yes.
 (p 0.43 / 0.60). 3 slots: DEV +0.483R on 45 (p 0.00), OLD −0.005R on 108 (p 0.30) — does not replicate.
 One slot per coin (the tested cell): +0.208R / +0.091R, p 0.10 / 0.00 with this 30-run control. Whatever
 edge exists is a breadth effect across coins; a single slot turns it into a coin-flip with 1–2 trades a month.
+
+**Owner decision 2026-10-13:** declined. The effect requires ~12 concurrent positions; the owner does not want capital
+deployed continuously, and one position at a time loses the effect (addendum above). Parked; no confirmation run.

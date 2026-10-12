@@ -169,7 +169,9 @@ cells — but ATR-momentum on 1D bars is the strongest lead of the programme:** 
 (OLD, 349), beats random entries with the same 2.5×ATR trail in each window (p 0.06 / 0.02), misses the pooled
 bars (day-t +2.19 vs 2.5; pooled p 0.23, a design weakness noted post hoc). Random entries with that exit were
 themselves positive on DEV (+0.17R at 1D): the exit harvests trends whatever the entry. Donchian 12h is worse
-than random on OLD. Confirmation would be Binance daily 2019–2024, frozen cell, own yes.
+than random on OLD. **Owner declined it on 2026-10-13: the effect needs ~12 positions open at once (one slot per
+coin); with one position at a time it is 1–2 trades a month and no better than random, and the owner does not
+want capital deployed continuously. Lead parked; no confirmation run.**
 **Order flow does not predict this entry either (2026-10-12, `docs/binance_flow_prereg.md`, Binance's public
 archive: 1m taker-buy volume and 5m positioning for all 32 coins, Jun 2024–Sep 2026).** Valid runs on both
 windows; flow-only AUC 0.500 (DEV) / 0.527 (OLD); with the base features 0.506 / 0.515; 25 % picks lose and
