@@ -200,6 +200,7 @@ resource "aws_ecr_repository" "live" {
 
   name                 = "${local.name}-live"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true   # 2026-10-13: project closed; images go with it
 
   image_scanning_configuration {
     scan_on_push = true
@@ -209,7 +210,7 @@ resource "aws_ecr_repository" "live" {
     # Images are the only durable link between a row in the database and the
     # code that produced it. Destroying this repository destroys the ability
     # to say what any past live trade was executed by.
-    prevent_destroy = true
+    prevent_destroy = false  # 2026-10-13: project closed by the owner; destroy authorised
   }
 }
 

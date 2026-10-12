@@ -7,6 +7,8 @@ session that actually read the venue; re-verify anything load-bearing before act
 
 The container is ephemeral. Everything that matters must be in git.
 
+> **PROJECT CLOSED 2026-10-13 by the owner. All AWS infrastructure destroyed** (Terraform stack, RDS with no snapshot, ECR images, secrets, bootstrap state bucket/OIDC/roles); GitHub AWS workflows disabled, variables and environments deleted. The dry run `DRY-MANUAL_SCALP_BOTH_T3-5-20261009-ca7ddd5` ended unread (last count 11 closed, −8.16R). Trade records survive only in this file and the daily-report emails. Re-deploying means bootstrap from scratch. Everything below is history.
+
 ## What this repo is — two halves with one wall between them
 
 **Research half** (`deltabt/`, `scripts/`, `out/`, `docs/`): a pre-registered backtest programme
@@ -25,7 +27,7 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
+## Deployed state — NOTHING (destroyed 2026-10-13). History: one prod DRY RUN (`dryrun`) 2026-10-02 → 10-13
 
 **2026-10-09, amendment 2 (owner): baseline exit (hold to 3R) + a 4h per-coin pause after a loss**
 (`RiskConfig.pause_symbol_after_loss_seconds` = 14400, delivered via `live_sizing` → `run_live.sh` →

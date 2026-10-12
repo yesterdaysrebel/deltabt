@@ -51,7 +51,7 @@ resource "aws_db_instance" "main" {
   # The experiment database is the deliverable. Deleting it by accident loses
   # evidence that cannot be regenerated.
   deletion_protection       = var.db_deletion_protection
-  skip_final_snapshot       = false
+  skip_final_snapshot       = true   # 2026-10-13: project closed, owner chose no snapshot
   final_snapshot_identifier = "${local.name}-final-${formatdate("YYYYMMDDhhmmss", timestamp())}"
 
   performance_insights_enabled = false # not free on t4g
@@ -66,6 +66,6 @@ resource "aws_db_instance" "main" {
     # The last line of defence. deletion_protection can be flipped off in one
     # apply; this makes Terraform refuse to plan the destroy at all, so losing
     # a 30-day dataset takes a deliberate code change and a review.
-    prevent_destroy = true
+    prevent_destroy = false  # 2026-10-13: project closed by the owner; destroy authorised
   }
 }

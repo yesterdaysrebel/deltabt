@@ -1,6 +1,6 @@
 resource "aws_ecr_repository" "bot" {
   name                 = var.ecr_repository_name
-  force_delete         = false
+  force_delete         = true   # 2026-10-13: project closed
   image_tag_mutability = "IMMUTABLE"
 
   # Immutable tags matter more here than usual: every image is tagged with its
