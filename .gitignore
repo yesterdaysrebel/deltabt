@@ -10,6 +10,8 @@
 # GET-only client safety check down with it.
 # ---------------------------------------------------------------------------
 /data/
+# The older window for scripts/cheap_fee_gate_stage2.py (2024-06..2025-12), same rule.
+/data_old/
 # another session's working directory in this workspace; not part of this project
 scratch_ist/
 
