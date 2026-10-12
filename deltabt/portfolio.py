@@ -57,7 +57,9 @@ GATE_REASONS = ("max_open_positions", "max_trades_per_day", "max_daily_loss",
                 # rather than like the account being too small to express it.
                 "zero_contracts", "cost_per_r", "stop_too_close",
                 # Research-only per-symbol pause (RiskGates.pause_seconds).
-                "pause")
+                "pause",
+                # Research-only entry hook (RiskGates.entry_filter).
+                "entry_filter")
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,11 @@ class RiskGates:
     #: only the GLOBAL ``cooldown_after_loss_seconds``.
     pause_seconds: int = 0
     pause_after: Callable[[Trade], bool] | None = None
+    #: Called with (symbol, bar time, cost per R) for an entry that passed
+    #: ``max_cost_per_r``; returning False refuses it. None (the default) changes
+    #: nothing. Research only (scripts/cheap_fee_gate_lab.py): it lets a tighter
+    #: cost gate and a random-refusal control run through the same code path.
+    entry_filter: Callable[[str, int, float], bool] | None = None
 
     @classmethod
     def off(cls) -> "RiskGates":
@@ -650,6 +657,9 @@ def run_portfolio(
             cpr = costs.cost_per_r(px, rpu)
             if params.max_cost_per_r is not None and cpr > params.max_cost_per_r:
                 result.rejects["cost_per_r"] += 1
+                continue
+            if gates.entry_filter is not None and not gates.entry_filter(sym, ts, cpr):
+                result.rejects["entry_filter"] += 1
                 continue
 
             risk_capital = equity * params.risk_percent / 100.0
