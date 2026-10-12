@@ -18,7 +18,7 @@ WHERE IT RUNS IS THE WEAK POINT: in a container it dies with the container.
 """
 import asyncio, csv, datetime as dt, glob, gzip, io, logging, pathlib, signal, sys, time
 sys.path.insert(0, ".")
-from app.market_data.delta_ws import DeltaWS
+from app.market_data.delta_ws import DeltaMarketFeed as DeltaWS
 
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "data/trade_flow"); OUT.mkdir(parents=True, exist_ok=True)
 SYMS = sorted(pathlib.Path(f).stem for f in glob.glob("out/sweep/five_min_arm_lab/symbol_screen/trades/*.csv"))
