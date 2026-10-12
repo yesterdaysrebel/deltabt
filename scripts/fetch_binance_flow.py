@@ -64,7 +64,11 @@ def fetch_symbol(sym):
             parts = [x for x in pool.map(lambda day: get_csv(f"{BASE}/daily/metrics/{b}/{b}-metrics-{day}.zip"), days()) if x is not None]
         if parts:
             mt = pd.concat(parts, ignore_index=True)
-            mt["time"] = (pd.to_datetime(mt.create_time, utc=True).astype("int64") // 10 ** 9).astype("int64")
+            # pandas 3 parses these strings at second/microsecond resolution, so a
+            # fixed // 10**9 is wrong; scale by the magnitude instead.
+            raw = pd.to_datetime(mt.create_time, utc=True).astype("int64").to_numpy()
+            scale = 1 if raw.max() < 10 ** 11 else 10 ** 3 if raw.max() < 10 ** 14 else 10 ** 6 if raw.max() < 10 ** 17 else 10 ** 9
+            mt["time"] = (raw // scale).astype("int64")
             keep = ["time", "sum_open_interest", "sum_open_interest_value", "count_toptrader_long_short_ratio", "sum_toptrader_long_short_ratio",
                     "count_long_short_ratio", "sum_taker_long_short_vol_ratio"]
             mt = mt[[c for c in keep if c in mt.columns]].drop_duplicates("time").sort_values("time"); mt.to_parquet(d / "metrics_5m.parquet", index=False)
