@@ -14,7 +14,7 @@ from deltabt.data.store import _to_frame
 
 NOW = int(time.time()); DAY = 86400
 T = pd.DataFrame(json.load(open("out/sweep/five_min_arm_lab/symbol_screen/tickers_2026-10-05.json")))
-T["launch_dt"] = pd.to_datetime(T.launch, utc=True); T["launch"] = (T.launch_dt.astype("int64") // 10 ** 9).astype("int64")
+T["launch_dt"] = pd.to_datetime(T.launch, utc=True); T["launch"] = T.launch_dt.map(lambda x: int(x.timestamp())).astype("int64")   # not astype(int64)//1e9: pandas 3 parses at second resolution
 L = T[(T.launch_dt >= "2024-06-01") & (T.launch_dt <= "2026-09-01")].sort_values("launch")
 OUT = pathlib.Path("data/listings"); MAN = pathlib.Path("out/sweep/five_min_arm_lab/new_listing"); MAN.mkdir(parents=True, exist_ok=True)
 cl = DeltaClient(per_second=4.0)
