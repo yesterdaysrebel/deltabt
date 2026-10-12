@@ -37,6 +37,22 @@ RULES, written before the run. Judged on the 32 coins, hold-to-3R, normal costs,
   SURVIVES = S1 and S2 and S3. Otherwise the cheap-trade idea is closed.
 Reported, not judged: the trail, the prod universe, the 2x spread stress, 0.02
 and 0.05.
+
+RESULT 2026-10-12 (out/sweep/five_min_arm_lab/cheap_gate/result_2026-10-12.txt):
+SURVIVES by the letter of the rule -- and is weak.
+  * 32 coins, hold-to-3R, normal costs: base -0.094R (4,928 trades); 0.03 gate
+    +0.027R (713 trades, 76/month), halves +0.037 / +0.022; beaten by 4% of 100
+    random-refusal runs (p 0.04; those runs took 821-871 trades, so the control
+    is matched). S1, S2, S3 pass.
+  * But +0.027R has a standard error of 0.067 (t +0.41): not distinguishable
+    from zero. It beats random refusal because random picks carry average
+    costs (0.078R vs 0.024R) -- the cost law again.
+  * Knife-edge: 0.02 gate -0.064R, 0.05 gate -0.032R; the one positive
+    threshold is the one read from the data.
+  * 2x spreads: 0.03 gate -0.042R (p 0.23). The trail loses at every threshold.
+  * Prod 3 coins: 0.03 gate +0.259R on 100 trades, but the first half holds only
+    a handful of them (+2.137R) and the second +0.073R; 2x spreads +0.026R.
+  Stage 2 (older untouched window) is the only test that can decide it.
 """
 import dataclasses, glob, json, pathlib, sys
 from concurrent.futures import ProcessPoolExecutor

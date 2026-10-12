@@ -153,6 +153,12 @@ recorder.
 `max_trades_per_day`: hold-to-3R +0.044R uncapped → −0.084R at 2/day; trail −0.028R → −0.048R; the
 first 2 entries of a day did no better than 2 random ones. The dry run's own 46 closed trades agree
 (win rate lower under the cap; p 0.24–0.42 vs random) — far too few to decide anything.
+**Cheap trades only (cost per R ≤ 0.03), realistic spreads (2026-10-12, `scripts/cheap_fee_gate_lab.py`,
+pre-registered): survives stage 1 by the letter, and is weak.** 32 coins, hold-to-3R, per-coin slippage =
+half the 10-05 quoted spread: +0.027R per trade on 713 trades (base −0.094R), positive in both halves, beats
+random refusal at p 0.04 — but t +0.41 vs zero, the 0.02 and 0.05 thresholds are negative, 2× spreads turn it
+to −0.042R, and the trail loses at every threshold. 0.03 was read from seen data; only an older untouched
+window (stage 2, needs a candle download) can decide it.
 **Pausing after losses does not filter losing trades (2026-10-09, `scripts/loss_pause_lab.py` then
 `scripts/loss_pause_exact.py`, both pre-registered).** Virtual mode after N losses (equity-curve filter)
 does nothing; account-wide it is worse than nothing. On hold-to-3R the trade after a win on a coin does

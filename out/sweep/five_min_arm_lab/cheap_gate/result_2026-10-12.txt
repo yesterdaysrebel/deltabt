@@ -1,0 +1,63 @@
+
+==== 32 coins ====
+
+  hold-to-3R, normal costs
+    base (0.15 gate)       trades  4928 (520.1/month)  net -0.094R  win  26.4%  total   -463.3R  halves -0.116 / -0.072  avg cost 0.078R
+    cost per R <= 0.03     trades   713 ( 76.3/month)  net +0.027R  win  29.3%  total    +19.6R  halves +0.037 / +0.022  avg cost 0.024R
+    cost per R <= 0.02     trades   248 ( 26.7/month)  net -0.064R  win  27.4%  total    -15.9R  halves -0.180 / -0.003  avg cost 0.018R
+    cost per R <= 0.05     trades  1841 (194.9/month)  net -0.032R  win  27.6%  total    -58.6R  halves -0.103 / +0.019  avg cost 0.037R
+    random refusal (keep 1% of entries) x100: mean -0.093R, 5-95% -0.195 .. +0.018; the 0.03 gate is beaten by 4.0% of them (p 0.040)
+    S1 net > 0: PASS   S2 p <= 0.05 vs random: PASS   S3 > 0 in both halves: PASS
+
+  hold-to-3R, 2x spread costs
+    base (0.15 gate)       trades  4767 (502.6/month)  net -0.078R  win  27.0%  total   -371.4R  halves -0.090 / -0.066  avg cost 0.084R
+    cost per R <= 0.03     trades   483 ( 51.7/month)  net -0.042R  win  27.3%  total    -20.5R  halves -0.018 / -0.059  avg cost 0.024R
+    cost per R <= 0.02     trades   199 ( 21.5/month)  net +0.058R  win  31.2%  total    +11.6R  halves +0.017 / +0.079  avg cost 0.018R
+    cost per R <= 0.05     trades  1454 (154.3/month)  net -0.053R  win  27.0%  total    -76.5R  halves -0.125 / +0.004  avg cost 0.038R
+    random refusal (keep 0% of entries) x100: mean -0.094R, 5-95% -0.208 .. +0.027; the 0.03 gate is beaten by 23.0% of them (p 0.230)
+
+  trail, normal costs
+    base (0.15 gate)       trades 12545 (1323.3/month)  net -0.104R  win  53.0%  total  -1301.0R  halves -0.090 / -0.118  avg cost 0.084R
+    cost per R <= 0.03     trades  1472 (157.5/month)  net -0.042R  win  57.9%  total    -61.1R  halves +0.002 / -0.061  avg cost 0.024R
+    cost per R <= 0.02     trades   441 ( 47.5/month)  net -0.095R  win  56.0%  total    -41.8R  halves -0.162 / -0.071  avg cost 0.018R
+    cost per R <= 0.05     trades  4593 (484.9/month)  net -0.057R  win  57.2%  total   -261.3R  halves -0.036 / -0.067  avg cost 0.038R
+    random refusal (keep 1% of entries) x100: mean -0.106R, 5-95% -0.143 .. -0.074; the 0.03 gate is beaten by 0.0% of them (p 0.000)
+
+  trail, 2x spread costs
+    base (0.15 gate)       trades 12303 (1297.8/month)  net -0.103R  win  52.9%  total  -1272.4R  halves -0.093 / -0.114  avg cost 0.090R
+    cost per R <= 0.03     trades   980 (104.9/month)  net -0.063R  win  57.4%  total    -61.5R  halves -0.036 / -0.078  avg cost 0.024R
+    cost per R <= 0.02     trades   366 ( 39.5/month)  net -0.089R  win  57.4%  total    -32.4R  halves -0.168 / -0.055  avg cost 0.018R
+    cost per R <= 0.05     trades  3424 (361.8/month)  net -0.045R  win  57.6%  total   -155.1R  halves -0.021 / -0.059  avg cost 0.038R
+    random refusal (keep 1% of entries) x100: mean -0.105R, 5-95% -0.150 .. -0.061; the 0.03 gate is beaten by 6.0% of them (p 0.060)
+
+==== prod 3 ====
+
+  hold-to-3R, normal costs
+    base (0.15 gate)       trades   433 ( 48.7/month)  net +0.002R  win  27.9%  total     +0.7R  halves +0.042 / -0.038  avg cost 0.053R
+    cost per R <= 0.03     trades   100 ( 43.4/month)  net +0.259R  win  34.0%  total    +25.9R  halves +2.137 / +0.073  avg cost 0.021R
+    cost per R <= 0.02     trades    57 ( 25.0/month)  net -0.068R  win  28.1%  total     -3.9R  halves +1.448 / -0.214  avg cost 0.017R
+    cost per R <= 0.05     trades   297 ( 33.4/month)  net +0.125R  win  31.0%  total    +37.2R  halves +0.238 / +0.042  avg cost 0.036R
+    random refusal (keep 1% of entries) x200: mean -0.108R, 5-95% -0.344 .. +0.138; the 0.03 gate is beaten by 0.5% of them (p 0.005)
+
+  hold-to-3R, 2x spread costs
+    base (0.15 gate)       trades   392 ( 44.1/month)  net +0.048R  win  29.6%  total    +18.8R  halves +0.076 / +0.020  avg cost 0.069R
+    cost per R <= 0.03     trades    81 ( 35.5/month)  net +0.026R  win  28.4%  total     +2.1R  halves +1.713 / -0.109  avg cost 0.020R
+    cost per R <= 0.02     trades    57 ( 25.0/month)  net -0.068R  win  28.1%  total     -3.9R  halves +1.040 / -0.198  avg cost 0.017R
+    cost per R <= 0.05     trades   124 ( 53.8/month)  net +0.103R  win  29.8%  total    +12.7R  halves +1.813 / -0.048  avg cost 0.029R
+    random refusal (keep 1% of entries) x200: mean -0.104R, 5-95% -0.372 .. +0.191; the 0.03 gate is beaten by 21.0% of them (p 0.210)
+
+  trail, normal costs
+    base (0.15 gate)       trades  1499 (167.8/month)  net -0.073R  win  56.4%  total   -109.1R  halves -0.111 / -0.035  avg cost 0.063R
+    cost per R <= 0.03     trades   231 (100.1/month)  net +0.010R  win  61.9%  total     +2.3R  halves +0.187 / -0.005  avg cost 0.022R
+    cost per R <= 0.02     trades   114 ( 50.0/month)  net -0.050R  win  57.9%  total     -5.7R  halves +0.164 / -0.066  avg cost 0.018R
+    cost per R <= 0.05     trades   752 ( 84.3/month)  net -0.025R  win  60.2%  total    -19.0R  halves -0.120 / +0.031  avg cost 0.037R
+    random refusal (keep 2% of entries) x200: mean -0.093R, 5-95% -0.179 .. -0.006; the 0.03 gate is beaten by 3.5% of them (p 0.035)
+
+  trail, 2x spread costs
+    base (0.15 gate)       trades  1305 (146.1/month)  net -0.044R  win  57.5%  total    -57.8R  halves -0.071 / -0.017  avg cost 0.080R
+    cost per R <= 0.03     trades   196 ( 85.9/month)  net -0.045R  win  60.2%  total     -8.8R  halves +0.148 / -0.071  avg cost 0.021R
+    cost per R <= 0.02     trades   114 ( 50.0/month)  net -0.050R  win  57.9%  total     -5.7R  halves +0.183 / -0.091  avg cost 0.018R
+    cost per R <= 0.05     trades   336 (143.6/month)  net -0.007R  win  61.9%  total     -2.4R  halves +0.072 / -0.017  avg cost 0.031R
+    random refusal (keep 2% of entries) x200: mean -0.104R, 5-95% -0.204 .. -0.013; the 0.03 gate is beaten by 16.5% of them (p 0.165)
+
+VERDICT: SURVIVES -- stage 2 (older window) needs its own yes
