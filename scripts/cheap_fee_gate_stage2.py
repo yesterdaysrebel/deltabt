@@ -54,7 +54,7 @@ def fetch():
         ltp = d.get("ltp")
         n = 0 if ltp is None else len(ltp)
         first = None if not n else int(ltp.time.min())
-        manifest["symbols"][s] = {"ltp_rows": n, "first": first, "mark_rows": len(d.get("mark") or []) if d.get("mark") is not None else 0}
+        manifest["symbols"][s] = {"ltp_rows": n, "first": first, "mark_rows": 0 if d.get("mark") is None else len(d["mark"])}
         print(f"{s:11s} ltp {n:7d} rows  from {dt.datetime.fromtimestamp(first, dt.timezone.utc):%Y-%m-%d}" if n else f"{s:11s} no data in the window", flush=True)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "stage2_fetch_manifest.json").write_text(json.dumps(manifest, indent=1))
