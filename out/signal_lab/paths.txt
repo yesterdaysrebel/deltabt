@@ -1,0 +1,21 @@
+PRICE PATHS (Jan-Jul): 1046 winners, 2772 losers
+
+losers -- how far they went in our favour before the stop:
+  reached +0.5R 52%, +1R 31%, +2R 10%; median best +0.53R
+  died within 1h 19%, within 6h 64%; median life 3.5h
+winners -- how deep they dipped before paying:
+  dipped below -0.5R 45%, below -0.8R 18%; median worst -0.45R; median time to exit 13.8h
+
+before entry -- price vs entry, in R (+ = in the trade's direction), median:
+  24h before winners -0.29R   losers -0.84R
+  4h before  winners -0.54R   losers -0.67R
+  1h before  winners -0.41R   losers -0.46R
+  run_4h_atr           winners +3.38   losers +3.73
+  pullback_4h_atr      winners -4.52   losers -4.33
+  with_trade_share_1h  winners +0.58   losers +0.58
+  ret_24h              winners +0.87   losers +2.25
+  from_24h_high        winners -5.56   losers -4.86
+
+taken by the $250 account vs skipped (2/day, one at a time, pause), to its halt:
+  taken      91  mean R +0.061  win 31%
+  skipped  3125  mean R -0.052  win 28%

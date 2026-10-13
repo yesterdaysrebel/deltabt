@@ -1,0 +1,30 @@
+PATTERNS (Jan-Jul, 3818 signals, all: win 27%, mean R -0.065)
+
+named patterns before entry (rules fixed in the script):
+  after_spike        n 1032  win  27%  mean R -0.069 (+/- 0.054)
+  pullback_in_trend  n 1727  win  28%  mean R -0.047 (+/- 0.042)
+  quiet_breakout     n  246  win  22%  mean R -0.288 (+/- 0.102)
+  near_24h_high      n  566  win  23%  mean R -0.177 (+/- 0.071)
+  against_1h_trend   n 1774  win  27%  mean R -0.098 (+/- 0.040)
+  against_btc        n 1893  win  27%  mean R -0.085 (+/- 0.039)
+  late_in_move       n  446  win  28%  mean R +0.030 (+/- 0.085)
+
+families of the 24h chart before entry (found by k-means, k=8 fixed):
+  family 0: n  405  win  28%  mean R -0.019 (+/- 0.089)
+  family 1: n  732  win  29%  mean R -0.035 (+/- 0.063)
+  family 2: n  657  win  27%  mean R -0.061 (+/- 0.067)
+  family 3: n   99  win  27%  mean R -0.088 (+/- 0.187)
+  family 4: n  312  win  22%  mean R -0.276 (+/- 0.092)
+  family 5: n  514  win  24%  mean R -0.155 (+/- 0.076)
+  family 6: n  688  win  30%  mean R +0.016 (+/- 0.067)
+  family 7: n  400  win  30%  mean R -0.012 (+/- 0.087)
+
+how the 2772 losers died:
+  instant reversal (never +0.3R)      35%  median life 1.2h
+  up first, then reversed (>= +1R)    31%  median life 11.8h
+  small bounce, then down             35%  median life 3.6h
+
+how the 1046 winners paid:
+  clean (never below -0.3R)           35%  median time 8.9h
+  dipped to -0.3..-0.8R first         47%  median time 16.8h
+  nearly stopped (below -0.8R)        18%  median time 21.6h

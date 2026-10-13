@@ -527,6 +527,60 @@ def cmd_patterns() -> None:
     (OUT / "patterns.txt").write_text(text + "\n")
 
 
+#: FIXED 2026-10-13 AFTER reading `dev`, `paths` and `patterns` and BEFORE the
+#: hold-out is read. The Jan-Jul findings, each with the direction it showed.
+#: A finding HOLDS on Aug-Oct if: for a reading, Spearman rho with R has the
+#: same sign at one-sided p <= 0.05; for a pattern or family, its mean R sits
+#: below the hold-out average by at least 1.645 standard errors. Nine checks
+#: at 5% each: about one could pass by luck alone.
+FINDINGS = [
+    ("stop_pct", "rho", +1), ("day_rank", "rho", -1), ("day_gain_pct", "rho", +1),
+    ("funding_side", "rho", -1), ("from_24h_low", "rho", +1),
+    ("near_24h_high", "worse", None), ("quiet_breakout", "worse", None),
+    ("family 4", "worse", None), ("family 5", "worse", None),
+]
+
+
+def cmd_holdout_findings() -> None:
+    from scipy.stats import spearmanr
+    from sklearn.cluster import KMeans
+    df = pd.read_parquet(OUT / "signals.parquet")
+    pa = pd.read_parquet(OUT / "paths.parquet")
+    d = df.merge(pa, on=["symbol", "entry_time"])
+    dev, ho = d[d.entry_time < HOLDOUT_START], d[d.entry_time >= HOLDOUT_START].reset_index(drop=True)
+    shp = dev.pre_24h.map(_shape)
+    km = KMeans(n_clusters=8, n_init=10, random_state=0).fit(np.clip(np.vstack(shp[shp.notna()].to_numpy()), -30, 30))
+    hs = ho.pre_24h.map(_shape)
+    fam = np.full(len(ho), -1)
+    okh = hs.notna().to_numpy()
+    fam[okh] = km.predict(np.clip(np.vstack(hs[okh].to_numpy()), -30, 30))
+    base = ho.R.mean()
+    L = [f"HOLD-OUT FINDINGS (Aug-Oct, read once): {len(ho)} signals, mean R {base:+.3f}"]
+    held = 0
+    for name, kind, sign in FINDINGS:
+        if kind == "rho":
+            x = ho[name]; ok = x.notna()
+            r = spearmanr(x[ok], ho.R[ok])
+            p1 = r.pvalue / 2 if np.sign(r.statistic) == sign else 1 - r.pvalue / 2
+            good = p1 <= 0.05
+            L.append(f"  {name:16s} rho {r.statistic:+.3f} (dev direction {'+' if sign > 0 else '-'}), "
+                     f"one-sided p {p1:.3f}: {'HOLDS' if good else 'does not hold'}")
+        else:
+            m = (fam == int(name.split()[1])) if name.startswith("family") else NAMED[name](ho).fillna(False).to_numpy(bool)
+            r = ho.R[m]
+            se = r.std(ddof=1) / np.sqrt(len(r)) if len(r) > 1 else np.inf
+            z = (base - r.mean()) / se if len(r) > 1 else 0.0
+            good = z >= 1.645
+            L.append(f"  {name:16s} n {len(r):4d}  mean R {r.mean():+.3f} vs all {base:+.3f}  "
+                     f"z {z:+.2f}: {'HOLDS' if good else 'does not hold'}")
+        held += good
+    L.append(f"  {held} of {len(FINDINGS)} hold (about 0.5 expected by luck)")
+    text = "\n".join(L)
+    print(text)
+    (OUT / "holdout_findings.txt").write_text(text + "\n")
+
+
 if __name__ == "__main__":
     {"fetch": cmd_fetch, "build": cmd_build, "dev": cmd_dev, "holdout": cmd_holdout,
-     "paths": cmd_paths, "patterns": cmd_patterns}[sys.argv[1]]()
+     "paths": cmd_paths, "patterns": cmd_patterns,
+     "holdout_findings": cmd_holdout_findings}[sys.argv[1]]()
