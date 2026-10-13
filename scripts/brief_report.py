@@ -122,6 +122,25 @@ def classify_log(events: list[dict], now: dt.datetime) -> tuple[list[str], list[
     return notes, problems
 
 
+#: The host Postgres volume is snapshotted daily (infra/terraform/db_host.tf);
+#: a newest snapshot older than this means the backup has stopped.
+SNAPSHOT_MAX_AGE_HOURS = 30
+
+
+def snapshot_problems(snapshots: list[dict] | None, now: dt.datetime) -> tuple[list[str], list[str]]:
+    """(notes, problems) for the stack's daily database snapshots. None = could not read."""
+    if snapshots is None:
+        return [], ["could not read the database snapshots (backup state unknown)"]
+    done = [s for s in snapshots if str(s.get("State")) == "completed"]
+    if not done:
+        return [], ["no completed database snapshot exists: the daily backup has not run"]
+    newest = max(parse_time(str(s.get("StartTime")).replace("Z", "+00:00")) for s in done)
+    age = (now - newest).total_seconds() / 3600
+    if age > SNAPSHOT_MAX_AGE_HOURS:
+        return [], [f"the newest database snapshot is {age:.0f} hours old: the daily backup has stopped"]
+    return [f"Database backed up {age:.0f} hours ago ({len(done)} daily snapshots kept)."], []
+
+
 def real_rule_of(strategy_version: str | None) -> str:
     """Which exit the simulated account runs, from forward_test.strategy_version
     (e.g. 'manual_scalp_both_t3_trail@5m@cf9917a73c61')."""
@@ -370,7 +389,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
 
 def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
           errors_24h: int | None, probe_problems: list[str],
-          log_events: list[dict] | None = None) -> tuple[str, dict, list[str]]:
+          log_events: list[dict] | None = None,
+          snapshots: list[dict] | None | bool = False) -> tuple[str, dict, list[str]]:
     problems = list(probe_problems)
     healthz = dr.as_json(sec.get("HEALTHZ", ""))
     risk_api = dr.as_json(sec.get("RISK", ""))
@@ -423,6 +443,11 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems += log_problems
     elif errors_24h:
         problems.append(f"{plural(errors_24h, 'error')} in the bot's log in the last 24 hours")
+    if snapshots is not False:
+        # False = not checked (RDS); None = could not read; a list = the stack's snapshots.
+        s_notes, s_problems = snapshot_problems(snapshots, now)
+        log_notes += s_notes
+        problems += s_problems
     # /api/risk reports drawdown in PERCENT (round(100 * fraction, 3), see
     # app/api/app.py); the experiment's limit is a FRACTION (0.20). Comparing
     # the two unconverted declared the 20% stop fired at a 0.2% drawdown --
@@ -538,6 +563,8 @@ def main() -> int:
     ap.add_argument("--log-group", default="")
     ap.add_argument("--region", default="ap-south-1")
     ap.add_argument("--facts-json")
+    ap.add_argument("--expect-db-snapshots", action="store_true",
+                    help="the stack's Postgres runs on its host and is snapshotted daily; check it")
     args = ap.parse_args()
 
     now = dt.datetime.now(dt.timezone.utc)
@@ -550,8 +577,15 @@ def main() -> int:
     if args.log_group:
         since_ms = int((now - dt.timedelta(hours=24)).timestamp() * 1000)
         events, _trunc = dr.log_events(args.log_group, since_ms, LOG_PATTERN, region=args.region)
+    snaps: list[dict] | None | bool = False
+    if args.expect_db_snapshots:
+        ok, out = dr.aws("ec2", "describe-snapshots", "--owner-ids", "self", "--filters",
+                         f"Name=tag:Stack,Values={args.stack}", "Name=tag:Role,Values=pgdata-backup",
+                         region=args.region)
+        snaps = out.get("Snapshots", []) if ok else None
     text, facts, problems = build(sec, db, now, stack=args.stack, errors_24h=None,
-                                  probe_problems=list(dr.problems), log_events=events)
+                                  probe_problems=list(dr.problems), log_events=events,
+                                  snapshots=snaps)
     print(text)
     if args.facts_json:
         pathlib.Path(args.facts_json).write_text(json.dumps(facts, default=str))

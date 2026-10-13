@@ -153,6 +153,7 @@ resource "aws_iam_role_policy" "github_monitor" {
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceStatus",
           "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSnapshots", # the host Postgres volume's daily snapshot (db_host.tf)
           "rds:DescribeDBInstances",
           "ecr:DescribeImages",
           "cloudwatch:DescribeAlarms",

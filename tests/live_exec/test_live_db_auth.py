@@ -100,8 +100,17 @@ def test_the_paper_image_does_not():
 
 @pytest.mark.parametrize("launcher", ["deploy/aws/run_live.sh"])
 def test_the_live_launcher_does_not_switch_it_back_off(launcher):
-    """`docker run -e DB_IAM_AUTH=0` would override the image, silently."""
-    assert db_auth.IAM_ENV not in (ROOT / launcher).read_text()
+    """`docker run -e DB_IAM_AUTH=0` would override the image, silently.
+
+    2026-10-05: ONE exception, deliberate and narrow. With db_location = "host"
+    (infra/terraform/db_host.tf) the bot's Postgres is a plain container on its
+    own host, which has no IAM authentication; there the launcher writes
+    DB_IAM_AUTH=0, and only when DB_HOST is the local bridge address. Against
+    RDS the image's DB_IAM_AUTH=1 still stands."""
+    text = (ROOT / launcher).read_text()
+    lines = [ln for ln in text.splitlines() if db_auth.IAM_ENV in ln]
+    assert lines == ["  [ \"$DB_HOST\" = \"$PG_LOCAL\" ] && printf 'DB_IAM_AUTH=0\\n'"], (
+        f"{launcher} mentions {db_auth.IAM_ENV} outside the one host-Postgres line: {lines}")
 
 
 # --- the skip in migrate() is only ever a no-op ----------------------------

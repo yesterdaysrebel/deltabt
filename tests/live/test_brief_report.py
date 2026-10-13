@@ -455,3 +455,33 @@ def test_a_drop_moments_before_the_report_is_not_called_unrecovered():
 def test_a_quiet_log_says_nothing():
     text, facts, problems = _with_log([])
     assert not problems and "price feed" not in text
+
+
+
+# -- the host Postgres volume's daily snapshot (infra/terraform/db_host.tf) ----
+
+def _with_snaps(snaps):
+    sec, db = a_probe()
+    return br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[], snapshots=snaps)
+
+
+def test_a_recent_snapshot_is_a_note():
+    text, _, problems = _with_snaps([{"State": "completed", "StartTime": "2026-10-03T18:30:12.000Z"},
+                                     {"State": "completed", "StartTime": "2026-10-02T18:30:09.000Z"}])
+    assert not problems
+    assert "*Note:* Database backed up 7 hours ago (2 daily snapshots kept)." in text
+
+
+def test_a_stale_or_missing_snapshot_is_an_alarm():
+    _, _, problems = _with_snaps([{"State": "completed", "StartTime": "2026-10-02T12:00:00.000Z"}])
+    assert problems == ["the newest database snapshot is 38 hours old: the daily backup has stopped"]
+    _, _, problems = _with_snaps([{"State": "pending", "StartTime": "2026-10-04T01:00:00.000Z"}])
+    assert problems == ["no completed database snapshot exists: the daily backup has not run"]
+    _, _, problems = _with_snaps(None)
+    assert problems == ["could not read the database snapshots (backup state unknown)"]
+
+
+def test_snapshots_are_not_checked_unless_asked():
+    sec, db = a_probe()
+    text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not problems and "backed up" not in text

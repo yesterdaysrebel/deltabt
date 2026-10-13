@@ -142,10 +142,12 @@ resource "aws_instance" "bot" {
     ecr_repository_name = (each.value.live
       ? aws_ecr_repository.live[0].name
     : aws_ecr_repository.bot.name)
-    db_host                      = aws_db_instance.main.address
-    db_port                      = aws_db_instance.main.port
+    # A live stack with db_location = "host" talks to the Postgres container on
+    # its own host (db_host.tf); run_live.sh recognises the bridge address.
+    db_host                      = contains(keys(local.pg_stacks), each.key) ? local.pg_local_address : aws_db_instance.main.address
+    db_port                      = contains(keys(local.pg_stacks), each.key) ? 5432 : aws_db_instance.main.port
     db_name                      = each.value.db_name
-    db_secret_arn                = aws_db_instance.main.master_user_secret[0].secret_arn
+    db_secret_arn                = contains(keys(local.pg_stacks), each.key) ? aws_secretsmanager_secret.pg[each.key].arn : aws_db_instance.main.master_user_secret[0].secret_arn
     ssm_image_tag_param          = aws_ssm_parameter.image_tag[each.key].name
     ssm_image_tag_previous_param = aws_ssm_parameter.image_tag_previous[each.key].name
     log_group                    = aws_cloudwatch_log_group.bot[each.key].name
@@ -313,6 +315,12 @@ resource "aws_ssm_document" "experiment" {
           # No exchange key is written; run_live.sh overwrites the file when
           # the bot starts.
           db_env() {
+            sslm=require; iam=""
+            if [ "$DB_HOST" = "172.17.0.1" ]; then
+              # Postgres on this host (db_host.tf): start it from its volume first.
+              /opt/deltabt/run.sh --ensure-db
+              sslm=disable; iam='DB_IAM_AUTH=0'
+            fi
             venue="$(aws ssm get-parameter --region "$AWS_REGION" --name "$${SSM_IMAGE_TAG_PARAM%/*}/delta_env" --query Parameter.Value --output text)"
             secret="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$DB_SECRET_ARN" --query SecretString --output text)"
             db_user="$(printf '%s' "$secret" | python3 -c 'import json,sys;print(json.load(sys.stdin)["username"])')"
@@ -321,8 +329,8 @@ resource "aws_ssm_document" "experiment" {
             aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$${ECR_REPOSITORY_URL%%/*}" >/dev/null
             install -d -m 0700 /run/deltabt
             ( umask 077
-              printf 'DATABASE_URL=%s\nDELTA_ENV=%s\n' \
-                "postgresql://$${db_user}:$${db_pass}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=require" "$venue" \
+              printf 'DATABASE_URL=%s\nDELTA_ENV=%s\n%s\n' \
+                "postgresql://$${db_user}:$${db_pass}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=$sslm" "$venue" "$iam" \
                 > /run/deltabt/env )
             unset db_pass
             echo "[experiment] replaced host: wrote a database-only env to ask the stack's database"

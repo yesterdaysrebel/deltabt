@@ -35,6 +35,11 @@ esac
 
 # shellcheck disable=SC1091
 source /opt/deltabt/env
+# Postgres on this host (infra/terraform/db_host.tf): make sure it is running
+# from its volume before connecting. A new host has never started it.
+if [ "$DB_HOST" = "172.17.0.1" ]; then
+  /opt/deltabt/run.sh --ensure-db
+fi
 
 command -v psql >/dev/null 2>&1 || dnf -y install postgresql16 >/dev/null
 
@@ -98,7 +103,10 @@ fi
 # `rds_iam` is what makes Postgres accept the signed token in place of a
 # password. Without it the bot fails authentication with a password error that
 # gives no hint that the missing grant is the cause.
-psql_admin -c "GRANT rds_iam TO $DB_APP_ROLE"
+# rds_iam exists only on RDS; a plain Postgres (db_location = "host") has none.
+if [ -n "$(psql_admin -c "select 1 from pg_roles where rolname = 'rds_iam'")" ]; then
+  psql_admin -c "GRANT rds_iam TO $DB_APP_ROLE"
+fi
 psql_admin -c "GRANT CONNECT ON DATABASE $DB_NEW TO $DB_APP_ROLE"
 
 # Schema grants are per-database, so they run against the new database rather
