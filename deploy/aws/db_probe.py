@@ -10,6 +10,7 @@ and a day of silence should say WHICH gate was closed rather than leaving the
 reader to guess.
 """
 import asyncio
+import datetime as _dt
 import json
 import os
 
@@ -85,6 +86,52 @@ def _fit_journal(out: dict, budget: int = JOURNAL_BUDGET) -> None:
         omitted += batch
         size = _encoded_size(out)
     out["journal_omitted"] = omitted
+
+
+# COPIED VERBATIM from app/reports/learning_probe.py (2026-10-13), with its
+# `_json` alias renamed to `json` -- this file already defines a `_json`.
+async def collect_learning(con, now=None):
+    """Signals of the previous UTC day by what happened to them, labels so far,
+    and the latest weekly grade. Never raises: a missing table (a database
+    from before 2026-10-13) or any error is reported in "error"."""
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start = today - _dt.timedelta(days=1)
+    out = {"day": start.strftime("%Y-%m-%d")}
+    try:
+        rows = await con.fetch(
+            "SELECT COALESCE(features->>'skip', "
+            "  CASE WHEN outcome = 'APPROVED' THEN 'taken' ELSE 'other' END) AS k, "
+            "  count(*) AS n, count(*) FILTER (WHERE features IS NULL) AS no_readings, "
+            "  count(*) FILTER (WHERE jsonb_array_length("
+            "    COALESCE(features->'errors', '[]'::jsonb)) > 0) AS partial "
+            "FROM strategy_signals WHERE direction IS NOT NULL "
+            "AND bar_open >= $1 AND bar_open < $2 GROUP BY 1", start, today)
+        out["signals"] = {r["k"]: int(r["n"]) for r in rows}
+        out["no_readings"] = sum(int(r["no_readings"]) for r in rows)
+        out["partial_readings"] = sum(int(r["partial"]) for r in rows)
+        lab = await con.fetchrow(
+            "SELECT count(*) FILTER (WHERE r_net IS NOT NULL) AS n, "
+            "count(*) FILTER (WHERE r_net IS NULL) AS unlabellable, "
+            "avg(r_net) AS mean_r FROM signal_outcomes")
+        out["labelled"] = int(lab["n"])
+        out["unlabellable"] = int(lab["unlabellable"])
+        out["mean_r"] = None if lab["mean_r"] is None else round(float(lab["mean_r"]), 3)
+        out["waiting"] = int(await con.fetchval(
+            "SELECT count(*) FROM strategy_signals s LEFT JOIN signal_outcomes o "
+            "ON o.signal_id = s.id WHERE o.id IS NULL AND s.direction IS NOT NULL "
+            "AND s.entry_price IS NOT NULL"))
+        g = await con.fetchrow(
+            "SELECT week_start, n_test, auc, top_mean_r, all_mean_r, random_p, top_k "
+            "FROM model_grades ORDER BY week_start DESC LIMIT 1")
+        if g is not None:
+            out["grade"] = {k: (g[k].strftime("%Y-%m-%d") if k == "week_start" else
+                                None if g[k] is None else float(g[k]))
+                            for k in ("week_start", "n_test", "auc", "top_mean_r",
+                                      "all_mean_r", "random_p", "top_k")}
+    except Exception as exc:                    # noqa: BLE001
+        out["error"] = f"{type(exc).__name__}: {exc}"[:200]
+    return json.loads(json.dumps(out, default=str))
 
 
 async def collect(con) -> dict:
@@ -435,6 +482,7 @@ async def collect(con) -> dict:
 
     if journal_mode:
         _fit_journal(out)
+    out["learning"] = await collect_learning(con)
     return out
 
 

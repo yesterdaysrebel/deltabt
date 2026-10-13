@@ -28,7 +28,9 @@ resource "aws_ssm_document" "monitor" {
 
   content = yamlencode({
     schemaVersion = "2.2"
-    description   = "Read-only daily probe of the paper forward test. Changes nothing."
+    # 2026-10-13: no longer strictly read-only -- the learning jobs below write
+    # labels and grades to the bot's own database (never to trading state).
+    description   = "Daily probe of the bot, plus the signal labeller and the Monday model grade."
     parameters = {
       Day = {
         type           = "String"
@@ -41,9 +43,17 @@ resource "aws_ssm_document" "monitor" {
       action = "aws:runShellScript"
       name   = "probe"
       inputs = {
-        timeoutSeconds = "600"
+        timeoutSeconds = "1800"
         runCommand = concat([
           "set +e",
+          # THE LEARNING JOBS (2026-10-13, app/learning, live/learning.py). Run
+          # here rather than from a host timer so they need no user_data change
+          # (run_live.sh is at the 16 KB cap and any edit replaces the host).
+          # They write only signal_outcomes / model_grades; nothing reads them
+          # to trade. Output is cut to a few lines to stay inside SSM's 24 KB.
+          "echo '===LEARNING_JOBS==='",
+          "timeout 900 docker exec deltabot python -m live label-signals 2>&1 | tail -3",
+          "[ \"$(date -u +%u)\" = 1 ] && timeout 600 docker exec deltabot python -m live grade-model 2>&1 | tail -6",
           "echo '===CONTAINER==='",
           "docker ps --filter name=deltabot --format '{{.Image}}|{{.Status}}'",
           # started= lets the report tell a live fault from the shutdown noise of
