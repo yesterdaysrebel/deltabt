@@ -1,0 +1,72 @@
+
+5m/1m at 5x  (190 coins; 0 too thin, 0 of 2730 coin-days lost: )
+  trades 264  win 29%  mean +0.003R (+/- 0.110)  P&L $-31.25 on $250  max drawdown $220.35  median hold 5.8h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 106 days
+  Jan-May: 206 trades, +0.067R, $+34.66
+  May-Oct: 58 trades, -0.222R, $-65.91
+  exits: stop 188, target 62, max_hold 14
+  trades sized down by the 5x cap: 0
+  refused: max_open_positions 44841, max_trades_per_day 13140, max_drawdown 38074, zero_contracts 6, pause 2
+
+5m/1m at 10x  (190 coins; 0 too thin, 0 of 2730 coin-days lost: )
+  trades 264  win 29%  mean +0.003R (+/- 0.110)  P&L $-31.25 on $250  max drawdown $220.35  median hold 5.8h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 106 days
+  Jan-May: 206 trades, +0.067R, $+34.66
+  May-Oct: 58 trades, -0.222R, $-65.91
+  exits: stop 188, target 62, max_hold 14
+  trades sized down by the 10x cap: 0
+  refused: max_open_positions 44841, max_trades_per_day 13140, max_drawdown 38074, zero_contracts 6, pause 2
+
+15m/5m at 5x  (190 coins; 0 too thin, 0 of 2730 coin-days lost: )
+  trades 226  win 31%  mean -0.037R (+/- 0.103)  P&L $-45.43 on $250  max drawdown $120.70  median hold 14.0h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 3 days
+  Jan-May: 114 trades, +0.066R, $+21.66
+  May-Oct: 112 trades, -0.142R, $-67.09
+  exits: stop 150, max_hold 42, target 34
+  trades sized down by the 5x cap: 0
+  refused: max_open_positions 32252, max_trades_per_day 1202, zero_contracts 16, pause 3
+
+15m/5m at 10x  (190 coins; 0 too thin, 0 of 2730 coin-days lost: )
+  trades 226  win 31%  mean -0.037R (+/- 0.103)  P&L $-45.43 on $250  max drawdown $120.70  median hold 14.0h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 3 days
+  Jan-May: 114 trades, +0.066R, $+21.66
+  May-Oct: 112 trades, -0.142R, $-67.09
+  exits: stop 150, max_hold 42, target 34
+  trades sized down by the 10x cap: 0
+  refused: max_open_positions 32252, max_trades_per_day 1202, zero_contracts 16, pause 3
+
+60m/15m at 5x  (186 coins; 4 too thin, 7 of 2730 coin-days lost: BRUSD CAPUSD GTCUSD RLCUSD)
+  trades 55  win 36%  mean -0.079R (+/- 0.181)  P&L $-28.83 on $250  max drawdown $46.49  median hold 53.0h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 20 days
+  Jan-May: 28 trades, +0.003R, $-6.21
+  May-Oct: 27 trades, -0.163R, $-22.62
+  exits: stop 30, max_hold 20, target 5
+  trades sized down by the 5x cap: 0
+  refused: max_open_positions 1929, zero_contracts 23
+
+60m/15m at 10x  (186 coins; 4 too thin, 7 of 2730 coin-days lost: BRUSD CAPUSD GTCUSD RLCUSD)
+  trades 55  win 36%  mean -0.079R (+/- 0.181)  P&L $-28.83 on $250  max drawdown $46.49  median hold 53.0h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 20 days
+  Jan-May: 28 trades, +0.003R, $-6.21
+  May-Oct: 27 trades, -0.163R, $-22.62
+  exits: stop 30, max_hold 20, target 5
+  trades sized down by the 10x cap: 0
+  refused: max_open_positions 1929, zero_contracts 23
+
+240m/60m at 5x  (181 coins; 9 too thin, 17 of 2730 coin-days lost: 1000FLOKIUSD ARKUSD BRUSD BTWUSD CAPUSD GTCUSD MOVRUSD QNTUSD)
+  trades 9  win 56%  mean +0.081R (+/- 0.205)  P&L $+1.03 on $250  max drawdown $6.65  median hold 80.0h
+  checks: longest hold 80h (limit 72h); longest stretch with no entry 85 days
+  Jan-May: 6 trades, +0.091R, $+0.44
+  May-Oct: 3 trades, +0.061R, $+0.60
+  exits: max_hold 8, stop 1
+  trades sized down by the 5x cap: 0
+  refused: max_open_positions 30, zero_contracts 10
+
+240m/60m at 10x  (181 coins; 9 too thin, 17 of 2730 coin-days lost: 1000FLOKIUSD ARKUSD BRUSD BTWUSD CAPUSD GTCUSD MOVRUSD QNTUSD)
+  trades 9  win 56%  mean +0.081R (+/- 0.205)  P&L $+1.03 on $250  max drawdown $6.65  median hold 80.0h
+  checks: longest hold 80h (limit 72h); longest stretch with no entry 85 days
+  Jan-May: 6 trades, +0.091R, $+0.44
+  May-Oct: 3 trades, +0.061R, $+0.60
+  exits: max_hold 8, stop 1
+  trades sized down by the 10x cap: 0
+  refused: max_open_positions 30, zero_contracts 10

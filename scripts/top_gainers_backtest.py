@@ -140,12 +140,19 @@ def _book(sym, primary, confirm, spec, allowed_days):
     d = load_symbol(sym)
     if d is None:
         return None
+    # FLAT NO-TRADE MINUTES ARE KEPT (2026-10-13, first run). Dropping them
+    # made the 72h time stop count candles instead of clock time (a position
+    # sat open from 03-31 to the end of the data and blocked the only slot)
+    # and threw away hourly buckets with any quiet minute (93 of 190 coins
+    # vanished at 1h). Delta's own candles keep them; tradable_mask still
+    # refuses entries on them.
     l = d["ltp"]
-    l = l[~((l.volume == 0) & (l.open == l.close) & (l.high == l.low))].reset_index(drop=True)
     d = dict(symbol=sym, ltp=l, mark=d["mark"], funding=d["funding"], tradable=tradable_mask(l))
     cache = {}
     P, mk, tr = _resampled(d, primary, cache)
     C = _resampled(d, confirm, cache)[0]
+    if len(P) <= spec.warmup_bars or len(C) <= spec.warmup_bars:
+        return sym, None, None   # too thin for complete bars at this chart pair
     sig = rulecore.to_engine_signals(rulecore.compute(P, C, spec))
     # the decision is taken at the bar's CLOSE; the day it belongs to is the
     # close's day, and the bot re-picks 30 s after midnight
@@ -157,22 +164,25 @@ def _book(sym, primary, confirm, spec, allowed_days):
                      mark=mk, tradable=tr, fill_ltp=d["ltp"], fill_mark=d["mark"]), d["funding"]
 
 
-def _run_pair(pair):
-    primary, confirm = pair
+def _run_pair(job):
+    primary, confirm, lev = job
     picks = pd.read_csv(OUT / "picks.csv")
     spec = build_spec(FAMILY, primary, confirm)
-    books, fund = {}, {}
+    books, fund, skipped = {}, {}, []
     for sym, g in picks.groupby("symbol"):
         got = _book(sym, primary, confirm, spec, set(g.pick_day.astype("int64")))
-        if got:
+        if got and got[1] is not None:
             books[got[0]], fund[got[0]] = got[1], got[2]
+        else:
+            skipped.append(sym)
     params = replace(params_for(spec, primary, 72), stop_fill="ltp_close",
-                     risk_percent=RISK_PCT, max_leverage=MAX_LEV, max_cost_per_r=None)
+                     risk_percent=RISK_PCT, max_leverage=lev, max_cost_per_r=None)
     gates = replace(GATES, pause_after=lambda t: t.r_multiple < 0)
     res = run_portfolio(books, params, gates, initial_capital=EQUITY, funding=fund)
     t = pd.DataFrame([dataclasses.asdict(x) for x in res.trades])
-    t.to_csv(OUT / f"trades_{primary}_{confirm}.csv", index=False)
-    return pair, t, dict(res.rejects), len(books)
+    t.to_csv(OUT / f"trades_{primary}_{confirm}_{lev:g}x.csv", index=False)
+    lost = int(picks.symbol.isin(skipped).sum())
+    return job, t, dict(res.rejects), (len(books), skipped, lost)
 
 
 def _summ(t: pd.DataFrame) -> dict:
@@ -185,28 +195,37 @@ def _summ(t: pd.DataFrame) -> dict:
     se = r.std(ddof=1) / np.sqrt(len(r)) if len(r) > 1 else float("nan")
     return dict(n=len(r), win=float((r > 0).mean()), meanR=float(r.mean()), seR=float(se),
                 pnl=float(np.nansum(pnl)), maxdd=dd,
+                max_hold_h=float(((t.exit_time - t.entry_time) / 3600).max()),
+                longest_idle_d=float(np.diff(np.r_[FIRST_DAY, np.sort(t.entry_time.to_numpy()), LAST_DAY + DAY]).max() / DAY),
                 hold_h=float(((t.exit_time - t.entry_time) / 3600).median()))
 
 
 def cmd_run() -> None:
-    with ProcessPoolExecutor(len(PAIRS)) as ex:
-        results = list(ex.map(_run_pair, PAIRS))
+    # 5x is the bot's cap; 10x answers the owner's "what does 10x sound like?"
+    jobs = [(p, c, lev) for p, c in PAIRS for lev in (MAX_LEV, 10.0)]
+    with ProcessPoolExecutor(4) as ex:
+        results = list(ex.map(_run_pair, jobs))
     lines = []
     mid = (FIRST_DAY + LAST_DAY + DAY) // 2
-    for (primary, confirm), t, rej, nb in results:
+    for (primary, confirm, lev), t, rej, (nb, skipped, lost) in results:
         s = _summ(t)
-        lines.append(f"\n{primary}m/{confirm}m  ({nb} coins with data)")
+        lines.append(f"\n{primary}m/{confirm}m at {lev:g}x  ({nb} coins; {len(skipped)} too thin, "
+                     f"{lost} of {len(pd.read_csv(OUT / 'picks.csv'))} coin-days lost: {' '.join(skipped[:8])})")
         if not s["n"]:
             lines.append("  no trades"); continue
         lines.append(f"  trades {s['n']}  win {100*s['win']:.0f}%  mean {s['meanR']:+.3f}R "
                      f"(+/- {s['seR']:.3f})  P&L ${s['pnl']:+.2f} on ${EQUITY:.0f}  "
                      f"max drawdown ${s['maxdd']:.2f}  median hold {s['hold_h']:.1f}h")
+        lines.append(f"  checks: longest hold {s['max_hold_h']:.0f}h (limit 72h); longest stretch with no entry "
+                     f"{s['longest_idle_d']:.0f} days")
         for name, part in (("Jan-May", t[t.entry_time < mid]), ("May-Oct", t[t.entry_time >= mid])):
             p = _summ(part)
             lines.append(f"  {name}: " + (f"{p['n']} trades, {p['meanR']:+.3f}R, ${p['pnl']:+.2f}"
                                           if p["n"] else "no trades"))
         if "exit_reason" in t:
             lines.append("  exits: " + ", ".join(f"{k} {v}" for k, v in t.exit_reason.value_counts().items()))
+        capped = int((t.leverage >= lev - 0.05).sum())
+        lines.append(f"  trades sized down by the {lev:g}x cap: {capped}")
         lines.append("  refused: " + ", ".join(f"{k} {v}" for k, v in rej.items() if v))
     text = "\n".join(lines)
     print(text)

@@ -50,6 +50,14 @@ Evidence, said once: a 2/day cap made hold-to-3R worse in backtest (+0.044R → 
 selection was never tested. Known gap: REST warm-up bars include zero-volume filler minutes while live
 bars do not, so on thin coins the %R window differs slightly (the $250k floor limits this).
 
+Backtest of the bot as built (owner asked 2026-10-13; `scripts/top_gainers_backtest.py`, result in
+`out/top_gainers/result.txt`): daily top-10 gainers, 2026-01-01..10-12, $250, 2%, 5x, 2/day, 4h pause,
+flat no-trade minutes kept. Net R/trade (± 1 SE): 5m/1m +0.003 (±0.110, 264 trades; $250 → $439 by
+02-28 → 50% drawdown latch, no entries after 06-29, ends $219); 15m/5m −0.037 (±0.103, 226, ends $205);
+1h/15m −0.079 (±0.181, 55, ends $221); 4h/1h +0.081 (±0.205, 9 trades in 9 months). None is
+distinguishable from zero; every pair was better Jan–May than May–Oct. Fees only ~0.02–0.03R (wide
+stops). 10x = 5x exactly (the cap never bound). Survivorship: only coins listed today could be picked.
+
 Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
 `docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
 creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
