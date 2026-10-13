@@ -40,6 +40,11 @@ PRICE PATHS (owner, 2026-10-13: "find price action when trade lost and won"):
 paths.parquet, NOT model inputs -- 24h of 5m closes before entry and the 5m
 high/low path until exit, in R; best/worst excursion and time to the best.
 The `paths` step describes how winners and losers moved; it judges nothing.
+The `patterns` step (owner, 2026-10-13: "identify price action around both
+kinds of trades") tags seven NAMED pre-entry patterns (rules in NAMED, fixed
+before any result) and groups the 24h-before charts into 8 k-means families,
+with pictures; dev months only. A pattern or family counts only if it also
+holds on the sealed Aug-Oct months.
 
 FIXED BEFORE ANY RESULT IS READ (2026-10-13):
   * SEALED HOLD-OUT: signals entered on or after 2026-08-01. `dev` never reads
@@ -427,6 +432,101 @@ def cmd_paths() -> None:
     (OUT / "paths.txt").write_text(text + "\n")
 
 
+NAMED = {
+    # pre-entry, known at the decision; thresholds fixed here, not tuned
+    "after_spike": lambda d: d.run_4h_atr >= 6,                       # >= 6 ATR with the trade in 4h
+    "pullback_in_trend": lambda d: (d.st_1h_agrees == 1) & (d.pullback_4h_atr <= -2),
+    "quiet_breakout": lambda d: (d.vol_ratio >= 3) & (d.run_4h_atr < 3),
+    "near_24h_high": lambda d: d.from_24h_high >= -1,                  # within 1% of the 24h high
+    "against_1h_trend": lambda d: d.st_1h_agrees == 0,
+    "against_btc": lambda d: d.btc_st_1h_agrees == 0,
+    "late_in_move": lambda d: d.ret_24h >= 20,                        # already +20% with the trade in 24h
+}
+
+
+def _shape(a, n=48):
+    a = np.asarray(a, dtype="float64")
+    if len(a) < 288:
+        return None
+    return a[::6][-n:]   # every 30 min over the last 24h, in R from the entry
+
+
+def cmd_patterns() -> None:
+    """Name and group the price action around winners and losers (dev only)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from sklearn.cluster import KMeans
+    df = pd.read_parquet(OUT / "signals.parquet")
+    pa = pd.read_parquet(OUT / "paths.parquet")
+    d = df.merge(pa, on=["symbol", "entry_time"])
+    d = d[d.entry_time < HOLDOUT_START].reset_index(drop=True)
+    base = d.R.mean()
+    L = [f"PATTERNS (Jan-Jul, {len(d)} signals, all: win {100 * d.win.mean():.0f}%, mean R {base:+.3f})",
+         "", "named patterns before entry (rules fixed in the script):"]
+    for name, rule in NAMED.items():
+        m = rule(d).fillna(False).to_numpy(bool)
+        if m.sum() < 20:
+            L.append(f"  {name:18s} n {m.sum():4d}  (too few)"); continue
+        r = d.R[m]
+        L.append(f"  {name:18s} n {m.sum():4d}  win {100 * d.win[m].mean():3.0f}%  mean R {r.mean():+.3f} "
+                 f"(+/- {r.std(ddof=1) / np.sqrt(len(r)):.3f})")
+    # families of pre-entry shape
+    shapes = d.pre_24h.map(_shape)
+    ok = shapes.notna().to_numpy()
+    X = np.vstack(shapes[ok].to_numpy())
+    X = np.clip(X, -30, 30)
+    km = KMeans(n_clusters=8, n_init=10, random_state=0).fit(X)
+    dd = d[ok].assign(family=km.labels_)
+    L += ["", "families of the 24h chart before entry (found by k-means, k=8 fixed):"]
+    fig, axes = plt.subplots(2, 4, figsize=(16, 7), sharey=True)
+    xs = np.arange(-24, 0, 0.5)
+    for k in range(8):
+        g = dd[dd.family == k]
+        r = g.R
+        L.append(f"  family {k}: n {len(g):4d}  win {100 * g.win.mean():3.0f}%  mean R {r.mean():+.3f} "
+                 f"(+/- {r.std(ddof=1) / np.sqrt(max(len(r), 2)):.3f})")
+        ax = axes.flat[k]
+        Xk = X[km.labels_ == k]
+        for j, row in enumerate(Xk[:40]):
+            ax.plot(xs, row, color=("tab:green" if g.win.iloc[j] else "tab:red"), alpha=0.25, lw=0.7)
+        ax.plot(xs, km.cluster_centers_[k], color="black", lw=2)
+        ax.axhline(0, color="grey", lw=0.5); ax.axhline(-1, color="grey", lw=0.5, ls=":")
+        ax.set_title(f"family {k}: n {len(g)}, win {100 * g.win.mean():.0f}%, {r.mean():+.2f}R", fontsize=9)
+        ax.set_xlabel("hours before entry"); ax.set_ylim(-15, 15)
+    axes.flat[0].set_ylabel("price vs entry, in R (+ = trade direction)")
+    fig.suptitle("Before entry: green = signal ended a winner, red = loser; black = family average")
+    fig.tight_layout(); fig.savefig(OUT / "families_before_entry.png", dpi=110); plt.close(fig)
+    # how losers died / how winners paid
+    lose, win = d[d.R <= 0], d[d.R > 0]
+    kinds = {
+        "instant reversal (never +0.3R)": lose.mfe_R < 0.3,
+        "up first, then reversed (>= +1R)": lose.mfe_R >= 1,
+        "small bounce, then down": (lose.mfe_R >= 0.3) & (lose.mfe_R < 1),
+    }
+    L += ["", f"how the {len(lose)} losers died:"]
+    L += [f"  {k:34s} {100 * v.mean():3.0f}%  median life {lose.bars_held[v].median() * 5 / 60:.1f}h"
+          for k, v in kinds.items()]
+    wk = {"clean (never below -0.3R)": win.mae_R > -0.3,
+          "dipped to -0.3..-0.8R first": (win.mae_R <= -0.3) & (win.mae_R > -0.8),
+          "nearly stopped (below -0.8R)": win.mae_R <= -0.8}
+    L += ["", f"how the {len(win)} winners paid:"]
+    L += [f"  {k:34s} {100 * v.mean():3.0f}%  median time {win.bars_held[v].median() * 5 / 60:.1f}h"
+          for k, v in wk.items()]
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+    for ax, g, title, col in ((axes[0], win, "winners", "tab:green"), (axes[1], lose, "losers", "tab:red")):
+        for a, b in zip(g.fav.head(60), g.adv.head(60)):
+            m = (np.asarray(a) + np.asarray(b)) / 2
+            ax.plot(np.arange(len(m)) * 5 / 60, m, color=col, alpha=0.25, lw=0.7)
+        ax.axhline(0, color="grey", lw=0.5); ax.axhline(3, color="grey", ls=":"); ax.axhline(-1, color="grey", ls=":")
+        ax.set_title(f"after entry: {title} (60 examples)"); ax.set_xlabel("hours after entry"); ax.set_xlim(0, 72)
+    axes[0].set_ylabel("price vs entry, in R"); axes[0].set_ylim(-2, 3.5)
+    fig.tight_layout(); fig.savefig(OUT / "paths_after_entry.png", dpi=110); plt.close(fig)
+    text = "\n".join(L)
+    print(text)
+    (OUT / "patterns.txt").write_text(text + "\n")
+
+
 if __name__ == "__main__":
     {"fetch": cmd_fetch, "build": cmd_build, "dev": cmd_dev, "holdout": cmd_holdout,
-     "paths": cmd_paths}[sys.argv[1]]()
+     "paths": cmd_paths, "patterns": cmd_patterns}[sys.argv[1]]()
