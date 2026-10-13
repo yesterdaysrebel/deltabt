@@ -145,6 +145,8 @@ def _next_repick(now: float | None = None) -> float:
 
 #: "0" turns the signal readings off (default on). They never affect a trade.
 ENV_SIGNAL_FEATURES = "DELTABOT_SIGNAL_FEATURES"
+#: `python -m live <cmd>` for these goes to live/learning.py (see the bottom).
+LEARNING_COMMANDS = ("label-signals", "grade-model")
 
 
 def signal_recorder(strategy, symbols, picks: dict, costs: dict):
@@ -329,6 +331,12 @@ if __name__ == "__main__":
     # stops the service before calling the CLI. The paper entry point has had
     # this dispatch all along; the live one was written to the same shape and
     # this was the piece that got left out.
+    if len(sys.argv) > 1 and sys.argv[1] in LEARNING_COMMANDS:
+        # Labelling and grading read public candles and the database only;
+        # they need no venue, no keys and no universe. Imported here and
+        # nowhere else, so the trading path never loads the grader.
+        from live.learning import main as learning_main
+        sys.exit(learning_main(sys.argv[1:]))
     if len(sys.argv) > 1:
         sys.exit(cli_entry(sys.argv[1:]))
     sys.exit(asyncio.run(main()))

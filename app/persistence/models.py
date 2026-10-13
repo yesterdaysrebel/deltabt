@@ -291,15 +291,17 @@ class SignalOutcomeRecord:
     entry_time: int
     entry_price: float
     stop_price: float
-    r_net: float
-    win: bool
+    #: None on a terminal "unlabellable: ..." row (exit_reason says why), so
+    #: a signal that can never be simulated is not refetched forever.
+    r_net: float | None
+    win: bool | None
     exit_reason: str
-    exit_time: int
-    exit_price: float
-    mfe_r: float
-    mae_r: float
-    bars_to_mfe: int
-    bars_held: int
+    exit_time: int | None
+    exit_price: float | None
+    mfe_r: float | None
+    mae_r: float | None
+    bars_to_mfe: int | None
+    bars_held: int | None
     fav: list = field(default_factory=list)
     adv: list = field(default_factory=list)
     detail: dict = field(default_factory=dict)

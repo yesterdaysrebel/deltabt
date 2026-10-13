@@ -1424,7 +1424,7 @@ class PostgresRepository(Repository):
                    ON CONFLICT DO NOTHING RETURNING id""",
                 r.signal_id, r.idempotency_key, r.symbol, r.side, utc(r.entry_time),
                 r.entry_price, r.stop_price, r.r_net, r.win, r.exit_reason,
-                utc(r.exit_time), r.exit_price, r.mfe_r, r.mae_r, r.bars_to_mfe,
+                _ts(r.exit_time), r.exit_price, r.mfe_r, r.mae_r, r.bars_to_mfe,
                 r.bars_held, r.fav, r.adv, r.detail)
         return out is not None
 

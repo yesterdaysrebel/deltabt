@@ -83,6 +83,7 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
 from deltabt import rulecore  # noqa: E402
 from deltabt import signal_features as SF  # noqa: E402
+from deltabt import signal_model as SM  # noqa: E402
 from deltabt.catalog import build_spec  # noqa: E402
 from deltabt.costs import SymbolCosts  # noqa: E402
 from deltabt.data.client import DeltaClient  # noqa: E402
@@ -229,23 +230,11 @@ def cmd_build() -> None:
 
 # --- evaluate -----------------------------------------------------------
 
-def _features(df):
-    return df.drop(columns=["symbol", "entry_time", "R", "win", "exit_reason"])
-
-
-def _model():
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    return HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=200,
-                                          min_samples_leaf=50, l2_regularization=1.0,
-                                          random_state=0)
-
-
-def _top_vs_random(R, score, frac=0.3, n=2000, seed=0):
-    k = max(1, int(round(frac * len(R))))
-    top = R[np.argsort(-score)[:k]].mean()
-    rng = np.random.default_rng(seed)
-    rand = np.array([R[rng.choice(len(R), k, replace=False)].mean() for _ in range(n)])
-    return top, float((rand >= top).mean()), k
+# Model and grade live in deltabt/signal_model.py, shared with the weekly
+# grader (`python -m live grade-model`).
+_features = SM.features
+_model = SM.model
+_top_vs_random = SM.top_vs_random
 
 
 def cmd_dev() -> None:

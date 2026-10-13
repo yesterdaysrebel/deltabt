@@ -140,10 +140,10 @@ CREATE TABLE IF NOT EXISTS signal_outcomes (
     entry_time      TIMESTAMPTZ NOT NULL,
     entry_price     DOUBLE PRECISION NOT NULL,
     stop_price      DOUBLE PRECISION NOT NULL,
-    r_net           DOUBLE PRECISION NOT NULL,
-    win             BOOLEAN     NOT NULL,
+    r_net           DOUBLE PRECISION,           -- NULL: exit_reason 'unlabellable: ...'
+    win             BOOLEAN,
     exit_reason     TEXT        NOT NULL,
-    exit_time       TIMESTAMPTZ NOT NULL,
+    exit_time       TIMESTAMPTZ,
     exit_price      DOUBLE PRECISION,
     mfe_r           DOUBLE PRECISION,
     mae_r           DOUBLE PRECISION,
