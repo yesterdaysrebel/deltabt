@@ -39,7 +39,8 @@ How the owner trades and what was chosen (2026-10-13):
 - **at most 2 trades a day**, one position at a time (`max_trades_per_day` 2; `max_open_positions` must
   be 1 on the stack — the Terraform global is still 6, set it when the stack is rebuilt); a filled entry
   counts even if flattened as invalid.
-- entry = the existing `manual_scalp_both_t3` (%R on 5m + 1m, 4×ATR stop), **take profit 3R**,
+- entry = `manual_scalp_both_t3_st` (variant `SPEC:manual_scalp_both_t3_st@5`): the owner's %R on 5m + 1m
+  **plus Supertrend (10, 2) aligned on both** (owner, 2026-10-13), 4×ATR stop, **take profit 3R**,
   $250 at 2% risk ($5 per stop), 4h per-coin pause after a loss, fully automatic.
 - **watch-only first** for 1–2 days (dry_run "1", read-only key), then real orders with a Trading key.
 - Runs unbound (no forward-test experiment): the list changes daily, so `forward-test start` is refused.

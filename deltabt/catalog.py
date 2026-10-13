@@ -373,6 +373,19 @@ FAMILIES: dict[str, dict] = {
     # UNDECIDED and is not what to read. Read the MECHANISM instead: how often
     # a rung arms, and whether promoted stops cut trades that reached target.
     # See infra/terraform/variables.tf for the full stopping rule.
+    # THE OWNER'S ENTRY WITH SUPERTREND (10, 2) AS A FILTER (owner, 2026-10-13).
+    # manual_scalp_both_t3 exactly, plus Supertrend aligned with the trade on
+    # BOTH the 5m and the 1m (long only when both are bullish). (10, 2) is
+    # the spec default (st_atr_period, st_multiplier). Evidence, said once:
+    # on the owner's 220 clean hand trades, entries aligned with Supertrend
+    # scored -0.045R and counter ones -0.145R (see manual_scalp_both_t3).
+    "manual_scalp_both_t3_st": dict(
+        desc="manual_scalp_both_t3 with Supertrend (10, 2) aligned on 5m and 1m",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),
