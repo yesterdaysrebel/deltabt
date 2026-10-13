@@ -83,6 +83,16 @@ filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-l
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**AWS REBUILT 2026-10-13 (owner yes):** bootstrap applied (state bucket `deltabt-tfstate-132203050472-ap-south-1`,
+OIDC provider, `deltabt-github-deploy` / `deltabt-github-plan`; bootstrap's LOCAL state copied to
+`s3://<bucket>/bootstrap/terraform.tfstate`). Main stack applied: 56 resources, NO RDS (`create_rds` false),
+stack `bot` = `i-02f745358a7c7e611` (t4g.small), EIP **13.207.73.230**, log group `/deltabt/paper/bot/bot`,
+Postgres on the host's 10 GB volume. About $20/month (the `estimated_monthly_cost_usd` output is a stale
+string). The host rests (exit 90) until an image tag and the venue secret
+`deltabt-paper/live/bot/venue-credentials` (`{"api_key","api_secret"}`, READ-ONLY key on 13.207.73.230) exist.
+Still to do: GitHub workflows/vars/`prod-deploy` env, label/grade scheduling via the monitor document,
+ship `out/signal_lab/signals.parquet`, merge to master, first deploy (owner approves in GitHub).
+
 Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
 `docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
 creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
