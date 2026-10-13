@@ -124,3 +124,30 @@ async def test_a_database_from_before_the_features_column_gets_it():
     finally:
         await con.close()
         await repo.close()
+
+
+async def test_the_report_probe_never_raises():
+    from app.reports.learning_probe import collect_learning
+
+    class Broken:
+        async def fetch(self, *a):
+            raise RuntimeError('relation "signal_outcomes" does not exist')
+    got = await collect_learning(Broken())
+    assert got["error"].startswith("RuntimeError") and "day" in got
+
+
+@requires_pg
+async def test_the_report_probe_reads_what_the_bot_and_labeller_wrote(pg_repo):
+    import datetime as dt
+
+    from app.reports.learning_probe import collect_learning
+    await _scenario(pg_repo)
+    now = dt.datetime.fromtimestamp(1_789_948_800 + 86400 + 3600, tz=dt.timezone.utc)
+    async with pg_repo._pool.acquire() as con:
+        got = await collect_learning(con, now=now)
+    assert "error" not in got, got
+    assert got["day"] == "2026-09-21"
+    assert got["signals"] == {"taken": 1, "other": 1} and got["no_readings"] == 1
+    assert got["labelled"] == 1 and got["unlabellable"] == 1 and got["waiting"] == 0
+    assert got["mean_r"] == 2.95 and got["grade"]["week_start"] == "2026-09-21"
+    assert got["grade"]["auc"] == 0.6
