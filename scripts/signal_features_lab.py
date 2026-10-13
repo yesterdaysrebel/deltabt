@@ -32,6 +32,14 @@ the trade side so "+" always means "with the trade"):
           interest change 1h/6h/24h
   market  BTC return 1h/4h/24h, BTC 1h Supertrend agrees with the side
   time    hour of day (IST), weekday
+  shape   (added 2026-10-13 before any result) biggest move with the trade
+          and deepest pullback over the last 4h in ATR, share of the last
+          hour's bars closing with the trade
+
+PRICE PATHS (owner, 2026-10-13: "find price action when trade lost and won"):
+paths.parquet, NOT model inputs -- 24h of 5m closes before entry and the 5m
+high/low path until exit, in R; best/worst excursion and time to the best.
+The `paths` step describes how winners and losers moved; it judges nothing.
 
 FIXED BEFORE ANY RESULT IS READ (2026-10-13):
   * SEALED HOLD-OUT: signals entered on or after 2026-08-01. `dev` never reads
@@ -238,7 +246,45 @@ def _coin(args):
     f["btc_st_1h_agrees"] = np.where(np.isfinite(bdir), ((bdir < 0) == (side > 0)).astype(float), np.nan)
     f["hour_ist"] = ((at + IST) % TG.DAY) // 3600
     f["weekday"] = ((at + IST) // TG.DAY + 3) % 7   # 0 = Monday
-    return f
+
+    # PRE-ENTRY SHAPE (known at the decision): the last 4h in ATR units, with
+    # the trade's direction as "+": the biggest move with the trade, the
+    # deepest pullback against it, and the share of the last hour's bars that
+    # closed with the trade.
+    atr_i = pi.atr[i]
+    run4, pull4, green = [], [], []
+    for k, ii in enumerate(i):
+        w = slice(max(ii - 47, 0), ii + 1)
+        sd = side[k]
+        rel = (c[w] - c[max(ii - 48, 0)]) * sd / atr_i[k]
+        run4.append(np.nanmax(rel)); pull4.append(np.nanmin(rel - np.maximum.accumulate(rel)))
+        cc = c[max(ii - 12, 0):ii + 1]
+        green.append(float(np.mean(np.diff(cc) * sd > 0)) if len(cc) > 1 else np.nan)
+    f["run_4h_atr"], f["pullback_4h_atr"], f["with_trade_share_1h"] = run4, pull4, green
+
+    # PRICE PATHS -- NOT model inputs. Before entry: 24h of 5m closes; after
+    # entry: 5m high/low until the exit. All in R from the entry price, "+" =
+    # in the trade's favour. Kept in a separate frame so the after-entry path
+    # can never leak into the features.
+    rpu = np.abs(t.entry_price - t.stop_price).to_numpy(float)
+    ep = t.entry_price.to_numpy(float)
+    exit_t = t.exit_time.to_numpy("int64")
+    paths = []
+    for k, ii in enumerate(i):
+        sd, r, e = side[k], rpu[k], ep[k]
+        pre = ((c[max(ii - 287, 0):ii + 1] - e) * sd / r).astype("float32")
+        j = np.searchsorted(ptime, exit_t[k], side="right")
+        hh, ll = h[ii + 1:j], lo_[ii + 1:j]
+        fav = ((hh if sd > 0 else ll) - e) * sd / r
+        adv = ((ll if sd > 0 else hh) - e) * sd / r
+        mfe = float(np.max(fav)) if len(fav) else 0.0
+        mae = float(np.min(adv)) if len(adv) else 0.0
+        paths.append(dict(symbol=sym, entry_time=int(t.entry_time.iloc[k]),
+                          pre_24h=pre.tolist(), fav=fav.astype("float32").tolist(),
+                          adv=adv.astype("float32").tolist(), mfe_R=mfe, mae_R=mae,
+                          bars_to_mfe=int(np.argmax(fav)) + 1 if len(fav) else 0,
+                          bars_held=int(len(fav))))
+    return f, pd.DataFrame(paths)
 
 
 def cmd_build() -> None:
@@ -255,13 +301,14 @@ def cmd_build() -> None:
         lt = cat.get(sym).get("launch_time")
         launch = int(pd.Timestamp(lt).value // 10**9) if lt else None
         jobs.append((sym, set(g.pick_day.astype("int64")), g, {"launch": launch, "tag": tags.get(sym, "other")}, btc))
-    frames = []
+    frames, pframes = [], []
     with ProcessPoolExecutor(8) as ex:
-        for k, f in enumerate(ex.map(_coin, jobs, chunksize=4), 1):
-            if f is not None:
-                frames.append(f)
+        for k, got in enumerate(ex.map(_coin, jobs, chunksize=4), 1):
+            if got is not None:
+                frames.append(got[0]); pframes.append(got[1])
     df = pd.concat(frames, ignore_index=True).sort_values("entry_time", ignore_index=True)
     df.to_parquet(OUT / "signals.parquet", index=False)
+    pd.concat(pframes, ignore_index=True).to_parquet(OUT / "paths.parquet", index=False)
     dev = df[df.entry_time < HOLDOUT_START]
     print(f"{len(df)} signals from {df.symbol.nunique()} coins; dev {len(dev)} "
           f"(win {dev.win.mean():.1%}, mean R {dev.R.mean():+.3f}); hold-out {len(df) - len(dev)} (not read)")
@@ -341,5 +388,45 @@ def cmd_holdout() -> None:
     (OUT / "holdout.txt").write_text(text + "\n")
 
 
+def cmd_paths() -> None:
+    """How winners and losers moved, and taken vs skipped (dev months only)."""
+    df = pd.read_parquet(OUT / "signals.parquet")
+    pa = pd.read_parquet(OUT / "paths.parquet")
+    d = df.merge(pa, on=["symbol", "entry_time"])
+    d = d[d.entry_time < HOLDOUT_START]
+    win, lose = d[d.R > 0], d[d.R <= 0]
+    q = lambda x: f"{100 * x:.0f}%"
+    L = [f"PRICE PATHS (Jan-Jul): {len(win)} winners, {len(lose)} losers", "",
+         "losers -- how far they went in our favour before the stop:",
+         f"  reached +0.5R {q((lose.mfe_R >= 0.5).mean())}, +1R {q((lose.mfe_R >= 1).mean())}, "
+         f"+2R {q((lose.mfe_R >= 2).mean())}; median best {lose.mfe_R.median():+.2f}R",
+         f"  died within 1h {q((lose.bars_held <= 12).mean())}, within 6h {q((lose.bars_held <= 72).mean())}; "
+         f"median life {lose.bars_held.median() * 5 / 60:.1f}h",
+         "winners -- how deep they dipped before paying:",
+         f"  dipped below -0.5R {q((win.mae_R <= -0.5).mean())}, below -0.8R {q((win.mae_R <= -0.8).mean())}; "
+         f"median worst {win.mae_R.median():+.2f}R; median time to exit {win.bars_held.median() * 5 / 60:.1f}h",
+         "", "before entry -- price vs entry, in R (+ = in the trade's direction), median:"]
+    for lbl, back in (("24h before", 287), ("4h before", 47), ("1h before", 11)):
+        w = win.pre_24h.map(lambda a: a[-1 - back] if len(a) > back else np.nan).median()
+        lo = lose.pre_24h.map(lambda a: a[-1 - back] if len(a) > back else np.nan).median()
+        L.append(f"  {lbl:10s} winners {w:+.2f}R   losers {lo:+.2f}R")
+    for col in ("run_4h_atr", "pullback_4h_atr", "with_trade_share_1h", "ret_24h", "from_24h_high"):
+        L.append(f"  {col:20s} winners {win[col].median():+.2f}   losers {lose[col].median():+.2f}")
+    acct = TG.OUT / "trades_5_1_5x.csv"
+    if acct.exists():
+        taken = pd.read_csv(acct)
+        cut = int(taken.entry_time.max())   # the account halted after this (drawdown latch)
+        dd = d[d.entry_time <= cut]
+        key = set(zip(taken.symbol, taken.entry_time.astype("int64")))
+        is_taken = np.array([(s_, int(t_)) in key for s_, t_ in zip(dd.symbol, dd.entry_time)])
+        L += ["", f"taken by the $250 account vs skipped (2/day, one at a time, pause), to its halt:",
+              f"  taken   {is_taken.sum():5d}  mean R {dd.R[is_taken].mean():+.3f}  win {q(dd.win[is_taken].mean())}",
+              f"  skipped {(~is_taken).sum():5d}  mean R {dd.R[~is_taken].mean():+.3f}  win {q(dd.win[~is_taken].mean())}"]
+    text = "\n".join(L)
+    print(text)
+    (OUT / "paths.txt").write_text(text + "\n")
+
+
 if __name__ == "__main__":
-    {"fetch": cmd_fetch, "build": cmd_build, "dev": cmd_dev, "holdout": cmd_holdout}[sys.argv[1]]()
+    {"fetch": cmd_fetch, "build": cmd_build, "dev": cmd_dev, "holdout": cmd_holdout,
+     "paths": cmd_paths}[sys.argv[1]]()
