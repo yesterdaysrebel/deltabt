@@ -329,6 +329,14 @@ jobs:
             if printf '%s' "$sizing" | grep -q '"dry_run":"1"'; then
               prefix="DRY-"
             fi
+            # TOP GAINERS RUNS UNBOUND (2026-10-13): its coin list changes every
+            # day, so live/__main__.py refuses `forward-test start` -- an
+            # experiment registered today would read as drift tomorrow.
+            if printf '%s' "$sizing" | grep -q '"universe":"top_gainers"'; then
+              echo "id=none" >> "$GITHUB_OUTPUT"
+              echo "::notice::${{ matrix.stack }} picks top gainers daily and runs without an experiment"
+              exit 0
+            fi
           fi
           id="${prefix}${slug}-$(date -u +%Y%m%d)-${GITHUB_SHA:0:7}"
           echo "id=$id" >> "$GITHUB_OUTPUT"

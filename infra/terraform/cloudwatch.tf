@@ -248,11 +248,12 @@ resource "aws_cloudwatch_metric_alarm" "memory" {
 # scripts/aws_preflight.py now checks at runtime that every alarm's configured
 # dimensions actually resolve to a metric that has data.
 resource "aws_cloudwatch_metric_alarm" "db_storage" {
+  count               = var.create_rds ? 1 : 0
   alarm_name          = "${local.name}-db-storage"
   alarm_description   = "Database free storage below 2 GB."
   namespace           = "AWS/RDS"
   metric_name         = "FreeStorageSpace"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main[0].identifier }
   statistic           = "Minimum"
   period              = 300
   evaluation_periods  = 2
@@ -267,11 +268,12 @@ resource "aws_cloudwatch_metric_alarm" "db_storage" {
 # means either the database is gone or the bot is. Both need attention, and
 # between this and the silence alarm the two cases are distinguishable.
 resource "aws_cloudwatch_metric_alarm" "db_unavailable" {
+  count               = var.create_rds ? 1 : 0
   alarm_name          = "${local.name}-db-no-connections"
   alarm_description   = "No connections to the database for 15 minutes. Either PostgreSQL is unavailable or the bot is not running."
   namespace           = "AWS/RDS"
   metric_name         = "DatabaseConnections"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main[0].identifier }
   statistic           = "Maximum"
   period              = 300
   evaluation_periods  = 3
@@ -283,11 +285,12 @@ resource "aws_cloudwatch_metric_alarm" "db_unavailable" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "db_cpu" {
+  count               = var.create_rds ? 1 : 0
   alarm_name          = "${local.name}-db-cpu"
   alarm_description   = "Database CPU sustained high. The bot writes a few hundred rows a minute, so this indicates a query problem."
   namespace           = "AWS/RDS"
   metric_name         = "CPUUtilization"
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.main[0].identifier }
   statistic           = "Average"
   period              = 300
   evaluation_periods  = 3
@@ -349,7 +352,7 @@ resource "aws_cloudwatch_dashboard" "main" {
             region = var.aws_region
             period = 300
             metrics = [
-              ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.main.identifier],
+              ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.create_rds ? aws_db_instance.main[0].identifier : "none"],
               [".", "DatabaseConnections", ".", "."],
               [".", "FreeStorageSpace", ".", "."],
             ]

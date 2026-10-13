@@ -1,9 +1,13 @@
+# OFF BY DEFAULT since 2026-10-13 (var.create_rds): live stacks run Postgres on
+# their own host (db_host.tf, docs/db_on_host.md). Phase B of that plan.
 resource "aws_db_subnet_group" "main" {
+  count      = var.create_rds ? 1 : 0
   name       = local.name
   subnet_ids = aws_subnet.private[*].id
 }
 
 resource "aws_db_instance" "main" {
+  count          = var.create_rds ? 1 : 0
   identifier     = local.name
   engine         = "postgres"
   engine_version = "16"
@@ -39,7 +43,7 @@ resource "aws_db_instance" "main" {
   # tests/live_exec/test_live_db_auth.py holds that ordering.
   iam_database_authentication_enabled = true
 
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  db_subnet_group_name   = aws_db_subnet_group.main[0].name
   vpc_security_group_ids = [aws_security_group.db.id]
   publicly_accessible    = false
 
@@ -68,4 +72,17 @@ resource "aws_db_instance" "main" {
     # a 30-day dataset takes a deliberate code change and a review.
     prevent_destroy = true
   }
+}
+
+variable "create_rds" {
+  description = "Build the shared RDS instance. Off since 2026-10-13: the bot's Postgres runs on its host."
+  type        = bool
+  default     = false
+}
+
+locals {
+  rds_db_name    = var.create_rds ? aws_db_instance.main[0].db_name : "deltabt"
+  rds_address    = var.create_rds ? aws_db_instance.main[0].address : ""
+  rds_port       = var.create_rds ? aws_db_instance.main[0].port : 5432
+  rds_secret_arn = var.create_rds ? aws_db_instance.main[0].master_user_secret[0].secret_arn : ""
 }

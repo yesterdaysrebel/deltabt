@@ -62,3 +62,18 @@ def test_adding_it_did_not_move_the_running_arm():
 @pytest.mark.parametrize("minutes", [1, 5, 15, 60])
 def test_it_builds_and_validates_at_every_timeframe(minutes):
     build_spec("manual_scalp", minutes).validate()
+
+
+def test_t3_st_is_t3_plus_supertrend_10_2_on_both_timeframes():
+    """Owner, 2026-10-13: the bot's entry is manual_scalp_both_t3 with a
+    Supertrend (10, 2) filter on the 5m and the 1m, and nothing else changed."""
+    from dataclasses import replace
+    from deltabt.catalog import build_spec
+    base = build_spec("manual_scalp_both_t3", primary_minutes=5)
+    st = build_spec("manual_scalp_both_t3_st", primary_minutes=5)
+    assert st.primary.supertrend == st.confirm.supertrend == "aligned"
+    assert (st.st_atr_period, st.st_multiplier) == (10, 2.0)
+    assert replace(st.primary, supertrend="off") == base.primary
+    assert replace(st.confirm, supertrend="off") == base.confirm
+    assert (st.stop, st.stop_atr_multiplier, st.target_r, st.max_stop_pct) == \
+        (base.stop, base.stop_atr_multiplier, base.target_r, base.max_stop_pct)

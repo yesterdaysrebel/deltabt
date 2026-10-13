@@ -43,6 +43,10 @@ live = [
     # the IAM policy it acts under grants exactly `rds-db:connect` as one
     # Postgres role. app/safety.py's boundary is unchanged and still enforced.
     "boto3>=1.34",
+    # The weekly signal-model grade (`python -m live grade-model`,
+    # live/learning.py). Grading only: no trading module imports it
+    # (tests/live_exec/test_model_never_trades.py).
+    "scikit-learn>=1.3",
 ]
 
 [project.scripts]

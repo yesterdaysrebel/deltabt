@@ -26,7 +26,8 @@ import pytest
 import pytest_asyncio
 
 from app.persistence import db_auth
-from app.persistence.repository import PostgresRepository, schema_objects
+from app.persistence.repository import (PostgresRepository, schema_columns,
+                                        schema_objects)
 from tests.live.conftest import TEST_DSN, requires_pg
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -123,21 +124,28 @@ def _statements(sql: str) -> list[str]:
 def test_schema_sql_is_only_create_if_not_exists():
     """migrate() skips the script when every object it names exists. That is
     only equivalent to running it while every statement is CREATE ... IF NOT
-    EXISTS. An `ALTER TABLE ... ADD COLUMN` added here would be SKIPPED on
-    every deployed database -- it needs a real migration, not this file."""
+    EXISTS -- or `ALTER TABLE t ADD COLUMN IF NOT EXISTS c`, whose column
+    migrate() also checks (2026-10-13, strategy_signals.features). Any other
+    statement would be SKIPPED on every deployed database."""
     stmts = _statements(SCHEMA)
     names = schema_objects(SCHEMA)
-    assert len(stmts) == len(names), [
+    cols = schema_columns(SCHEMA)
+    assert len(stmts) == len(names) + len(cols), [
         " ".join(s.split()[:6]) for s in stmts
-        if not re.match(r"CREATE\s+(UNIQUE\s+)?(TABLE|INDEX)\s+IF\s+NOT\s+EXISTS", s, re.I)]
+        if not re.match(r"(CREATE\s+(UNIQUE\s+)?(TABLE|INDEX)|ALTER\s+TABLE\s+\w+\s+ADD\s+COLUMN)"
+                        r"\s+IF\s+NOT\s+EXISTS", s, re.I)]
     assert len(set(names)) == len(names)
+    assert ("strategy_signals", "features") in cols
 
 
 class _Con:
-    def __init__(self, present):
+    def __init__(self, present, columns=None):
         self.present, self.executed = present, []
+        self.columns = set(schema_columns(SCHEMA)) if columns is None else columns
 
-    async def fetchval(self, sql, names):
+    async def fetchval(self, sql, names, cols=None):
+        if cols is not None:        # the added-columns check
+            return sum(1 for t, c in zip(names, cols) if (t, c) in self.columns)
         return sum(1 for n in names if n in self.present)
 
     async def execute(self, sql):
@@ -160,9 +168,9 @@ class _Pool:
         return _Ctx()
 
 
-def _repo(present):
+def _repo(present, columns=None):
     repo = PostgresRepository("postgresql://x@h/d")
-    repo._pool = _Pool(_Con(present))
+    repo._pool = _Pool(_Con(present, columns))
     return repo
 
 
@@ -177,6 +185,15 @@ async def test_a_complete_schema_is_not_re_run():
 async def test_one_missing_object_runs_the_whole_script():
     names = schema_objects(SCHEMA)
     repo = _repo(set(names) - {names[-1]})
+    await repo.migrate()
+    assert len(repo._pool.con.executed) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_missing_added_column_runs_the_whole_script():
+    """Every table present but strategy_signals.features missing: a database
+    created before 2026-10-13. The script must run so the ALTER does."""
+    repo = _repo(set(schema_objects(SCHEMA)), columns=set())
     await repo.migrate()
     assert len(repo._pool.con.executed) == 1
 

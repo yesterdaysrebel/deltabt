@@ -37,7 +37,7 @@ resource "aws_iam_role_policy" "instance" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid      = "EcrAuth"
         Effect   = "Allow"
@@ -60,6 +60,7 @@ resource "aws_iam_role_policy" "instance" {
         ]
         Resource = aws_ecr_repository.bot.arn
       },
+      ], var.create_rds ? [
       {
         # STILL NEEDED, but only for BOOTSTRAP: create_stack_database.py uses
         # the master user once, to create the database and the IAM-auth role.
@@ -67,7 +68,7 @@ resource "aws_iam_role_policy" "instance" {
         Sid      = "ReadTheDatabasePasswordAndNothingElse"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
-        Resource = aws_db_instance.main.master_user_secret[0].secret_arn
+        Resource = local.rds_secret_arn
       },
       {
         # HOW THE BOT ACTUALLY AUTHENTICATES NOW.
@@ -84,8 +85,9 @@ resource "aws_iam_role_policy" "instance" {
         Sid      = "ConnectToPostgresAsTheAppRoleOnly"
         Effect   = "Allow"
         Action   = ["rds-db:connect"]
-        Resource = "arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.main.resource_id}/${var.db_app_username}"
+        Resource = "arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.main[0].resource_id}/${var.db_app_username}"
       },
+      ] : [], [
       {
         Sid    = "ReadWhichImageTagToRun"
         Effect = "Allow"
@@ -107,7 +109,7 @@ resource "aws_iam_role_policy" "instance" {
         ]
         Resource = length(local.stacks) > 0 ? [for g in aws_cloudwatch_log_group.bot : "${g.arn}:*"] : [local.no_stack_arn]
       },
-    ]
+    ])
   })
 }
 

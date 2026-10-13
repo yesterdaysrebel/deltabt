@@ -1,0 +1,11 @@
+HOLD-OUT FINDINGS (Aug-Oct, read once): 1455 signals, mean R -0.084
+  stop_pct         rho +0.161 (dev direction +), one-sided p 0.000: HOLDS
+  day_rank         rho -0.073 (dev direction -), one-sided p 0.003: HOLDS
+  day_gain_pct     rho +0.087 (dev direction +), one-sided p 0.000: HOLDS
+  funding_side     rho -0.116 (dev direction -), one-sided p 0.000: HOLDS
+  from_24h_low     rho +0.037 (dev direction +), one-sided p 0.077: does not hold
+  near_24h_high    n  195  mean R -0.212 vs all -0.084  z +1.06: does not hold
+  quiet_breakout   n   99  mean R -0.158 vs all -0.084  z +0.44: does not hold
+  family 4         n  154  mean R -0.070 vs all -0.084  z -0.10: does not hold
+  family 5         n  199  mean R -0.048 vs all -0.084  z -0.28: does not hold
+  4 of 9 hold (about 0.5 expected by luck)

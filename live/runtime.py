@@ -519,11 +519,14 @@ class LiveTradingBot(TradingBot):
             log.error("position %s opened with no order row to close out; its "
                       "exposure slot stays held", symbol)
 
+        # COUNT IT BEFORE THE VALIDITY FLATTEN (2026-10-13). A filled entry
+        # paid its fees whether or not it is kept, and with a 2-a-day cap an
+        # entry flattened as invalid must not leave room for a third.
+        self.state.trades_today += 1
+        await self._save_state()
         if await self._flatten_if_entry_invalid(symbol, record, intent):
             return
         self._schedule_bracket_check(symbol)
-        self.state.trades_today += 1
-        await self._save_state()
         await self.notifier.send(
             f"{self.venue} {'LONG' if record.side > 0 else 'SHORT'} {symbol}",
             f"entry {record.entry_price} stop {record.stop_price} "

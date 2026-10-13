@@ -52,7 +52,13 @@ WORKFLOWS = [p for p in _entry_points() if "\n  push:\n" in p.read_text()]
 #: Copied into the image, deliberately NOT a deploy trigger. Changing it cannot
 #: change what the container does, and rolling a live experiment to ship a
 #: paragraph is exactly what the filter exists to prevent.
-DELIBERATE_EXCEPTIONS = {"README.md"}
+DELIBERATE_EXCEPTIONS = {
+    "README.md",
+    # The weekly grade-model's history (2026-10-13). It feeds only the model
+    # grade, never a trading decision, so a change to it alone need not roll
+    # a running bot; the next code deploy carries it.
+    "out/signal_lab/signals.parquet",
+}
 
 
 def copy_sources() -> set[str]:

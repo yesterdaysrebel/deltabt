@@ -93,6 +93,7 @@ def render(errors=0, **kw):
 
 
 def test_the_report_is_the_attention_list_then_the_journal_and_nothing_else():
+    """...and, since 2026-10-13 (owner), a short Learning section at the end."""
     text, facts, problems = render()
     assert not problems and facts["verdict"] == "clear"
     lines = text.splitlines()
@@ -100,7 +101,49 @@ def test_the_report_is_the_attention_list_then_the_journal_and_nothing_else():
     assert lines[2] == "**✅ All normal — nothing needs you.**"
     headers = [ln for ln in lines if ln.startswith("## ")]
     assert headers == ["## Open now (1)",
-                       "## Closed so far (2 of 100 for the read) — the three exits on each trade"]
+                       "## Closed so far (2 of 100 for the read) — the three exits on each trade",
+                       "## Learning"]
+
+
+LEARNING = {"day": "2026-10-03", "signals": {"taken": 2, "daily_cap": 9, "open_position": 3,
+                                              "coin_pause": 1},
+            "no_readings": 0, "labelled": 230, "unlabellable": 1, "mean_r": -0.071,
+            "waiting": 18,
+            "grade": {"week_start": "2026-09-28", "n_test": 120.0, "auc": 0.523,
+                      "top_mean_r": -0.05, "all_mean_r": -0.07, "random_p": 0.41,
+                      "top_k": 36.0}}
+
+
+def test_the_learning_section_is_short_and_plain():
+    sec, db = a_probe()
+    db["learning"] = LEARNING
+    text, _facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0,
+                                      probe_problems=[])
+    assert not problems
+    tail = text.rstrip().splitlines()
+    i = tail.index("## Learning")
+    body = tail[i + 1:]
+    assert 3 <= len(body) <= 5, body
+    assert body[0] == ("- Signals yesterday (2026-10-03, UTC day): 15 — 2 taken, 13 skipped "
+                       "(daily cap 9, already in a trade 3, coin paused after a loss 1).")
+    assert body[1] == ("- Labelled so far: 230 signals, averaging -0.07R each as if all were "
+                       "taken; 18 waiting for their outcome.")
+    assert "AUC 0.52" in body[2] and "top 36 averaged -0.05R vs -0.07R for all 120" in body[2]
+    assert "41% of the time" in body[2] and "never filters trades" in body[2]
+
+
+def test_without_learning_figures_it_says_so_and_raises_no_alarm():
+    text, _facts, problems = render()
+    assert not problems
+    assert text.rstrip().endswith("No figures yet: the daily probe does not collect them.")
+    sec, db = a_probe()
+    db["learning"] = {"day": "2026-10-03", "error": "UndefinedTableError: model_grades"}
+    text, _f, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not problems and "Figures unavailable" in text
+    db["learning"] = {"day": "2026-10-03", "signals": {}, "labelled": 0, "waiting": 0}
+    text, _f, _p = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert "- Signals yesterday (2026-10-03, UTC day): 0 — 0 taken." in text
+    assert "- No weekly grade yet." in text
 
 
 def _block(text, mark):

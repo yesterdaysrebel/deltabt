@@ -1,0 +1,48 @@
+DEV (Jan-Jul): 3818 signals, win 27.4%, mean R -0.065
+
+walk-forward (train on earlier months, test on the month):
+  2026-04: train 1512, test 537  AUC 0.511  top30% R -0.069 vs all -0.061 (random beats it 52%)
+  2026-05: train 2049, test 588  AUC 0.540  top30% R +0.027 vs all -0.038 (random beats it 26%)
+  2026-06: train 2637, test 624  AUC 0.594  top30% R +0.208 vs all -0.106 (random beats it 0%)
+  2026-07: train 3261, test 557  AUC 0.550  top30% R -0.075 vs all -0.165 (random beats it 19%)
+
+each feature alone (dev): AUC for win, Spearman with R
+  atr_pct            AUC 0.542  rho +0.207  n 3818
+  stop_pct           AUC 0.542  rho +0.207  n 3818
+  vol_ratio          AUC 0.468  rho -0.058  n 3818
+  range_atr          AUC 0.469  rho -0.047  n 3818
+  from_24h_high      AUC 0.470  rho -0.074  n 3818
+  oi_chg_1h          AUC 0.473  rho -0.029  n 3818
+  st_dist_atr        AUC 0.478  rho -0.042  n 3818
+  day_rank           AUC 0.478  rho -0.102  n 3816
+  run_4h_atr         AUC 0.479  rho -0.025  n 3818
+  side               AUC 0.481  rho -0.020  n 3818
+  ret_1h             AUC 0.482  rho +0.048  n 3818
+  day_gain_pct       AUC 0.517  rho +0.108  n 3816
+  adx_5m             AUC 0.515  rho +0.045  n 3818
+  st_4h_agrees       AUC 0.486  rho -0.004  n 3787
+  tag_other          AUC 0.514  rho +0.045  n 3818
+  pullback_4h_atr    AUC 0.486  rho +0.023  n 3818
+  funding_side       AUC 0.513  rho -0.120  n 3818
+  log_turnover       AUC 0.513  rho +0.049  n 3816
+  hour_ist           AUC 0.513  rho +0.015  n 3818
+  ret_4h             AUC 0.487  rho +0.030  n 3818
+  with_trade_share_1h AUC 0.488  rho -0.015  n 3818
+  tag_ai             AUC 0.488  rho -0.001  n 3818
+  oi_chg_24h         AUC 0.512  rho +0.034  n 3807
+  ret_24h            AUC 0.488  rho +0.005  n 3818
+  days_listed        AUC 0.490  rho -0.073  n 3818
+  tag_layer          AUC 0.491  rho -0.084  n 3818
+  adx_1h             AUC 0.508  rho +0.041  n 3788
+  weekday            AUC 0.506  rho -0.009  n 3818
+  btc_st_1h_agrees   AUC 0.506  rho +0.020  n 3818
+  btc_ret_1h         AUC 0.506  rho +0.003  n 3818
+  st_1h_agrees       AUC 0.505  rho +0.005  n 3818
+  from_24h_low       AUC 0.504  rho +0.111  n 3818
+  btc_ret_4h         AUC 0.496  rho -0.019  n 3818
+  tag_meme           AUC 0.504  rho +0.011  n 3818
+  wpr_slope3         AUC 0.497  rho -0.009  n 3818
+  tag_defi           AUC 0.503  rho +0.017  n 3818
+  wpr                AUC 0.497  rho -0.006  n 3818
+  oi_chg_6h          AUC 0.499  rho +0.004  n 3818
+  btc_ret_24h        AUC 0.500  rho +0.004  n 3818

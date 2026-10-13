@@ -25,7 +25,80 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
+## CURRENT GOAL (2026-10-13, owner) — the owner's way, with discipline
+
+The repo was closed and all AWS infrastructure destroyed on 2026-10-13, then **re-opened the same day**.
+The owner: "I was looking for a way to make a bot which trades like I do, just add discipline which I
+lack, we turned it into research project." So the goal is a working bot, not edge research. Build what
+the owner asks; state the evidence once and do not gate on it.
+
+How the owner trades and what was chosen (2026-10-13):
+- picks coins from Delta's **top gainers** page → `live/universe.py`: at start-up the top 10 crypto
+  perps by 24h last-price change, operational, 24h turnover ≥ $250k; coins still held are kept. The bot
+  exits 30 s past each UTC midnight and systemd restarts it with a fresh list (`live/__main__.py`).
+- **at most 2 trades a day**, one position at a time (`max_trades_per_day` 2; `max_open_positions` must
+  be 1 on the stack — the Terraform global is still 6, set it when the stack is rebuilt); a filled entry
+  counts even if flattened as invalid.
+- entry = `manual_scalp_both_t3_st` (variant `SPEC:manual_scalp_both_t3_st@5`): the owner's %R on 5m + 1m
+  **plus Supertrend (10, 2) aligned on both** (owner, 2026-10-13), 4×ATR stop, **take profit 3R**,
+  $250 at 2% risk ($5 per stop), position ≤ **5× equity** (owner 2026-10-13; was 3×), 4h per-coin pause after a loss, fully automatic.
+- **watch-only first** for 1–2 days (dry_run "1", read-only key), then real orders with a Trading key.
+- Runs unbound (no forward-test experiment): the list changes daily, so `forward-test start` is refused.
+- Sizing entry `bot` in `live.tf` `live_sizing`; the stack itself is not yet in `var.stacks`.
+
+Evidence, said once: a 2/day cap made hold-to-3R worse in backtest (+0.044R → −0.084R); top-gainer
+selection was never tested. Known gap: REST warm-up bars include zero-volume filler minutes while live
+bars do not, so on thin coins the %R window differs slightly (the $250k floor limits this).
+
+Backtest of the bot as built (owner asked 2026-10-13; `scripts/top_gainers_backtest.py`, result in
+`out/top_gainers/result.txt`): daily top-10 gainers, 2026-01-01..10-12, $250, 2%, 5x, 2/day, 4h pause,
+flat no-trade minutes kept. Net R/trade (± 1 SE): 5m/1m +0.003 (±0.110, 264 trades; $250 → $439 by
+02-28 → 50% drawdown latch, no entries after 06-29, ends $219); 15m/5m −0.037 (±0.103, 226, ends $205);
+1h/15m −0.079 (±0.181, 55, ends $221); 4h/1h +0.081 (±0.205, 9 trades in 9 months). None is
+distinguishable from zero; every pair was better Jan–May than May–Oct. Fees only ~0.02–0.03R (wide
+stops). 10x = 5x exactly (the cap never bound). Survivorship: only coins listed today could be picked.
+
+Signal-features lab (owner asked for a model that learns from every signal; `scripts/signal_features_lab.py`,
+pre-registered 8598b2c/7ec97f7, results in `out/signal_lab/*.txt`): 5,273 takeable signals of the bot as built
+(every coin, no daily cap), ~40 readings each + price paths. **All signals lose about −0.07R a trade after fees
+(Jan–Jul −0.065 ± 0.028, Aug–Oct −0.084 ± 0.045, ~3 SE below zero)**; the account backtest's ~0R came from which
+264 it happened to take. Model (gradient boosting) **FAIL** on the sealed Aug–Oct: AUC 0.521, top 30% −0.088R
+vs −0.084R all. Of 9 Jan–Jul findings 4 "held" by rank correlation (stop width, gainer rank, day gain, funding
+side) but none makes money: dev-chosen cut-offs on Aug–Oct −0.107 / −0.086 / −0.064, all three −0.165R; the
+stop-width link is mostly tight-stop slippage (win rate 27% vs 26%). Chart patterns and k-means families did
+not hold. Paths: 31% of losers were +1R first; 45% of winners dipped below −0.5R first. Per the
+pre-registration: record every signal live (recorder) and re-test on more data; do not filter with it.
+
+Signal recorder (owner 2026-10-13, branch `feat/signal-recorder`, built on `feat/top-gainers`): every signal
+with a direction, taken or skipped, gets the lab's readings in `strategy_signals.features` (JSONB: `lab` = the
+~40 readings from `deltabt/signal_features.py`, which the lab's `_coin` now calls — parity test against the
+pre-refactor output; `live` = ticker + L2 book; `pre_24h`; `skip` = taken/daily_cap/open_position/…), written by
+a background task after the decision (`app/learning/recorder.py`; never blocks, NaN on failure, off with
+`DELTABOT_SIGNAL_FEATURES=0`). `python -m live label-signals` labels each signal as if taken with the lab's
+engine on public 1m candles (`signal_outcomes`; reproduces the lab exactly on a synthetic market);
+`python -m live grade-model` grades the lab's fixed model weekly on the last full UTC week (`model_grades`;
+history from `$DELTABT_SIGNAL_HISTORY` or `out/signal_lab/signals.parquet`, tolerated absent). The model never
+filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-line "Learning" section, fed by
+`app/reports/learning_probe.py` once it is copied into `deploy/aws/db_probe.py`. Not yet scheduled on a box.
+Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
+240m bars (st_4h_agrees) can differ slightly.
+
+**AWS REBUILT 2026-10-13 (owner yes):** bootstrap applied (state bucket `deltabt-tfstate-132203050472-ap-south-1`,
+OIDC provider, `deltabt-github-deploy` / `deltabt-github-plan`; bootstrap's LOCAL state copied to
+`s3://<bucket>/bootstrap/terraform.tfstate`). Main stack applied: 56 resources, NO RDS (`create_rds` false),
+stack `bot` = `i-02f745358a7c7e611` (t4g.small), EIP **13.207.73.230**, log group `/deltabt/paper/bot/bot`,
+Postgres on the host's 10 GB volume. About $20/month (the `estimated_monthly_cost_usd` output is a stale
+string). The host rests (exit 90) until an image tag and the venue secret
+`deltabt-paper/live/bot/venue-credentials` (`{"api_key","api_secret"}`, READ-ONLY key on 13.207.73.230) exist.
+Still to do: GitHub workflows/vars/`prod-deploy` env, label/grade scheduling via the monitor document,
+ship `out/signal_lab/signals.parquet`, merge to master, first deploy (owner approves in GitHub).
+
+Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
+`docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
+creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
+first real order = a small resting probe placed and cancelled.
+
+## (HISTORY — destroyed 2026-10-13) Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
 **2026-10-09, amendment 2 (owner): baseline exit (hold to 3R) + a 4h per-coin pause after a loss**
 (`RiskConfig.pause_symbol_after_loss_seconds` = 14400, delivered via `live_sizing` → `run_live.sh` →
