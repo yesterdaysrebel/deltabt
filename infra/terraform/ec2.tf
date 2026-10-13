@@ -50,7 +50,7 @@ locals {
 
   stacks = {
     for k, s in local.all_stacks : k => merge(s, {
-      db_name    = s.db_name != "" ? s.db_name : aws_db_instance.main.db_name
+      db_name    = s.db_name != "" ? s.db_name : local.rds_db_name
       ssm_prefix = k == local.legacy_stack ? "/deltabt/${var.environment}" : "/deltabt/${var.environment}/${k}"
       log_group  = k == local.legacy_stack ? "/deltabt/${var.environment}/bot" : "/deltabt/${var.environment}/${k}/bot"
 
@@ -144,10 +144,10 @@ resource "aws_instance" "bot" {
     : aws_ecr_repository.bot.name)
     # A live stack with db_location = "host" talks to the Postgres container on
     # its own host (db_host.tf); run_live.sh recognises the bridge address.
-    db_host                      = contains(keys(local.pg_stacks), each.key) ? local.pg_local_address : aws_db_instance.main.address
-    db_port                      = contains(keys(local.pg_stacks), each.key) ? 5432 : aws_db_instance.main.port
+    db_host                      = contains(keys(local.pg_stacks), each.key) ? local.pg_local_address : local.rds_address
+    db_port                      = contains(keys(local.pg_stacks), each.key) ? 5432 : local.rds_port
     db_name                      = each.value.db_name
-    db_secret_arn                = contains(keys(local.pg_stacks), each.key) ? aws_secretsmanager_secret.pg[each.key].arn : aws_db_instance.main.master_user_secret[0].secret_arn
+    db_secret_arn                = contains(keys(local.pg_stacks), each.key) ? aws_secretsmanager_secret.pg[each.key].arn : local.rds_secret_arn
     ssm_image_tag_param          = aws_ssm_parameter.image_tag[each.key].name
     ssm_image_tag_previous_param = aws_ssm_parameter.image_tag_previous[each.key].name
     log_group                    = aws_cloudwatch_log_group.bot[each.key].name

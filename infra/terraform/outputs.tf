@@ -15,7 +15,7 @@ output "ecr_repository_url" {
 
 output "db_endpoint" {
   description = "Private address. Not reachable from outside the VPC."
-  value       = aws_db_instance.main.address
+  value       = local.rds_address
 }
 
 output "db_secret_arn" {
@@ -24,7 +24,7 @@ output "db_secret_arn" {
     in Terraform state and never in this repository. Read it with:
       aws secretsmanager get-secret-value --secret-id <this>
   EOT
-  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+  value       = local.rds_secret_arn
 }
 
 output "log_groups" {

@@ -107,7 +107,11 @@ variable "live_stacks" {
     # 2026-10-09 (owner, prereg amendment 2): the trail experiment is retired and
     # the account goes back to the BASELINE exit (hold to 3R), with a 4h pause on
     # a coin after a loss on it (live_sizing below). Ladder and trail stay shadows.
-    dryrun = { variant = "SPEC:manual_scalp_both_t3@5", db_name = "deltabt_dryrun" }
+    # 2026-10-13: the dryrun stack and all AWS infrastructure were destroyed; the
+    # owner re-opened the project the same day. `bot` = the owner's way: daily top-10
+    # gainers, %R + Supertrend (10, 2) on 5m and 1m, 3R, 2 trades a day, one at a
+    # time (CONTEXT.md "CURRENT GOAL"). Watch-only first (live_sizing dry_run "1").
+    bot = { variant = "SPEC:manual_scalp_both_t3_st@5", db_name = "deltabt_bot" }
   }
 }
 
@@ -288,7 +292,6 @@ variable "live_sizing" {
   default = {
     # 2026-10-09: 4h per-coin pause after a loss, owner's trial (docs/prod_dry_run_prereg.md
     # amendment 2). The exact backtest did not support it (scripts/loss_pause_exact.py).
-    dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400" }
     # 2026-10-13 (owner): the owner's way -- top 10 gainers, at most 2 trades a
     # day, $250 at 2%, position <= 5x equity, take profit 3R. Watch-only (dry_run "1") for 1-2 days,
     # then "0" with a Trading key.
