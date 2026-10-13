@@ -561,7 +561,11 @@ class InMemoryRepository(Repository):
 
     async def record_signal_features(self, idempotency_key: str, features: dict) -> None:
         if idempotency_key in self._s["signals"]:
-            self._s["signal_features"][idempotency_key] = features
+            # Round-tripped through the JSONB encoder, as Postgres stores it:
+            # NaN comes back as None (app/persistence/jsonb.py).
+            import json
+            from app.persistence.jsonb import dumps
+            self._s["signal_features"][idempotency_key] = json.loads(dumps(features))
 
     def _signal_row(self, key: str) -> dict:
         r = self._s["signals"][key]
