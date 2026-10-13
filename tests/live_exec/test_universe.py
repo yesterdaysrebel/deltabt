@@ -117,3 +117,14 @@ def test_daily_repick_is_30s_past_the_next_utc_midnight():
     assert entry._next_repick(1791914400) == 1791936030
     # exactly midnight -> the NEXT midnight, never "now"
     assert entry._next_repick(1791936000) == 1792022430
+
+
+def test_max_leverage_is_configurable_and_bounded(monkeypatch):
+    from app.config.settings import Settings
+    monkeypatch.delenv("DELTABOT_MAX_LEVERAGE", raising=False)
+    assert Settings.from_env().risk.max_leverage == 3.0
+    monkeypatch.setenv("DELTABOT_MAX_LEVERAGE", "5")
+    assert Settings.from_env().risk.max_leverage == 5.0
+    monkeypatch.setenv("DELTABOT_MAX_LEVERAGE", "25")
+    with pytest.raises(ValueError):
+        Settings.from_env()

@@ -187,6 +187,8 @@ class RiskConfig:
                              f"{self.min_contract_risk_cap}")
         if self.minimum_rr <= 0:
             raise ValueError("minimum_rr must be > 0")
+        if not 0 < self.max_leverage <= 10:
+            raise ValueError(f"max_leverage must be in (0, 10], got {self.max_leverage}")
         if self.max_open_positions < 1:
             raise ValueError("max_open_positions must be >= 1")
         if self.starting_equity <= 0:
@@ -259,6 +261,8 @@ class Settings:
             ("DELTABOT_RISK_PER_TRADE", "risk_per_trade", float),
             ("DELTABOT_MIN_CONTRACT_RISK_CAP", "min_contract_risk_cap", float),
             ("DELTABOT_MIN_RR", "minimum_rr", float),
+            # Position notional / equity cap; 5 for the top-gainers bot (owner, 2026-10-13).
+            ("DELTABOT_MAX_LEVERAGE", "max_leverage", float),
             ("DELTABOT_MAX_OPEN", "max_open_positions", int),
             ("DELTABOT_MAX_DAILY_LOSS", "max_daily_loss_pct", float),
             ("DELTABOT_MAX_DRAWDOWN", "max_drawdown_pct", float),

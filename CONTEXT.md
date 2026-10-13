@@ -41,7 +41,7 @@ How the owner trades and what was chosen (2026-10-13):
   counts even if flattened as invalid.
 - entry = `manual_scalp_both_t3_st` (variant `SPEC:manual_scalp_both_t3_st@5`): the owner's %R on 5m + 1m
   **plus Supertrend (10, 2) aligned on both** (owner, 2026-10-13), 4×ATR stop, **take profit 3R**,
-  $250 at 2% risk ($5 per stop), 4h per-coin pause after a loss, fully automatic.
+  $250 at 2% risk ($5 per stop), position ≤ **5× equity** (owner 2026-10-13; was 3×), 4h per-coin pause after a loss, fully automatic.
 - **watch-only first** for 1–2 days (dry_run "1", read-only key), then real orders with a Trading key.
 - Runs unbound (no forward-test experiment): the list changes daily, so `forward-test start` is refused.
 - Sizing entry `bot` in `live.tf` `live_sizing`; the stack itself is not yet in `var.stacks`.
