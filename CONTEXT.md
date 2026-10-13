@@ -83,6 +83,14 @@ filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-l
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**BOT LIVE, WATCH-ONLY, since 2026-10-13 13:22 UTC (6:52 PM IST).** #116 + #117 merged; infrastructure apply
+green (16/16 preflight; `--expected-rds 0`); deploy-prod run 38400636237 approved by the owner in GitHub. First
+picks: S, DUSK, STX, BTW, OPN, INIT, AKE, TIA, BTC, SKL; unbound (no experiment); re-pick 00:00:30 UTC. First
+simulated trade 13:25 UTC: LONG STXUSD 0.41708, stop 0.40680, target 0.45120, 450 contracts (~$4.6 risk); AKE/BTW/TIA
+signals refused (one position) and recorded with `features.skip = open_position`. Recorder rows carry `lab` (~40
+readings), `live` (spread, depth, funding, OI, mark/last gap), `pre_24h` (288 bars), computed in 3–5 s. deploy-prod is
+manual dispatch only; the prod-deploy approval is the owner's (Claude Code may not self-approve).
+
 **AWS REBUILT 2026-10-13 (owner yes):** bootstrap applied (state bucket `deltabt-tfstate-132203050472-ap-south-1`,
 OIDC provider, `deltabt-github-deploy` / `deltabt-github-plan`; bootstrap's LOCAL state copied to
 `s3://<bucket>/bootstrap/terraform.tfstate`). Main stack applied: 56 resources, NO RDS (`create_rds` false),
