@@ -272,6 +272,12 @@ variable "live_sizing" {
     # Seconds a coin is paused after a losing close on it (2026-10-09). Optional:
     # "0" (off) unless a stack sets it; run_live.sh forwards it to the bot.
     pause_symbol_after_loss_seconds = optional(string, "0")
+    # Top gainers (owner, 2026-10-13; live/universe.py): "top_gainers" re-picks
+    # the coins daily from Delta's 24h gainers; "fixed" keeps VENUE_SYMBOLS.
+    universe           = optional(string, "fixed")
+    top_n              = optional(string, "10")
+    min_turnover_usd   = optional(string, "250000")
+    max_trades_per_day = optional(string, "20")
   }))
   # $250 at 2%. The AKEUSD one-contract floor was 5% (owner, 2026-10-02);
   # 2026-10-03 (owner, prereg amendment) it is 3%: at 5% every AKEUSD entry
@@ -282,6 +288,11 @@ variable "live_sizing" {
     # 2026-10-09: 4h per-coin pause after a loss, owner's trial (docs/prod_dry_run_prereg.md
     # amendment 2). The exact backtest did not support it (scripts/loss_pause_exact.py).
     dryrun = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400" }
+    # 2026-10-13 (owner): the owner's way -- top 10 gainers, at most 2 trades a
+    # day, $250 at 2%, take profit 3R. Watch-only (dry_run "1") for 1-2 days,
+    # then "0" with a Trading key.
+    bot = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
+            universe = "top_gainers", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2" }
   }
 }
 

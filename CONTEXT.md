@@ -25,7 +25,36 @@ placement, no API keys, no live trading." That was true until `live/` landed in 
 The repo now signs requests and places real orders on Delta testnet. Do not quote the README's
 safety claim to anyone.
 
-## Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
+## CURRENT GOAL (2026-10-13, owner) — the owner's way, with discipline
+
+The repo was closed and all AWS infrastructure destroyed on 2026-10-13, then **re-opened the same day**.
+The owner: "I was looking for a way to make a bot which trades like I do, just add discipline which I
+lack, we turned it into research project." So the goal is a working bot, not edge research. Build what
+the owner asks; state the evidence once and do not gate on it.
+
+How the owner trades and what was chosen (2026-10-13):
+- picks coins from Delta's **top gainers** page → `live/universe.py`: at start-up the top 10 crypto
+  perps by 24h last-price change, operational, 24h turnover ≥ $250k; coins still held are kept. The bot
+  exits 30 s past each UTC midnight and systemd restarts it with a fresh list (`live/__main__.py`).
+- **at most 2 trades a day**, one position at a time (`max_trades_per_day` 2; `max_open_positions` must
+  be 1 on the stack — the Terraform global is still 6, set it when the stack is rebuilt); a filled entry
+  counts even if flattened as invalid.
+- entry = the existing `manual_scalp_both_t3` (%R on 5m + 1m, 4×ATR stop), **take profit 3R**,
+  $250 at 2% risk ($5 per stop), 4h per-coin pause after a loss, fully automatic.
+- **watch-only first** for 1–2 days (dry_run "1", read-only key), then real orders with a Trading key.
+- Runs unbound (no forward-test experiment): the list changes daily, so `forward-test start` is refused.
+- Sizing entry `bot` in `live.tf` `live_sizing`; the stack itself is not yet in `var.stacks`.
+
+Evidence, said once: a 2/day cap made hold-to-3R worse in backtest (+0.044R → −0.084R); top-gainer
+selection was never tested. Known gap: REST warm-up bars include zero-volume filler minutes while live
+bars do not, so on thin coins the %R window differs slightly (the $250k floor limits this).
+
+Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
+`docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
+creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
+first real order = a small resting probe placed and cancelled.
+
+## (HISTORY — destroyed 2026-10-13) Deployed state — ONE prod DRY RUN (`dryrun`) since 2026-10-02 10:39 UTC; no order is ever sent
 
 **2026-10-09, amendment 2 (owner): baseline exit (hold to 3R) + a 4h per-coin pause after a loss**
 (`RiskConfig.pause_symbol_after_loss_seconds` = 14400, delivered via `live_sizing` → `run_live.sh` →

@@ -116,6 +116,7 @@ d=json.load(sys.stdin); f={k:float(d[k]) for k in ("equity_usd","risk_per_trade"
 assert f["equity_usd"]>0 and 0<f["risk_per_trade"]<=0.1 and 0<=f["min_contract_risk_cap"]<=0.1 and d["dry_run"] in ("0","1")
 print("DELTABOT_EQUITY=%s\nDELTABOT_RISK_PER_TRADE=%s\nDELTABOT_MIN_CONTRACT_RISK_CAP=%s\nDELTABOT_DRY_RUN=%s"%(d["equity_usd"],d["risk_per_trade"],d["min_contract_risk_cap"],d["dry_run"]))
 p=int(d.get("pause_symbol_after_loss_seconds","0"));assert p>=0;print("DELTABOT_PAUSE_SYMBOL_AFTER_LOSS=%d"%p)
+[print("DELTABOT_%s=%s"%(k.upper(),d[k]))for k in("universe","top_n","min_turnover_usd","max_trades_per_day")if k in d]
 ' 2>/dev/null || true)"
 if [[ -z "$SIZING_ENV" ]]; then
   log "sizing parameter missing or invalid ($SIZING); refusing to start"
@@ -177,6 +178,7 @@ docker rm -f deltabot >/dev/null 2>&1 || true
 
 # Root-only file on tmpfs: neither `docker inspect` nor the process table sees
 # these. /run is tmpfs, so a reboot clears it and this rewrites it.
+
 install -d -m 0700 /run/deltabt
 umask 077
 # DELTA_ENV TOO: the experiment document runs the CLI with only this file, and
