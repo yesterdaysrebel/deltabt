@@ -220,7 +220,20 @@ class Repository(ABC):
     @abstractmethod
     async def labelled_signals(self) -> list[dict]:
         """Every labelled signal: the signal row (as signals_to_label) plus
-        r_net, win and exit_reason."""
+        r_net, win, exit_reason and takeable."""
+    @abstractmethod
+    async def takeability_rows(self, lookback_seconds: int = 7 * 86400) -> list[dict]:
+        """What live/learning.mark_takeable walks. For every symbol with an
+        outcome whose `takeable` is still NULL: each of its labellable signals
+        (as signals_to_label selects them, with or without an outcome) from
+        `lookback_seconds` before the earliest undecided outcome on, ordered by
+        symbol, bar_open, id: id, idempotency_key, symbol, bar_open (unix s),
+        labelled (has an outcome), r_net, exit_time (unix s or None),
+        takeable, outcome_detail."""
+    @abstractmethod
+    async def record_signal_takeable(self, idempotency_key: str, takeable: bool) -> bool:
+        """Set an outcome's `takeable` once; False if it was already set (or
+        the signal has no outcome)."""
     @abstractmethod
     async def record_model_grade(self, rec: ModelGradeRecord) -> None:
         """One row per graded week; a re-grade of the same week replaces it."""
@@ -574,15 +587,47 @@ class InMemoryRepository(Repository):
                 "primary_timeframe": r.primary_timeframe, "direction": r.direction,
                 "entry_price": r.entry_price, "stop_price": r.stop_price,
                 "target_price": r.target_price, "outcome": r.outcome,
-                "rejection_reason": r.rejection_reason,
+                "rejection_reason": r.rejection_reason, "indicators": r.indicators,
                 "features": self._s["signal_features"].get(key)}
+
+    @staticmethod
+    def _labellable(r) -> bool:
+        return (r.direction is not None and r.entry_price is not None
+                and r.stop_price is not None and r.target_price is not None)
 
     async def signals_to_label(self, limit: int = 500) -> list[dict]:
         out = [self._signal_row(k) for k, r in self._s["signals"].items()
-               if r.direction is not None and r.entry_price is not None
-               and r.stop_price is not None and r.target_price is not None
-               and k not in self._s["signal_outcomes"]]
+               if self._labellable(r) and k not in self._s["signal_outcomes"]]
         return sorted(out, key=lambda r: (r["bar_open"], r["id"]))[:limit]
+
+    async def takeability_rows(self, lookback_seconds: int = 7 * 86400) -> list[dict]:
+        sigs, outs = self._s["signals"], self._s["signal_outcomes"]
+        first: dict[str, int] = {}
+        for k, o in outs.items():
+            if o.takeable is None:
+                sym, bo = sigs[k].symbol, int(sigs[k].bar_open)
+                first[sym] = min(first.get(sym, bo), bo)
+        out = []
+        for k, r in sigs.items():
+            if (r.symbol not in first or not self._labellable(r)
+                    or int(r.bar_open) < first[r.symbol] - lookback_seconds):
+                continue
+            o = outs.get(k)
+            out.append({"id": self._s["signal_ids"][k], "idempotency_key": k,
+                        "symbol": r.symbol, "bar_open": int(r.bar_open),
+                        "labelled": o is not None,
+                        "r_net": None if o is None else o.r_net,
+                        "exit_time": None if o is None or o.exit_time is None else int(o.exit_time),
+                        "takeable": None if o is None else o.takeable,
+                        "outcome_detail": None if o is None else o.detail})
+        return sorted(out, key=lambda r: (r["symbol"], r["bar_open"], r["id"]))
+
+    async def record_signal_takeable(self, idempotency_key: str, takeable: bool) -> bool:
+        o = self._s["signal_outcomes"].get(idempotency_key)
+        if o is None or o.takeable is not None:
+            return False
+        o.takeable = bool(takeable)
+        return True
 
     async def record_signal_outcome(self, rec: SignalOutcomeRecord) -> bool:
         if rec.idempotency_key not in self._s["signals"]:
@@ -595,7 +640,7 @@ class InMemoryRepository(Repository):
 
     async def labelled_signals(self) -> list[dict]:
         out = [{**self._signal_row(k), "r_net": o.r_net, "win": o.win,
-                "exit_reason": o.exit_reason}
+                "exit_reason": o.exit_reason, "takeable": o.takeable}
                for k, o in self._s["signal_outcomes"].items()]
         return sorted(out, key=lambda r: (r["bar_open"], r["id"]))
 
@@ -1403,16 +1448,16 @@ class PostgresRepository(Repository):
                     "extract(epoch FROM s.bar_open)::bigint AS bar_open, "
                     "s.primary_timeframe, s.direction, s.entry_price::float8 AS entry_price, "
                     "s.stop_price::float8 AS stop_price, s.target_price::float8 AS target_price, "
-                    "s.outcome, s.rejection_reason, s.features")
+                    "s.outcome, s.rejection_reason, s.indicators, s.features")
+    _LABELLABLE = ("s.direction IS NOT NULL AND s.entry_price IS NOT NULL "
+                   "AND s.stop_price IS NOT NULL AND s.target_price IS NOT NULL")
 
     async def signals_to_label(self, limit: int = 500) -> list[dict]:
         async with self._pool.acquire() as con:
             rows = await con.fetch(
                 f"SELECT {self._SIGNAL_COLS} FROM strategy_signals s "
                 "LEFT JOIN signal_outcomes o ON o.signal_id = s.id "
-                "WHERE o.id IS NULL AND s.direction IS NOT NULL "
-                "AND s.entry_price IS NOT NULL AND s.stop_price IS NOT NULL "
-                "AND s.target_price IS NOT NULL "
+                f"WHERE o.id IS NULL AND {self._LABELLABLE} "
                 "ORDER BY s.bar_open, s.id LIMIT $1", limit)
         return [dict(r) for r in rows]
 
@@ -1422,23 +1467,50 @@ class PostgresRepository(Repository):
                 """INSERT INTO signal_outcomes (signal_id, idempotency_key, symbol,
                        side, entry_time, entry_price, stop_price, r_net, win,
                        exit_reason, exit_time, exit_price, mfe_r, mae_r,
-                       bars_to_mfe, bars_held, fav, adv, detail)
+                       bars_to_mfe, bars_held, fav, adv, detail, takeable)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                           $16,$17,$18,$19)
+                           $16,$17,$18,$19,$20)
                    ON CONFLICT DO NOTHING RETURNING id""",
                 r.signal_id, r.idempotency_key, r.symbol, r.side, utc(r.entry_time),
                 r.entry_price, r.stop_price, r.r_net, r.win, r.exit_reason,
                 _ts(r.exit_time), r.exit_price, r.mfe_r, r.mae_r, r.bars_to_mfe,
-                r.bars_held, r.fav, r.adv, r.detail)
+                r.bars_held, r.fav, r.adv, r.detail, r.takeable)
         return out is not None
 
     async def labelled_signals(self) -> list[dict]:
         async with self._pool.acquire() as con:
             rows = await con.fetch(
-                f"SELECT {self._SIGNAL_COLS}, o.r_net, o.win, o.exit_reason "
+                f"SELECT {self._SIGNAL_COLS}, o.r_net, o.win, o.exit_reason, o.takeable "
                 "FROM signal_outcomes o JOIN strategy_signals s ON s.id = o.signal_id "
                 "ORDER BY s.bar_open, s.id")
         return [dict(r) for r in rows]
+
+    async def takeability_rows(self, lookback_seconds: int = 7 * 86400) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                "WITH firsts AS ("
+                "  SELECT s.symbol, min(s.bar_open) AS t FROM signal_outcomes o "
+                "  JOIN strategy_signals s ON s.id = o.signal_id "
+                "  WHERE o.takeable IS NULL GROUP BY s.symbol) "
+                "SELECT s.id, s.idempotency_key, s.symbol, "
+                "extract(epoch FROM s.bar_open)::bigint AS bar_open, "
+                "o.id IS NOT NULL AS labelled, o.r_net, "
+                "extract(epoch FROM o.exit_time)::bigint AS exit_time, o.takeable, "
+                "o.detail AS outcome_detail "
+                "FROM strategy_signals s JOIN firsts f ON f.symbol = s.symbol "
+                "LEFT JOIN signal_outcomes o ON o.signal_id = s.id "
+                f"WHERE {self._LABELLABLE} "
+                "AND s.bar_open >= f.t - make_interval(secs => $1) "
+                "ORDER BY s.symbol, s.bar_open, s.id", float(lookback_seconds))
+        return [dict(r) for r in rows]
+
+    async def record_signal_takeable(self, idempotency_key: str, takeable: bool) -> bool:
+        async with self._pool.acquire() as con:
+            out = await con.fetchval(
+                "UPDATE signal_outcomes SET takeable = $2 "
+                "WHERE idempotency_key = $1 AND takeable IS NULL RETURNING id",
+                idempotency_key, bool(takeable))
+        return out is not None
 
     async def record_model_grade(self, r: ModelGradeRecord) -> None:
         async with self._pool.acquire() as con:

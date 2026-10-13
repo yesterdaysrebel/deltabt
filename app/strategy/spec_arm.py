@@ -30,7 +30,8 @@ import pandas as pd
 from app.strategy.explanation import LONG, SHORT, Explanation, Outcome
 from deltabt import rulecore
 from deltabt.spec import StrategySpec
-from deltabt.strategy import resample_complete
+from deltabt.data.quality import tradable_mask
+from deltabt.strategy import resample_complete, resample_tradable
 
 
 def warmup_1m_bars(spec: StrategySpec) -> int:
@@ -144,6 +145,21 @@ def evaluate_spec(one_minute: pd.DataFrame, spec: StrategySpec, *,
                 exp.rejection_reason = f"{side} setup did not fire"
         return exp
 
+    if not _decision_bar_tradable(one_minute, spec.primary_minutes, exp.bar_open):
+        # THE BACKTEST REFUSES THIS ENTRY TOO (portfolio/engine skip a bar
+        # whose `tradable` is False). A no-trade minute is a flat synthetic
+        # bar since 2026-10-13 (app/market_data/candle_builder.py); it may
+        # shape the indicators but nobody could have filled an order on it,
+        # and a primary bar holding one is untradable, as is a halt's reopen
+        # bar -- deltabt.data.quality.tradable_mask, projected by
+        # resample_tradable, exactly as the backtester does.
+        exp.outcome = Outcome.SUPPRESSED
+        exp.rejection_reason = (
+            "the decision bar contains a no-trade (flat, zero-volume) minute "
+            "or a halt reopen; untradable, as in the backtest")
+        exp.detail["untradable_bar"] = True
+        return exp
+
     side = LONG if fired_long else SHORT
     entry = float(sig.close[i])
     stop = float(sig.stop_long[i] if fired_long else sig.stop_short[i])
@@ -169,6 +185,22 @@ def _complete(one_minute: pd.DataFrame, minutes: int) -> pd.DataFrame:
     identical by construction rather than by coincidence.
     """
     return resample_complete(one_minute, minutes)
+
+
+def _decision_bar_tradable(one_minute: pd.DataFrame, minutes: int,
+                           bar_open: int) -> bool:
+    """The backtester's tradability of the primary bar opening at ``bar_open``.
+
+    ``tradable_mask`` over the 1m history, projected onto the bar with
+    ``resample_tradable`` (every constituent minute must be tradable) -- the
+    pair ``deltabt.harness._resampled`` uses.
+    """
+    mask = tradable_mask(one_minute)
+    if minutes <= 1:
+        hit = np.flatnonzero(one_minute["time"].to_numpy("int64") == bar_open)
+        return bool(mask[hit[-1]]) if hit.size else False
+    return bool(resample_tradable(one_minute, mask, minutes,
+                                  times=np.array([bar_open], dtype="int64"))[0])
 
 
 def _snapshot(ti, i: int) -> dict:

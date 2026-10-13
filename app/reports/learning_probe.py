@@ -14,9 +14,10 @@ import json as _json
 
 
 async def collect_learning(con, now=None):
-    """Signals of the previous UTC day by what happened to them, labels so far,
-    and the latest weekly grade. Never raises: a missing table (a database
-    from before 2026-10-13) or any error is reported in "error"."""
+    """Signals of the previous UTC day by what happened to them (and how many
+    were takeable), labels so far, and the latest weekly grade. Never raises:
+    a missing table or column (a database from before 2026-10-13) or any error
+    is reported in "error"."""
     now = now or _dt.datetime.now(_dt.timezone.utc)
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start = today - _dt.timedelta(days=1)
@@ -33,13 +34,28 @@ async def collect_learning(con, now=None):
         out["signals"] = {r["k"]: int(r["n"]) for r in rows}
         out["no_readings"] = sum(int(r["no_readings"]) for r in rows)
         out["partial_readings"] = sum(int(r["partial"]) for r in rows)
+        # TAKEABLE: what the signal lab would have had as a row (no earlier
+        # takeable signal on the coin still open); NULL until decided.
+        tk = await con.fetchrow(
+            "SELECT count(*) FILTER (WHERE o.takeable) AS takeable, "
+            "count(*) FILTER (WHERE o.takeable IS NULL) AS undecided "
+            "FROM strategy_signals s LEFT JOIN signal_outcomes o ON o.signal_id = s.id "
+            "WHERE s.direction IS NOT NULL AND s.bar_open >= $1 AND s.bar_open < $2",
+            start, today)
+        out["takeable"] = int(tk["takeable"])
+        out["takeable_undecided"] = int(tk["undecided"])
         lab = await con.fetchrow(
             "SELECT count(*) FILTER (WHERE r_net IS NOT NULL) AS n, "
             "count(*) FILTER (WHERE r_net IS NULL) AS unlabellable, "
-            "avg(r_net) AS mean_r FROM signal_outcomes")
+            "avg(r_net) AS mean_r, "
+            "count(*) FILTER (WHERE takeable AND r_net IS NOT NULL) AS n_takeable, "
+            "avg(r_net) FILTER (WHERE takeable) AS takeable_mean_r FROM signal_outcomes")
         out["labelled"] = int(lab["n"])
         out["unlabellable"] = int(lab["unlabellable"])
         out["mean_r"] = None if lab["mean_r"] is None else round(float(lab["mean_r"]), 3)
+        out["labelled_takeable"] = int(lab["n_takeable"])
+        out["takeable_mean_r"] = (None if lab["takeable_mean_r"] is None
+                                  else round(float(lab["takeable_mean_r"]), 3))
         out["waiting"] = int(await con.fetchval(
             "SELECT count(*) FROM strategy_signals s LEFT JOIN signal_outcomes o "
             "ON o.signal_id = s.id WHERE o.id IS NULL AND s.direction IS NOT NULL "

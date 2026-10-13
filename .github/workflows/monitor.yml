@@ -107,6 +107,7 @@ jobs:
             strategy_hash: "fbbd2ab96ddcd2a6f8775437c38f4b344e622756dad8620dd3dadb876d5ea3be"
             log_group: /deltabt/paper/bot/bot
             report: brief
+            unbound: true
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits
@@ -162,6 +163,7 @@ jobs:
             --region "${{ vars.AWS_REGION || 'ap-south-1' }}" \
             --facts-json facts.json \
             --expect-db-snapshots \
+            ${{ matrix.unbound && '--unbound' || '' }} \
             > report.md
           echo "exitcode=$?" >> "$GITHUB_OUTPUT"
           cat report.md >> "$GITHUB_STEP_SUMMARY"

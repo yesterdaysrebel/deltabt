@@ -108,7 +108,8 @@ def test_the_report_is_the_attention_list_then_the_journal_and_nothing_else():
 LEARNING = {"day": "2026-10-03", "signals": {"taken": 2, "daily_cap": 9, "open_position": 3,
                                               "coin_pause": 1},
             "no_readings": 0, "labelled": 230, "unlabellable": 1, "mean_r": -0.071,
-            "waiting": 18,
+            "waiting": 18, "takeable": 4, "takeable_undecided": 3,
+            "labelled_takeable": 41, "takeable_mean_r": -0.052,
             "grade": {"week_start": "2026-09-28", "n_test": 120.0, "auc": 0.523,
                       "top_mean_r": -0.05, "all_mean_r": -0.07, "random_p": 0.41,
                       "top_k": 36.0}}
@@ -124,10 +125,11 @@ def test_the_learning_section_is_short_and_plain():
     i = tail.index("## Learning")
     body = tail[i + 1:]
     assert 3 <= len(body) <= 5, body
-    assert body[0] == ("- Signals yesterday (2026-10-03, UTC day): 15 — 2 taken, 13 skipped "
+    assert body[0] == ("- Signals yesterday (2026-10-03, UTC day): recorded 15 (takeable 4, "
+                       "3 not yet known; taken 2); 13 skipped "
                        "(daily cap 9, already in a trade 3, coin paused after a loss 1).")
     assert body[1] == ("- Labelled so far: 230 signals, averaging -0.07R each as if all were "
-                       "taken; 18 waiting for their outcome.")
+                       "taken (41 takeable: -0.05R each); 18 waiting for their outcome.")
     assert "AUC 0.52" in body[2] and "top 36 averaged -0.05R vs -0.07R for all 120" in body[2]
     assert "41% of the time" in body[2] and "never filters trades" in body[2]
 
@@ -142,7 +144,12 @@ def test_without_learning_figures_it_says_so_and_raises_no_alarm():
     assert not problems and "Figures unavailable" in text
     db["learning"] = {"day": "2026-10-03", "signals": {}, "labelled": 0, "waiting": 0}
     text, _f, _p = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
-    assert "- Signals yesterday (2026-10-03, UTC day): 0 — 0 taken." in text
+    assert "- Signals yesterday (2026-10-03, UTC day): recorded 0 (taken 0)." in text
+    db["learning"] = {"day": "2026-10-03", "signals": {"taken": 1, "open_position": 32},
+                      "takeable": 2, "takeable_undecided": 0, "labelled": 0, "waiting": 0}
+    text, _f, _p = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert ("- Signals yesterday (2026-10-03, UTC day): recorded 33 (takeable 2; taken 1); "
+            "32 skipped (already in a trade 32).") in text
     assert "- No weekly grade yet." in text
 
 
@@ -283,24 +290,36 @@ def test_problems_lead_the_report():
     assert "restarted 2 times" in joined and "3 errors" in joined
 
 
-def test_the_thin_symbol_gap_check_alone_does_not_raise_the_alarm():
+def test_a_real_gap_now_raises_the_alarm():
+    """2026-10-13: a no-trade minute is a flat bar and no longer a gap, so a
+    gap that remains is real data loss and goes on the attention list."""
     sec, db = a_probe()
     sec["HEALTHZ"] = json.dumps({
         "status": "unhealthy", "ready": True, "ws_connected": True,
         "checks": [{"name": "no_recent_gaps", "ok": False, "detail": "4 gap(s)"},
                    {"name": "candles_fresh", "ok": True}]})
     _, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
-    assert not problems and facts["verdict"] == "clear"
+    assert problems == ["the bot is not healthy (no_recent_gaps)"]
 
 
-def test_a_real_health_failure_still_raises_it_next_to_gaps():
+def test_every_failing_check_is_named():
     sec, db = a_probe()
     sec["HEALTHZ"] = json.dumps({
         "status": "unhealthy", "ready": True, "ws_connected": False,
         "checks": [{"name": "no_recent_gaps", "ok": False},
                    {"name": "websocket_fresh", "ok": False}]})
     _, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
-    assert problems == ["the bot is not healthy (websocket_fresh)"]
+    assert problems == ["the bot is not healthy (no_recent_gaps, websocket_fresh)"]
+
+
+def test_an_unbound_stack_is_not_flagged_for_having_no_experiment():
+    sec, db = a_probe()
+    db = {**db, "experiments": []}
+    _, _, bound = br.build(sec, db, NOW, stack="bot", errors_24h=0, probe_problems=[])
+    _, _, unbound = br.build(sec, db, NOW, stack="bot", errors_24h=0, probe_problems=[],
+                             expect_experiment=False)
+    assert "no experiment is RUNNING on this host" in bound
+    assert "no experiment is RUNNING on this host" not in unbound
 
 
 def test_a_missing_shadow_record_is_flagged_by_the_self_check():

@@ -1,6 +1,6 @@
 """Label recorded signals and grade the signal model (owner, 2026-10-13).
 
-    python -m live label-signals [--limit 500]
+    python -m live label-signals [--limit 2000]
     python -m live grade-model   [--history out/signal_lab/signals.parquet] [--week 2026-10-19]
 
 LABEL. Every signal in strategy_signals with a direction, entry, stop and
@@ -13,8 +13,22 @@ labelled once it has resolved (stop, target or 72h); younger ones are left
 for the next run, so the command is idempotent and resumable. Write-once:
 an existing outcome is never changed.
 
+TAKEABLE. The bot records EVERY signal edge, and on the live top-gainer
+universe the %R edge re-fires about twice an hour per coin; the lab's 5,273
+history rows are only the TAKEABLE ones (each coin run on its own through
+run_portfolio, one position per coin, no daily cap or pause): about two a day
+per coin. So after labelling, `mark_takeable` walks each coin's signals in
+time order and stores `signal_outcomes.takeable`: a signal is takeable iff
+the engine accepted its entry (it has an R), its 5m bar is tradable on the
+REST candles (the lab's tradable mask), and no earlier TAKEABLE signal on the
+coin is still open or inside the engine's cooldown (`cooldown_bars` 5m bars
+after the exit bar; exits are processed before entries on the same bar) --
+exactly run_portfolio's per-coin gating, reproduced from each label's exit
+(tests/live_exec/test_takeable.py checks it against the lab's own run on the
+golden market). A signal whose predecessor is not yet labelled waits.
+
 GRADE. Pools the lab's historical signals (if the parquet is present) with
-every labelled live signal, trains the lab's fixed model on everything that
+every labelled TAKEABLE live signal, trains the lab's fixed model on everything that
 ENTERED before the graded week minus a 72h purge (a signal's label can take
 72h to resolve), and scores the most recent complete UTC week (Monday to
 Monday): AUC, the top 30% by score vs all, and how often random 30% subsets do
@@ -69,6 +83,16 @@ def _frame(rows) -> pd.DataFrame:
     return df[cols].sort_values("time", ignore_index=True)
 
 
+def _recorded_atr(row: dict) -> float:
+    ind = row.get("indicators") or {}
+    v = (ind.get("primary") or {}).get("atr") if isinstance(ind, dict) else None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return float("nan")
+    return v if np.isfinite(v) else float("nan")
+
+
 def _spec(minutes: int = 5):
     from deltabt.catalog import build_spec
     return build_spec(FAMILY, minutes, 1)
@@ -117,6 +141,10 @@ def simulate(row: dict, ltp: pd.DataFrame, mark: pd.DataFrame, funding: pd.DataF
     i0 = int(i0[0])
     P = P.iloc[i0:].reset_index(drop=True)
     tr = np.asarray(tr)[i0:].copy() if tr is not None else np.ones(len(P), bool)
+    # The lab's engine skips an entry on a bar the REST candles flag as not
+    # tradable; the label below does not (the bot saw the bar trade), but
+    # takeability must, so the flag is kept.
+    rest_tradable = bool(tr[0])
     # THE RECORDED DECISION IS THE ENTRY. The bot saw this bar close at the
     # recorded price on its own (websocket) bars; the engine enters at the
     # bar's close, so the bar is pinned to it, and the entry bar counts as
@@ -129,12 +157,16 @@ def simulate(row: dict, ltp: pd.DataFrame, mark: pd.DataFrame, funding: pd.DataF
     n = len(P)
     z = np.zeros(n, bool)
     nan = np.full(n, np.nan)
+    # The engine's stop floor is max(0.5 x ATR, 10 ticks); the lab had the
+    # primary ATR, so it is passed when the bot recorded it.
+    atr = nan.copy()
+    atr[0] = _recorded_atr(row)
     long_e, short_e = z.copy(), z.copy()
     (long_e if side > 0 else short_e)[0] = True
     stop_l, stop_s = nan.copy(), nan.copy()
     (stop_l if side > 0 else stop_s)[0] = stop
     sig = Signals(long_entry=long_e, short_entry=short_e, stop_long=stop_l, stop_short=stop_s,
-                  supertrend=nan, direction=nan, atr=nan, wpr=nan, adx_1m=nan, adx_5m=nan,
+                  supertrend=nan, direction=nan, atr=atr, wpr=nan, adx_1m=nan, adx_5m=nan,
                   bull_1m=z, bear_1m=z, long_base=long_e, short_base=short_e, warmup=0)
     book = Book(symbol=row["symbol"], bars=P, signals=sig, costs=costs, mark=mk,
                 tradable=tr, fill_ltp=ltp, fill_mark=mark if mark is not None and not mark.empty else None)
@@ -150,6 +182,15 @@ def simulate(row: dict, ltp: pd.DataFrame, mark: pd.DataFrame, funding: pd.DataF
         return terminal("no exit within the data") if age > GIVE_UP else "not resolved yet"
     t = res.trades[0]
     rpu = abs(t.entry_price - t.stop_price)
+    # WHEN THE COIN IS FREE AGAIN for the next takeable signal: run_portfolio
+    # refuses an entry while (i - exit index) < cooldown_bars, counted in the
+    # same resampled bars, so it is the time of bar exit+cooldown. Data that
+    # does not reach that far falls back to the nominal bar spacing.
+    i_exit = int(t.bars_held)
+    cd = int(params.cooldown_bars or 0)
+    times = P["time"].to_numpy("int64")
+    exact = i_exit + cd < n
+    free_from = int(times[i_exit + cd]) if exact else int(t.exit_time) + cd * minutes * 60
     path = SF.post_entry_path(P["time"].to_numpy("int64"), P["high"].to_numpy(float),
                               P["low"].to_numpy(float), 0, int(t.exit_time), side,
                               float(t.entry_price), rpu)
@@ -164,7 +205,9 @@ def simulate(row: dict, ltp: pd.DataFrame, mark: pd.DataFrame, funding: pd.DataF
                 "target_r": params.reward_risk, "max_hold_bars": params.max_hold_bars,
                 "fees": float(t.fees), "funding": float(t.funding),
                 "contracts": int(t.contracts), "rest_close_of_signal_bar": rest_close,
-                "funding_rows": int(len(d["funding"]))})
+                "funding_rows": int(len(d["funding"])),
+                "rest_tradable": rest_tradable, "cooldown_bars": cd,
+                "free_from": free_from, "free_from_exact": bool(exact)})
 
 
 async def label_signals(repo, client, costs_for, *, now: int | None = None,
@@ -175,6 +218,16 @@ async def label_signals(repo, client, costs_for, *, now: int | None = None,
     now = int(time.time()) if now is None else int(now)
     rows = await repo.signals_to_label(limit=limit)
     out = {"candidates": len(rows), "labelled": 0, "unlabellable": 0, "waiting": 0, "errors": 0}
+    # ONE FETCH PER COIN PER RUN (2026-10-13). Live records ~2 signals per coin
+    # per hour, so fetching 72h of 1m LTP/MARK/FUNDING per signal repeated the
+    # same download dozens of times. The coin's window covers all its rows;
+    # each row then gets exactly the slice a per-signal fetch would return.
+    windows: dict[str, list[int]] = {}
+    for row in rows:
+        s = int(row["bar_open"])
+        w = windows.setdefault(row["symbol"], [s, s])
+        w[0], w[1] = min(w[0], s), max(w[1], s)
+    cache: dict[str, tuple] = {}
     for row in rows:
         minutes = int(str(row.get("primary_timeframe") or "5m").rstrip("m") or 5)
         start = int(row["bar_open"])
@@ -183,7 +236,12 @@ async def label_signals(repo, client, costs_for, *, now: int | None = None,
             continue
         end = min(now - 60, start + LOOKAHEAD)
         try:
-            ltp, mark, fund = await asyncio.to_thread(_fetch, client, row["symbol"], start, end)
+            sym = row["symbol"]
+            if sym not in cache:
+                lo, hi = windows[sym]
+                cache[sym] = await asyncio.to_thread(
+                    _fetch, client, sym, lo, min(now - 60, hi + LOOKAHEAD))
+            ltp, mark, fund = _slice(cache[sym], start, end)
             costs = costs_for(row["symbol"])
             got = simulate(row, ltp, mark, fund, costs, now=now, minutes=minutes)
         except Exception as exc:                            # noqa: BLE001
@@ -195,7 +253,81 @@ async def label_signals(repo, client, costs_for, *, now: int | None = None,
             continue
         if await repo.record_signal_outcome(got):
             out["unlabellable" if got.r_net is None else "labelled"] += 1
+    out.update(await mark_takeable(repo))
     return out
+
+
+# =====================================================================
+# TAKEABLE
+# =====================================================================
+
+def decide_takeable(rows: list[dict]) -> tuple[dict[str, bool], int]:
+    """Takeability for ONE coin's labellable signals in (bar_open, id) order.
+
+    Each row: idempotency_key, bar_open, labelled, r_net, takeable (None =
+    undecided), exit_time and outcome_detail (free_from, rest_tradable,
+    cooldown_bars). Walks forward keeping the bar_open from which the coin is
+    free again; a decided row is taken as stored. Stops at the first signal
+    with no outcome yet -- every later answer depends on it. Returns
+    ({key: takeable} for rows newly decided, undecided rows left waiting).
+    """
+    free_from = None
+    got: dict[str, bool] = {}
+    for k, r in enumerate(rows):
+        if not r["labelled"]:
+            return got, sum(1 for x in rows[k:] if x["labelled"] and x["takeable"] is None)
+        took = r["takeable"]
+        if took is None:
+            det = r.get("outcome_detail") or {}
+            took = bool(r["r_net"] is not None
+                        and det.get("rest_tradable", True)
+                        and (free_from is None or int(r["bar_open"]) >= free_from))
+            got[r["idempotency_key"]] = took
+        if took:
+            free_from = _free_from(r)
+    return got, 0
+
+
+def _free_from(r: dict) -> int:
+    det = r.get("outcome_detail") or {}
+    if det.get("free_from") is not None:
+        return int(det["free_from"])
+    # Labelled before `free_from` was stored: the exit bar plus the engine's
+    # cooldown at the nominal 5m spacing.
+    from deltabt.config import StrategyParams
+    cd = int(det.get("cooldown_bars", StrategyParams().cooldown_bars) or 0)
+    return int(r["exit_time"]) + cd * 300
+
+
+async def mark_takeable(repo) -> dict:
+    """Decide `takeable` for every labelled signal whose predecessors on its
+    coin are all labelled. Idempotent: a decided row is never changed."""
+    rows = await repo.takeability_rows()
+    out = {"takeable": 0, "not_takeable": 0, "takeable_waiting": 0}
+    by_coin: dict[str, list[dict]] = {}
+    for r in rows:
+        by_coin.setdefault(r["symbol"], []).append(r)
+    for sym in sorted(by_coin):
+        got, waiting = decide_takeable(by_coin[sym])
+        out["takeable_waiting"] += waiting
+        for key, took in got.items():
+            if await repo.record_signal_takeable(key, took):
+                out["takeable" if took else "not_takeable"] += 1
+    return out
+
+
+def _slice(frames, start, end):
+    """What _fetch(client, symbol, start, end) would have returned, cut from a
+    wider fetch: candles are inclusive [start, end]; funding from start-3600."""
+    ltp, mark, fund = frames
+
+    def cut(df, lo):
+        if df is None or df.empty or "time" not in df:
+            return df
+        t = df["time"].to_numpy("int64")
+        return df[(t >= lo) & (t <= end)].reset_index(drop=True)
+
+    return cut(ltp, start), cut(mark, start), cut(fund, start - 3600)
 
 
 def _fetch(client, symbol, start, end):
@@ -218,10 +350,14 @@ def _fetch(client, symbol, start, end):
 # =====================================================================
 
 def live_frame(rows: list[dict]) -> pd.DataFrame:
-    """Labelled live signals in the lab's signals.parquet shape."""
+    """Labelled TAKEABLE live signals in the lab's signals.parquet shape.
+
+    The history holds only takeable signals; a live signal skipped because an
+    earlier one on its coin was still open is the same move counted again, so
+    it is left out (as is one not yet decided)."""
     recs = []
     for r in rows:
-        if r.get("r_net") is None:
+        if r.get("r_net") is None or r.get("takeable") is not True:
             continue
         lab = ((r.get("features") or {}).get("lab")) or {}
         rec = {"symbol": r["symbol"], "entry_time": int(r["bar_open"]),
@@ -303,6 +439,11 @@ async def grade_model(repo, *, history_path=None, now: int | None = None,
     ws = last_complete_week(now) if week_start is None else int(week_start)
     rows = await repo.labelled_signals()
     rec = grade(load_history(history_path), live_frame(rows), ws)
+    lab = [r for r in rows if r.get("r_net") is not None]
+    rec.detail.update({
+        "live_labelled": len(lab),
+        "live_not_takeable": sum(1 for r in lab if r.get("takeable") is False),
+        "live_undecided": sum(1 for r in lab if r.get("takeable") is None)})
     await repo.record_model_grade(rec)
     return rec
 
@@ -321,8 +462,9 @@ def main(argv: list[str]) -> int:
     from app.persistence.repository import PostgresRepository
     ap = argparse.ArgumentParser(prog="python -m live")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    lab = sub.add_parser("label-signals", help="label resolved signals as if taken")
-    lab.add_argument("--limit", type=int, default=500)
+    lab = sub.add_parser("label-signals", help="label resolved signals as if taken, "
+                                               "then mark which were takeable")
+    lab.add_argument("--limit", type=int, default=2000)
     gr = sub.add_parser("grade-model", help="grade the signal model on the last full week")
     gr.add_argument("--history", default=None, help=f"signals.parquet (default ${ENV_HISTORY} "
                                                     f"or out/signal_lab/signals.parquet)")
@@ -345,7 +487,9 @@ def main(argv: list[str]) -> int:
                     repo, client, lambda s: SymbolCosts.from_spec(cat.get(s)), limit=args.limit)
                 print(f"Labelled {got['labelled']} signals ({got['unlabellable']} could not be "
                       f"simulated); {got['waiting']} still running or too new; "
-                      f"{got['errors']} errors; {got['candidates']} looked at.")
+                      f"{got['errors']} errors; {got['candidates']} looked at. "
+                      f"Takeable: {got['takeable']} yes, {got['not_takeable']} no, "
+                      f"{got['takeable_waiting']} waiting on an earlier signal.")
                 return 1 if got["errors"] and not got["labelled"] else 0
             ws = (int(pd.Timestamp(args.week, tz="UTC").value // 10**9)
                   if args.week else None)

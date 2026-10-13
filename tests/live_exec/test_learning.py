@@ -151,6 +151,7 @@ def _synthetic(n, t0, t1, seed, informative=True):
 def _live_rows(df):
     return [{"symbol": r.symbol, "bar_open": int(r.entry_time), "direction": int(r.side),
              "r_net": float(r.R), "win": bool(r.win), "exit_reason": r.exit_reason,
+             "takeable": True,
              "features": {"lab": {k: float(getattr(r, k)) for k in SF.FEATURES}}}
             for r in df.itertuples()]
 
@@ -200,3 +201,27 @@ def test_cli_dispatch_reaches_the_learning_commands():
                               capture_output=True, text=True, timeout=60,
                               env={"PATH": "/usr/bin:/bin", "PYTHONPATH": str(root), "HOME": "/tmp"})
         assert proc.returncode == 0 and cmd in proc.stdout, proc.stderr
+
+
+def test_one_fetch_per_coin_gives_the_same_labels_as_one_per_signal(monkeypatch):
+    """2026-10-13: live records ~2 signals per coin per hour, so the labeller
+    fetches each coin's window once per run and slices it. The labels must be
+    exactly what a fetch per signal gives."""
+    sigs = _lab_signals()[:12]
+
+    def labels(per_signal):
+        repo = InMemoryRepository()
+        for bo, side, entry, stop, _ in sigs:
+            _record(repo, bo, side, entry, stop)
+        fake = FakeDelta()
+        if per_signal:
+            monkeypatch.setattr(learning, "_slice", lambda frames, s, e: learning._fetch(fake, SYM, s, e))
+        asyncio.run(learning.label_signals(repo, fake, lambda s: COSTS, now=FAR))
+        monkeypatch.undo()
+        rows = sorted(asyncio.run(repo.labelled_signals()), key=lambda r: r["bar_open"])
+        return [(r["bar_open"], r["r_net"], r["exit_reason"]) for r in rows], fake.calls
+
+    cached, cached_calls = labels(per_signal=False)
+    single, _ = labels(per_signal=True)
+    assert cached == single and len(cached) == len(sigs)
+    assert len([c for c in cached_calls if c[0] == SYM]) == 1   # one LTP window for the coin

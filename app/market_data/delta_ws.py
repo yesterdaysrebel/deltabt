@@ -67,6 +67,10 @@ class FeedStats:
         self.last_message_at: float = 0.0
         self.connected: bool = False
         self.connected_since: float | None = None
+        #: When this process FIRST connected. Minutes before it were never
+        #: watched by anyone (the start-up seam); minutes after it that the
+        #: socket missed mean it went down. Gap repair treats them differently.
+        self.first_connected_at: float | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -77,6 +81,7 @@ class FeedStats:
             "last_message_at": self.last_message_at,
             "connected": self.connected,
             "connected_since": self.connected_since,
+            "first_connected_at": self.first_connected_at,
         }
 
     @property
@@ -145,6 +150,8 @@ class DeltaMarketFeed:
                 async with self._connect() as ws:
                     self.stats.connected = True
                     self.stats.connected_since = time.time()
+                    if self.stats.first_connected_at is None:
+                        self.stats.first_connected_at = self.stats.connected_since
                     attempt = 0
                     await ws.send(json.dumps(self.subscribe_payload()))
                     log.info("subscribed", extra={"symbols": self.symbols,

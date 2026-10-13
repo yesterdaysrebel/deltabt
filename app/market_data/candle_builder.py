@@ -23,6 +23,23 @@ same thing, and two implementations are one more than can be kept in agreement.
 **Nothing is silently repaired.** Every rejection, gap and drop is counted and
 logged. A 5m bucket missing any of its five minutes is emitted as incomplete
 and the strategy declines to evaluate on it.
+
+**A minute with no trades is a FLAT bar, not a hole** (2026-10-13). The socket
+sends nothing for a minute in which nobody traded, so the stream skips it.
+Delta's own candles, the archive and every backtest carry that minute as a flat
+bar instead -- ``open=high=low=close=`` previous close, ``volume=0`` -- and
+``deltabt.data.quality.synthetic_mask`` / ``tradable_mask`` mark it synthetic
+and NOT tradable, so it shapes indicator windows but can never be an entry.
+Observed on the watch-only bot trading the day's top-10 gainers: /healthz stuck
+red on "7 gap(s) in the recent window", every one a no-trade minute
+("gap repair fetched 0 of 1 missing minutes" then ``candles GAP_PARTIAL``),
+and 5m buckets missing two such minutes were dropped where the backtest kept
+them. Such a minute is still never invented here: the bot inserts it with
+:meth:`SymbolCandleBuilder.insert_quiet` only after REST says the minute had
+no trade AND the socket was connected for all of it (the rule is in
+``TradingBot._repair_gaps``). It is counted in ``stats.quiet_minutes``, tagged
+``source="quiet"``, and stops counting as a gap. Anything else -- the socket
+was down, or REST holds trades the socket never delivered -- stays a gap.
 """
 
 from __future__ import annotations
@@ -40,6 +57,22 @@ log = logging.getLogger(__name__)
 MINUTE = 60
 FIVE_MIN = 300
 
+#: ``Candle.source`` of a flat bar standing in for a minute with no trades.
+QUIET_SOURCE = "quiet"
+
+
+def is_flat_no_trade(c) -> bool:
+    """One-bar ``deltabt.data.quality.synthetic_mask``: flat and no volume."""
+    return (c.high == c.low and c.open == c.close and c.open == c.high
+            and not (c.volume > 0))
+
+
+def quiet_bar(symbol: str, start: int, previous_close: float) -> Candle:
+    """The bar Delta's archive holds for a minute nobody traded in."""
+    p = float(previous_close)
+    return Candle(symbol=symbol, start=start, open=p, high=p, low=p, close=p,
+                  volume=0.0, source=QUIET_SOURCE)
+
 
 @dataclass
 class BuilderStats:
@@ -54,6 +87,8 @@ class BuilderStats:
     non_monotonic: int = 0
     incomplete_5m: int = 0
     backfilled: int = 0
+    #: No-trade minutes inserted as flat bars. NOT gaps: see the module doc.
+    quiet_minutes: int = 0
 
     def as_dict(self) -> dict:
         return dict(self.__dict__)
@@ -159,6 +194,13 @@ class SymbolCandleBuilder:
             return []
 
         if self._forming is None:
+            # The previous bar was closed by the clock fallback, so nothing
+            # is forming. Note any hole NOW, on the first update past it, as
+            # the message-driven path below does: waiting until this bar
+            # closes would classify the skipped minutes a minute late and
+            # behind a bar that has already been evaluated.
+            if self.bars:
+                self._note_gap(self.bars[-1].start + MINUTE, upd.start)
             self._forming = upd
             return []
 
@@ -222,6 +264,43 @@ class SymbolCandleBuilder:
             )
         return len(merged)
 
+    def insert_quiet(self, bar: Candle) -> bool:
+        """Insert a flat no-trade bar. False if that minute is already held.
+
+        The caller decides that the minute had no trade; this only places
+        the bar, in order, and counts it. Normally it is newer than every
+        held bar and is simply appended.
+        """
+        if bar.symbol != self.symbol:
+            raise ValueError(f"{bar.symbol} bar given to {self.symbol} builder")
+        if self.bars and bar.start <= self.bars[-1].start:
+            if any(b.start == bar.start for b in self.bars):
+                return False
+            allbars = sorted(list(self.bars) + [bar], key=lambda b: b.start)
+            self.bars = deque(allbars[-self.max_bars:], maxlen=self.max_bars)
+        else:
+            self.bars.append(bar)
+        self._last_closed_start = max(self._last_closed_start or 0, bar.start)
+        self.stats.quiet_minutes += 1
+        log.debug("quiet minute inserted as a flat bar",
+                  extra={"symbol": self.symbol, "start": bar.start,
+                         "close": bar.close})
+        return True
+
+    def settle_gap(self, gap: GapEvent, *, quiet: int, cleared: bool) -> None:
+        """Record what a gap turned out to be once REST has been asked.
+
+        ``quiet`` of its minutes had no trade: they were never missing, so
+        they leave ``missing_minutes`` (and a gap made ONLY of them leaves
+        ``gaps``). ``cleared`` drops it from the list /healthz counts.
+        """
+        quiet = max(0, min(quiet, gap.missing))
+        self.stats.missing_minutes -= quiet
+        if quiet == gap.missing:
+            self.stats.gaps -= 1
+        if cleared and gap in self.gaps:
+            self.gaps.remove(gap)
+
     # -- internals ---------------------------------------------------------
 
     def _note_gap(self, expected: int, actual: int) -> None:
@@ -241,9 +320,12 @@ class SymbolCandleBuilder:
         self.gaps.append(ev)
         self.stats.gaps += 1
         self.stats.missing_minutes += ev.missing
-        log.warning("1m gap detected",
-                    extra={"symbol": self.symbol, "expected": expected,
-                           "actual": actual, "missing": ev.missing})
+        # INFO, not WARNING: most holes on a thin coin are minutes with no
+        # trade. The bot classifies each one against REST and logs
+        # "1m gap detected" at WARNING only for the ones that are real.
+        log.info("1m hole noted; classifying",
+                 extra={"symbol": self.symbol, "expected": expected,
+                        "actual": actual, "missing": ev.missing})
 
     def _close_forming(self) -> list[Candle]:
         f = self._forming
