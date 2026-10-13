@@ -22,10 +22,12 @@ from app.persistence.models import (
     DuplicateRecord,
     FillRecord,
     InstanceRecord,
+    ModelGradeRecord,
     OrderRecord,
     PositionRecord,
     RiskEventRecord,
     ShadowExitRecord,
+    SignalOutcomeRecord,
     SignalRecord,
     SystemEventRecord,
     utc,
@@ -201,6 +203,30 @@ class Repository(ABC):
     @abstractmethod
     async def recent_shadow_exits(self, limit: int = 200) -> list[dict]: ...
 
+    # -- learning (app/learning, live/learning.py) ------------------------
+    # NOTHING ON THE TRADING PATH READS THESE. The bot only WRITES features.
+    @abstractmethod
+    async def record_signal_features(self, idempotency_key: str, features: dict) -> None:
+        """Attach the readings to an already-recorded signal."""
+    @abstractmethod
+    async def signals_to_label(self, limit: int = 500) -> list[dict]:
+        """Signals with a direction, entry, stop and target, and no outcome yet,
+        oldest first: id, idempotency_key, symbol, bar_open (unix s),
+        primary_timeframe, direction, entry_price, stop_price, target_price,
+        outcome, rejection_reason, features."""
+    @abstractmethod
+    async def record_signal_outcome(self, rec: SignalOutcomeRecord) -> bool:
+        """Insert once per signal; False if it was already labelled."""
+    @abstractmethod
+    async def labelled_signals(self) -> list[dict]:
+        """Every labelled signal: the signal row (as signals_to_label) plus
+        r_net, win and exit_reason."""
+    @abstractmethod
+    async def record_model_grade(self, rec: ModelGradeRecord) -> None:
+        """One row per graded week; a re-grade of the same week replaces it."""
+    @abstractmethod
+    async def latest_model_grade(self) -> dict | None: ...
+
     # -- durable key/value -------------------------------------------------
     @abstractmethod
     async def get_state(self, key: str) -> dict | None: ...
@@ -242,6 +268,10 @@ class InMemoryRepository(Repository):
         s.setdefault("risk_events", [])
         s.setdefault("system_events", [])
         s.setdefault("kv", {})
+        s.setdefault("signal_ids", {})
+        s.setdefault("signal_features", {})
+        s.setdefault("signal_outcomes", {})
+        s.setdefault("model_grades", {})
         self._connected = False
         self.writable = True
 
@@ -286,6 +316,7 @@ class InMemoryRepository(Repository):
         if rec.idempotency_key in self._s["signals"]:
             return False
         self._s["signals"][rec.idempotency_key] = rec
+        self._s["signal_ids"][rec.idempotency_key] = len(self._s["signal_ids"]) + 1
         return True
 
     async def signal_exists(self, idempotency_key: str) -> bool:
@@ -526,6 +557,51 @@ class InMemoryRepository(Repository):
     async def recent_shadow_exits(self, limit: int = 200) -> list[dict]:
         return list(self._s["shadow_exits"].values())[-limit:][::-1]
 
+    # -- learning ----------------------------------------------------------
+
+    async def record_signal_features(self, idempotency_key: str, features: dict) -> None:
+        if idempotency_key in self._s["signals"]:
+            self._s["signal_features"][idempotency_key] = features
+
+    def _signal_row(self, key: str) -> dict:
+        r = self._s["signals"][key]
+        return {"id": self._s["signal_ids"][key], "idempotency_key": key,
+                "symbol": r.symbol, "bar_open": int(r.bar_open),
+                "primary_timeframe": r.primary_timeframe, "direction": r.direction,
+                "entry_price": r.entry_price, "stop_price": r.stop_price,
+                "target_price": r.target_price, "outcome": r.outcome,
+                "rejection_reason": r.rejection_reason,
+                "features": self._s["signal_features"].get(key)}
+
+    async def signals_to_label(self, limit: int = 500) -> list[dict]:
+        out = [self._signal_row(k) for k, r in self._s["signals"].items()
+               if r.direction is not None and r.entry_price is not None
+               and r.stop_price is not None and r.target_price is not None
+               and k not in self._s["signal_outcomes"]]
+        return sorted(out, key=lambda r: (r["bar_open"], r["id"]))[:limit]
+
+    async def record_signal_outcome(self, rec: SignalOutcomeRecord) -> bool:
+        if rec.idempotency_key not in self._s["signals"]:
+            # the table's foreign key
+            raise KeyError(f"no signal {rec.idempotency_key}")
+        if rec.idempotency_key in self._s["signal_outcomes"]:
+            return False
+        self._s["signal_outcomes"][rec.idempotency_key] = rec
+        return True
+
+    async def labelled_signals(self) -> list[dict]:
+        out = [{**self._signal_row(k), "r_net": o.r_net, "win": o.win,
+                "exit_reason": o.exit_reason}
+               for k, o in self._s["signal_outcomes"].items()]
+        return sorted(out, key=lambda r: (r["bar_open"], r["id"]))
+
+    async def record_model_grade(self, rec: ModelGradeRecord) -> None:
+        self._s["model_grades"][rec.week_start] = {**asdict(rec), "graded_at": wall_now()}
+
+    async def latest_model_grade(self) -> dict | None:
+        g = self._s["model_grades"]
+        return dict(g[max(g)]) if g else None
+
     async def get_state(self, key: str) -> dict | None:
         return self._s["kv"].get(key)
 
@@ -546,6 +622,16 @@ _SCHEMA_OBJECT = re.compile(
 def schema_objects(sql: str) -> tuple[str, ...]:
     """The tables and indexes a schema script creates, in order."""
     return tuple(_SCHEMA_OBJECT.findall(sql))
+
+
+_SCHEMA_COLUMN = re.compile(
+    r"^\s*ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+(\w+)",
+    re.IGNORECASE | re.MULTILINE)
+
+
+def schema_columns(sql: str) -> tuple[tuple[str, str], ...]:
+    """(table, column) for every ADD COLUMN IF NOT EXISTS in a schema script."""
+    return tuple(_SCHEMA_COLUMN.findall(sql))
 
 
 class PostgresRepository(Repository):
@@ -590,13 +676,25 @@ class PostgresRepository(Repository):
         from pathlib import Path
         sql = (Path(__file__).parent / "schema.sql").read_text()
         names = schema_objects(sql)
+        # COLUMNS ADDED TO EXISTING TABLES count too: with only the tables
+        # checked, an `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` would be
+        # skipped on every database that already had all of them.
+        cols = schema_columns(sql)
         async with self._pool.acquire() as con:
             present = await con.fetchval(
                 "SELECT count(*) FROM unnest($1::text[]) AS n "
                 "WHERE to_regclass(n) IS NOT NULL", list(names))
-            if names and present == len(names):
-                log.info("schema complete (%d objects); nothing to migrate",
-                         len(names))
+            have_cols = len(cols)
+            if cols:
+                have_cols = await con.fetchval(
+                    "SELECT count(*) FROM unnest($1::text[], $2::text[]) AS w(t, c) "
+                    "WHERE EXISTS (SELECT 1 FROM information_schema.columns ic "
+                    "WHERE ic.table_schema = current_schema() "
+                    "AND ic.table_name = w.t AND ic.column_name = w.c)",
+                    [t for t, _ in cols], [c for _, c in cols])
+            if names and present == len(names) and have_cols == len(cols):
+                log.info("schema complete (%d objects, %d added columns); "
+                         "nothing to migrate", len(names), len(cols))
                 return
             await con.execute(sql)
 
@@ -1288,6 +1386,79 @@ class PostgresRepository(Repository):
             rows = await con.fetch(
                 "SELECT * FROM shadow_exits ORDER BY recorded_at DESC LIMIT $1", limit)
         return [dict(r) for r in rows]
+
+    # -- learning ----------------------------------------------------------
+
+    async def record_signal_features(self, idempotency_key: str, features: dict) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                "UPDATE strategy_signals SET features = $2 WHERE idempotency_key = $1",
+                idempotency_key, features)
+
+    _SIGNAL_COLS = ("s.id, s.idempotency_key, s.symbol, "
+                    "extract(epoch FROM s.bar_open)::bigint AS bar_open, "
+                    "s.primary_timeframe, s.direction, s.entry_price::float8 AS entry_price, "
+                    "s.stop_price::float8 AS stop_price, s.target_price::float8 AS target_price, "
+                    "s.outcome, s.rejection_reason, s.features")
+
+    async def signals_to_label(self, limit: int = 500) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                f"SELECT {self._SIGNAL_COLS} FROM strategy_signals s "
+                "LEFT JOIN signal_outcomes o ON o.signal_id = s.id "
+                "WHERE o.id IS NULL AND s.direction IS NOT NULL "
+                "AND s.entry_price IS NOT NULL AND s.stop_price IS NOT NULL "
+                "AND s.target_price IS NOT NULL "
+                "ORDER BY s.bar_open, s.id LIMIT $1", limit)
+        return [dict(r) for r in rows]
+
+    async def record_signal_outcome(self, r: SignalOutcomeRecord) -> bool:
+        async with self._pool.acquire() as con:
+            out = await con.fetchval(
+                """INSERT INTO signal_outcomes (signal_id, idempotency_key, symbol,
+                       side, entry_time, entry_price, stop_price, r_net, win,
+                       exit_reason, exit_time, exit_price, mfe_r, mae_r,
+                       bars_to_mfe, bars_held, fav, adv, detail)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                           $16,$17,$18,$19)
+                   ON CONFLICT DO NOTHING RETURNING id""",
+                r.signal_id, r.idempotency_key, r.symbol, r.side, utc(r.entry_time),
+                r.entry_price, r.stop_price, r.r_net, r.win, r.exit_reason,
+                utc(r.exit_time), r.exit_price, r.mfe_r, r.mae_r, r.bars_to_mfe,
+                r.bars_held, r.fav, r.adv, r.detail)
+        return out is not None
+
+    async def labelled_signals(self) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch(
+                f"SELECT {self._SIGNAL_COLS}, o.r_net, o.win, o.exit_reason "
+                "FROM signal_outcomes o JOIN strategy_signals s ON s.id = o.signal_id "
+                "ORDER BY s.bar_open, s.id")
+        return [dict(r) for r in rows]
+
+    async def record_model_grade(self, r: ModelGradeRecord) -> None:
+        async with self._pool.acquire() as con:
+            await con.execute(
+                """INSERT INTO model_grades (week_start, week_end, n_train,
+                       n_train_live, n_test, auc, top_mean_r, all_mean_r,
+                       random_p, top_k, summary, detail)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                   ON CONFLICT (week_start) DO UPDATE SET
+                       week_end = EXCLUDED.week_end, n_train = EXCLUDED.n_train,
+                       n_train_live = EXCLUDED.n_train_live, n_test = EXCLUDED.n_test,
+                       auc = EXCLUDED.auc, top_mean_r = EXCLUDED.top_mean_r,
+                       all_mean_r = EXCLUDED.all_mean_r, random_p = EXCLUDED.random_p,
+                       top_k = EXCLUDED.top_k, summary = EXCLUDED.summary,
+                       detail = EXCLUDED.detail, graded_at = now()""",
+                utc(r.week_start), utc(r.week_end), r.n_train, r.n_train_live,
+                r.n_test, r.auc, r.top_mean_r, r.all_mean_r, r.random_p, r.top_k,
+                r.summary, r.detail)
+
+    async def latest_model_grade(self) -> dict | None:
+        async with self._pool.acquire() as con:
+            row = await con.fetchrow(
+                "SELECT * FROM model_grades ORDER BY week_start DESC LIMIT 1")
+        return dict(row) if row else None
 
     async def recent_signals(self, limit: int = 50) -> list[dict]:
         async with self._pool.acquire() as con:

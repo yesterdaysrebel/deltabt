@@ -115,10 +115,64 @@ CREATE TABLE IF NOT EXISTS strategy_signals (
     reward_risk             NUMERIC(12,6),
     rejection_reason        TEXT,
     detail                  JSONB,
+    -- Readings at signal time (app/learning/recorder.py), written AFTER the
+    -- decision by a background task: {"lab": {~40 readings}, "live": {ticker
+    -- and order book}, "pre_24h": [...], "skip": ..., "final_outcome": ...}.
+    features                JSONB,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_signals_symbol_bar ON strategy_signals (symbol, bar_open DESC);
 CREATE INDEX IF NOT EXISTS ix_signals_outcome ON strategy_signals (outcome, created_at DESC);
+-- A COLUMN ADDED TO A DEPLOYED TABLE (2026-10-13). migrate() checks these
+-- columns as well as the tables, so a database created before this line
+-- still runs the script once. The ALTER needs the table's OWNER.
+ALTER TABLE strategy_signals ADD COLUMN IF NOT EXISTS features JSONB;
+
+-- Each recorded signal labelled as if it had been taken (live/learning.py,
+-- `python -m live label-signals`): the signal lab's engine on public 1m
+-- candles. One row per signal; written once, never updated.
+CREATE TABLE IF NOT EXISTS signal_outcomes (
+    id              BIGSERIAL PRIMARY KEY,
+    signal_id       BIGINT      NOT NULL UNIQUE REFERENCES strategy_signals (id),
+    idempotency_key TEXT        NOT NULL UNIQUE,
+    symbol          TEXT        NOT NULL,
+    side            SMALLINT    NOT NULL,
+    entry_time      TIMESTAMPTZ NOT NULL,
+    entry_price     DOUBLE PRECISION NOT NULL,
+    stop_price      DOUBLE PRECISION NOT NULL,
+    r_net           DOUBLE PRECISION NOT NULL,
+    win             BOOLEAN     NOT NULL,
+    exit_reason     TEXT        NOT NULL,
+    exit_time       TIMESTAMPTZ NOT NULL,
+    exit_price      DOUBLE PRECISION,
+    mfe_r           DOUBLE PRECISION,
+    mae_r           DOUBLE PRECISION,
+    bars_to_mfe     INTEGER,
+    bars_held       INTEGER,
+    fav             JSONB,
+    adv             JSONB,
+    detail          JSONB,
+    labelled_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- The weekly grade of the signal model (`python -m live grade-model`). The
+-- model NEVER filters a trade; this table is read by the report only.
+CREATE TABLE IF NOT EXISTS model_grades (
+    id              BIGSERIAL PRIMARY KEY,
+    week_start      TIMESTAMPTZ NOT NULL UNIQUE,
+    week_end        TIMESTAMPTZ NOT NULL,
+    n_train         INTEGER     NOT NULL,
+    n_train_live    INTEGER     NOT NULL,
+    n_test          INTEGER     NOT NULL,
+    auc             DOUBLE PRECISION,
+    top_mean_r      DOUBLE PRECISION,
+    all_mean_r      DOUBLE PRECISION,
+    random_p        DOUBLE PRECISION,
+    top_k           INTEGER     NOT NULL,
+    summary         TEXT        NOT NULL,
+    detail          JSONB,
+    graded_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS paper_orders (
     id                  BIGSERIAL PRIMARY KEY,
