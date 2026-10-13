@@ -569,9 +569,17 @@ def learning_lines(lr: dict | None) -> list[str]:
     sig = lr.get("signals") or {}
     total, taken = sum(sig.values()), sig.get("taken", 0)
     skipped = sorted(((k, v) for k, v in sig.items() if k != "taken"), key=lambda kv: (-kv[1], kv[0]))
-    line = f"- Signals yesterday ({lr.get('day', '?')}, UTC day): {total} — {taken} taken"
+    # TAKEABLE = what the signal lab would have counted: no earlier takeable
+    # signal on the coin still open. Decided only once earlier signals resolve.
+    if lr.get("takeable") is not None:
+        und = int(lr.get("takeable_undecided") or 0)
+        tk = f"takeable {int(lr['takeable'])}" + (f", {und} not yet known" if und else "")
+        line = (f"- Signals yesterday ({lr.get('day', '?')}, UTC day): recorded {total} "
+                f"({tk}; taken {taken})")
+    else:
+        line = f"- Signals yesterday ({lr.get('day', '?')}, UTC day): recorded {total} (taken {taken})"
     if skipped:
-        line += (f", {sum(v for _, v in skipped)} skipped ("
+        line += (f"; {sum(v for _, v in skipped)} skipped ("
                  + ", ".join(f"{SKIP_LABEL.get(k, k)} {v}" for k, v in skipped) + ")")
     line += "."
     if lr.get("no_readings"):
@@ -579,8 +587,10 @@ def learning_lines(lr: dict | None) -> list[str]:
     out.append(line)
     n = int(lr.get("labelled") or 0)
     mean = lr.get("mean_r")
+    nt, tmean = int(lr.get("labelled_takeable") or 0), lr.get("takeable_mean_r")
     out.append(f"- Labelled so far: {plural(n, 'signal')}"
                + (f", averaging {mean:+.2f}R each as if all were taken" if mean is not None and n else "")
+               + (f" ({nt} takeable: {tmean:+.2f}R each)" if tmean is not None and nt else "")
                + f"; {int(lr.get('waiting') or 0)} waiting for their outcome.")
     g = lr.get("grade")
     if g and g.get("top_mean_r") is not None:

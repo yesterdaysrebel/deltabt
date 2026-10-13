@@ -151,6 +151,7 @@ def _synthetic(n, t0, t1, seed, informative=True):
 def _live_rows(df):
     return [{"symbol": r.symbol, "bar_open": int(r.entry_time), "direction": int(r.side),
              "r_net": float(r.R), "win": bool(r.win), "exit_reason": r.exit_reason,
+             "takeable": True,
              "features": {"lab": {k: float(getattr(r, k)) for k in SF.FEATURES}}}
             for r in df.itertuples()]
 

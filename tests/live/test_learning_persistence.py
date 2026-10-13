@@ -52,9 +52,20 @@ async def _scenario(repo):
     assert await repo.record_signal_outcome(_out(todo[1]["id"], "b", None))
     assert await repo.signals_to_label() == []
     lab = await repo.labelled_signals()
-    assert [(r["idempotency_key"], r["r_net"], r["win"]) for r in lab] == [
-        ("a", 2.95, True), ("b", None, None)]
+    assert [(r["idempotency_key"], r["r_net"], r["win"], r["takeable"]) for r in lab] == [
+        ("a", 2.95, True, None), ("b", None, None, None)]
     assert lab[0]["features"]["skip"] == "taken" and lab[1]["exit_reason"].startswith("unlabellable")
+    # takeability: both undecided, on one coin, in time order
+    rows = await repo.takeability_rows()
+    assert [(r["idempotency_key"], r["labelled"], r["takeable"]) for r in rows] == [
+        ("a", True, None), ("b", True, None)]
+    assert rows[0]["exit_time"] == 1_790_003_000 and rows[0]["outcome_detail"] == {"fees": 0.05}
+    from live import learning
+    got = await learning.mark_takeable(repo)
+    assert got == {"takeable": 1, "not_takeable": 1, "takeable_waiting": 0}
+    assert not await repo.record_signal_takeable("a", False), "set once"
+    assert [r["takeable"] for r in await repo.labelled_signals()] == [True, False]
+    assert await repo.takeability_rows() == []
     g = ModelGradeRecord(week_start=1_789_948_800, week_end=1_790_553_600, n_train=10,
                          n_train_live=2, n_test=3, auc=0.5, top_mean_r=0.1, all_mean_r=0.0,
                          random_p=0.4, top_k=1, summary="first", detail={"x": 1})
@@ -100,6 +111,8 @@ async def test_label_and_grade_against_postgres(pg_repo):
         # strategy_signals keeps prices as NUMERIC(20,8); the synthetic
         # market's prices have more digits than a venue's, hence 1e-5
         assert r["r_net"] == pytest.approx(float(gold.loc[r["bar_open"]].R), rel=1e-5)
+    # the lab's own trades never overlap: every one is takeable
+    assert got["takeable"] == 8 and all(r["takeable"] is True for r in rows)
     again = await learning.label_signals(pg_repo, FakeDelta(), lambda s: COSTS, now=FAR)
     assert again["candidates"] == 0
     g = await learning.grade_model(pg_repo, history_path=None, now=FAR)
@@ -126,6 +139,45 @@ async def test_a_database_from_before_the_features_column_gets_it():
         await repo.close()
 
 
+@requires_pg
+async def test_a_database_from_before_the_takeable_column_gets_it():
+    """migrate() on a database whose signal_outcomes predates `takeable`."""
+    import asyncpg
+
+    from app.persistence.repository import PostgresRepository
+    repo = PostgresRepository(TEST_DSN)
+    await repo.connect()
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("ALTER TABLE signal_outcomes DROP COLUMN IF EXISTS takeable")
+        await repo.migrate()
+        assert await con.fetchval(
+            "SELECT count(*) FROM information_schema.columns WHERE "
+            "table_name = 'signal_outcomes' AND column_name = 'takeable'") == 1
+    finally:
+        await con.close()
+        await repo.close()
+
+
+async def test_the_db_probe_copy_of_collect_learning_is_verbatim():
+    """deploy/aws/db_probe.py must carry the same collect_learning as
+    app/reports/learning_probe.py, except `_json` -> `json` (db_probe already
+    defines a `_json`). An edit to one without the other fails here."""
+    import ast
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+
+    def source(path):
+        text = (root / path).read_text()
+        fn = next(n for n in ast.parse(text).body
+                  if isinstance(n, ast.AsyncFunctionDef) and n.name == "collect_learning")
+        return ast.get_source_segment(text, fn)
+
+    original = source("app/reports/learning_probe.py")
+    assert "_json." in original and "takeable" in original
+    assert source("deploy/aws/db_probe.py") == original.replace("_json.", "json.")
+
+
 async def test_the_report_probe_never_raises():
     from app.reports.learning_probe import collect_learning
 
@@ -149,5 +201,7 @@ async def test_the_report_probe_reads_what_the_bot_and_labeller_wrote(pg_repo):
     assert got["day"] == "2026-09-21"
     assert got["signals"] == {"taken": 1, "other": 1} and got["no_readings"] == 1
     assert got["labelled"] == 1 and got["unlabellable"] == 1 and got["waiting"] == 0
+    assert got["takeable"] == 1 and got["takeable_undecided"] == 0
+    assert got["labelled_takeable"] == 1 and got["takeable_mean_r"] == 2.95
     assert got["mean_r"] == 2.95 and got["grade"]["week_start"] == "2026-09-21"
     assert got["grade"]["auc"] == 0.6
