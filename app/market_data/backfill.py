@@ -94,7 +94,10 @@ class Backfiller:
                         extra={"symbol": symbol, "attempt": attempt + 1})
             recovered: list[Candle] = []
             for lo, hi in holes:
-                recovered.extend(await self.fetch(symbol, lo, hi))
+                # Anchored one minute early: see fill_gap for why a window of
+                # nothing but no-trade minutes comes back empty.
+                recovered.extend(b for b in await self.fetch(symbol, lo - MINUTE, hi)
+                                 if lo <= b.start <= hi)
             if not recovered:
                 break
             merged = {b.start: b for b in bars}
@@ -107,13 +110,33 @@ class Backfiller:
                  extra={"symbol": symbol, "days": days})
         return bars
 
-    async def fill_gap(self, symbol: str, expected_start: int, actual_start: int) -> list[Candle]:
-        """Repair a detected hole. Logged, never silent."""
+    async def fill_gap(self, symbol: str, expected_start: int, actual_start: int,
+                       *, anchor: int | None = None) -> list[Candle]:
+        """Repair a detected hole. Logged, never silent.
+
+        Returns only bars INSIDE ``[expected_start, actual_start)``. The
+        request itself starts earlier, at ``anchor`` (default: the minute
+        before the hole), because of how the endpoint forward-fills.
+
+        DELTA FORWARD-FILLS ONLY FROM A TRADED MINUTE INSIDE THE REQUEST
+        (measured 2026-10-13 on BANKUSD / OPNUSD / SKLUSD). A wide request
+        returns a flat ``o=h=l=c``, ``volume=0`` bar for every minute without
+        a trade; a request whose window holds ONLY such minutes returns
+        nothing at all, and the same minutes come back as flat bars as soon
+        as the window also covers the traded minute before them. The repair
+        used to ask for exactly the missing minutes, so every no-trade minute
+        on the watch-only bot logged "gap repair fetched 0 of 1 missing
+        minutes" and held /healthz red -- the minute was never missing, the
+        question was too narrow. ``anchor`` should be the last TRADED minute
+        before the hole (a thin coin can go many minutes without one).
+        """
         if actual_start <= expected_start:
             return []
-        bars = await self.fetch(symbol, expected_start, actual_start - MINUTE)
-        log.warning("gap repair fetched %d of %d missing minutes",
-                    len(bars), (actual_start - expected_start) // MINUTE,
-                    extra={"symbol": symbol, "from": expected_start,
-                           "to": actual_start})
+        lo = expected_start - MINUTE if anchor is None else min(anchor, expected_start - MINUTE)
+        got = await self.fetch(symbol, lo, actual_start - MINUTE)
+        bars = [b for b in got if expected_start <= b.start < actual_start]
+        log.info("gap repair fetched %d of %d missing minutes",
+                 len(bars), (actual_start - expected_start) // MINUTE,
+                 extra={"symbol": symbol, "from": expected_start,
+                        "to": actual_start, "anchor": lo})
         return bars

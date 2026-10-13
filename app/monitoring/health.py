@@ -126,9 +126,16 @@ def evaluate_health(snapshot: dict, *, db_writable: bool,
                   if age != float("inf") else "no closed 1m bar yet")
     checks.append(HealthCheck("candles_fresh", age < max_1m_age, detail))
 
+    # NO-TRADE MINUTES ARE NOT GAPS (2026-10-13). A minute nobody traded in
+    # becomes a flat bar, as in Delta's own candles, and never reaches
+    # recent_gaps; quiet_minutes counts them so the rule is visible. What is
+    # left here is data actually lost -- see TradingBot._repair_gaps.
     gaps = snapshot.get("recent_gaps", 0)
-    checks.append(HealthCheck("no_recent_gaps", gaps == 0,
-                              f"{gaps} gap(s) in the recent window"))
+    detail = f"{gaps} gap(s) in the recent window"
+    if "quiet_minutes" in snapshot:
+        detail += (f"; {snapshot['quiet_minutes']} no-trade minute(s) filled "
+                   f"flat since start, not counted")
+    checks.append(HealthCheck("no_recent_gaps", gaps == 0, detail))
 
     checks.append(HealthCheck("database_writable", bool(db_writable),
                               "" if db_writable else "write probe failed"))

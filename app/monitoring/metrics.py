@@ -91,6 +91,8 @@ def render_prometheus(metrics: Metrics, feed_stats: dict, health: dict,
           "drawdown from peak equity")
     gauge("data_gap_total", health.get("recent_gaps", 0),
           "candle gaps in the recent window")
+    counter("quiet_minutes_total", health.get("quiet_minutes", 0),
+            "no-trade minutes inserted as flat bars (not gaps)")
     gauge("last_market_event_timestamp",
           feed_stats.get("last_message_at", 0) or 0,
           "unix time of the last websocket message")

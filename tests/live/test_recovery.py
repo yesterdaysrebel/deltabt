@@ -529,7 +529,7 @@ class TestLiveRegressions:
         repaired: list = []
 
         class RepairingBackfill(StubBackfill):
-            async def fill_gap(self, symbol, expected_start, actual_start):
+            async def fill_gap(self, symbol, expected_start, actual_start, **k):
                 repaired.append((expected_start, actual_start))
                 return [Candle(symbol, t, 63_000.0, 63_010.0, 62_990.0,
                                63_005.0, 5.0, source="rest")
@@ -556,7 +556,7 @@ class TestLiveRegressions:
         calls: list = []
 
         class CountingBackfill(StubBackfill):
-            async def fill_gap(self, symbol, expected_start, actual_start):
+            async def fill_gap(self, symbol, expected_start, actual_start, **k):
                 calls.append(1)
                 return []                      # repair fails to find the bars
 

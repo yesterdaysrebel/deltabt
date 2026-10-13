@@ -47,8 +47,11 @@ How the owner trades and what was chosen (2026-10-13):
 - Sizing entry `bot` in `live.tf` `live_sizing`; the stack itself is not yet in `var.stacks`.
 
 Evidence, said once: a 2/day cap made hold-to-3R worse in backtest (+0.044R → −0.084R); top-gainer
-selection was never tested. Known gap: REST warm-up bars include zero-volume filler minutes while live
-bars do not, so on thin coins the %R window differs slightly (the $250k floor limits this).
+selection was never tested. No-trade minutes (branch `fix/quiet-minutes`, 2026-10-13): live bars now carry
+them as flat `volume=0` bars like Delta's archive, the warm-up and the backtests, so the %R window matches;
+they are not gaps in /healthz (`quiet_minutes` counts them) and a primary bar holding one is untradable live,
+as in the backtest. Rule in `TradingBot._repair_gaps`; Delta REST forward-fills only after a traded minute
+inside the request window (measured), which is why the old one-minute repair found nothing.
 
 Backtest of the bot as built (owner asked 2026-10-13; `scripts/top_gainers_backtest.py`, result in
 `out/top_gainers/result.txt`): daily top-10 gainers, 2026-01-01..10-12, $250, 2%, 5x, 2/day, 4h pause,

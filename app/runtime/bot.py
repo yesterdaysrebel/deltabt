@@ -55,7 +55,8 @@ from app.forwardtest.identity import (
     build_identity,
 )
 from app.market_data.backfill import Backfiller
-from app.market_data.candle_builder import CandleBuilder
+from app.market_data.candle_builder import (QUIET_SOURCE, CandleBuilder,
+                                            is_flat_no_trade, quiet_bar)
 from app.market_data.delta_ws import DeltaMarketFeed
 from app.market_data.market_state import HaltDetector, MarketState, halt_min_run
 from app.market_data.normalize import (
@@ -591,13 +592,24 @@ class TradingBot:
     # =================================================================
 
     async def on_closed_1m(self, bar) -> None:
-        """Handle one closed 1m bar: halt state, persistence, 5m trigger."""
+        """Handle one closed 1m bar: halt state, persistence, 5m trigger.
+
+        A flat no-trade bar from :meth:`_repair_gaps` arrives here too and is
+        only now put into the builder, so its evaluation sees exactly the bars
+        up to its own minute -- the state continuous running would have.
+        """
+        if bar.source == QUIET_SOURCE:
+            b = self.builder[bar.symbol]
+            # Already held as THIS bar = a retry after a loop error; carry on.
+            if not b.insert_quiet(bar) and bar not in b.bars:
+                return                   # another bar holds that minute
         self.metrics.candles_1m += 1
         # A bar stamped at its OPEN is knowable only once the minute has
         # elapsed, so the exchange instant this bar represents is its close.
         self.clock.observe(bar.start + 60)
         state = self.halts[bar.symbol].observe(bar)
-        await self.repo.save_candles(bar.symbol, "1m", [bar], source="ws")
+        await self.repo.save_candles(bar.symbol, "1m", [bar],
+                                     source=bar.source or "ws")
 
         if state is MarketState.HALTED:
             n = self.broker.suspend(bar.symbol)
@@ -611,7 +623,9 @@ class TradingBot:
         elif state is MarketState.LIVE and self.broker.resume(bar.symbol):
             await self._event("halt", "POSITIONS_RESUMED", symbol=bar.symbol)
 
-        await self._repair_gaps(bar.symbol)
+        # Normally a no-op: the bar loop asks about a hole as soon as the
+        # first update past it arrives. Flat bars found here are queued.
+        self._pending_bars.extend(await self._repair_gaps(bar.symbol))
 
         # A SPEC ARM DECIDES ON ITS OWN BAR BOUNDARY and returns before any
         # hand-written arm's block is reached.
@@ -644,19 +658,79 @@ class TradingBot:
         await self.repo.save_candles(bar.symbol, "5m", [five], source="derived")
         await self.on_closed_5m(bar.symbol, five)
 
-    async def _repair_gaps(self, symbol: str) -> None:
-        """Refetch missing minutes over REST.
+    #: Seconds a websocket connection must already be up before a minute
+    #: starts for that minute to count as WATCHED: covers the subscribe round
+    #: trip. A minute that began inside it is treated as unwatched.
+    WATCH_SETTLE = 5.0
 
-        Every restart leaves one of these by construction: the backfill ends at
-        the last bar the REST endpoint served, and the first live-assembled bar
-        is a minute or two later. Leaving it unrepaired means /healthz reports a
-        gap for the first five minutes of every deploy, and -- worse -- the 5m
-        bars spanning the seam are permanently incomplete, so the strategy
-        silently declines to evaluate them.
+    def _watched(self, minute: int) -> bool:
+        """Was the socket connected, on ONE connection, for all of ``minute``?
+
+        Asked after the minute has closed. ``connected_since`` resets on every
+        reconnect -- including the forced one after a silent (stale) socket --
+        so "connected now, and since before the minute began" means no drop
+        and no silence past the receive deadline anywhere inside it.
+        """
+        st = self.feed.stats
+        since = getattr(st, "connected_since", None)
+        return (bool(getattr(st, "connected", False)) and since is not None
+                and since + self.WATCH_SETTLE <= minute)
+
+    def _before_first_connection(self, minute: int) -> bool:
+        """A minute from before this process first connected: the start-up
+        seam between the REST warm-up and the first live bar."""
+        first = getattr(self.feed.stats, "first_connected_at", None)
+        return first is None or minute < first + self.WATCH_SETTLE
+
+    @staticmethod
+    def _last_traded_start(b, before: int) -> int | None:
+        """The newest held bar older than ``before`` that had a trade.
+
+        REST forward-fills only from a traded minute inside the request, so a
+        repair has to reach back to one (see ``Backfiller.fill_gap``).
+        """
+        for c in reversed(b.bars):
+            if c.start < before and not is_flat_no_trade(c):
+                return c.start
+        return None
+
+    async def _repair_gaps(self, symbol: str) -> list:
+        """Ask REST about every new hole. Returns the flat no-trade bars.
+
+        THE RULE (2026-10-13). On the watch-only bot trading the day's top-10
+        gainers, /healthz sat red on "7 gap(s) in the recent window" and the
+        log read "gap repair fetched 0 of 1 missing minutes" then
+        ``candles GAP_PARTIAL``. Every one was a minute nobody traded in, which
+        the socket simply does not send -- and which Delta's candles, the
+        archive and the backtests all carry as a flat ``volume=0`` bar. The
+        repair found nothing because REST forward-fills only from a traded
+        minute INSIDE the request (measured the same day; see
+        ``Backfiller.fill_gap``), so it now asks from the last traded minute.
+
+        Every minute REST serves goes into the stream: a traded bar is spliced
+        in (as before; not evaluated, it is older than the bar in hand), and a
+        Delta filler becomes a flat bar at OUR previous close, returned here
+        and evaluated in minute order by ``on_closed_1m``. Whether the hole
+        still counts against /healthz is a separate question, per minute:
+
+        * NOT a gap -- QUIET: REST serves Delta's filler (flat, no volume) AND
+          the socket was connected for the whole minute on one connection
+          (``_watched``) and sent no candle for it. Two independent witnesses
+          say nobody traded. Counted in ``quiet_minutes``.
+        * NOT a gap -- START-UP SEAM: the minute is from before this process
+          first connected and REST serves it, traded or filler. Unchanged
+          from before; otherwise every deploy reads unhealthy for five
+          minutes.
+        * A GAP, kept until it ages out of ``GAP_LOOKBACK``: REST has no bar
+          for the minute; REST has TRADES for a minute the socket watched
+          (prints the socket lost, ``missed_while_connected``); or the minute
+          came after the first connection but outside one -- a drop or a
+          stale reconnect (``unwatched``) -- whatever REST says.
         """
         b = self.builder[symbol]
         if self.backfiller is None:
-            return
+            return []
+        quiet_out: list = []
         for gap in list(b.gaps):
             key = (symbol, gap.expected_start, gap.actual_start)
             if key in self._repaired_gaps:
@@ -664,7 +738,8 @@ class TradingBot:
             self._repaired_gaps.add(key)
             try:
                 bars = await self.backfiller.fill_gap(
-                    symbol, gap.expected_start, gap.actual_start)
+                    symbol, gap.expected_start, gap.actual_start,
+                    anchor=self._last_traded_start(b, gap.expected_start))
             except Exception as exc:                       # noqa: BLE001
                 log.error("gap repair failed: %s", exc)
                 await self._event("candles", "GAP_REPAIR_FAILED", symbol=symbol,
@@ -673,17 +748,83 @@ class TradingBot:
                                            "to": gap.actual_start,
                                            "error": str(exc)})
                 continue
-            n = b.ingest_backfill(bars)
-            if n:
-                await self.repo.save_candles(symbol, "1m", bars, source="rest")
-            await self._event(
-                "candles", "GAP_REPAIRED" if n >= gap.missing else "GAP_PARTIAL",
-                symbol=symbol, severity="INFO" if n >= gap.missing else "WARNING",
-                payload={"from": gap.expected_start, "to": gap.actual_start,
-                         "missing": gap.missing, "recovered": n})
-            if n >= gap.missing:
-                # Fully repaired: it no longer counts against /healthz.
-                b.gaps.remove(gap)
+
+            served = {c.start: c for c in bars
+                      if gap.expected_start <= c.start < gap.actual_start}
+            prev = next((c for c in reversed(b.bars)
+                         if c.start < gap.expected_start), None)
+            prev_close = prev.close if prev is not None else None
+            traded, flats = [], []
+            absent, missed, unwatched, quiet_ok = [], [], [], 0
+            for t in range(gap.expected_start, gap.actual_start, 60):
+                rest_bar = served.get(t)
+                watched = self._watched(t)
+                seam = not watched and self._before_first_connection(t)
+                if rest_bar is None:
+                    absent.append(t)
+                    prev_close = None    # whatever happened there is unknown
+                    continue
+                if not is_flat_no_trade(rest_bar):
+                    traded.append(rest_bar)
+                    prev_close = rest_bar.close
+                    if watched:
+                        missed.append(t)
+                    elif not seam:
+                        unwatched.append(t)
+                    continue
+                if prev_close is None:
+                    absent.append(t)     # no close to carry forward
+                    continue
+                flats.append(quiet_bar(symbol, t, prev_close))
+                if watched or seam:
+                    quiet_ok += 1
+                else:
+                    unwatched.append(t)
+
+            if traded:
+                if b.ingest_backfill(traded):
+                    await self.repo.save_candles(symbol, "1m", traded,
+                                                 source="rest")
+            quiet_out.extend(flats)
+            genuine = bool(absent or missed or unwatched)
+            b.settle_gap(gap, quiet=quiet_ok, cleared=not genuine)
+            payload = {"from": gap.expected_start, "to": gap.actual_start,
+                       "missing": gap.missing,
+                       "recovered": len(traded) + len(flats),
+                       "quiet": len(flats), "traded": len(traded),
+                       "absent": len(absent),
+                       "missed_while_connected": len(missed),
+                       "unwatched": len(unwatched)}
+            if not genuine and not traded:
+                # Only no-trade minutes: not a gap, so no event row either --
+                # on a thin coin that is most minutes. Counted, and logged here.
+                log.debug("quiet minute(s): no trades, flat bars queued",
+                          extra={"symbol": symbol, **payload})
+                continue
+            if genuine:
+                log.warning("1m gap detected", extra={"symbol": symbol, **payload})
+            event = ("GAP_REPAIRED" if not genuine
+                     else "GAP_MISSED_WHILE_CONNECTED" if missed
+                     else "GAP_PARTIAL" if absent
+                     else "GAP_UNWATCHED")
+            await self._event("candles", event, symbol=symbol,
+                              severity="WARNING" if genuine else "INFO",
+                              payload=payload)
+        return quiet_out
+
+    async def _repair_new_gaps(self) -> list:
+        """Classify every hole as soon as the first update past it arrives.
+
+        Run by the bar loop BEFORE it hands out closed bars, so the flat bars
+        for no-trade minutes join the same sorted batch as the bar before the
+        hole and are evaluated in minute order, ahead of the bar after it.
+        """
+        out: list = []
+        for sym, b in self.builder.builders.items():
+            if any((sym, g.expected_start, g.actual_start) not in self._repaired_gaps
+                   for g in b.gaps):
+                out.extend(await self._repair_gaps(sym))
+        return out
 
     async def on_closed_1m_frozen(self, symbol: str) -> None:
         """Evaluate the frozen H-WPR-1 arm on one closed 1m bar.
@@ -743,6 +884,10 @@ class TradingBot:
                 return
         await self.repo.save_candles(symbol, f"{minutes}m", [bar], source="derived")
         one_minute = b.frame()
+        # Only the history up to THIS bar's minute. A gap repair can splice
+        # newer REST bars into the builder first, and evaluate_spec reads the
+        # LAST row -- it would otherwise decide on a later bucket.
+        one_minute = one_minute[one_minute["time"] <= last_1m_start]
         exp = evaluate_spec(one_minute, spec, symbol=symbol)
         await self._process_explanation(symbol, exp, minutes * 60)
 
@@ -1298,6 +1443,9 @@ class TradingBot:
             "last_closed_1m_by_symbol": self.builder.last_closed_1m_by_symbol(),
             "recent_gaps": self.builder.recent_gap_count(
                 within_seconds=GAP_LOOKBACK, now=now),
+            # No-trade minutes inserted as flat bars since start: shown, so
+            # the rule that keeps them out of recent_gaps is never silent.
+            "quiet_minutes": self.builder.stats().get("quiet_minutes", 0),
             "strategy_running": self.ready and not self._stopping.is_set(),
             "seconds_since_bar_loop": max(0.0, now - self.last_bar_loop_at),
             "loop_errors_consecutive": self.loop_errors_consecutive,
@@ -1351,6 +1499,7 @@ class TradingBot:
                 # design. Order expiry below reads MARKET time.
                 for bar in self.builder.roll_on_clock(now, grace=CANDLE_ROLL_GRACE):
                     self._pending_bars.append(bar)
+                self._pending_bars.extend(await self._repair_new_gaps())
                 bars, self._pending_bars = self._pending_bars, []
                 bars.sort(key=lambda b: (b.start, b.symbol))
                 while bars:

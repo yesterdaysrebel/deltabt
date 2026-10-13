@@ -95,6 +95,7 @@ def create_app(bot) -> FastAPI:
             "last_closed_1m_ist": to_ist(snap["last_closed_1m"]),
             "uptime_seconds": int(snap["uptime_seconds"]),
             "recent_gaps": snap["recent_gaps"],
+            "quiet_minutes": snap.get("quiet_minutes", 0),
             "recovery_error": snap["recovery_error"],
             "instance_uid": bot.instance_uid,
             "metrics": bot.metrics.as_dict(),
@@ -114,6 +115,7 @@ def create_app(bot) -> FastAPI:
                 "last_closed_1m_ist": to_ist(last.start if last else None),
                 "bars_1m": len(b.bars),
                 "gaps": b.stats.gaps,
+                "quiet_minutes": b.stats.quiet_minutes,
             }
             five = b.frame_5m(limit=bot.strategy.window_bars)
             one = b.frame(limit=bot.strategy.window_bars)
