@@ -76,10 +76,20 @@ pre-refactor output; `live` = ticker + L2 book; `pre_24h`; `skip` = taken/daily_
 a background task after the decision (`app/learning/recorder.py`; never blocks, NaN on failure, off with
 `DELTABOT_SIGNAL_FEATURES=0`). `python -m live label-signals` labels each signal as if taken with the lab's
 engine on public 1m candles (`signal_outcomes`; reproduces the lab exactly on a synthetic market);
-`python -m live grade-model` grades the lab's fixed model weekly on the last full UTC week (`model_grades`;
+**Takeable (2026-10-13, branch `fix/takeable-signals`):** live, the %R edge re-fires ~2×/hour per coin (33
+signals in the first 100 min, 1 taken, 32 `open_position`), while the lab's 5,273 rows are only TAKEABLE signals
+(~2/day per coin). After labelling, `label-signals` also sets `signal_outcomes.takeable` per coin in time order:
+takeable iff the engine accepted the entry (has an R; ATR stop floor applied from the recorded primary ATR), the 5m
+bar is tradable on the REST candles, and no earlier takeable signal on the coin is still open or within the
+engine's 10-bar cooldown after its exit bar (`detail.free_from`); a signal waits while an earlier one on its coin
+is unlabelled. On the golden market, every edge labelled and marked gives exactly the lab's 50 trades
+(`tests/live_exec/test_takeable.py`; dropping the cooldown or the tradable check breaks it).
+`python -m live grade-model` grades the lab's fixed model weekly on the last full UTC week, on TAKEABLE live
+signals only (`model_grades`;
 history from `$DELTABT_SIGNAL_HISTORY` or `out/signal_lab/signals.parquet`, tolerated absent). The model never
-filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-line "Learning" section, fed by
-`app/reports/learning_probe.py` once it is copied into `deploy/aws/db_probe.py`. Not yet scheduled on a box.
+filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-line "Learning" section
+("recorded N (takeable M; taken K)"), fed by `app/reports/learning_probe.py`, copied verbatim into
+`deploy/aws/db_probe.py` (a test keeps the two identical). Not yet scheduled on a box.
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 

@@ -154,6 +154,12 @@ CREATE TABLE IF NOT EXISTS signal_outcomes (
     detail          JSONB,
     labelled_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- TAKEABLE (2026-10-13): would the signal lab have had this signal as a row?
+-- Per coin, in time order: no earlier takeable signal's as-if trade still open
+-- (or in its cooldown) at this bar, and the engine accepted the entry. NULL
+-- until decided (it waits on earlier signals' exits); set once, never changed.
+-- The weekly grade trains and tests on takeable signals only.
+ALTER TABLE signal_outcomes ADD COLUMN IF NOT EXISTS takeable BOOLEAN;
 
 -- The weekly grade of the signal model (`python -m live grade-model`). The
 -- model NEVER filters a trade; this table is read by the report only.

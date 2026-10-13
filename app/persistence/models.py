@@ -305,6 +305,12 @@ class SignalOutcomeRecord:
     fav: list = field(default_factory=list)
     adv: list = field(default_factory=list)
     detail: dict = field(default_factory=dict)
+    #: Whether the signal lab would have had this signal as a row: on its coin,
+    #: no earlier TAKEABLE signal's as-if trade still open (or in its 10-bar
+    #: cooldown) at this signal's bar, and the engine accepted the entry.
+    #: None until decided -- it depends on earlier signals' exits, so it is set
+    #: once, later, by live/learning.mark_takeable (record_signal_takeable).
+    takeable: bool | None = None
 
 
 @dataclass
