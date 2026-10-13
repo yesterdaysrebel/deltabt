@@ -1062,7 +1062,7 @@ variable "max_open_positions" {
   description = "Concurrent positions per experiment. Part of the risk hash."
   type        = number
   # 2026-10-13 (owner): one position at a time for the top-gainers bot.
-  default     = 1
+  default = 1
 }
 
 variable "max_drawdown_pct" {

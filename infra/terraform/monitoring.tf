@@ -30,7 +30,7 @@ resource "aws_ssm_document" "monitor" {
     schemaVersion = "2.2"
     # 2026-10-13: no longer strictly read-only -- the learning jobs below write
     # labels and grades to the bot's own database (never to trading state).
-    description   = "Daily probe of the bot, plus the signal labeller and the Monday model grade."
+    description = "Daily probe of the bot, plus the signal labeller and the Monday model grade."
     parameters = {
       Day = {
         type           = "String"

@@ -29,7 +29,15 @@ from tests._live_data import require_live_data  # noqa: E402
 @pytest.fixture(scope="module")
 def panel():
     require_live_data("data/meta/products.json", "data/candles")
-    return hm.load_panel()
+    p = hm.load_panel()
+    # CANNOT RUN HERE, NOT A FAILURE (2026-10-13). data/candles can exist
+    # without the study's daily history: tests that build a CandleStore create
+    # the directory empty (CI), and the top-gainers download keeps 1d bars only
+    # from late 2025. The study's panel is multi-year and ragged; anything
+    # shorter would fail these assertions for a reason that is not a bug.
+    if not p.symbols or p.px.index.min() > pd.Timestamp("2025-01-01", tz="UTC"):
+        pytest.skip("data/candles lacks the multi-year 1d history the h1 panel needs")
+    return p
 
 
 # ------------------------------------------------------------- signal timing

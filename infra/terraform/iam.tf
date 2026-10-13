@@ -60,7 +60,7 @@ resource "aws_iam_role_policy" "instance" {
         ]
         Resource = aws_ecr_repository.bot.arn
       },
-    ], var.create_rds ? [
+      ], var.create_rds ? [
       {
         # STILL NEEDED, but only for BOOTSTRAP: create_stack_database.py uses
         # the master user once, to create the database and the IAM-auth role.
@@ -87,7 +87,7 @@ resource "aws_iam_role_policy" "instance" {
         Action   = ["rds-db:connect"]
         Resource = "arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.main[0].resource_id}/${var.db_app_username}"
       },
-    ] : [], [
+      ] : [], [
       {
         Sid    = "ReadWhichImageTagToRun"
         Effect = "Allow"
