@@ -1,0 +1,4 @@
+HOLD-OUT (Aug-Oct, read once): 1455 signals, win 26.8%, mean R -0.084
+  AUC 0.521 (needs >= 0.55: no)
+  top 30% (436) mean R -0.088; random 30% subsets beat it 51.4% of the time (needs <= 5%: no); above zero: no
+  RESULT: FAIL

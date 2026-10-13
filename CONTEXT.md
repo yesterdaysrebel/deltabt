@@ -58,6 +58,17 @@ flat no-trade minutes kept. Net R/trade (± 1 SE): 5m/1m +0.003 (±0.110, 264 tr
 distinguishable from zero; every pair was better Jan–May than May–Oct. Fees only ~0.02–0.03R (wide
 stops). 10x = 5x exactly (the cap never bound). Survivorship: only coins listed today could be picked.
 
+Signal-features lab (owner asked for a model that learns from every signal; `scripts/signal_features_lab.py`,
+pre-registered 8598b2c/7ec97f7, results in `out/signal_lab/*.txt`): 5,273 takeable signals of the bot as built
+(every coin, no daily cap), ~40 readings each + price paths. **All signals lose about −0.07R a trade after fees
+(Jan–Jul −0.065 ± 0.028, Aug–Oct −0.084 ± 0.045, ~3 SE below zero)**; the account backtest's ~0R came from which
+264 it happened to take. Model (gradient boosting) **FAIL** on the sealed Aug–Oct: AUC 0.521, top 30% −0.088R
+vs −0.084R all. Of 9 Jan–Jul findings 4 "held" by rank correlation (stop width, gainer rank, day gain, funding
+side) but none makes money: dev-chosen cut-offs on Aug–Oct −0.107 / −0.086 / −0.064, all three −0.165R; the
+stop-width link is mostly tight-stop slippage (win rate 27% vs 26%). Chart patterns and k-means families did
+not hold. Paths: 31% of losers were +1R first; 45% of winners dipped below −0.5R first. Per the
+pre-registration: record every signal live (recorder) and re-test on more data; do not filter with it.
+
 Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
 `docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
 creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
