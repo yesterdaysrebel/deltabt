@@ -68,7 +68,7 @@ def test_fixed_mode_entrypoint_uses_venue_list(monkeypatch):
     import live.__main__ as entry
     monkeypatch.delenv("DELTABOT_UNIVERSE", raising=False)
     got = asyncio.run(entry._universe(client=None, venue="prod", database_url="unused"))
-    assert got == ("BEATUSD", "AKEUSD", "BANKUSD")
+    assert got == (("BEATUSD", "AKEUSD", "BANKUSD"), {})
 
 
 def test_top_gainers_entrypoint_merges_held_from_database(monkeypatch):
@@ -98,8 +98,11 @@ def test_top_gainers_entrypoint_merges_held_from_database(monkeypatch):
 
     monkeypatch.setenv("DELTABOT_UNIVERSE", "top_gainers")
     monkeypatch.setattr(entry, "PostgresRepository", FakeRepo)
-    got = asyncio.run(entry._universe(FakeClient(), "prod", "postgresql://x"))
+    got, info = asyncio.run(entry._universe(FakeClient(), "prod", "postgresql://x"))
     assert got == ("GTCUSD", "STXUSD", "HELDUSD")
+    # what the pick saw goes to the signal recorder; a held coin has none
+    assert info["GTCUSD"]["rank"] == 1 and info["GTCUSD"]["change"] == 46
+    assert info["STXUSD"]["rank"] == 2 and "HELDUSD" not in info
 
 
 def test_cli_refuses_to_register_an_experiment_in_top_gainers_mode(monkeypatch):
@@ -128,3 +131,35 @@ def test_max_leverage_is_configurable_and_bounded(monkeypatch):
     monkeypatch.setenv("DELTABOT_MAX_LEVERAGE", "25")
     with pytest.raises(ValueError):
         Settings.from_env()
+
+
+def test_ranked_gainers_carry_rank_change_and_turnover():
+    rows = [row("A", 5, 3e5), row("B", 40, 9e5), row("C", 12, 5e5)]
+    got = universe.ranked_gainers(rows, n=2, min_turnover_usd=0)
+    assert [(r["symbol"], r["rank"], r["change"], r["turnover"]) for r in got] == [
+        ("B", 1, 40.0, 9e5), ("C", 2, 12.0, 5e5)]
+    assert universe.pick(rows, [], env={"DELTABOT_TOP_N": "2"}) == ("B", "C")
+
+
+def test_the_signal_recorder_gets_plain_pick_data(monkeypatch):
+    import live.__main__ as entry
+    from app.config.variants import resolve_strategy
+    from deltabt.costs import SymbolCosts
+
+    class Cat:
+        def get(self, s):
+            return {"launch_time": "2026-01-02T00:00:00Z"}
+
+    monkeypatch.setattr(entry, "ProductCatalog", Cat)
+    monkeypatch.delenv("DELTABOT_SIGNAL_FEATURES", raising=False)
+    costs = {"GTCUSD": SymbolCosts(symbol="GTCUSD", tick_size=0.001, contract_value=10.0,
+                                   maker_fee=0.0002, taker_fee=0.0005, max_leverage=25,
+                                   position_size_limit=1e6, funding_interval_seconds=28800)}
+    picks = {"GTCUSD": {"rank": 1, "change": 46.0, "turnover": 2e6, "tags": ["meme"]}}
+    strategy = resolve_strategy({"DELTABOT_VARIANT": "SPEC:manual_scalp_both_t3_st@5"})
+    rec = entry.signal_recorder(strategy, ("GTCUSD",), picks, costs)
+    assert rec.picks == {"GTCUSD": {"rank": 1, "change": 46.0, "turnover": 2e6}}
+    assert rec.tags == {"GTCUSD": "meme"} and rec.contract_values == {"GTCUSD": 10.0}
+    assert rec.launches["GTCUSD"] == 1767312000 and rec.pick_day % 86400 == 0
+    monkeypatch.setenv("DELTABOT_SIGNAL_FEATURES", "0")
+    assert entry.signal_recorder(strategy, ("GTCUSD",), picks, costs) is None

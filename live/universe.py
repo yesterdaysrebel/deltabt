@@ -49,9 +49,19 @@ def top_gainers(rows: Iterable[Mapping], *, n: int = DEFAULT_TOP_N,
     commodity token), trading normally, has turnover at or above the floor,
     and actually rose over 24h. Rows missing a field do not qualify.
     """
+    return [r["symbol"] for r in ranked_gainers(rows, n=n, min_turnover_usd=min_turnover_usd)]
+
+
+def ranked_gainers(rows: Iterable[Mapping], *, n: int = DEFAULT_TOP_N,
+                   min_turnover_usd: float = DEFAULT_MIN_TURNOVER_USD) -> list[dict]:
+    """top_gainers with what the pick saw: symbol, rank (1 = biggest rise),
+    change (24h %, as Delta's ltp_change_24h), turnover (24h USD), tags.
+
+    The signal recorder stores these with every signal (day_gain_pct,
+    day_rank, log_turnover in deltabt/signal_features.py)."""
     if n < 1:
         raise ValueError(f"top_n must be >= 1, got {n}")
-    picked: list[tuple[float, str]] = []
+    picked: list[tuple[float, str, float, object]] = []
     for r in rows:
         if r.get("contract_type") != "perpetual_futures":
             continue
@@ -66,9 +76,10 @@ def top_gainers(rows: Iterable[Mapping], *, n: int = DEFAULT_TOP_N,
             continue
         if change <= 0 or turnover < min_turnover_usd:
             continue
-        picked.append((change, sym))
+        picked.append((change, sym, turnover, r.get("tags")))
     picked.sort(key=lambda t: (-t[0], t[1]))
-    return [s for _, s in picked[:n]]
+    return [{"symbol": sym, "rank": k, "change": change, "turnover": turnover, "tags": tags}
+            for k, (change, sym, turnover, tags) in enumerate(picked[:n], 1)]
 
 
 def merge_held(gainers: list[str], held: Iterable[str]) -> tuple[str, ...]:
@@ -100,8 +111,18 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> tuple[int, float]
 def pick(tickers: Iterable[Mapping], held: Iterable[str],
          env: Mapping[str, str] | None = None) -> tuple[str, ...]:
     """Today's universe from a tickers snapshot and the coins still held."""
+    return pick_with_info(tickers, held, env)[0]
+
+
+def pick_with_info(tickers: Iterable[Mapping], held: Iterable[str],
+                   env: Mapping[str, str] | None = None) -> tuple[tuple[str, ...], dict]:
+    """(universe, {symbol: {"rank", "change", "turnover", "tags"}}) -- the
+    second for the gainers only; a coin kept because it is held has none."""
     n, floor = settings_from_env(env)
-    gainers = top_gainers(tickers, n=n, min_turnover_usd=floor)
+    ranked = ranked_gainers(tickers, n=n, min_turnover_usd=floor)
+    gainers = [r["symbol"] for r in ranked]
+    info = {r["symbol"]: {k: r[k] for k in ("rank", "change", "turnover", "tags")}
+            for r in ranked}
     universe = merge_held(gainers, held)
     if not universe:
         raise ValueError(
@@ -109,4 +130,4 @@ def pick(tickers: Iterable[Mapping], held: Iterable[str],
             f"min_turnover_usd={floor:.0f}) and none is held")
     log.info("universe: top gainers %s; held %s", gainers,
              [s for s in universe if s not in gainers])
-    return universe
+    return universe, info

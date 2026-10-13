@@ -98,7 +98,7 @@ async def main() -> int:
     # symbols do not exist on testnet, so a single configured list cannot be
     # right for both. resolve_products refuses to start on a partial match
     # rather than trading a smaller universe than the run claims.
-    symbols = await _universe(client, venue, settings.database_url)
+    symbols, picks = await _universe(client, venue, settings.database_url)
     products = resolve_products(client, symbols)
 
     # AND IT HAS TO REACH THE BOT. TradingBot reads settings.symbols, so
@@ -116,19 +116,21 @@ async def main() -> int:
                                 "strategy": strategy.version,
                                 "config_hash": strategy.config_hash})
 
+    costs = load_costs(symbols, settings.risk.slippage_bps)
+    recorder = signal_recorder(strategy, symbols, picks, costs)
     if dry_run:
         from live.dry_run import build as build_dry_run
         from live.guards import KILL_SWITCH_PATH
         bot = build_dry_run(
             settings, client=client, venue=venue, symbols=symbols,
-            products=products, strategy=strategy,
-            costs=load_costs(symbols, settings.risk.slippage_bps),
+            products=products, strategy=strategy, costs=costs,
             repo=PostgresRepository(settings.database_url),
             lock=SingleInstanceLock(settings.database_url),
             notifier=LogNotifier(), backfiller=Backfiller(),
-            kill_switch_path=KILL_SWITCH_PATH)
+            kill_switch_path=KILL_SWITCH_PATH, signal_recorder=recorder)
     else:
-        bot = _live_bot(settings, client, venue, symbols, products, strategy)
+        bot = _live_bot(settings, client, venue, symbols, products, strategy,
+                        signal_recorder=recorder)
     repick_at = _next_repick() if universe.mode() == "top_gainers" else None
     return await _serve(bot, settings, stop_at=repick_at)
 
@@ -141,15 +143,53 @@ def _next_repick(now: float | None = None) -> float:
     return (int(now) // 86400 + 1) * 86400 + 30
 
 
-async def _universe(client, venue, database_url) -> tuple[str, ...]:
-    """The fixed venue list, or today's top gainers plus any coin still held.
+#: "0" turns the signal readings off (default on). They never affect a trade.
+ENV_SIGNAL_FEATURES = "DELTABOT_SIGNAL_FEATURES"
+#: `python -m live <cmd>` for these goes to live/learning.py (see the bottom).
+LEARNING_COMMANDS = ("label-signals", "grade-model")
+
+
+def signal_recorder(strategy, symbols, picks: dict, costs: dict):
+    """The recorder of readings at every signal (app/learning/recorder.py).
+
+    Fed PLAIN DATA from here -- today's pick (rank, 24h change, turnover),
+    each coin's listing time and contract value -- so app/ never imports
+    live/. Returns None when switched off or when anything here fails: a
+    missing measurement must never stop the bot from starting."""
+    if (os.environ.get(ENV_SIGNAL_FEATURES) or "1").strip().lower() in ("0", "false", "no", "off"):
+        log.info("signal readings are switched off (%s)", ENV_SIGNAL_FEATURES)
+        return None
+    try:
+        import pandas as pd
+
+        from app.learning.recorder import SignalRecorder
+        from deltabt import signal_features as SF
+        cat = ProductCatalog()
+        launches = {}
+        for s in symbols:
+            lt = (cat.get(s) or {}).get("launch_time")
+            launches[s] = int(pd.Timestamp(lt).value // 10**9) if lt else None
+        return SignalRecorder(
+            strategy, picks={s: {k: v for k, v in i.items() if k != "tags"}
+                             for s, i in (picks or {}).items()},
+            pick_day=int(time.time()) // 86400 * 86400, launches=launches,
+            tags={s: SF.tag_of(i.get("tags")) for s, i in (picks or {}).items()},
+            contract_values={s: c.contract_value for s, c in costs.items()})
+    except Exception:                                   # noqa: BLE001
+        log.exception("signal readings disabled: the recorder could not be built")
+        return None
+
+
+async def _universe(client, venue, database_url) -> tuple[tuple[str, ...], dict]:
+    """(symbols, today's pick info): the fixed venue list (no pick info), or
+    today's top gainers plus any coin still held.
 
     TOP GAINERS (owner, 2026-10-13): see live/universe.py. The held coins come
     from the database because recover() checks the database's open positions
     against the universe and refuses to start on a coin it does not watch.
     """
     if universe.mode() == "fixed":
-        return symbols_for(venue)
+        return symbols_for(venue), {}
     repo = PostgresRepository(database_url, min_size=1, max_size=1)
     await repo.connect()
     try:
@@ -158,15 +198,16 @@ async def _universe(client, venue, database_url) -> tuple[str, ...]:
         await repo.close()
     tickers = client._read("/v2/tickers",
                            {"contract_types": "perpetual_futures"}) or []
-    return universe.pick(tickers, held)
+    return universe.pick_with_info(tickers, held)
 
 
-def _live_bot(settings, client, venue, symbols, products, strategy):
+def _live_bot(settings, client, venue, symbols, products, strategy, signal_recorder=None):
     return LiveTradingBot(
         settings,
         PostgresRepository(settings.database_url),
         load_costs(symbols, settings.risk.slippage_bps),
         strategy=strategy,
+        signal_recorder=signal_recorder,
         notifier=LogNotifier(),
         backfiller=Backfiller(),
         lock=SingleInstanceLock(settings.database_url),
@@ -290,6 +331,12 @@ if __name__ == "__main__":
     # stops the service before calling the CLI. The paper entry point has had
     # this dispatch all along; the live one was written to the same shape and
     # this was the piece that got left out.
+    if len(sys.argv) > 1 and sys.argv[1] in LEARNING_COMMANDS:
+        # Labelling and grading read public candles and the database only;
+        # they need no venue, no keys and no universe. Imported here and
+        # nowhere else, so the trading path never loads the grader.
+        from live.learning import main as learning_main
+        sys.exit(learning_main(sys.argv[1:]))
     if len(sys.argv) > 1:
         sys.exit(cli_entry(sys.argv[1:]))
     sys.exit(asyncio.run(main()))

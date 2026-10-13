@@ -82,6 +82,8 @@ import requests
 sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
 from deltabt import rulecore  # noqa: E402
+from deltabt import signal_features as SF  # noqa: E402
+from deltabt import signal_model as SM  # noqa: E402
 from deltabt.catalog import build_spec  # noqa: E402
 from deltabt.costs import SymbolCosts  # noqa: E402
 from deltabt.data.client import DeltaClient  # noqa: E402
@@ -96,7 +98,7 @@ HOLDOUT_START = pd.Timestamp("2026-08-01", tz="UTC").value // 10**9
 DEV_TEST_MONTHS = ["2026-04", "2026-05", "2026-06", "2026-07"]
 SPEC = build_spec(TG.FAMILY, 5, 1)
 IST = 19800
-TAGS = ("meme", "ai", "defi", "layer", "new")
+TAGS = SF.TAGS
 
 
 # --- fetch ---------------------------------------------------------------
@@ -125,44 +127,18 @@ def cmd_fetch() -> None:
 
 # --- build ---------------------------------------------------------------
 
-def _tag(tags) -> str:
-    tags = [str(t).lower() for t in (tags or [])]
-    for name in TAGS:
-        if any(name in t for t in tags):
-            return name
-    return "other"
-
-
-def _htf(d, minutes, cache):
-    f = _resampled(d, minutes, cache)[0]
-    ind = rulecore.indicators(f, SPEC)
-    close_time = f["time"].to_numpy("int64") + minutes * 60
-    return close_time, ind
-
-
-def _asof(close_time, values, at):
-    """Value of the last bar CLOSED at or before `at`."""
-    j = np.searchsorted(close_time, at, side="right") - 1
-    out = np.full(len(at), np.nan)
-    ok = j >= 0
-    out[ok] = np.asarray(values, dtype="float64")[j[ok]]
-    return out
+# The definitions live in deltabt/signal_features.py, shared with the live
+# recorder (app/learning/recorder.py) so live rows pool with these.
+_tag = SF.tag_of
+_asof = SF.asof
 
 
 def _btc_frame():
     d = load_symbol("BTCUSD")
     l = d["ltp"]
-    c5 = TG._resampled(dict(symbol="BTCUSD", ltp=l, mark=d["mark"], funding=d["funding"],
-                            tradable=tradable_mask(l)), 60, {})[0]
-    ind = rulecore.indicators(c5, SPEC)
-    return dict(m_time=l["time"].to_numpy("int64") + 60, m_close=l["close"].to_numpy("float64"),
-                h_close_time=c5["time"].to_numpy("int64") + 3600, h_dir=ind.direction)
-
-
-def _ret(times, closes, at, back_s):
-    now = _asof(times, closes, at)
-    then = _asof(times, closes, at - back_s)
-    return now / then - 1
+    c60 = TG._resampled(dict(symbol="BTCUSD", ltp=l, mark=d["mark"], funding=d["funding"],
+                             tradable=tradable_mask(l)), 60, {})[0]
+    return SF.prepare_btc(l, c60, SPEC)
 
 
 def _coin(args):
@@ -192,80 +168,19 @@ def _coin(args):
         return None
     t = pd.DataFrame([dataclasses.asdict(x) for x in res.trades])
 
-    # indicators on the primary bars, read at the signal bar
-    pi = rulecore.indicators(P, SPEC)
-    ptime = P["time"].to_numpy("int64")
-    i = np.searchsorted(ptime, t.entry_time.to_numpy("int64"))
+    # readings at the signal bar (deltabt/signal_features.py)
+    ctx = SF.prepare_coin(P, _resampled(d, 60, cache)[0], _resampled(d, 240, cache)[0], SPEC)
+    i = np.searchsorted(ctx.time, t.entry_time.to_numpy("int64"))
     side = t.side.to_numpy(float)
-    at = ptime[i] + 5 * 60   # the signal bar's close
-    h, lo_, c = pi.high, pi.low, pi.close
-    vol = P["volume"].to_numpy("float64")
-    vol_prev = pd.Series(vol).shift(1).rolling(20, min_periods=10).mean().to_numpy()
-    hi24 = pd.Series(h).rolling(288, min_periods=48).max().to_numpy()
-    lo24 = pd.Series(lo_).rolling(288, min_periods=48).min().to_numpy()
-    wpr = pi.wpr
-    f = pd.DataFrame({
+    oi_p = Path(f"data/candles/{sym}/oi_1h.parquet")
+    feats = SF.features_at(
+        ctx, i, side, t.entry_price.to_numpy(float), t.stop_price.to_numpy(float),
+        btc=btc, funding=d["funding"], oi=pd.read_parquet(oi_p) if oi_p.exists() else None,
+        picks=pick_info, launch=meta.get("launch"), tag=meta.get("tag"))
+    f = pd.concat([pd.DataFrame({
         "symbol": sym, "entry_time": t.entry_time, "side": side,
         "R": t.r_multiple, "win": (t.r_multiple > 0).astype(int), "exit_reason": t.exit_reason,
-        "wpr": np.where(side > 0, wpr[i], -100 - wpr[i]),
-        "wpr_slope3": (wpr[i] - wpr[np.maximum(i - 3, 0)]) * side,
-        "st_dist_atr": (c[i] - pi.st[i]) / pi.atr[i] * side,
-        "atr_pct": pi.atr[i] / c[i] * 100,
-        "stop_pct": np.abs(t.entry_price - t.stop_price) / t.entry_price * 100,
-        "adx_5m": pi.adx[i],
-        "vol_ratio": vol[i] / vol_prev[i],
-        "range_atr": (h[i] - lo_[i]) / pi.atr[i],
-        "ret_1h": (c[i] / c[np.maximum(i - 12, 0)] - 1) * 100 * side,
-        "ret_4h": (c[i] / c[np.maximum(i - 48, 0)] - 1) * 100 * side,
-        "ret_24h": (c[i] / c[np.maximum(i - 288, 0)] - 1) * 100 * side,
-        "from_24h_high": (c[i] / hi24[i] - 1) * 100,
-        "from_24h_low": (c[i] / lo24[i] - 1) * 100,
-    })
-    for mins, name in ((60, "1h"), (240, "4h")):
-        ct, ind = _htf(d, mins, cache)
-        dirn = _asof(ct, ind.direction, at)
-        f[f"st_{name}_agrees"] = np.where(np.isfinite(dirn), ((dirn < 0) == (side > 0)).astype(float), np.nan)
-        if name == "1h":
-            f["adx_1h"] = _asof(ct, ind.adx, at)
-    day = (at // TG.DAY) * TG.DAY
-    pk = pick_info.set_index("pick_day")
-    f["day_gain_pct"] = pk.change.reindex(day).to_numpy()
-    f["day_rank"] = pk["rank"].reindex(day).to_numpy()
-    f["log_turnover"] = np.log10(pk.turnover.reindex(day).to_numpy())
-    launch = meta.get("launch")
-    f["days_listed"] = (at - launch) / TG.DAY if launch else np.nan
-    for name in TAGS + ("other",):
-        f[f"tag_{name}"] = float(meta.get("tag") == name)
-    fu = d["funding"]
-    if not fu.empty:
-        f["funding_side"] = _asof(fu.time.to_numpy("int64") + 3600, fu.close.to_numpy(float), at) * side
-    oi_p = Path(f"data/candles/{sym}/oi_1h.parquet")
-    if oi_p.exists():
-        oi = pd.read_parquet(oi_p).sort_values("time")
-        ot, ov = oi.time.to_numpy("int64") + 3600, oi.oi.to_numpy(float)
-        for hrs in (1, 6, 24):
-            f[f"oi_chg_{hrs}h"] = (_asof(ot, ov, at) / _asof(ot, ov, at - hrs * 3600) - 1) * 100
-    for hrs in (1, 4, 24):
-        f[f"btc_ret_{hrs}h"] = _ret(btc["m_time"], btc["m_close"], at, hrs * 3600) * 100 * side
-    bdir = _asof(btc["h_close_time"], btc["h_dir"], at)
-    f["btc_st_1h_agrees"] = np.where(np.isfinite(bdir), ((bdir < 0) == (side > 0)).astype(float), np.nan)
-    f["hour_ist"] = ((at + IST) % TG.DAY) // 3600
-    f["weekday"] = ((at + IST) // TG.DAY + 3) % 7   # 0 = Monday
-
-    # PRE-ENTRY SHAPE (known at the decision): the last 4h in ATR units, with
-    # the trade's direction as "+": the biggest move with the trade, the
-    # deepest pullback against it, and the share of the last hour's bars that
-    # closed with the trade.
-    atr_i = pi.atr[i]
-    run4, pull4, green = [], [], []
-    for k, ii in enumerate(i):
-        w = slice(max(ii - 47, 0), ii + 1)
-        sd = side[k]
-        rel = (c[w] - c[max(ii - 48, 0)]) * sd / atr_i[k]
-        run4.append(np.nanmax(rel)); pull4.append(np.nanmin(rel - np.maximum.accumulate(rel)))
-        cc = c[max(ii - 12, 0):ii + 1]
-        green.append(float(np.mean(np.diff(cc) * sd > 0)) if len(cc) > 1 else np.nan)
-    f["run_4h_atr"], f["pullback_4h_atr"], f["with_trade_share_1h"] = run4, pull4, green
+    }), feats], axis=1)
 
     # PRICE PATHS -- NOT model inputs. Before entry: 24h of 5m closes; after
     # entry: 5m high/low until the exit. All in R from the entry price, "+" =
@@ -273,22 +188,14 @@ def _coin(args):
     # can never leak into the features.
     rpu = np.abs(t.entry_price - t.stop_price).to_numpy(float)
     ep = t.entry_price.to_numpy(float)
+    sp = t.stop_price.to_numpy(float)
     exit_t = t.exit_time.to_numpy("int64")
     paths = []
     for k, ii in enumerate(i):
-        sd, r, e = side[k], rpu[k], ep[k]
-        pre = ((c[max(ii - 287, 0):ii + 1] - e) * sd / r).astype("float32")
-        j = np.searchsorted(ptime, exit_t[k], side="right")
-        hh, ll = h[ii + 1:j], lo_[ii + 1:j]
-        fav = ((hh if sd > 0 else ll) - e) * sd / r
-        adv = ((ll if sd > 0 else hh) - e) * sd / r
-        mfe = float(np.max(fav)) if len(fav) else 0.0
-        mae = float(np.min(adv)) if len(adv) else 0.0
         paths.append(dict(symbol=sym, entry_time=int(t.entry_time.iloc[k]),
-                          pre_24h=pre.tolist(), fav=fav.astype("float32").tolist(),
-                          adv=adv.astype("float32").tolist(), mfe_R=mfe, mae_R=mae,
-                          bars_to_mfe=int(np.argmax(fav)) + 1 if len(fav) else 0,
-                          bars_held=int(len(fav))))
+                          pre_24h=SF.pre_entry_path(ctx, ii, side[k], ep[k], sp[k]).tolist(),
+                          **SF.post_entry_path(ctx.time, ctx.high, ctx.low, ii, exit_t[k],
+                                               side[k], ep[k], rpu[k])))
     return f, pd.DataFrame(paths)
 
 
@@ -323,23 +230,11 @@ def cmd_build() -> None:
 
 # --- evaluate -----------------------------------------------------------
 
-def _features(df):
-    return df.drop(columns=["symbol", "entry_time", "R", "win", "exit_reason"])
-
-
-def _model():
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    return HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=200,
-                                          min_samples_leaf=50, l2_regularization=1.0,
-                                          random_state=0)
-
-
-def _top_vs_random(R, score, frac=0.3, n=2000, seed=0):
-    k = max(1, int(round(frac * len(R))))
-    top = R[np.argsort(-score)[:k]].mean()
-    rng = np.random.default_rng(seed)
-    rand = np.array([R[rng.choice(len(R), k, replace=False)].mean() for _ in range(n)])
-    return top, float((rand >= top).mean()), k
+# Model and grade live in deltabt/signal_model.py, shared with the weekly
+# grader (`python -m live grade-model`).
+_features = SM.features
+_model = SM.model
+_top_vs_random = SM.top_vs_random
 
 
 def cmd_dev() -> None:

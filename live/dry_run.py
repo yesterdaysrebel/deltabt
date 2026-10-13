@@ -121,14 +121,14 @@ class DryRunBot(TradingBot):
 
 
 def build(settings, *, client, venue, symbols, products, strategy, costs,
-          repo, lock, notifier, backfiller, kill_switch_path):
+          repo, lock, notifier, backfiller, kill_switch_path, signal_recorder=None):
     """The dry-run bot: paper lifecycle, live venue checks, shadow exits on."""
     from app.execution.shadow_exits import ShadowExits
     from live.broker import LiveBroker
     from live.config import product_ids, tick_sizes
 
     bot = DryRunBot(settings, repo, costs, strategy=strategy, notifier=notifier,
-                    backfiller=backfiller, lock=lock,
+                    backfiller=backfiller, lock=lock, signal_recorder=signal_recorder,
                     shadow_exits=ShadowExits(costs,
                                              slippage_bps=settings.risk.slippage_bps,
                                              max_hold_seconds=settings.risk.max_hold_seconds))

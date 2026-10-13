@@ -272,3 +272,53 @@ class DuplicateRecord(Exception):
     Not an error condition in normal operation -- it is how idempotency is
     enforced after a restart replays work that was already durable.
     """
+
+
+@dataclass
+class SignalOutcomeRecord:
+    """One recorded signal, labelled as if it had been taken (2026-10-13).
+
+    Written by `python -m live label-signals` (live/learning.py): the lab's
+    engine (deltabt.portfolio.run_portfolio, ltp_close stop fill, 3R target,
+    72h, fees and funding) run on public 1m candles from the signal bar's
+    close. R is net of costs; fav/adv are the 5m high/low path after entry in
+    R (+ = in the trade's favour), as the lab's paths.parquet.
+    """
+    signal_id: int
+    idempotency_key: str
+    symbol: str
+    side: int
+    entry_time: int
+    entry_price: float
+    stop_price: float
+    #: None on a terminal "unlabellable: ..." row (exit_reason says why), so
+    #: a signal that can never be simulated is not refetched forever.
+    r_net: float | None
+    win: bool | None
+    exit_reason: str
+    exit_time: int | None
+    exit_price: float | None
+    mfe_r: float | None
+    mae_r: float | None
+    bars_to_mfe: int | None
+    bars_held: int | None
+    fav: list = field(default_factory=list)
+    adv: list = field(default_factory=list)
+    detail: dict = field(default_factory=dict)
+
+
+@dataclass
+class ModelGradeRecord:
+    """One weekly grade of the signal model. Never read by the trading path."""
+    week_start: int
+    week_end: int
+    n_train: int
+    n_train_live: int
+    n_test: int
+    auc: float | None
+    top_mean_r: float | None
+    all_mean_r: float | None
+    random_p: float | None
+    top_k: int
+    summary: str
+    detail: dict = field(default_factory=dict)

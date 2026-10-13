@@ -126,6 +126,7 @@ class TradingBot:
         feed: DeltaMarketFeed | None = None,
         lock=None,
         shadow_exits=None,
+        signal_recorder=None,
     ) -> None:
         settings.validate()
         strategy.validate()
@@ -240,6 +241,12 @@ class TradingBot:
         #: app/execution/shadow_exits.py.
         self.shadow_exits = shadow_exits
         self._pending_shadow: list = []
+        #: SIGNAL READINGS (owner, 2026-10-13): ~40 readings for every signal
+        #: with a direction, taken or skipped, written to
+        #: strategy_signals.features by a background task AFTER the decision
+        #: and the order. None records nothing. Nothing it computes is read
+        #: back by the bot -- see app/learning/recorder.py.
+        self.signal_recorder = signal_recorder
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
@@ -822,8 +829,30 @@ class TradingBot:
         if exp.outcome is not Outcome.NO_SETUP:
             await self.notifier.send(f"{symbol} {exp.outcome.value}", exp.summary())
 
-        if decision is not None and decision.approved:
-            await self._place(exp, decision, market_now)
+        try:
+            if decision is not None and decision.approved:
+                await self._place(exp, decision, market_now)
+        finally:
+            # AFTER the order, so the recorded outcome is the final one (a
+            # signal approved by the risk engine can still be refused at the
+            # reservation gate or by the venue checks inside _place).
+            self._schedule_signal_features(exp, key, decision)
+
+    def _schedule_signal_features(self, exp, key: str, decision) -> None:
+        """Hand the signal to the recorder. Never raises, never waits."""
+        rec = getattr(self, "signal_recorder", None)
+        if (rec is None or exp.direction is None or exp.entry_price is None
+                or exp.stop_price is None):
+            return
+        try:
+            b = self.builder[exp.symbol]
+            rec.schedule(self.repo, key=key, symbol=exp.symbol, bars=list(b.bars),
+                         bar_open=int(exp.bar_open), side=int(exp.direction),
+                         entry=float(exp.entry_price), stop=float(exp.stop_price),
+                         outcome=exp.outcome.value, reason=exp.rejection_reason,
+                         limit_name=getattr(decision, "limit_name", None))
+        except Exception:                                   # noqa: BLE001
+            log.exception("signal features not scheduled; trading unaffected")
 
     def _sizing_equity(self) -> float | None:
         """Equity to size a new position from. None means state.equity.
@@ -1435,6 +1464,11 @@ class TradingBot:
         self._stopping.set()
         self.ready = False
         self.feed.stop()
+        if getattr(self, "signal_recorder", None) is not None:
+            try:
+                await self.signal_recorder.drain(timeout=5.0)
+            except Exception:                               # noqa: BLE001
+                log.exception("signal features drain failed")
         for t in self._tasks:
             t.cancel()
         for t in self._tasks:

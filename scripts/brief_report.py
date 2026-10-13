@@ -4,8 +4,8 @@
         --document deltabt-paper-dryrun-monitor --log-group /deltabt/paper/dryrun/bot \
         --facts-json facts.json
 
-Two parts and nothing else (owner, 2026-10-02: "a journal only with error
-report like we have right now"):
+Two parts (owner, 2026-10-02: "a journal only with error report like we have
+right now"), plus a short "Learning" section at the end (owner, 2026-10-13):
 
 1. Does anything need you -- the bot unhealthy or restarted, errors in its
    log (each shown; a Delta feed drop the bot recovered from is a note), the 20% stop fired, data missing, the shadow self-check (prereg D7),
@@ -13,6 +13,9 @@ report like we have right now"):
 2. The journal -- every trade of the run: what is open now and everything
    closed so far, with times in IST, side, size, the leverage a real bot
    would have set on Delta, entry, stop, target, exit, R and dollars.
+3. Learning -- 3 lines: signals recorded yesterday (taken / skipped by
+   reason), how many are labelled, the last weekly model grade. From the
+   probe's "learning" key (app/reports/learning_probe.py).
 
 It reuses daily_report.py's plumbing (the read-only SSM probe, section
 parsing, log search) and nothing else.
@@ -535,6 +538,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     lines, totals = journal(rows, live, exits, omitted, real,
                             now_ts=int(now.timestamp()), proc_start=proc_start)
     out += lines
+    out += learning_lines(db.get("learning"))
 
     facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
              "verdict": "clear" if not problems else "attention", "problems": problems,
@@ -544,6 +548,52 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
              "prereg_latch_at": None if not notes else at,
              "health_line": "healthy" if healthy else "not healthy", "day_of": title_day}
     return "\n".join(out) + "\n", facts, problems
+
+
+#: How the bot's signal recorder names a skipped signal (app/learning/recorder.py).
+SKIP_LABEL = {"daily_cap": "daily cap", "open_position": "already in a trade",
+              "coin_pause": "coin paused after a loss", "zero_contracts": "too small to size",
+              "loss_limits": "loss limit", "venue_check": "venue check",
+              "halt": "market halted", "cooldown": "cooldown", "other": "other"}
+
+
+def learning_lines(lr: dict | None) -> list[str]:
+    """The short "Learning" section (owner, 2026-10-13): what the bot recorded
+    yesterday, how many signals are labelled, and the last weekly grade.
+    Never part of the attention list."""
+    out = ["", "## Learning"]
+    if not lr:
+        return out + ["No figures yet: the daily probe does not collect them."]
+    if lr.get("error"):
+        return out + [f"Figures unavailable ({lr['error']})."]
+    sig = lr.get("signals") or {}
+    total, taken = sum(sig.values()), sig.get("taken", 0)
+    skipped = sorted(((k, v) for k, v in sig.items() if k != "taken"), key=lambda kv: (-kv[1], kv[0]))
+    line = f"- Signals yesterday ({lr.get('day', '?')}, UTC day): {total} — {taken} taken"
+    if skipped:
+        line += (f", {sum(v for _, v in skipped)} skipped ("
+                 + ", ".join(f"{SKIP_LABEL.get(k, k)} {v}" for k, v in skipped) + ")")
+    line += "."
+    if lr.get("no_readings"):
+        line += f" {plural(int(lr['no_readings']), 'signal')} without readings."
+    out.append(line)
+    n = int(lr.get("labelled") or 0)
+    mean = lr.get("mean_r")
+    out.append(f"- Labelled so far: {plural(n, 'signal')}"
+               + (f", averaging {mean:+.2f}R each as if all were taken" if mean is not None and n else "")
+               + f"; {int(lr.get('waiting') or 0)} waiting for their outcome.")
+    g = lr.get("grade")
+    if g and g.get("top_mean_r") is not None:
+        auc = "n/a" if g.get("auc") is None else f"{g['auc']:.2f}"
+        out.append(f"- Last weekly grade (week of {g.get('week_start')}): AUC {auc} (0.50 = coin flip); "
+                   f"its top {int(g.get('top_k') or 0)} averaged {g['top_mean_r']:+.2f}R vs "
+                   f"{g['all_mean_r']:+.2f}R for all {int(g.get('n_test') or 0)}; random picks did as "
+                   f"well {100 * (g.get('random_p') or 0):.0f}% of the time. It never filters trades.")
+    elif g:
+        out.append(f"- Last weekly grade (week of {g.get('week_start')}): not enough signals to grade.")
+    else:
+        out.append("- No weekly grade yet.")
+    return out
 
 
 def _ist_string_after(value, since: dt.datetime) -> bool:
