@@ -1,6 +1,6 @@
 """Label recorded signals and grade the signal model (owner, 2026-10-13).
 
-    python -m live label-signals [--limit 500]
+    python -m live label-signals [--limit 2000]
     python -m live grade-model   [--history out/signal_lab/signals.parquet] [--week 2026-10-19]
 
 LABEL. Every signal in strategy_signals with a direction, entry, stop and
@@ -218,6 +218,16 @@ async def label_signals(repo, client, costs_for, *, now: int | None = None,
     now = int(time.time()) if now is None else int(now)
     rows = await repo.signals_to_label(limit=limit)
     out = {"candidates": len(rows), "labelled": 0, "unlabellable": 0, "waiting": 0, "errors": 0}
+    # ONE FETCH PER COIN PER RUN (2026-10-13). Live records ~2 signals per coin
+    # per hour, so fetching 72h of 1m LTP/MARK/FUNDING per signal repeated the
+    # same download dozens of times. The coin's window covers all its rows;
+    # each row then gets exactly the slice a per-signal fetch would return.
+    windows: dict[str, list[int]] = {}
+    for row in rows:
+        s = int(row["bar_open"])
+        w = windows.setdefault(row["symbol"], [s, s])
+        w[0], w[1] = min(w[0], s), max(w[1], s)
+    cache: dict[str, tuple] = {}
     for row in rows:
         minutes = int(str(row.get("primary_timeframe") or "5m").rstrip("m") or 5)
         start = int(row["bar_open"])
@@ -226,7 +236,12 @@ async def label_signals(repo, client, costs_for, *, now: int | None = None,
             continue
         end = min(now - 60, start + LOOKAHEAD)
         try:
-            ltp, mark, fund = await asyncio.to_thread(_fetch, client, row["symbol"], start, end)
+            sym = row["symbol"]
+            if sym not in cache:
+                lo, hi = windows[sym]
+                cache[sym] = await asyncio.to_thread(
+                    _fetch, client, sym, lo, min(now - 60, hi + LOOKAHEAD))
+            ltp, mark, fund = _slice(cache[sym], start, end)
             costs = costs_for(row["symbol"])
             got = simulate(row, ltp, mark, fund, costs, now=now, minutes=minutes)
         except Exception as exc:                            # noqa: BLE001
@@ -299,6 +314,20 @@ async def mark_takeable(repo) -> dict:
             if await repo.record_signal_takeable(key, took):
                 out["takeable" if took else "not_takeable"] += 1
     return out
+
+
+def _slice(frames, start, end):
+    """What _fetch(client, symbol, start, end) would have returned, cut from a
+    wider fetch: candles are inclusive [start, end]; funding from start-3600."""
+    ltp, mark, fund = frames
+
+    def cut(df, lo):
+        if df is None or df.empty or "time" not in df:
+            return df
+        t = df["time"].to_numpy("int64")
+        return df[(t >= lo) & (t <= end)].reset_index(drop=True)
+
+    return cut(ltp, start), cut(mark, start), cut(fund, start - 3600)
 
 
 def _fetch(client, symbol, start, end):
@@ -435,7 +464,7 @@ def main(argv: list[str]) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     lab = sub.add_parser("label-signals", help="label resolved signals as if taken, "
                                                "then mark which were takeable")
-    lab.add_argument("--limit", type=int, default=500)
+    lab.add_argument("--limit", type=int, default=2000)
     gr = sub.add_parser("grade-model", help="grade the signal model on the last full week")
     gr.add_argument("--history", default=None, help=f"signals.parquet (default ${ENV_HISTORY} "
                                                     f"or out/signal_lab/signals.parquet)")

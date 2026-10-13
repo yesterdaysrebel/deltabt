@@ -37,8 +37,6 @@ _spec.loader.exec_module(dr)
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 READ_AT_TRADES = 100            # docs/prod_dry_run_prereg.md
 READ_AT_DAYS = 21
-#: The health check left out of the verdict (see build()).
-GAPS_CHECK = "no_recent_gaps"
 EXITS = ("baseline", "ladder", "trail")
 EXIT_LABEL = {"baseline": "hold to 3R", "ladder": "ladder", "trail": "trail"}
 #: The drawdown stop the plan pre-registered. The dry run may run with a looser
@@ -393,7 +391,8 @@ def journal(rows: list[dict], live: dict, exits: dict | None = None,
 def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
           errors_24h: int | None, probe_problems: list[str],
           log_events: list[dict] | None = None,
-          snapshots: list[dict] | None | bool = False) -> tuple[str, dict, list[str]]:
+          snapshots: list[dict] | None | bool = False,
+          expect_experiment: bool = True) -> tuple[str, dict, list[str]]:
     problems = list(probe_problems)
     healthz = dr.as_json(sec.get("HEALTHZ", ""))
     risk_api = dr.as_json(sec.get("RISK", ""))
@@ -414,18 +413,21 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     start_eq = dr.num(snap.get("starting_equity")) or 250.0
     if not db:
         problems.append("the database figures did not arrive (probe output missing or cut off)")
-    if not running:
+    # A top-gainers stack runs UNBOUND by design (its coin list changes daily;
+    # live/__main__.py refuses `forward-test start`), so no experiment is not
+    # a problem there (2026-10-13; monitor.yml passes --unbound).
+    if not running and expect_experiment:
         problems.append("no experiment is RUNNING on this host")
 
-    # health. `no_recent_gaps` is left out: it counts minutes with no trade,
-    # and on BEAT/BANK that is most minutes (CONTEXT.md), so it would mark
-    # every day as needing attention. A dead feed still shows: candles_fresh
-    # and websocket_fresh go red with it.
+    # health. `no_recent_gaps` COUNTS AGAIN (2026-10-13). It was left out
+    # because it counted minutes with no trade, which on thin coins is most
+    # minutes. Since then a no-trade minute is a flat bar confirmed by REST and
+    # an unbroken websocket (app/runtime/bot.py _repair_gaps) and is NOT a gap,
+    # so a remaining gap is real data loss and belongs on the attention list.
     failing = [c for c in healthz.get("checks", []) if not c.get("ok")]
-    gaps = next((c for c in failing if c.get("name") == GAPS_CHECK), None)
-    bad = [c.get("name") for c in failing if c.get("name") != GAPS_CHECK]
-    healthy = bool(healthz) and healthz.get("ready") is True and not bad and (
-        str(healthz.get("status")) == "healthy" or gaps is not None)
+    bad = [c.get("name") for c in failing]
+    healthy = (bool(healthz) and healthz.get("ready") is True and not bad
+               and str(healthz.get("status")) == "healthy")
     if healthz and not healthy:
         problems.append(f"the bot is not healthy ({', '.join(bad) or 'not ready'})")
     elif not healthz:
@@ -623,6 +625,8 @@ def main() -> int:
     ap.add_argument("--log-group", default="")
     ap.add_argument("--region", default="ap-south-1")
     ap.add_argument("--facts-json")
+    ap.add_argument("--unbound", action="store_true",
+                    help="the stack runs without a forward-test experiment by design (top gainers)")
     ap.add_argument("--expect-db-snapshots", action="store_true",
                     help="the stack's Postgres runs on its host and is snapshotted daily; check it")
     args = ap.parse_args()
@@ -645,7 +649,7 @@ def main() -> int:
         snaps = out.get("Snapshots", []) if ok else None
     text, facts, problems = build(sec, db, now, stack=args.stack, errors_24h=None,
                                   probe_problems=list(dr.problems), log_events=events,
-                                  snapshots=snaps)
+                                  snapshots=snaps, expect_experiment=not args.unbound)
     print(text)
     if args.facts_json:
         pathlib.Path(args.facts_json).write_text(json.dumps(facts, default=str))

@@ -290,24 +290,36 @@ def test_problems_lead_the_report():
     assert "restarted 2 times" in joined and "3 errors" in joined
 
 
-def test_the_thin_symbol_gap_check_alone_does_not_raise_the_alarm():
+def test_a_real_gap_now_raises_the_alarm():
+    """2026-10-13: a no-trade minute is a flat bar and no longer a gap, so a
+    gap that remains is real data loss and goes on the attention list."""
     sec, db = a_probe()
     sec["HEALTHZ"] = json.dumps({
         "status": "unhealthy", "ready": True, "ws_connected": True,
         "checks": [{"name": "no_recent_gaps", "ok": False, "detail": "4 gap(s)"},
                    {"name": "candles_fresh", "ok": True}]})
     _, facts, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
-    assert not problems and facts["verdict"] == "clear"
+    assert problems == ["the bot is not healthy (no_recent_gaps)"]
 
 
-def test_a_real_health_failure_still_raises_it_next_to_gaps():
+def test_every_failing_check_is_named():
     sec, db = a_probe()
     sec["HEALTHZ"] = json.dumps({
         "status": "unhealthy", "ready": True, "ws_connected": False,
         "checks": [{"name": "no_recent_gaps", "ok": False},
                    {"name": "websocket_fresh", "ok": False}]})
     _, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
-    assert problems == ["the bot is not healthy (websocket_fresh)"]
+    assert problems == ["the bot is not healthy (no_recent_gaps, websocket_fresh)"]
+
+
+def test_an_unbound_stack_is_not_flagged_for_having_no_experiment():
+    sec, db = a_probe()
+    db = {**db, "experiments": []}
+    _, _, bound = br.build(sec, db, NOW, stack="bot", errors_24h=0, probe_problems=[])
+    _, _, unbound = br.build(sec, db, NOW, stack="bot", errors_24h=0, probe_problems=[],
+                             expect_experiment=False)
+    assert "no experiment is RUNNING on this host" in bound
+    assert "no experiment is RUNNING on this host" not in unbound
 
 
 def test_a_missing_shadow_record_is_flagged_by_the_self_check():
