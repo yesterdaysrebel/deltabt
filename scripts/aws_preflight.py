@@ -69,6 +69,16 @@ class Context:
     #: false alarm check_alarms describes for v1/v2. The caller derives it
     #: from `tofu state list`, so it is read, not restated.
     expected_stacks: int | None = None
+    #: How many RDS instances Terraform state holds (derived the same way).
+    #: ZERO since 2026-10-13: create_rds is off and each live stack runs
+    #: Postgres on its own host (infra/terraform/rds.tf, db_host.tf), so the
+    #: RDS checks report "not used" instead of failing on a correct absence.
+    expected_rds: int | None = None
+
+    def no_rds(self, name: str) -> "Result | None":
+        if self.expected_rds == 0:
+            return Result(name, PASS, "no RDS (create_rds off); Postgres runs on the bot host")
+        return None
 
     @property
     def name(self) -> str:
@@ -299,6 +309,8 @@ def check_ecr(ctx: Context) -> Result:
 
 
 def check_rds(ctx: Context) -> Result:
+    if (skip := ctx.no_rds("rds_private")):
+        return skip
     ok, data = aws(ctx, "rds", "describe-db-instances",
                    "--db-instance-identifier", ctx.name)
     if not ok:
@@ -424,6 +436,8 @@ def check_ssm(ctx: Context) -> Result:
 
 
 def check_secret(ctx: Context) -> Result:
+    if (skip := ctx.no_rds("database_secret")):
+        return skip
     ok, data = aws(ctx, "rds", "describe-db-instances",
                    "--db-instance-identifier", ctx.name)
     if not ok:
@@ -472,7 +486,7 @@ def check_alarms(ctx: Context) -> Result:
     })
 
     # The database is shared across stacks, so its alarm is not per-stack.
-    required = {f"{ctx.name}-db-no-connections"}
+    required = set() if ctx.expected_rds == 0 else {f"{ctx.name}-db-no-connections"}
     silence = {f"{ctx.name}-{s}-bot-silent" for s in stacks}
     required |= silence
     required |= {f"{ctx.name}-{s}-{k}" for s in stacks
@@ -642,6 +656,10 @@ def main() -> int:
                          "`tofu state list | grep -c '^aws_instance.bot\\['`). "
                          "0 makes the per-stack checks pass on an empty registry; "
                          "omitted keeps absence a failure.")
+    ap.add_argument("--expected-rds", type=int, default=None,
+                    help="how many RDS instances Terraform state holds "
+                         "(`tofu state list | grep -c '^aws_db_instance\\.'`); "
+                         "0 = Postgres on the bot hosts, the RDS checks report 'not used'")
     args = ap.parse_args()
 
     plan = {}
@@ -653,7 +671,8 @@ def main() -> int:
                   phase=args.phase,
                   expected_account=args.account, state_bucket=args.state_bucket,
                   ecr_repository=args.ecr_repository, plan=plan,
-                  expected_stacks=args.expected_stacks)
+                  expected_stacks=args.expected_stacks,
+                  expected_rds=args.expected_rds)
 
     checks = (INFRASTRUCTURE_CHECKS if args.phase == "infrastructure"
               else APPLICATION_CHECKS)
