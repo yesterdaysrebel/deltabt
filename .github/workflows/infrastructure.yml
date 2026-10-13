@@ -80,7 +80,7 @@ env:
   # Passed as TF_VAR_ rather than a default in variables.tf so the address is
   # not committed. Terraform reads TF_VAR_* automatically; an unset repository
   # variable yields "", which is the same as before.
-  TF_VAR_alarm_email: ${{ vars.ALARM_EMAIL }}
+  TF_VAR_alarm_email: ${{ secrets.ALARM_EMAIL || vars.ALARM_EMAIL }}
 
 
 jobs:
@@ -192,7 +192,7 @@ jobs:
             -var="github_owner_id=${{ github.repository_owner_id }}" \
             -var="github_repo_id=${{ github.repository_id }}" \
             -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="alarm_email=${{ vars.ALARM_EMAIL }}"
+            -var="alarm_email=${{ secrets.ALARM_EMAIL || vars.ALARM_EMAIL }}"
           code=$?
           echo "tofu plan -detailed-exitcode returned: $code"
           echo "  0 = no changes, 1 = error, 2 = changes present"
