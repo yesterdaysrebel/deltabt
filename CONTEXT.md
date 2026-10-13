@@ -69,6 +69,20 @@ stop-width link is mostly tight-stop slippage (win rate 27% vs 26%). Chart patte
 not hold. Paths: 31% of losers were +1R first; 45% of winners dipped below −0.5R first. Per the
 pre-registration: record every signal live (recorder) and re-test on more data; do not filter with it.
 
+Signal recorder (owner 2026-10-13, branch `feat/signal-recorder`, built on `feat/top-gainers`): every signal
+with a direction, taken or skipped, gets the lab's readings in `strategy_signals.features` (JSONB: `lab` = the
+~40 readings from `deltabt/signal_features.py`, which the lab's `_coin` now calls — parity test against the
+pre-refactor output; `live` = ticker + L2 book; `pre_24h`; `skip` = taken/daily_cap/open_position/…), written by
+a background task after the decision (`app/learning/recorder.py`; never blocks, NaN on failure, off with
+`DELTABOT_SIGNAL_FEATURES=0`). `python -m live label-signals` labels each signal as if taken with the lab's
+engine on public 1m candles (`signal_outcomes`; reproduces the lab exactly on a synthetic market);
+`python -m live grade-model` grades the lab's fixed model weekly on the last full UTC week (`model_grades`;
+history from `$DELTABT_SIGNAL_HISTORY` or `out/signal_lab/signals.parquet`, tolerated absent). The model never
+filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-line "Learning" section, fed by
+`app/reports/learning_probe.py` once it is copied into `deploy/aws/db_probe.py`. Not yet scheduled on a box.
+Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
+240m bars (st_4h_agrees) can differ slightly.
+
 Next: rebuild AWS (bootstrap + one `bot` stack, Postgres on host — RDS still referenced in `ec2.tf`,
 `docs/db_on_host.md` phase B), re-enable the GitHub workflows/vars/`prod-deploy` environment, owner
 creates a read-only Delta key for the box's EIP; after the watch-only read, a Trading key and dry_run "0";
