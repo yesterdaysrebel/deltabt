@@ -547,3 +547,19 @@ def test_snapshots_are_not_checked_unless_asked():
     sec, db = a_probe()
     text, _, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
     assert not problems and "backed up" not in text
+
+
+def test_a_planned_restart_is_a_note_and_a_crash_is_a_problem():
+    """2026-10-14: the daily coin re-pick exits cleanly and systemd starts the
+    bot again; that is a note. A start with no clean stop before it is not."""
+    ts = lambda h, m, s=0: f"2026-10-14T{h:02d}:{m:02d}:{s:02d}.000Z"
+    events = [
+        {"ts": ts(0, 0, 30), "level": "INFO", "logger": "live",
+         "message": "shutting down (signal or daily re-pick)"},
+        {"ts": ts(0, 0, 50), "level": "INFO", "logger": "live", "message": "starting"},
+        {"ts": ts(2, 10), "level": "INFO", "logger": "live", "message": "starting"},
+    ]
+    now = dt.datetime(2026, 10, 14, 4, 0, tzinfo=dt.timezone.utc)
+    notes, problems = br.classify_log(events, now)
+    assert any("restarted 1 time as planned" in n for n in notes)
+    assert problems == ["the bot restarted unexpectedly at 7:40 AM IST (no clean stop before it)"]

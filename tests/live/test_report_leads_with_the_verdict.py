@@ -247,7 +247,9 @@ def test_the_workflow_feeds_the_digest_from_the_reports():
     assert "if: always()" in digest, (
         "the digest skips itself when an arm's report failed -- which is "
         "exactly the night it matters")
-    assert "needs: report" in digest
+    import re
+    needs = re.search(r"\n    needs: *(\[[^\]]*\]|\S+)", digest).group(1)
+    assert "report" in needs, "the digest must wait for the reports it summarises"
 
 # --- each arm is reported against ITS OWN stopping rule --------------------
 #

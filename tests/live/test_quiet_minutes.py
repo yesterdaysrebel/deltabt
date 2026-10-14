@@ -227,7 +227,10 @@ async def test_watched_quiet_minute_becomes_a_flat_bar_not_a_gap():
 
 
 @pytest.mark.asyncio
-async def test_disconnected_minute_stays_a_gap_and_fails_health():
+async def test_a_minute_missed_by_a_reconnect_is_repaired_not_a_health_failure():
+    """2026-10-14: a minute nobody watched (reconnect) that REST serves is
+    repaired: the series is complete, the event is recorded, health stays
+    green. Before, every ~2 s overnight feed stall held /healthz red."""
     start = now_aligned(WARM + 6)
     archive = make_archive(WARM + 4, start, quiet=0.0, forced_quiet=(WARM + 1,))
     quiet_t = archive[WARM + 1].start
@@ -237,17 +240,17 @@ async def test_disconnected_minute_stays_a_gap_and_fails_health():
     await stream(bot, archive[WARM:WARM + 4])
 
     b = bot.builder[SYM]
-    assert len(b.gaps) == 1, "nobody watched that minute: it stays a gap"
     snap = bot.health_snapshot()
-    assert snap["recent_gaps"] == 1
-    assert "no_recent_gaps" in evaluate_health(snap, db_writable=True).failures
+    assert snap["recent_gaps"] == 0
+    assert "no_recent_gaps" not in evaluate_health(snap, db_writable=True).failures
     assert quiet_t in {c.start for c in b.bars}, "the series is still continuous"
     events = await bot.repo.recent_system_events()
-    assert any(e["event_type"] == "GAP_UNWATCHED" for e in events)
+    ev = [e for e in events if e["event_type"] == "GAP_UNWATCHED"]
+    assert ev and ev[0]["payload"]["repaired"] == 1
 
 
 @pytest.mark.asyncio
-async def test_trades_the_socket_missed_are_a_gap_even_when_repaired():
+async def test_trades_the_socket_missed_are_repaired_and_recorded():
     start = now_aligned(WARM + 6)
     archive = make_archive(WARM + 4, start, quiet=0.0)
     lost = archive[WARM + 1]
@@ -257,7 +260,7 @@ async def test_trades_the_socket_missed_are_a_gap_even_when_repaired():
 
     b = bot.builder[SYM]
     assert {c.start: c for c in b.bars}[lost.start] == lost, "repaired from REST"
-    assert len(b.gaps) == 1 and bot.health_snapshot()["recent_gaps"] == 1
+    assert bot.health_snapshot()["recent_gaps"] == 0
     events = await bot.repo.recent_system_events()
     assert any(e["event_type"] == "GAP_MISSED_WHILE_CONNECTED" for e in events)
 
