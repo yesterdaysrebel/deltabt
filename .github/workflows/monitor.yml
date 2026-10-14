@@ -17,6 +17,10 @@ on:
   # 2026-10-02 for the prod dry run (`dryrun`), whose owner reads it daily.
   schedule:
     - cron: "30 1 * * *"
+    # BACKUP, 8:00 AM IST (2026-10-14). GitHub created no run at all for the
+    # 01:30 schedule on 10-14; this one runs only if no report ran today
+    # (job `once` below), so a normal day still sends one email.
+    - cron: "30 2 * * *"
   workflow_dispatch:
     inputs:
       day:
@@ -27,14 +31,41 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: read     # `once` lists today's runs of this workflow
 
 concurrency:
   group: daily-report
   cancel-in-progress: false
 
 jobs:
+  once:
+    name: run once a day
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A dispatch always runs. A schedule runs unless another run of this
+          # workflow (not cancelled) was already created today, UTC.
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=yes" >> "$GITHUB_OUTPUT"; exit 0; fi
+          today=$(date -u +%F)
+          n=$(gh api "repos/${{ github.repository }}/actions/workflows/monitor.yml/runs?created=%3E%3D${today}&per_page=50" \
+               --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.conclusion != "cancelled")] | length')
+          if [ "$n" -gt 0 ]; then
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::a report already ran today; this backup run does nothing"
+          else
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          fi
+
   report:
     name: "daily report: ${{ matrix.stack }} (${{ matrix.variant }})"
+    needs: once
+    if: needs.once.outputs.go == 'yes'
     runs-on: ubuntu-latest
     # ONE JOB PER CONCURRENT EXPERIMENT.
     #
@@ -259,11 +290,11 @@ jobs:
 
   digest:
     name: both arms, one email
-    needs: report
+    needs: [once, report]
     # ALWAYS, because the arm that needs attention is the one whose job failed,
     # and a digest that skips itself exactly when something is wrong is worse
     # than no digest. `report` fails the run when it finds a problem.
-    if: always()
+    if: always() && needs.once.outputs.go == 'yes'
     runs-on: ubuntu-latest
     permissions:
       contents: read

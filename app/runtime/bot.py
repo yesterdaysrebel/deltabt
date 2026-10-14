@@ -786,7 +786,16 @@ class TradingBot:
                     await self.repo.save_candles(symbol, "1m", traded,
                                                  source="rest")
             quiet_out.extend(flats)
-            genuine = bool(absent or missed or unwatched)
+            # WHAT IS A GAP (revised 2026-10-14). Only minutes REST cannot supply
+            # (`absent`) are lost data. Minutes missed by a connected socket
+            # (`missed`) or around a reconnect (`unwatched`) are REPAIRED: REST
+            # served the traded bar or Delta's flat bar and it is in the series
+            # above. They stay visible as events and counts, but no longer hold
+            # /healthz red: on 10-14 every overnight feed stall (5 in 9 h, each
+            # reconnected in ~2 s) kept the bot "unhealthy" for the lookback
+            # window over minutes that were already complete.
+            genuine = bool(absent)
+            repaired = len(missed) + len(unwatched)
             b.settle_gap(gap, quiet=quiet_ok, cleared=not genuine)
             payload = {"from": gap.expected_start, "to": gap.actual_start,
                        "missing": gap.missing,
@@ -794,8 +803,8 @@ class TradingBot:
                        "quiet": len(flats), "traded": len(traded),
                        "absent": len(absent),
                        "missed_while_connected": len(missed),
-                       "unwatched": len(unwatched)}
-            if not genuine and not traded:
+                       "unwatched": len(unwatched), "repaired": repaired}
+            if not genuine and not traded and not repaired:
                 # Only no-trade minutes: not a gap, so no event row either --
                 # on a thin coin that is most minutes. Counted, and logged here.
                 log.debug("quiet minute(s): no trades, flat bars queued",
@@ -803,10 +812,10 @@ class TradingBot:
                 continue
             if genuine:
                 log.warning("1m gap detected", extra={"symbol": symbol, **payload})
-            event = ("GAP_REPAIRED" if not genuine
+            event = ("GAP_PARTIAL" if absent
                      else "GAP_MISSED_WHILE_CONNECTED" if missed
-                     else "GAP_PARTIAL" if absent
-                     else "GAP_UNWATCHED")
+                     else "GAP_UNWATCHED" if unwatched
+                     else "GAP_REPAIRED")
             await self._event("candles", event, symbol=symbol,
                               severity="WARNING" if genuine else "INFO",
                               payload=payload)

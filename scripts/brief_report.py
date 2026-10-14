@@ -59,7 +59,14 @@ FEED_RECOVERY_SECONDS = 60
 FEED_DROPS_ALARM = 6
 #: The pattern main() reads: every ERROR/CRITICAL line, plus the feed's
 #: "subscribed" lines that show a reconnect completed.
-LOG_PATTERN = '{ ($.level = "ERROR") || ($.level = "CRITICAL") || ($.message = "subscribed") }'
+LOG_PATTERN = ('{ ($.level = "ERROR") || ($.level = "CRITICAL") || ($.message = "subscribed")'
+               ' || ($.message = "starting") || ($.message = "shutting down (signal or daily re-pick)")'
+               ' || ($.message = "shutdown signal received") }')
+#: Messages the bot logs on a CLEAN stop (live/__main__.py, app/__main__.py).
+CLEAN_STOPS = ("shutting down (signal or daily re-pick)", "shutdown signal received")
+#: A start this soon after a clean stop is a planned restart (daily re-pick,
+#: deploy); systemd restarts the unit 15 s after it exits.
+PLANNED_RESTART_SECONDS = 180
 
 
 def _log_time(event: dict) -> float | None:
@@ -98,6 +105,22 @@ def classify_log(events: list[dict], now: dt.datetime) -> tuple[list[str], list[
         else:
             other.append(e)
     notes, problems = [], []
+    # RESTARTS, FROM THE LOG (2026-10-14). The probe's systemd NRestarts also
+    # counts the planned daily coin re-pick (the bot exits 0 at 00:00:30 UTC
+    # and systemd starts it again) and only ever grows, so it alerted every
+    # day. A start that follows a clean stop within PLANNED_RESTART_SECONDS is
+    # planned (re-pick or deploy); any other start in the window is not.
+    stops = sorted(t for t in (_log_time(e) for e in events
+                               if str(e.get("message")) in CLEAN_STOPS) if t is not None)
+    starts = sorted(t for t in (_log_time(e) for e in events
+                                if str(e.get("message")) == "starting") if t is not None)
+    planned = [t for t in starts if any(t - PLANNED_RESTART_SECONDS <= s <= t for s in stops)]
+    unplanned = [t for t in starts if t not in planned]
+    if planned:
+        notes.append(f"The bot restarted {plural(len(planned), 'time')} as planned (daily coin "
+                     f"re-pick or a deploy): {', '.join(ist(t) for t in planned[:4])} IST.")
+    for t in unplanned:
+        problems.append(f"the bot restarted unexpectedly at {ist(t)} IST (no clean stop before it)")
     if recovered:
         when = ", ".join(ist(t) for t in recovered[:6]) + (" ..." if len(recovered) > 6 else "")
         notes.append(f"Delta's price feed dropped {plural(len(recovered), 'time')} and the bot "
@@ -434,7 +457,9 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
         problems.append("the bot did not answer its health check")
     restarts = None
     for line in (sec.get("CONTAINER") or "").splitlines():
-        if "restarts=" in line:
+        # Docker's own count only. The `systemd_restarts=` line includes the
+        # planned daily re-pick; restarts are judged from the log instead.
+        if line.startswith("user=") and "restarts=" in line:
             try:
                 restarts = int(line.split("restarts=")[1].split()[0])
             except (ValueError, IndexError):
