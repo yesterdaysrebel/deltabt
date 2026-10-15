@@ -219,8 +219,15 @@ def cmd_build() -> None:
             if got is not None:
                 frames.append(got[0]); pframes.append(got[1])
     df = pd.concat(frames, ignore_index=True).sort_values("entry_time", ignore_index=True)
+    paths = pd.concat(pframes, ignore_index=True)
+    # Second target (2026-10-15): did the as-if trade reach +1R before it
+    # ended? An OUTCOME column; deltabt.signal_model.NON_INPUTS keeps it out
+    # of the inputs.
+    df = df.merge(paths[["symbol", "entry_time", "mfe_R"]], on=["symbol", "entry_time"], how="left")
+    df["reach_1r"] = np.where(df.mfe_R.notna(), (df.mfe_R >= 1.0).astype(float), np.nan)
+    df = df.drop(columns=["mfe_R"])
     df.to_parquet(OUT / "signals.parquet", index=False)
-    pd.concat(pframes, ignore_index=True).to_parquet(OUT / "paths.parquet", index=False)
+    paths.to_parquet(OUT / "paths.parquet", index=False)
     dev = df[df.entry_time < HOLDOUT_START]
     print(f"{len(df)} signals from {df.symbol.nunique()} coins; dev {len(dev)} "
           f"(win {dev.win.mean():.1%}, mean R {dev.R.mean():+.3f}); hold-out {len(df) - len(dev)} (not read)")

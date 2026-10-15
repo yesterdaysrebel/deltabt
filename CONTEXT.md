@@ -96,6 +96,13 @@ filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-l
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**MODEL SWITCH-ON RULE fixed 2026-10-15 (owner approved, before any grade): `docs/model_switch_on_rule.md`.**
+Grades now test LIVE signals only (history runs into the first graded week), store per-signal scores, and grade a
+second target "reaches +1R" (owner asked; history: 49% reach +1R, a 1R exit ≈ −0.075R/trade, 1R model AUC 0.51).
+Eligible after ≥4 weeks of ≥30 live signals, pooled top-30% beats random at p ≤ 0.05 and (3R) mean R > 0 / (1R) reach
+share > 52%. The live-only order-book readings are recorded but NOT model inputs (history lacks them); a live-only
+model needs a few hundred takeable live signals first.
+
 **BOT LIVE, WATCH-ONLY, since 2026-10-13 13:22 UTC (6:52 PM IST).** #116 + #117 merged; infrastructure apply
 green (16/16 preflight; `--expected-rds 0`); deploy-prod run 38400636237 approved by the owner in GitHub. First
 picks: S, DUSK, STX, BTW, OPN, INIT, AKE, TIA, BTC, SKL; unbound (no experiment); re-pick 00:00:30 UTC. First

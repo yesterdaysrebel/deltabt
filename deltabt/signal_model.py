@@ -11,7 +11,9 @@ import numpy as np
 import pandas as pd
 
 #: Columns of a signals frame that are labels or keys, not model inputs.
-NON_INPUTS = ("symbol", "entry_time", "R", "win", "exit_reason")
+# Labels and keys. reach_1r / mfe_R are OUTCOMES (2026-10-15, second target):
+# never inputs, or the model would read the answer.
+NON_INPUTS = ("symbol", "entry_time", "R", "win", "exit_reason", "reach_1r", "mfe_R")
 
 
 def features(df: pd.DataFrame) -> pd.DataFrame:

@@ -220,7 +220,10 @@ class Repository(ABC):
     @abstractmethod
     async def labelled_signals(self) -> list[dict]:
         """Every labelled signal: the signal row (as signals_to_label) plus
-        r_net, win, exit_reason and takeable."""
+        r_net, win, exit_reason, takeable and mfe_r."""
+    @abstractmethod
+    async def model_grades(self) -> list[dict]:
+        """Every weekly grade, oldest first (the switch-on rule pools them)."""
     @abstractmethod
     async def takeability_rows(self, lookback_seconds: int = 7 * 86400) -> list[dict]:
         """What live/learning.mark_takeable walks. For every symbol with an
@@ -640,7 +643,7 @@ class InMemoryRepository(Repository):
 
     async def labelled_signals(self) -> list[dict]:
         out = [{**self._signal_row(k), "r_net": o.r_net, "win": o.win,
-                "exit_reason": o.exit_reason, "takeable": o.takeable}
+                "exit_reason": o.exit_reason, "takeable": o.takeable, "mfe_r": o.mfe_r}
                for k, o in self._s["signal_outcomes"].items()]
         return sorted(out, key=lambda r: (r["bar_open"], r["id"]))
 
@@ -650,6 +653,10 @@ class InMemoryRepository(Repository):
     async def latest_model_grade(self) -> dict | None:
         g = self._s["model_grades"]
         return dict(g[max(g)]) if g else None
+
+    async def model_grades(self) -> list[dict]:
+        g = self._s["model_grades"]
+        return [dict(g[k]) for k in sorted(g)]
 
     async def get_state(self, key: str) -> dict | None:
         return self._s["kv"].get(key)
@@ -1480,7 +1487,7 @@ class PostgresRepository(Repository):
     async def labelled_signals(self) -> list[dict]:
         async with self._pool.acquire() as con:
             rows = await con.fetch(
-                f"SELECT {self._SIGNAL_COLS}, o.r_net, o.win, o.exit_reason, o.takeable "
+                f"SELECT {self._SIGNAL_COLS}, o.r_net, o.win, o.exit_reason, o.takeable, o.mfe_r "
                 "FROM signal_outcomes o JOIN strategy_signals s ON s.id = o.signal_id "
                 "ORDER BY s.bar_open, s.id")
         return [dict(r) for r in rows]
@@ -1535,6 +1542,22 @@ class PostgresRepository(Repository):
             row = await con.fetchrow(
                 "SELECT * FROM model_grades ORDER BY week_start DESC LIMIT 1")
         return dict(row) if row else None
+
+    async def model_grades(self) -> list[dict]:
+        async with self._pool.acquire() as con:
+            rows = await con.fetch("SELECT * FROM model_grades ORDER BY week_start")
+        return [self._grade_row(r) for r in rows]
+
+    @staticmethod
+    def _grade_row(row) -> dict:
+        d = dict(row)
+        for k in ("week_start", "week_end"):
+            if hasattr(d.get(k), "timestamp"):
+                d[k] = int(d[k].timestamp())
+        if isinstance(d.get("detail"), str):
+            import json as _j
+            d["detail"] = _j.loads(d["detail"])
+        return d
 
     async def recent_signals(self, limit: int = 50) -> list[dict]:
         async with self._pool.acquire() as con:
