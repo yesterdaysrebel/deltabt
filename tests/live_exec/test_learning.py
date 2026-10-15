@@ -182,7 +182,9 @@ def test_grade_model_writes_one_row_per_week(tmp_path):
     path = tmp_path / "signals.parquet"
     hist.to_parquet(path)
     rec = asyncio.run(learning.grade_model(repo, history_path=path, now=MON + 8 * 86400))
-    assert rec.week_start == MON and rec.n_test > 0
+    # History rows inside the graded week are never scored (2026-10-15): with
+    # no live signals that week there is nothing to grade, but the row exists.
+    assert rec.week_start == MON and rec.n_test == 0 and rec.n_train > 0
     again = asyncio.run(learning.grade_model(repo, history_path=path, now=MON + 9 * 86400))
     assert len(repo.store["model_grades"]) == 1
     assert asyncio.run(repo.latest_model_grade())["auc"] == again.auc
@@ -225,3 +227,66 @@ def test_one_fetch_per_coin_gives_the_same_labels_as_one_per_signal(monkeypatch)
     single, _ = labels(per_signal=True)
     assert cached == single and len(cached) == len(sigs)
     assert len([c for c in cached_calls if c[0] == SYM]) == 1   # one LTP window for the coin
+
+
+# --- switch-on rule and the second target (2026-10-15) ---------------------
+
+def _grade_week(n, predictive, seed, base=1792000000, wrong_way=False):
+    rng = np.random.default_rng(seed)
+    win = rng.random(n) < 0.3
+    R = np.where(win, 2.9, -1.05)
+    reach = (win | (rng.random(n) < 0.3)).astype(int)
+    noise = rng.random(n)
+    sign = -1.0 if wrong_way else 1.0
+    score = noise + sign * (1.5 * win if predictive else 0.0)
+    s1 = noise + sign * (1.5 * reach if predictive else 0.0)
+    return {"detail": {
+        "scored": [[base + i, "X", float(score[i]), float(R[i])] for i in range(n)],
+        "scored_1r": [[base + i, "X", float(s1[i]), int(reach[i])] for i in range(n)]}}
+
+
+def test_switch_rule_needs_four_qualifying_weeks():
+    chk = learning.switch_check([_grade_week(80, True, s) for s in range(3)])
+    assert chk["3R"] == {"weeks": 3, "needs_weeks": 4, "eligible": False}
+    small = [_grade_week(20, True, s) for s in range(6)]          # < 30 signals each
+    assert learning.switch_check(small)["3R"]["weeks"] == 0
+
+
+def test_switch_rule_passes_a_real_signal_and_refuses_noise():
+    good = learning.switch_check([_grade_week(80, True, s) for s in range(4)])
+    assert good["3R"]["eligible"] and good["3R"]["p"] <= 0.05 and good["3R"]["top"] > 0
+    assert good["1R"]["eligible"] and good["1R"]["top"] > learning.REACH_1R_BREAK_EVEN
+    # a model that ranks the LOSERS first must never pass (random scores would
+    # pass 5% of the time by construction, which is the rule's false-alarm rate)
+    wrong = learning.switch_check([_grade_week(80, True, s, wrong_way=True) for s in range(4)])
+    assert not wrong["3R"]["eligible"] and not wrong["1R"]["eligible"]
+    assert "Switch-on rule:" in learning.switch_line(wrong)
+
+
+def test_outcome_columns_are_never_model_inputs():
+    from deltabt import signal_model as SM
+    df = pd.DataFrame({"symbol": ["A"], "entry_time": [1], "R": [1.0], "win": [1],
+                       "exit_reason": ["target"], "reach_1r": [1.0], "mfe_R": [1.2], "wpr": [-50.0]})
+    assert list(SM.features(df).columns) == ["wpr"]
+
+
+def test_the_graded_week_scores_live_signals_only():
+    """The history file runs to 2026-10-12, inside the first graded week."""
+    from deltabt import signal_features as SF
+    rng = np.random.default_rng(0)
+    ws = 1792000000
+
+    def frame(n, t0, live):
+        d = {"symbol": "X", "entry_time": t0 + np.arange(n) * 600, "side": 1.0,
+             "R": rng.choice([2.9, -1.05], n), "exit_reason": "stop",
+             "reach_1r": rng.integers(0, 2, n).astype(float)}
+        for k in SF.FEATURES:
+            d[k] = rng.random(n)
+        f = pd.DataFrame(d)
+        f["win"] = (f.R > 0).astype(int)
+        return f
+    hist = pd.concat([frame(400, ws - 30 * 86400, 0), frame(25, ws + 3600, 0)])   # 25 inside the week
+    live = frame(40, ws + 7200, 1)
+    rec = learning.grade(hist, live, ws)
+    assert rec.n_test == 40 and len(rec.detail["scored"]) == 40
+    assert len(rec.detail["scored_1r"]) == 40
