@@ -108,12 +108,13 @@ class SignalRecorder:
 
     def schedule(self, repo, *, key: str, symbol: str, bars: list, bar_open: int,
                  side: int, entry: float, stop: float, outcome: str | None,
-                 reason: str | None, limit_name: str | None) -> asyncio.Task | None:
+                 reason: str | None, limit_name: str | None,
+                 flow: dict | None = None) -> asyncio.Task | None:
         try:
             task = asyncio.get_running_loop().create_task(self.record(
                 repo, key=key, symbol=symbol, bars=bars, bar_open=bar_open, side=side,
                 entry=entry, stop=stop, outcome=outcome, reason=reason,
-                limit_name=limit_name), name=f"signal-features-{symbol}")
+                limit_name=limit_name, flow=flow), name=f"signal-features-{symbol}")
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
             return task
@@ -130,7 +131,7 @@ class SignalRecorder:
             t.cancel()
 
     async def record(self, repo, *, key, symbol, bars, bar_open, side, entry, stop,
-                     outcome, reason, limit_name) -> dict:
+                     outcome, reason, limit_name, flow: dict | None = None) -> dict:
         t0 = time.monotonic()
         try:
             payload = await asyncio.wait_for(asyncio.to_thread(
@@ -143,7 +144,10 @@ class SignalRecorder:
         payload.update(version=FEATURES_VERSION, computed_at=int(time.time()),
                        elapsed_s=round(time.monotonic() - t0, 3),
                        final_outcome=outcome, final_reason=reason, limit_name=limit_name,
-                       skip=skip_reason(outcome, reason, limit_name))
+                       skip=skip_reason(outcome, reason, limit_name),
+                       # order flow at the decision (app/market_data/trade_flow.py);
+                       # live-only, like the order book under "live"
+                       flow=flow)
         try:
             await repo.record_signal_features(key, payload)
         except Exception:                                   # noqa: BLE001

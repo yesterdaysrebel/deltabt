@@ -217,6 +217,9 @@ async def test_every_signal_with_a_direction_gets_readings():
         f = feats[k]
         assert f["errors"] == [] and math.isfinite(f["lab"]["wpr"])
         assert f["final_outcome"] in ("APPROVED", "REJECTED", "SUPPRESSED")
+        # order flow is snapshotted at the decision (no prints fed here)
+        assert "error" not in f["flow"], f["flow"]
+        assert f["flow"]["prints_seen"] == 0 and f["flow"]["trades_5m"] == 0
 
 
 async def test_a_broken_recorder_changes_no_decision():

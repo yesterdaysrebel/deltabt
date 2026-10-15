@@ -100,7 +100,7 @@ Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, 
 Grades now test LIVE signals only (history runs into the first graded week), store per-signal scores, and grade a
 second target "reaches +1R" (owner asked; history: 49% reach +1R, a 1R exit ≈ −0.075R/trade, 1R model AUC 0.51).
 Eligible after ≥4 weeks of ≥30 live signals, pooled top-30% beats random at p ≤ 0.05 and (3R) mean R > 0 / (1R) reach
-share > 52%. The live-only order-book readings are recorded but NOT model inputs (history lacks them); a live-only
+share > 52%. The live-only order-book readings, and since 2026-10-15 ORDER FLOW (taker buy/sell USD, imbalance, trade counts over 1/5/15 min and the largest print, from the all_trades feed; `app/market_data/trade_flow.py`, stored as `features.flow`), are recorded but NOT model inputs (history lacks them); a live-only
 model needs a few hundred takeable live signals first.
 
 **BOT LIVE, WATCH-ONLY, since 2026-10-13 13:22 UTC (6:52 PM IST).** #116 + #117 merged; infrastructure apply

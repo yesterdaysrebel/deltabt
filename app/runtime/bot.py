@@ -248,6 +248,12 @@ class TradingBot:
         #: and the order. None records nothing. Nothing it computes is read
         #: back by the bot -- see app/learning/recorder.py.
         self.signal_recorder = signal_recorder
+        #: ORDER FLOW (owner, 2026-10-15): the last 15 min of public prints per
+        #: coin, from the all_trades channel the feed was already subscribed
+        #: to. Snapshot into each signal's readings; never read for trading.
+        from app.market_data.trade_flow import TradeFlow
+        self.trade_flow = TradeFlow({s: getattr(c, "contract_value", 1.0)
+                                     for s, c in (costs or {}).items()})
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
@@ -522,6 +528,8 @@ class TradingBot:
                 self._on_tick(normalize_ticker(msg))
             elif t == "candlestick_1m":
                 self._on_candle(normalize_candle(msg))
+            elif t in ("all_trades", "all_trades_snapshot"):
+                self.trade_flow.on_message(msg)      # never raises; measurement only
         except NormalizeError as exc:
             self.metrics.bad_messages += 1
             log.warning("unusable message dropped: %s", exc)
@@ -1000,7 +1008,14 @@ class TradingBot:
             return
         try:
             b = self.builder[exp.symbol]
-            rec.schedule(self.repo, key=key, symbol=exp.symbol, bars=list(b.bars),
+            # Snapshot NOW, at the decision: the flow keeps moving while the
+            # background task fetches the rest.
+            try:
+                flow = self.trade_flow.snapshot(exp.symbol, int(wall_now()),
+                                                int(exp.direction))
+            except Exception as exc:                       # noqa: BLE001
+                flow = {"error": f"{type(exc).__name__}: {exc}"}
+            rec.schedule(self.repo, key=key, symbol=exp.symbol, bars=list(b.bars), flow=flow,
                          bar_open=int(exp.bar_open), side=int(exp.direction),
                          entry=float(exp.entry_price), stop=float(exp.stop_price),
                          outcome=exp.outcome.value, reason=exp.rejection_reason,
