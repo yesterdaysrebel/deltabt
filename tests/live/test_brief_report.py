@@ -153,6 +153,30 @@ def test_without_learning_figures_it_says_so_and_raises_no_alarm():
     assert "- No weekly grade yet." in text
 
 
+def test_the_learning_line_splits_trade_coins_and_record_only_coins():
+    """2026-10-16: record-only coins are counted beside the trade coins, never
+    as 'skipped'."""
+    sec, db = a_probe()
+    db["learning"] = {**LEARNING, "signals": {**LEARNING["signals"], "record_only": 30},
+                      "record_only": 30, "takeable": 12, "takeable_record_only": 8}
+    text, _f, problems = br.build(sec, db, NOW, stack="dryrun", errors_24h=0, probe_problems=[])
+    assert not problems
+    assert ("- Signals yesterday (2026-10-03, UTC day): recorded 45 (trade coins 15, "
+            "record-only 30; takeable 12 (8 record-only), 3 not yet known; taken 2); "
+            "13 skipped (daily cap 9, already in a trade 3, coin paused after a loss 1).") in text
+
+
+def test_the_probe_counts_record_only_signals_even_without_readings():
+    """The SQL can only be run against PostgreSQL (DELTABOT_TEST_DSN); this
+    pins what it must classify, in both copies."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    for path in ("app/reports/learning_probe.py", "deploy/aws/db_probe.py"):
+        src = (root / path).read_text()
+        assert "WHEN rejection_reason LIKE 'record_only%' THEN 'record_only'" in src, path
+        assert "AS takeable_record_only" in src and 'out["record_only"]' in src, path
+
+
 def _block(text, mark):
     """The three lines of one closed trade: hold to 3R, ladder, trail."""
     lines = text.splitlines()

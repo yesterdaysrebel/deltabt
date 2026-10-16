@@ -292,6 +292,13 @@ def _fill_budget(intent: ApprovedOrderIntent) -> float:
     """
     return max(intent.risk_amount, intent.risk_cap)
 
+class NotTradeable(RuntimeError):
+    """An entry on a coin outside the trade universe, refused before anything
+    was created. The bot reads `no_position_can_result` and releases the slot."""
+
+    no_position_can_result = True
+
+
 class PaperBroker:
     """Simulated execution. No exchange order API is reachable from here."""
 
@@ -311,8 +318,16 @@ class PaperBroker:
                  ladder_rungs: tuple[tuple[float, float], ...] = (),
                  stop_trigger: str = "mark",
                  trail_after_r: float | None = None,
-                 trail_r: float | None = None) -> None:
+                 trail_r: float | None = None,
+                 tradeable_symbols=None) -> None:
         self.costs = costs
+        #: THE TRADE UNIVERSE (2026-10-16). None = no restriction (every paper
+        #: arm). The bot also watches record-only coins; an intent for any coin
+        #: outside this set is refused in submit_order even if something
+        #: upstream approved it. Not an identity field: it narrows, never
+        #: changes, what an approved trade does.
+        self.tradeable_symbols = (None if tradeable_symbols is None
+                                  else frozenset(tradeable_symbols))
         #: RATCHET THE STOP AS THE TRADE GOES IN FAVOUR. Ascending
         #: ``(favourable excursion in R, new stop in R from entry)`` pairs.
         #: ``()`` is the absence of the rule and is what every result recorded
@@ -480,6 +495,11 @@ class PaperBroker:
             raise TypeError(
                 "PaperBroker.submit_order accepts only an ApprovedOrderIntent; "
                 "a strategy may not create orders directly")
+        if self.tradeable_symbols is not None and intent.symbol not in self.tradeable_symbols:
+            log.error("refusing entry on %s: not in the trade universe "
+                      "(record-only coins are never traded)", intent.symbol)
+            raise NotTradeable(f"{intent.symbol} is not in the trade universe "
+                               f"(record_only); nothing was opened")
         if intent.intent_id in self._by_intent:
             log.info("intent already submitted; ignoring replay",
                      extra={"intent": intent.intent_id})

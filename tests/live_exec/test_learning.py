@@ -290,3 +290,82 @@ def test_the_graded_week_scores_live_signals_only():
     rec = learning.grade(hist, live, ws)
     assert rec.n_test == 40 and len(rec.detail["scored"]) == 40
     assert len(rec.detail["scored_1r"]) == 40
+
+
+# --- amendment 2026-10-16: record-only coins and the trade-universe subset ----
+
+def _with_flag(week, trade_flags):
+    """A graded week whose rows carry the 5th element (trade-universe flag)."""
+    d = week["detail"]
+    return {"detail": {k: [r + [int(f)] for r, f in zip(d[k], trade_flags)]
+                       for k in ("scored", "scored_1r")}}
+
+
+def test_amendment_eligible_needs_all_signals_and_the_trade_universe_subset():
+    # predictive on every coin: both sets pass
+    good = [_with_flag(_grade_week(120, True, s), [i % 2 for i in range(120)]) for s in range(4)]
+    chk = learning.switch_check(good)
+    assert chk["3R"]["eligible"] and chk["trade_universe"]["3R"]["eligible"]
+    assert chk["trade_universe"]["3R"]["weeks"] == 4
+    # predictive on the record-only coins, backwards on the trade coins: all
+    # signals pass, the trade-universe subset fails -> NOT eligible
+    mixed = []
+    for s in range(4):
+        rec_only = _grade_week(80, True, s)
+        trade = _grade_week(40, True, 100 + s, base=1792100000, wrong_way=True)
+        mixed.append({"detail": {k: [r + [0] for r in rec_only["detail"][k]]
+                                 + [r + [1] for r in trade["detail"][k]]
+                                 for k in ("scored", "scored_1r")}})
+    chk = learning.switch_check(mixed)
+    assert chk["3R"]["p"] <= 0.05 and chk["3R"]["top"] > 0        # all signals would pass
+    assert not chk["trade_universe"]["3R"]["eligible"]
+    assert not chk["3R"]["eligible"] and not chk["1R"]["eligible"]
+    line = learning.switch_line(chk)
+    assert "all signals" in line and "trade coins only" in line and "ELIGIBLE" not in line
+
+
+def test_amendment_subset_weeks_qualify_on_their_own_count():
+    # 100 signals a week but only 20 on trade coins: the subset never qualifies
+    weeks = [_with_flag(_grade_week(100, True, s), [1] * 20 + [0] * 80) for s in range(5)]
+    chk = learning.switch_check(weeks)
+    assert chk["trade_universe"]["3R"] == {"weeks": 0, "needs_weeks": 4, "eligible": False}
+    assert not chk["3R"]["eligible"]
+    assert "trade coins only 0 of 4 qualifying weeks so far" in learning.switch_line(chk)
+
+
+def test_rows_graded_before_the_amendment_count_as_trade_universe():
+    old = [_grade_week(80, True, s) for s in range(4)]           # 4-element rows
+    chk = learning.switch_check(old)
+    assert chk["trade_universe"]["3R"]["weeks"] == 4 and chk["3R"]["eligible"]
+
+
+def test_the_grade_flags_each_scored_signal_and_never_learns_from_the_flag():
+    rng = np.random.default_rng(1)
+    ws = 1792000000
+
+    def rows(n, t0, record_only, reason=None, features=True):
+        out = []
+        for i in range(n):
+            lab = {k: float(rng.random()) for k in SF.FEATURES}
+            r = float(rng.choice([2.9, -1.05]))
+            out.append({"symbol": "R" if record_only else "T", "bar_open": t0 + i * 600,
+                        "direction": 1, "r_net": r, "win": r > 0, "exit_reason": "stop",
+                        "mfe_r": float(rng.choice([0.4, 1.2])), "takeable": True,
+                        "rejection_reason": reason,
+                        "features": ({"lab": lab, "record_only": record_only}
+                                     if features else None)})
+        return out
+    live_rows = (rows(300, ws - 30 * 86400, False) + rows(30, ws + 60, False)
+                 + rows(20, ws + 120, True)
+                 + rows(5, ws + 180, True, reason="record_only: R is watched", features=False))
+    frame = learning.live_frame(live_rows)
+    assert frame["_trade"].tolist().count(0) == 25          # readings, or the refusal, say so
+    rec = learning.grade(None, frame, ws)
+    sc = rec.detail["scored"]
+    assert len(sc) == 55 and all(len(r) == 5 for r in sc)
+    assert sum(r[4] for r in sc) == 30 and rec.detail["test_trade_universe"] == 30
+    assert {r[1] for r in sc if r[4] == 0} == {"R"}
+    assert all(len(r) == 5 for r in rec.detail["scored_1r"])
+    # the flag is not a model input: flipping it changes no score
+    flipped = learning.grade(None, frame.assign(_trade=1 - frame["_trade"]), ws)
+    assert [r[2] for r in flipped.detail["scored"]] == [r[2] for r in sc]

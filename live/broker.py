@@ -71,6 +71,16 @@ class OpeningRefused(VenueError):
     no_position_can_result = True
 
 
+def refuse_outside_trade_universe(symbol: str, tradeable) -> None:
+    """Raise OpeningRefused for a coin outside the trade universe (2026-10-16:
+    the bot also watches record-only coins it must never trade). `tradeable`
+    None means no restriction."""
+    if tradeable is not None and symbol not in tradeable:
+        log.critical("refusing to open %s: not in the trade universe (record_only)", symbol)
+        raise OpeningRefused(f"{symbol} is not in the trade universe (record_only); "
+                             f"not opening")
+
+
 class EntryDidNotFill(VenueError):
     """A market IOC entry reached the venue and died with nothing filled.
 
@@ -231,9 +241,16 @@ class LiveBroker:
                  wpr_exit_long_level: float = -80.0,
                  wpr_exit_short_level: float = -20.0,
                  max_hold_seconds: int = 0,
-                 kill_switch_path: str | None = None) -> None:
+                 kill_switch_path: str | None = None,
+                 tradeable_symbols=None) -> None:
         self.client = client
         self.product_ids = dict(product_ids)
+        #: THE TRADE UNIVERSE (2026-10-16). None = every symbol with a product
+        #: id. The bot also watches record-only coins; submit_order refuses
+        #: any coin outside this set before anything else, even if upstream
+        #: approved it.
+        self.tradeable_symbols = (None if tradeable_symbols is None
+                                  else frozenset(tradeable_symbols))
         self.experiment_id = experiment_id
         self.tick_size = dict(tick_size or {})
         self.entry_ttl_seconds = entry_ttl_seconds
@@ -512,6 +529,7 @@ class LiveBroker:
         # has not happened yet. It stops OPENING only: positions already open
         # keep their exchange-held brackets, which is the protection that
         # matters once something has gone wrong enough to reach for this.
+        refuse_outside_trade_universe(intent.symbol, self.tradeable_symbols)
         if kill_switch_engaged(self.kill_switch_path):
             raise OpeningRefused(
                 f"kill switch engaged ({self.kill_switch_path or KILL_SWITCH_PATH}); "

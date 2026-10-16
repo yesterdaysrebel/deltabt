@@ -141,7 +141,11 @@ class LiveTradingBot(TradingBot):
             # for tnet while no live code read it, and a BTC long sat open for
             # 91 hours. See _enforce_time_stop.
             max_hold_seconds=self.settings.risk.max_hold_seconds,
-            kill_switch_path=kill_switch_path)
+            kill_switch_path=kill_switch_path,
+            # The TRADE universe only: record-only coins (2026-10-16) are
+            # refused by the broker even if something upstream approved one.
+            # (getattr: harnesses stub the parent's __init__.)
+            tradeable_symbols=getattr(self, "symbols", None))
         self._symbol_for = {v: k for k, v in self.product_ids.items()}
         self._poll_task: asyncio.Task | None = None
 

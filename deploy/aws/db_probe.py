@@ -100,9 +100,13 @@ async def collect_learning(con, now=None):
     start = today - _dt.timedelta(days=1)
     out = {"day": start.strftime("%Y-%m-%d")}
     try:
+        # RECORD-ONLY coins (2026-10-16) are watched, never traded: their skip
+        # is "record_only", or -- without readings -- their refusal says so.
         rows = await con.fetch(
             "SELECT COALESCE(features->>'skip', "
-            "  CASE WHEN outcome = 'APPROVED' THEN 'taken' ELSE 'other' END) AS k, "
+            "  CASE WHEN outcome = 'APPROVED' THEN 'taken' "
+            "  WHEN rejection_reason LIKE 'record_only%' THEN 'record_only' "
+            "  ELSE 'other' END) AS k, "
             "  count(*) AS n, count(*) FILTER (WHERE features IS NULL) AS no_readings, "
             "  count(*) FILTER (WHERE jsonb_array_length("
             "    COALESCE(features->'errors', '[]'::jsonb)) > 0) AS partial "
@@ -111,16 +115,20 @@ async def collect_learning(con, now=None):
         out["signals"] = {r["k"]: int(r["n"]) for r in rows}
         out["no_readings"] = sum(int(r["no_readings"]) for r in rows)
         out["partial_readings"] = sum(int(r["partial"]) for r in rows)
+        out["record_only"] = out["signals"].get("record_only", 0)
         # TAKEABLE: what the signal lab would have had as a row (no earlier
         # takeable signal on the coin still open); NULL until decided.
         tk = await con.fetchrow(
             "SELECT count(*) FILTER (WHERE o.takeable) AS takeable, "
-            "count(*) FILTER (WHERE o.takeable IS NULL) AS undecided "
+            "count(*) FILTER (WHERE o.takeable IS NULL) AS undecided, "
+            "count(*) FILTER (WHERE o.takeable AND (s.features->>'record_only' = 'true' "
+            "  OR s.rejection_reason LIKE 'record_only%')) AS takeable_record_only "
             "FROM strategy_signals s LEFT JOIN signal_outcomes o ON o.signal_id = s.id "
             "WHERE s.direction IS NOT NULL AND s.bar_open >= $1 AND s.bar_open < $2",
             start, today)
         out["takeable"] = int(tk["takeable"])
         out["takeable_undecided"] = int(tk["undecided"])
+        out["takeable_record_only"] = int(tk["takeable_record_only"])
         lab = await con.fetchrow(
             "SELECT count(*) FILTER (WHERE r_net IS NOT NULL) AS n, "
             "count(*) FILTER (WHERE r_net IS NULL) AS unlabellable, "
