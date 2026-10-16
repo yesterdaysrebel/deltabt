@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from collections.abc import Mapping
 
@@ -39,6 +40,9 @@ HISTORY_MINUTES = 8 * 1440
 #: How a refusal is named in the daily "Learning" line. First match wins;
 #: limit names come from the risk engine, text from _place / the broker.
 SKIP_RULES = (
+    # A coin watched for the record only (2026-10-16): never tradeable, so
+    # this wins over everything else.
+    ("record_only", ("record_only",)),
     ("halt", ("market state is", "market is halted")),
     ("daily_cap", ("max_trades_per_day",)),
     ("open_position", ("max_open_positions", "already holding", "already reserved")),
@@ -79,15 +83,29 @@ class SignalRecorder:
     they were picked for. Plain data, injected by live/__main__.py, so app/
     never imports live/. `launches`: {symbol: unix s}. `contract_values`:
     {symbol: underlying per contract}, for order-book depth in USD.
+
+    `record_only` (2026-10-16): coins watched for the record only, never
+    traded. Their rows carry ``"record_only": true`` and ``skip ==
+    "record_only"`` whatever the bot's refusal said; every row carries
+    ``record_only`` and the pick ``rank`` (None for a watchlist coin outside
+    the ranks, or a held coin off the list). A watchlist coin's pick holds
+    its 24h change and turnover with rank None, so day_gain_pct and
+    log_turnover are filled and day_rank is NaN.
     """
 
     def __init__(self, spec, *, client=None, picks: Mapping | None = None,
                  pick_day: int | None = None, launches: Mapping | None = None,
                  tags: Mapping | None = None, contract_values: Mapping | None = None,
-                 timeout: float = 60.0) -> None:
+                 timeout: float = 60.0, record_only=()) -> None:
         self.spec = spec
         self._client = client
         self.picks = dict(picks or {})
+        self.record_only = frozenset(record_only or ()) | frozenset(
+            s for s, i in self.picks.items() if (i or {}).get("record_only"))
+        #: BTC context is the same for every signal on one bar; with ~3x more
+        #: coins watched it is fetched once per bar, not once per signal.
+        self._btc_cache: dict[tuple[str, int], pd.DataFrame] = {}
+        self._btc_lock = threading.Lock()
         self.pick_day = pick_day
         self.launches = dict(launches or {})
         self.tags = dict(tags or {})
@@ -141,10 +159,13 @@ class SignalRecorder:
             log.warning("signal features failed for %s: %s", symbol, exc)
             payload = {"lab": {k: None for k in SF.FEATURES}, "live": {}, "pre_24h": None,
                        "errors": [f"{type(exc).__name__}: {exc}"]}
+        ro = symbol in self.record_only
         payload.update(version=FEATURES_VERSION, computed_at=int(time.time()),
                        elapsed_s=round(time.monotonic() - t0, 3),
                        final_outcome=outcome, final_reason=reason, limit_name=limit_name,
-                       skip=skip_reason(outcome, reason, limit_name),
+                       skip="record_only" if ro else skip_reason(outcome, reason, limit_name),
+                       # watched for the record only, never tradeable (2026-10-16)
+                       record_only=ro, rank=(self.picks.get(symbol) or {}).get("rank"),
                        # order flow at the decision (app/market_data/trade_flow.py);
                        # live-only, like the order book under "live"
                        flow=flow)
@@ -155,6 +176,22 @@ class SignalRecorder:
         return payload
 
     # -- the work (worker thread) -------------------------------------------
+
+    def _btc(self, res: str, at: int, fetch) -> pd.DataFrame:
+        """BTC candles for the bar ending at `at`: the same request for every
+        signal on that bar, so fetched once. A copy is returned; a failed
+        fetch is not cached (it raises, and the next signal tries again)."""
+        key = (res, int(at))
+        with self._btc_lock:
+            hit = self._btc_cache.get(key)
+        if hit is None:
+            hit = fetch()
+            with self._btc_lock:
+                if len(self._btc_cache) >= 8:
+                    for k in sorted(self._btc_cache, key=lambda k: k[1])[:4]:
+                        self._btc_cache.pop(k, None)
+                self._btc_cache[key] = hit
+        return hit.copy()
 
     def compute(self, *, symbol: str, bars: list, bar_open: int, side: int,
                 entry: float, stop: float) -> dict:
@@ -171,8 +208,10 @@ class SignalRecorder:
         cl = self.client
         ticker = get("ticker", lambda: cl._get(f"/v2/tickers/{symbol}").get("result"))
         book = get("l2orderbook", lambda: cl._get(f"/v2/l2orderbook/{symbol}").get("result"))
-        btc_1m = get("btc_1m", lambda: _frame(cl.candles("BTCUSD", "1m", at - 25 * 3600, at - 60)))
-        btc_60m = get("btc_60m", lambda: _frame(cl.candles("BTCUSD", "1h", at - 14 * 86400, at - 3600)))
+        btc_1m = get("btc_1m", lambda: self._btc(
+            "1m", at, lambda: _frame(cl.candles("BTCUSD", "1m", at - 25 * 3600, at - 60))))
+        btc_60m = get("btc_60m", lambda: self._btc(
+            "1h", at, lambda: _frame(cl.candles("BTCUSD", "1h", at - 14 * 86400, at - 3600))))
         oi = get("oi", lambda: _frame(cl.candles("OI:" + symbol, "1h", at - 27 * 3600, at - 3600))
                  .rename(columns={"close": "oi"}))
         funding = get("funding", lambda: _frame(cl.candles("FUNDING:" + symbol, "1h",

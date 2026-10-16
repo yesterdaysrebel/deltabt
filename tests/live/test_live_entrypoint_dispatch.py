@@ -86,11 +86,12 @@ async def test_bot_is_built_with_the_venue_universe_not_the_env(monkeypatch):
 
     monkeypatch.setattr(entry, "venue_name", lambda *a, **k: venue)
     monkeypatch.setattr(entry, "client_from_env", lambda *a, **k: _Client())
-    monkeypatch.setattr(entry, "resolve_products", lambda c, s: list(s))
+    monkeypatch.setattr(entry, "resolve_products",
+                        lambda c, s, optional=(): {x: x for x in s})
     monkeypatch.setattr(entry, "product_ids",
                         lambda p: {s: i for i, s in enumerate(p, 1)})
     monkeypatch.setattr(entry, "tick_sizes", lambda p: {s: 0.1 for s in p})
-    monkeypatch.setattr(entry, "load_costs", lambda s, b: {})
+    monkeypatch.setattr(entry, "load_costs", lambda s, b, optional=(): {})
     monkeypatch.setattr(entry, "PostgresRepository", lambda *a, **k: object())
     monkeypatch.setattr(entry, "SingleInstanceLock", lambda *a, **k: object())
     monkeypatch.setattr(entry, "Backfiller", lambda *a, **k: object())

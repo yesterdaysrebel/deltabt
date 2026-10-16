@@ -33,6 +33,9 @@ from deltabt.costs import SymbolCosts
 
 log = logging.getLogger(__name__)
 
+#: limit_name and reason prefix of the refusal of a record-only coin.
+RECORD_ONLY = "record_only"
+
 
 @dataclass
 class RiskState:
@@ -223,11 +226,20 @@ class RiskEngine:
     """Turns a detected setup into an approved intent, or a named rejection."""
 
     def __init__(self, cfg: RiskConfig, costs: dict[str, SymbolCosts],
-                 *, allowed_symbols: tuple[str, ...] | None = None) -> None:
+                 *, allowed_symbols: tuple[str, ...] | None = None,
+                 record_only_symbols=()) -> None:
         cfg.validate()
         self.cfg = cfg
         self.costs = costs
+        #: THE TRADE UNIVERSE, and only it. Record-only coins are never added.
         self.allowed_symbols = allowed_symbols
+        #: Coins watched for the signal record only (owner, 2026-10-16; see
+        #: live/universe.py). Refused FIRST in evaluate(), before any gate that
+        #: touches the risk state, under the name "record_only".
+        self.record_only_symbols = frozenset(record_only_symbols or ())
+        overlap = self.record_only_symbols & set(allowed_symbols or ())
+        if overlap:
+            raise ValueError(f"coins both tradeable and record-only: {sorted(overlap)}")
 
     # -- the gates ---------------------------------------------------------
 
@@ -263,6 +275,15 @@ class RiskEngine:
 
         def ok(name: str) -> None:
             passed.append(name)
+
+        # RECORD-ONLY COINS ARE REFUSED FIRST (owner, 2026-10-16), before the
+        # day roll, the drawdown latch or any other gate that reads or changes
+        # the risk state: the bot watches them to record their signals, and
+        # nothing about them may reach sizing, a reservation or an order.
+        if exp.symbol in self.record_only_symbols:
+            return reject(f"{RECORD_ONLY}: {exp.symbol} is watched for the signal "
+                          f"record only; it is not in today's trade universe",
+                          name=RECORD_ONLY)
 
         state.roll_day(now)
         exp.equity = state.equity

@@ -68,7 +68,7 @@ def test_fixed_mode_entrypoint_uses_venue_list(monkeypatch):
     import live.__main__ as entry
     monkeypatch.delenv("DELTABOT_UNIVERSE", raising=False)
     got = asyncio.run(entry._universe(client=None, venue="prod", database_url="unused"))
-    assert got == (("BEATUSD", "AKEUSD", "BANKUSD"), {})
+    assert got == (("BEATUSD", "AKEUSD", "BANKUSD"), (), {})   # nothing record-only
 
 
 def test_top_gainers_entrypoint_merges_held_from_database(monkeypatch):
@@ -98,8 +98,9 @@ def test_top_gainers_entrypoint_merges_held_from_database(monkeypatch):
 
     monkeypatch.setenv("DELTABOT_UNIVERSE", "top_gainers")
     monkeypatch.setattr(entry, "PostgresRepository", FakeRepo)
-    got, info = asyncio.run(entry._universe(FakeClient(), "prod", "postgresql://x"))
+    got, record_only, info = asyncio.run(entry._universe(FakeClient(), "prod", "postgresql://x"))
     assert got == ("GTCUSD", "STXUSD", "HELDUSD")
+    assert record_only == ()       # no 11th gainer; the default watchlist is not listed here
     # what the pick saw goes to the signal recorder; a held coin has none
     assert info["GTCUSD"]["rank"] == 1 and info["GTCUSD"]["change"] == 46
     assert info["STXUSD"]["rank"] == 2 and "HELDUSD" not in info

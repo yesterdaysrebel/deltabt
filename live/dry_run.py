@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 
 from app.runtime.bot import TradingBot
-from live.broker import OpeningRefused
+from live.broker import OpeningRefused, refuse_outside_trade_universe
 from live.client import VenueError
 from live.guards import kill_switch_engaged
 from live.orders import STOP_LIMIT_CAP_R
@@ -48,11 +48,15 @@ class DryRunBroker:
     """
 
     def __init__(self, paper, live_reader, *, equity: float,
-                 kill_switch_path: str) -> None:
+                 kill_switch_path: str, tradeable_symbols=None) -> None:
         self._paper = paper
         self._live = live_reader
         self._equity = float(equity)
         self._kill_switch_path = kill_switch_path
+        #: The trade universe (2026-10-16); None = no restriction. A coin
+        #: outside it -- a record-only coin -- is refused before anything.
+        self._tradeable = (None if tradeable_symbols is None
+                           else frozenset(tradeable_symbols))
         self._records: list[dict] = []
 
     def __getattr__(self, name):
@@ -73,6 +77,7 @@ class DryRunBroker:
             "risk_per_unit": float(intent.risk_per_unit),
         }
         try:
+            refuse_outside_trade_universe(intent.symbol, self._tradeable)
             if kill_switch_engaged(self._kill_switch_path):
                 raise OpeningRefused(f"{intent.symbol}: kill switch engaged")
             book = self._live._refuse_if_book_dislocated(intent)
@@ -121,24 +126,35 @@ class DryRunBot(TradingBot):
 
 
 def build(settings, *, client, venue, symbols, products, strategy, costs,
-          repo, lock, notifier, backfiller, kill_switch_path, signal_recorder=None):
-    """The dry-run bot: paper lifecycle, live venue checks, shadow exits on."""
+          repo, lock, notifier, backfiller, kill_switch_path, signal_recorder=None,
+          record_only=(), record_backfiller=None):
+    """The dry-run bot: paper lifecycle, live venue checks, shadow exits on.
+
+    `symbols` is the TRADE universe; `record_only` coins are watched and
+    recorded only (2026-10-16). Neither broker layer knows them: the venue
+    reader gets only the trade universe's product ids, and both the paper
+    broker and DryRunBroker refuse anything outside it."""
     from app.execution.shadow_exits import ShadowExits
     from live.broker import LiveBroker
     from live.config import product_ids, tick_sizes
 
+    trade = tuple(symbols)
+    trade_costs = {s: c for s, c in costs.items() if s not in set(record_only)}
+    trade_products = {s: p for s, p in products.items() if s in trade}
     bot = DryRunBot(settings, repo, costs, strategy=strategy, notifier=notifier,
                     backfiller=backfiller, lock=lock, signal_recorder=signal_recorder,
-                    shadow_exits=ShadowExits(costs,
+                    record_only=record_only, record_backfiller=record_backfiller,
+                    shadow_exits=ShadowExits(trade_costs,
                                              slippage_bps=settings.risk.slippage_bps,
                                              max_hold_seconds=settings.risk.max_hold_seconds))
-    reader = LiveBroker(client, product_ids=product_ids(products),
-                        experiment_id="dry-run", tick_size=tick_sizes(products),
-                        kill_switch_path=kill_switch_path)
+    reader = LiveBroker(client, product_ids=product_ids(trade_products),
+                        experiment_id="dry-run", tick_size=tick_sizes(trade_products),
+                        kill_switch_path=kill_switch_path, tradeable_symbols=trade)
     # The same entry-deviation limit the paper broker enforces after the fill,
     # so the book guard and the fill check agree on what "too far" means.
     reader.max_entry_deviation = bot.broker.max_entry_deviation
     bot.broker = DryRunBroker(bot.broker, reader,
                               equity=settings.risk.starting_equity,
-                              kill_switch_path=kill_switch_path)
+                              kill_switch_path=kill_switch_path,
+                              tradeable_symbols=trade)
     return bot

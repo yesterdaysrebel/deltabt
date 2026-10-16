@@ -205,3 +205,29 @@ async def test_the_report_probe_reads_what_the_bot_and_labeller_wrote(pg_repo):
     assert got["labelled_takeable"] == 1 and got["takeable_mean_r"] == 2.95
     assert got["mean_r"] == 2.95 and got["grade"]["week_start"] == "2026-09-21"
     assert got["grade"]["auc"] == 0.6
+
+
+@requires_pg
+async def test_the_report_probe_counts_record_only_signals(pg_repo):
+    """2026-10-16: a record-only coin's signal counts as record_only whether its
+    readings were written (skip) or not (the bot's refusal says so)."""
+    import datetime as dt
+    from dataclasses import replace as _replace
+
+    from app.reports.learning_probe import collect_learning
+    await _scenario(pg_repo)
+    reason = "record_only: BUSD is watched for the signal record only"
+    for key, t in (("r1", 1_790_000_900), ("r2", 1_790_001_200)):
+        assert await pg_repo.record_signal(_replace(
+            _sig(key, t, outcome="REJECTED"), symbol="BUSD", rejection_reason=reason))
+    await pg_repo.record_signal_features("r1", {"skip": "record_only", "record_only": True})
+    r1 = next(r for r in await pg_repo.signals_to_label() if r["idempotency_key"] == "r1")
+    assert await pg_repo.record_signal_outcome(_replace(_out(r1["id"], "r1", 1.5), symbol="BUSD"))
+    assert await pg_repo.record_signal_takeable("r1", True)
+    now = dt.datetime.fromtimestamp(1_789_948_800 + 86400 + 3600, tz=dt.timezone.utc)
+    async with pg_repo._pool.acquire() as con:
+        got = await collect_learning(con, now=now)
+    assert "error" not in got, got
+    assert got["signals"] == {"taken": 1, "other": 1, "record_only": 2}
+    assert got["record_only"] == 2
+    assert got["takeable"] == 2 and got["takeable_record_only"] == 1

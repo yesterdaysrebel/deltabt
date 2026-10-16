@@ -581,7 +581,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
 SKIP_LABEL = {"daily_cap": "daily cap", "open_position": "already in a trade",
               "coin_pause": "coin paused after a loss", "zero_contracts": "too small to size",
               "loss_limits": "loss limit", "venue_check": "venue check",
-              "halt": "market halted", "cooldown": "cooldown", "other": "other"}
+              "halt": "market halted", "cooldown": "cooldown", "other": "other",
+              "record_only": "record-only coin"}
 
 
 def learning_lines(lr: dict | None) -> list[str]:
@@ -595,16 +596,24 @@ def learning_lines(lr: dict | None) -> list[str]:
         return out + [f"Figures unavailable ({lr['error']})."]
     sig = lr.get("signals") or {}
     total, taken = sum(sig.values()), sig.get("taken", 0)
-    skipped = sorted(((k, v) for k, v in sig.items() if k != "taken"), key=lambda kv: (-kv[1], kv[0]))
+    # RECORD-ONLY coins (2026-10-16) are watched, never traded: counted
+    # beside the trade coins, not as "skipped".
+    ro = int(sig.get("record_only") or 0)
+    skipped = sorted(((k, v) for k, v in sig.items() if k not in ("taken", "record_only")),
+                     key=lambda kv: (-kv[1], kv[0]))
+    split = f"trade coins {total - ro}, record-only {ro}; " if ro else ""
     # TAKEABLE = what the signal lab would have counted: no earlier takeable
     # signal on the coin still open. Decided only once earlier signals resolve.
     if lr.get("takeable") is not None:
         und = int(lr.get("takeable_undecided") or 0)
-        tk = f"takeable {int(lr['takeable'])}" + (f", {und} not yet known" if und else "")
+        tro = int(lr.get("takeable_record_only") or 0)
+        tk = (f"takeable {int(lr['takeable'])}" + (f" ({tro} record-only)" if ro else "")
+              + (f", {und} not yet known" if und else ""))
         line = (f"- Signals yesterday ({lr.get('day', '?')}, UTC day): recorded {total} "
-                f"({tk}; taken {taken})")
+                f"({split}{tk}; taken {taken})")
     else:
-        line = f"- Signals yesterday ({lr.get('day', '?')}, UTC day): recorded {total} (taken {taken})"
+        line = (f"- Signals yesterday ({lr.get('day', '?')}, UTC day): recorded {total} "
+                f"({split}taken {taken})")
     if skipped:
         line += (f"; {sum(v for _, v in skipped)} skipped ("
                  + ", ".join(f"{SKIP_LABEL.get(k, k)} {v}" for k, v in skipped) + ")")

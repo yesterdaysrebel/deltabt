@@ -7,8 +7,9 @@ features (`deltabt/signal_features.py`) restarts the count from zero.
 
 ## What the model is for
 
-The bot sees ~15–25 takeable signals a day and takes at most 2, one at a time, first come first
-served. A model that scores signals could skip weak ones and spend the two daily slots on strong
+The bot sees ~15–25 takeable signals a day on the coins it trades and takes at most 2, one at a
+time, first come first served (since 2026-10-16 it also records ~3x as many on coins it never
+trades; see the amendment below). A model that scores signals could skip weak ones and spend the two daily slots on strong
 ones. It has never been allowed to touch a trade: `grade-model` only grades.
 
 ## The weekly grade (Mondays, with the daily report)
@@ -33,6 +34,23 @@ none may be dropped. In each week take the top **30%** by score; compare the poo
   reaching +1R beats the random draws at **p ≤ 0.05** and is above **52%**. (A 1R exit pays about
   +0.97R and a stop costs about −1.07R after fees and slippage, so ~52% is break-even.) Using it
   would also mean changing the exit to take profit at 1R — a separate decision.
+
+### Amendment 2026-10-16 (owner; before the first grade on 2026-10-19)
+
+From 2026-10-16 the bot also RECORDS signals on coins it never trades: today's gainers ranked
+11–30 and a fixed watchlist (BTCUSD, ETHUSD, BEATUSD, AKEUSD; `live/universe.py`). They are
+labelled, marked takeable and trained on like every other signal, and they are graded too. Each
+scored row (`detail.scored`, `detail.scored_1r`) now carries a 5th element: 1 if the signal's coin
+was in the trade universe that day, 0 if it was record-only. Rows graded before this amendment have
+four elements and count as trade-universe signals (every coin was tradeable then).
+
+A target is **ELIGIBLE only when the rule above passes twice**: on ALL recorded live signals, AND,
+separately, on the trade-universe subset alone — same test, same thresholds (≥ 4 qualifying weeks,
+top 30% vs 2,000 random draws per week, p ≤ 0.05, and mean R > 0 / reach share > 52%). For the
+subset, a week qualifies only with at least **30 trade-universe signals**. The point: a model may
+only filter the trades the bot can actually take, so it must work on those coins, not only on the
+wider pool. `switch_check` returns the all-signals figures under `3R`/`1R` (their `eligible` is the
+combined verdict) and the subset's under `trade_universe`; the Monday line shows both.
 
 ELIGIBLE means the owner may switch it on; it does not switch itself on. First use is at 0.5%
 risk, like any change to real trading. The weekly report prints the rule's state each Monday.

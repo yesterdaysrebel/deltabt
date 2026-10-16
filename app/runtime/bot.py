@@ -115,6 +115,13 @@ def idempotency_key(symbol: str, bar_open: int, direction, config_hash: str) -> 
 
 
 class TradingBot:
+    #: Class-level defaults for harnesses that build a bot with __new__ to
+    #: test one method; __init__ always sets the instance's own.
+    record_only: tuple[str, ...] = ()
+    _record_only_set: frozenset = frozenset()
+    _cold: frozenset | set = frozenset()
+    record_backfiller = None
+
     def __init__(
         self,
         settings: Settings,
@@ -128,12 +135,34 @@ class TradingBot:
         lock=None,
         shadow_exits=None,
         signal_recorder=None,
+        record_only=(),
+        record_backfiller: Backfiller | None = None,
     ) -> None:
         settings.validate()
         strategy.validate()
         self.settings = settings
         self.repo = repo
-        self.costs = costs
+        #: RECORD-ONLY COINS (owner, 2026-10-16; live/universe.py). Watched --
+        #: candles, order flow, evaluation and the signal record -- and NEVER
+        #: traded: the risk engine refuses them first ("record_only"), _place
+        #: refuses them again, and the broker is built without them. They
+        #: touch nothing the trade universe reads: no tick reaches the broker,
+        #: no bar moves the market clock, no risk-event row and no signal /
+        #: order metric counts them. settings.symbols stays the TRADE universe.
+        self.record_only: tuple[str, ...] = tuple(
+            dict.fromkeys(s for s in (record_only or ())))
+        both = set(self.record_only) & set(settings.symbols)
+        if both:
+            raise ValueError(f"coins both tradeable and record-only: {sorted(both)}")
+        self._record_only_set = frozenset(self.record_only)
+        #: Record-only coins not yet warmed: their candles are ignored until
+        #: warm_record_only() has loaded their history (after READY).
+        self._cold: set[str] = set(self.record_only)
+        self.record_backfiller = record_backfiller
+        #: Trade-universe costs only; record-only coins keep theirs for
+        #: order-flow USD only (below).
+        self.costs = {s: c for s, c in (costs or {}).items()
+                      if s not in self._record_only_set}
         self.strategy = strategy
         #: Which evaluator and which bar boundary this process uses. Decided
         #: once from the resolved config rather than re-tested per bar, so the
@@ -167,6 +196,8 @@ class TradingBot:
         #: meant the run could not be verified by replaying its own record.
         self.clock = MarketClock()
         self.symbols = tuple(settings.symbols)
+        #: Everything watched: the trade universe first, then record-only.
+        self.watched = self.symbols + self.record_only
         # THE BUFFER HAS TO HOLD THE WHOLE WARM-UP, IN MINUTES.
         # The default 20,000 is ample for a 1m or 5m arm and far too small for
         # a 240m one, which needs 34,800 minutes before its first legitimate
@@ -174,9 +205,9 @@ class TradingBot:
         # spec cannot be deployed into a buffer that silently truncates it.
         max_bars = (max(20_000, self.spec_arm.window_bars)
                     if self.spec_arm is not None else 20_000)
-        self.builder = CandleBuilder(self.symbols, max_bars=max_bars)
+        self.builder = CandleBuilder(self.watched, max_bars=max_bars)
         self.halts = {s: HaltDetector(s, min_run=halt_min_run(s))
-                      for s in self.symbols}
+                      for s in self.watched}
         # min_fill_rr TRACKS THE ARM'S OWN RR FLOOR RATHER THAN A CONSTANT.
         # PaperBroker's 1.7 default is 0.85 x 2.0 and assumes a 2R target, so a
         # 1R arm has every fill refused while looking perfectly healthy.
@@ -184,7 +215,10 @@ class TradingBot:
         # already inside risk_hash -- so no fifth value has to be delivered
         # through the Terraform/user_data/run.sh chain that leaked four times
         # on 2026-08-31 alone.
-        self.broker = PaperBroker(costs, starting_equity=settings.risk.starting_equity,
+        self.broker = PaperBroker(self.costs, starting_equity=settings.risk.starting_equity,
+                                  # Refuses any entry outside the trade
+                                  # universe, whatever approved it.
+                                  tradeable_symbols=self.symbols,
                                   slippage_bps=settings.risk.slippage_bps,
                                   max_hold_seconds=settings.risk.max_hold_seconds,
                                   # RISK config, like max_hold_seconds above,
@@ -221,10 +255,11 @@ class TradingBot:
                                   trail_after_r=getattr(strategy, "trail_after_r", None),
                                   trail_r=getattr(strategy, "trail_r", None),
                                   **broker_params(settings.risk))
-        self.risk = RiskEngine(settings.risk, costs, allowed_symbols=self.symbols)
+        self.risk = RiskEngine(settings.risk, self.costs, allowed_symbols=self.symbols,
+                               record_only_symbols=self.record_only)
         self.state = RiskState.fresh(settings.risk.starting_equity)
 
-        self.feed = feed or DeltaMarketFeed(self.symbols, self.on_message,
+        self.feed = feed or DeltaMarketFeed(self.watched, self.on_message,
                                             url=settings.ws_url)
         #: Instance attributes, not class attributes: a mutable class-level
         #: list would be shared by every bot in the process, which in tests
@@ -306,7 +341,8 @@ class TradingBot:
             strategy_config=self.strategy.to_dict(),
             risk_config=asdict(self.settings.risk), symbols=list(self.symbols)))
         await self._event("bot", "STARTUP", payload={
-            "strategy": self.strategy.version, "symbols": list(self.symbols)})
+            "strategy": self.strategy.version, "symbols": list(self.symbols),
+            "record_only": list(self.record_only)})
 
         await self.recover()
         if not self.recovery_error:
@@ -456,17 +492,82 @@ class TradingBot:
             "open_positions": len(positions), "equity": self.state.equity,
             "trades_today": self.state.trades_today})
 
-    async def warm_up(self) -> None:
-        """Backfill, prime halt state, and confirm indicators can warm."""
-        if self.backfiller is None:
-            self.backfiller = Backfiller()
+    def _warmup_need(self) -> int:
         # The frozen arm decides on 1m and needs its whole window before the
         # 5m regime inside build_conditions has converged; V3 needs 5m bars.
-        need = (warmup_1m_bars(self.strategy) if self.spec_arm is not None
+        return (warmup_1m_bars(self.strategy) if self.spec_arm is not None
                 else self.strategy.window_bars if self.frozen_arm
                 else flip_warmup_bars(self.strategy) if self.flip_arm
                 else atr_warmup_bars(self.strategy) if self.atr_arm
                 else warmup_bars(self.strategy))
+
+    def _warmup_have(self, sym: str) -> tuple[int, str]:
+        """(closed bars held, unit) in the unit _warmup_need counts."""
+        one_minute_arm = (self.spec_arm is not None
+                          or self.frozen_arm or self.flip_arm)
+        b = self.builder[sym]
+        return (len(b.bars), "1m") if one_minute_arm else (len(b.frame_5m()), "5m")
+
+    #: Record-only coins warmed at once, after READY (see warm_record_only).
+    RECORD_WARM_CONCURRENCY = 4
+
+    async def warm_record_only(self, concurrency: int | None = None) -> None:
+        """Load the record-only coins' history, AFTER the bot is READY.
+
+        THE TRADE UNIVERSE NEVER WAITS FOR THESE (owner, 2026-10-16). warm_up()
+        loads only the coins the bot may trade, start() goes READY, and run()
+        starts this in the background: a few coins at a time, through their own
+        REST client (record_backfiller) so a trade coin's gap repair does not
+        queue behind them. Until a coin is warmed its candles are ignored, so
+        it cannot evaluate on a short history. A coin whose history fails or
+        is too short is logged and simply not recorded today. Never raises.
+        """
+        if not self._cold:
+            return
+        bf = self.record_backfiller or self.backfiller or Backfiller()
+        days = self._warmup_days()
+        need = self._warmup_need()
+        sem = asyncio.Semaphore(concurrency or self.RECORD_WARM_CONCURRENCY)
+        t0 = wall_now()
+
+        async def one(sym: str) -> None:
+            try:
+                async with sem:
+                    bars = await bf.warm_up(sym, days)
+                b = self.builder[sym]
+                # No await from here to discard(): the history and the first
+                # live candle cannot interleave.
+                b.ingest_backfill(bars)
+                self.halts[sym].prime_from_history(b.frame())
+                have, unit = self._warmup_have(sym)
+                if have < need:
+                    log.warning("record-only %s: only %d closed %s bars, need %d; "
+                                "not recorded today", sym, have, unit, need)
+                    return
+                self._cold.discard(sym)
+                await self.repo.save_candles(sym, "1m", bars, source="rest")
+            except Exception:                              # noqa: BLE001
+                log.exception("record-only %s: warm-up failed; not recorded today", sym)
+
+        await asyncio.gather(*(one(s) for s in self.record_only if s in self._cold))
+        log.info("record-only coins warmed", extra={
+            "warmed": [s for s in self.record_only if s not in self._cold],
+            "cold": sorted(self._cold), "seconds": round(wall_now() - t0, 1)})
+
+    def _warmup_days(self) -> int:
+        days = self.settings.backfill_days
+        if self.spec_arm is not None:
+            days = max(days, -(-warmup_1m_bars(self.strategy) // 1440) + 2)
+        return days
+
+    async def warm_up(self) -> None:
+        """Backfill, prime halt state, and confirm indicators can warm.
+
+        The TRADE universe only; record-only coins warm after READY
+        (warm_record_only)."""
+        if self.backfiller is None:
+            self.backfiller = Backfiller()
+        need = self._warmup_need()
         # THE BACKFILL HAS TO COVER THE WARM-UP, AND THE DEFAULT DOES NOT.
         # `backfill_days` is 7, which is ample for a 1m or 5m arm and less than
         # a third of what a 240m rule needs (145 bars x 240 minutes = 24 days).
@@ -538,6 +639,10 @@ class TradingBot:
         self.metrics.ticks += 1
         if tick.symbol not in self.builder:
             return
+        if tick.symbol in self._record_only_set:
+            # A record-only coin is never held, so its ticks have nothing to
+            # do here: not the clock, not funding, not the broker.
+            return
         self.clock.observe(tick.ts)
         if tick.funding_rate is not None:
             self._funding_rate[tick.symbol] = tick.funding_rate
@@ -592,6 +697,8 @@ class TradingBot:
     def _on_candle(self, upd) -> None:
         if upd.symbol not in self.builder:
             return
+        if upd.symbol in self._cold:
+            return                   # record-only, history not loaded yet
         for bar in self.builder.ingest(upd):
             self._pending_bars.append(bar)
 
@@ -611,15 +718,21 @@ class TradingBot:
             # Already held as THIS bar = a retry after a loop error; carry on.
             if not b.insert_quiet(bar) and bar not in b.bars:
                 return                   # another bar holds that minute
-        self.metrics.candles_1m += 1
-        # A bar stamped at its OPEN is knowable only once the minute has
-        # elapsed, so the exchange instant this bar represents is its close.
-        self.clock.observe(bar.start + 60)
+        record_only = bar.symbol in self._record_only_set
+        if not record_only:
+            self.metrics.candles_1m += 1
+            # A bar stamped at its OPEN is knowable only once the minute has
+            # elapsed, so the exchange instant this bar represents is its close.
+            # (Not for a record-only coin: nothing it does may move the clock
+            # the trade universe's decisions read.)
+            self.clock.observe(bar.start + 60)
         state = self.halts[bar.symbol].observe(bar)
         await self.repo.save_candles(bar.symbol, "1m", [bar],
                                      source=bar.source or "ws")
 
-        if state is MarketState.HALTED:
+        if record_only:
+            pass                         # never held: no broker suspend/resume
+        elif state is MarketState.HALTED:
             n = self.broker.suspend(bar.symbol)
             if n:
                 await self._event("halt", "POSITIONS_SUSPENDED",
@@ -744,8 +857,13 @@ class TradingBot:
             if key in self._repaired_gaps:
                 continue
             self._repaired_gaps.add(key)
+            # A record-only coin's repairs go through its own REST client when
+            # there is one, so they never queue in front of a trade coin's.
+            bf = (self.record_backfiller
+                  if symbol in self._record_only_set and self.record_backfiller is not None
+                  else self.backfiller)
             try:
-                bars = await self.backfiller.fill_gap(
+                bars = await bf.fill_gap(
                     symbol, gap.expected_start, gap.actual_start,
                     anchor=self._last_traded_start(b, gap.expected_start))
             except Exception as exc:                       # noqa: BLE001
@@ -829,15 +947,19 @@ class TradingBot:
                               payload=payload)
         return quiet_out
 
-    async def _repair_new_gaps(self) -> list:
+    async def _repair_new_gaps(self, symbols=None) -> list:
         """Classify every hole as soon as the first update past it arrives.
 
         Run by the bar loop BEFORE it hands out closed bars, so the flat bars
         for no-trade minutes join the same sorted batch as the bar before the
         hole and are evaluated in minute order, ahead of the bar after it.
+        `symbols` limits it to those coins (the loop does the trade universe
+        first, record-only coins after); None = every coin.
         """
         out: list = []
         for sym, b in self.builder.builders.items():
+            if symbols is not None and sym not in symbols:
+                continue
             if any((sym, g.expected_start, g.actual_start) not in self._repaired_gaps
                    for g in b.gaps):
                 out.extend(await self._repair_gaps(sym))
@@ -932,6 +1054,9 @@ class TradingBot:
 
         V3 reaches this by the identical path it always did.
         """
+        if symbol in self._record_only_set:
+            await self._process_record_only(symbol, exp, bar_seconds)
+            return
         can_trade = self.halts[symbol].can_trade
         if not can_trade and exp.outcome is Outcome.DETECTED:
             exp.outcome = Outcome.SUPPRESSED
@@ -1000,6 +1125,50 @@ class TradingBot:
             # reservation gate or by the venue checks inside _place).
             self._schedule_signal_features(exp, key, decision)
 
+    async def _process_record_only(self, symbol: str, exp, bar_seconds: int) -> None:
+        """A record-only coin's evaluation: refused, recorded, never traded.
+
+        A SEPARATE PATH ON PURPOSE (owner, 2026-10-16). It shares nothing with
+        the trade path that has side effects: no setup-invalidated exit (it is
+        never held), no halt suppression (the refusal reads "record_only"
+        whatever the market state), no clock, no trade metrics, no risk-event
+        row, no _place. The risk engine is still asked, and refuses it first
+        by name, so strategy_signals and the log say exactly why.
+
+        Only evaluations WITH A DIRECTION are stored: a record-only coin's
+        no-setup bars are never labelled, and ~20 more coins x 288 bars a day
+        would roughly triple the table's growth on the host's small volume.
+        """
+        if exp.direction is None:
+            return
+        key = idempotency_key(symbol, exp.bar_open, exp.direction,
+                              self.strategy.config_hash)
+        exp.detail["idempotency_key"] = key
+        exp.detail["record_only"] = True
+        market_now = (exp.bar_open + bar_seconds if exp.bar_open
+                      else self.clock.now())
+        decision = None
+        if exp.outcome is Outcome.DETECTED:
+            self.metrics.record_only_signals += 1
+            decision = self.risk.evaluate(
+                exp, self.state, open_positions=self.broker.get_positions(),
+                now=market_now, market_can_trade=False)
+            if decision.approved or decision.limit_name != "record_only":
+                # Unreachable while the engine refuses record-only coins
+                # first. If it ever is not, nothing below opens a position
+                # anyway; say so loudly.
+                log.critical("risk engine did not refuse record-only %s (%s)",
+                             symbol, decision.limit_name)
+                exp.outcome = Outcome.REJECTED
+                exp.rejection_reason = (f"record_only: {symbol} is not in today's "
+                                        f"trade universe")
+        if not await self._record_signal(exp, key, market_now):
+            return
+        if exp.outcome is not Outcome.NO_SETUP:
+            log.info("record-only %s %s: %s", symbol, exp.outcome.value,
+                     exp.rejection_reason or "")
+        self._schedule_signal_features(exp, key, decision)
+
     def _schedule_signal_features(self, exp, key: str, decision) -> None:
         """Hand the signal to the recorder. Never raises, never waits."""
         rec = getattr(self, "signal_recorder", None)
@@ -1058,6 +1227,21 @@ class TradingBot:
         operation.
         """
         intent = decision.intent
+        # ONLY THE TRADE UNIVERSE IS EVER OPENED (2026-10-16). The risk engine
+        # refuses record-only coins first and _process_explanation never sends
+        # them here; this is the belt to those braces, BEFORE the reservation,
+        # so not even a slot is taken.
+        trade = getattr(self, "symbols", None)     # harnesses build bots with __new__
+        if (trade is not None and intent.symbol not in trade) \
+                or intent.symbol in self._record_only_set:
+            exp.outcome = Outcome.REJECTED
+            exp.rejection_reason = (f"record_only: {intent.symbol} is not in today's "
+                                    f"trade universe; refused before reserving")
+            log.critical("entry refused before reservation: %s", exp.rejection_reason)
+            await self._event("execution", "ENTRY_OUTSIDE_TRADE_UNIVERSE",
+                              symbol=intent.symbol, severity="CRITICAL",
+                              payload={"intent": intent.intent_id})
+            return
         # A SYMBOL WHOSE LAST ENTRY HAS AN UNKNOWN OUTCOME IS NOT OPENED AGAIN.
         # Its slot is held (see below), but the exposure gate is a global
         # count, not per symbol, so without this a second entry on the same
@@ -1465,8 +1649,15 @@ class TradingBot:
             "seconds_since_ws_message": self.feed.stats.seconds_since_last_message,
             "last_closed_1m": self.builder.last_closed_1m_start,
             "last_closed_1m_by_symbol": self.builder.last_closed_1m_by_symbol(),
-            "recent_gaps": self.builder.recent_gap_count(
-                within_seconds=GAP_LOOKBACK, now=now),
+            # The TRADE universe's gaps; a record-only coin's lost minutes
+            # cost a reading, not a trade, so they are shown, not held red.
+            "recent_gaps": sum(
+                self.builder[s].recent_gap_count(within_seconds=GAP_LOOKBACK, now=now)
+                for s in self.symbols),
+            "record_only_gaps": sum(
+                self.builder[s].recent_gap_count(within_seconds=GAP_LOOKBACK, now=now)
+                for s in self.record_only),
+            "record_only_cold": sorted(self._cold),
             # No-trade minutes inserted as flat bars since start: shown, so
             # the rule that keeps them out of recent_gaps is never silent.
             "quiet_minutes": self.builder.stats().get("quiet_minutes", 0),
@@ -1491,6 +1682,10 @@ class TradingBot:
             asyncio.create_task(self._bar_loop(), name="bars"),
             asyncio.create_task(self._heartbeat_loop(), name="heartbeat"),
         ]
+        if self._cold:
+            # AFTER READY and alongside the feed: trading never waits on it.
+            self._tasks.append(asyncio.create_task(self.warm_record_only(),
+                                                   name="record-only-warm"))
         await self._stopping.wait()
 
     async def _bar_loop(self, interval: float = 1.0) -> None:
@@ -1523,12 +1718,16 @@ class TradingBot:
                 # design. Order expiry below reads MARKET time.
                 for bar in self.builder.roll_on_clock(now, grace=CANDLE_ROLL_GRACE):
                     self._pending_bars.append(bar)
-                self._pending_bars.extend(await self._repair_new_gaps())
-                bars, self._pending_bars = self._pending_bars, []
-                bars.sort(key=lambda b: (b.start, b.symbol))
-                while bars:
-                    await self.on_closed_1m(bars[0])
-                    bars.pop(0)          # only once it is safely handled
+                # The trade universe's holes and bars FIRST; a record-only
+                # coin's REST repairs and evaluations only after them, so
+                # trading never waits on a coin it cannot trade.
+                self._pending_bars.extend(await self._repair_new_gaps(self.symbols))
+                if not self.record_only:
+                    await self._process_pending_bars()       # exactly as before
+                else:
+                    await self._process_pending_bars(record_only=False)
+                    self._pending_bars.extend(await self._repair_new_gaps(self.record_only))
+                    await self._process_pending_bars(record_only=True)
                 # Sweep stale entry orders even when no tick has arrived --
                 # a silent feed is exactly when they would otherwise pile up.
                 self._pending_events.extend(
@@ -1560,6 +1759,33 @@ class TradingBot:
                 await asyncio.wait_for(self._stopping.wait(), timeout=interval)
             except asyncio.TimeoutError:
                 pass
+
+    async def _process_pending_bars(self, record_only: bool | None = None) -> None:
+        """Hand queued closed bars to on_closed_1m, in order.
+
+        Trade-universe bars first, in the (minute, symbol) order they always
+        had; record-only coins' bars after them (each coin's own bars stay in
+        minute order), so trading never waits on a record-only coin.
+        `record_only` False / True handles only that group and leaves the
+        other queued; None handles both. A bar not yet handled when something
+        raises goes BACK on the queue -- a bar dropped here is a bar the audit
+        trail never sees.
+        """
+        ro = self._record_only_set
+        if record_only is None:
+            bars, self._pending_bars = self._pending_bars, []
+        else:
+            bars = [b for b in self._pending_bars if (b.symbol in ro) == record_only]
+            self._pending_bars = [b for b in self._pending_bars
+                                  if (b.symbol in ro) != record_only]
+        bars.sort(key=lambda b: (b.symbol in ro, b.start, b.symbol))
+        try:
+            while bars:
+                await self.on_closed_1m(bars[0])
+                bars.pop(0)              # only once it is safely handled
+        except BaseException:
+            self._pending_bars = bars + self._pending_bars
+            raise
 
     #: How often the heartbeat also says something in the LOG, not just the
     #: database. See the note in _heartbeat_loop.

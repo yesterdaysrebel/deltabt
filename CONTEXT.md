@@ -1,6 +1,6 @@
 # CONTEXT — where this stands and what to do next
 
-Written 2026-09-21; current-state sections updated 2026-10-02. **Provenance:** reconstructed from the working tree, git history, and the
+Written 2026-09-21; current-state sections updated 2026-10-16 (record-only coins, switch-rule amendment). **Provenance:** reconstructed from the working tree, git history, and the
 session memory notes — not from a transcript. Repo facts (layout, branch, code line numbers) were
 re-verified against the checkout today. Deployed-state facts carry the UTC timestamp of the last
 session that actually read the venue; re-verify anything load-bearing before acting on it.
@@ -36,6 +36,24 @@ How the owner trades and what was chosen (2026-10-13):
 - picks coins from Delta's **top gainers** page → `live/universe.py`: at start-up the top 10 crypto
   perps by 24h last-price change, operational, 24h turnover ≥ $250k; coins still held are kept. The bot
   exits 30 s past each UTC midnight and systemd restarts it with a fresh list (`live/__main__.py`).
+- **RECORD-ONLY coins (owner 2026-10-16, branch `feat/record-wider`, not yet deployed):** to grow the
+  learning data ~3x the bot also WATCHES gainers ranked 11–30 (same rules) and a fixed watchlist
+  (BTCUSD, ETHUSD, BEATUSD, AKEUSD; unlisted ones skipped with a log line), and only RECORDS their
+  signals (`features.record_only` true, `rank` 11–30 or None, `skip` "record_only"). Trading is
+  unchanged: top 10 + held coins only. Defaults in code (`live/universe.pick_wide`; optional env
+  `DELTABOT_RECORD_TOP_N` / `DELTABOT_RECORD_EXTRA`, NOT forwarded by `run_live.sh`, which sits at its
+  16 KiB cap); top_gainers mode only. Safety, each layer on its own: the risk engine refuses a record-only
+  coin FIRST (`limit_name` "record_only", before the day roll or any gate); the bot sends it down a
+  separate path (`TradingBot._process_record_only`: no clock, no broker, no risk-event row, no `_place`;
+  only evaluations with a direction are stored, to spare the host's 10 GB volume);
+  `_place` refuses any coin outside the trade universe BEFORE the reservation; the paper broker
+  (`NotTradeable`), `DryRunBroker` and `LiveBroker` (`OpeningRefused`) refuse it too, and no broker gets
+  a record-only product id. `tests/live/test_record_only.py` drives the bot on a synthetic market: with
+  two record-only coins firing ~95 signals each, the trade coin's 101 decisions, orders, 4 positions,
+  risk state, clock and risk events are identical to a bot that does not watch them (and a negative
+  control — the same coin made tradeable — does change them). Record-only coins warm AFTER READY in the
+  background (4 at a time, own REST client at 4 req/s; measured 8 coins in 6.8 s, so ~20 s for 24); a
+  cold coin's candles are ignored; their gaps show as `record_only_gaps`, not in `/healthz` gaps.
 - **at most 2 trades a day**, one position at a time (`max_trades_per_day` 2; `max_open_positions` must
   be 1 on the stack — the Terraform global is still 6, set it when the stack is rebuilt); a filled entry
   counts even if flattened as invalid.
@@ -91,7 +109,8 @@ is unlabelled. On the golden market, every edge labelled and marked gives exactl
 signals only (`model_grades`;
 history from `$DELTABT_SIGNAL_HISTORY` or `out/signal_lab/signals.parquet`, tolerated absent). The model never
 filters trades (`tests/live_exec/test_model_never_trades.py`). Daily report: 3-line "Learning" section
-("recorded N (takeable M; taken K)"), fed by `app/reports/learning_probe.py`, copied verbatim into
+("recorded N (takeable M; taken K)"; with record-only coins "recorded N (trade coins M, record-only K;
+takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, copied verbatim into
 `deploy/aws/db_probe.py` (a test keeps the two identical). Not yet scheduled on a box.
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
@@ -102,6 +121,11 @@ second target "reaches +1R" (owner asked; history: 49% reach +1R, a 1R exit ≈ 
 Eligible after ≥4 weeks of ≥30 live signals, pooled top-30% beats random at p ≤ 0.05 and (3R) mean R > 0 / (1R) reach
 share > 52%. The live-only order-book readings, and since 2026-10-15 ORDER FLOW (taker buy/sell USD, imbalance, trade counts over 1/5/15 min and the largest print, from the all_trades feed; `app/market_data/trade_flow.py`, stored as `features.flow`), are recorded but NOT model inputs (history lacks them); a live-only
 model needs a few hundred takeable live signals first.
+**Amendment 2026-10-16 (owner, before the first grade on 10-19):** with record-only coins recorded, each scored
+row carries a trade-universe flag (5th element; older 4-element rows count as trade coins), and a target is
+ELIGIBLE only if the rule passes on ALL live signals AND separately on the trade-universe subset (same test and
+thresholds; a subset week qualifies with ≥30 subset signals). `switch_check` → `trade_universe`; tests in
+`tests/live_exec/test_learning.py`.
 
 **BOT LIVE, WATCH-ONLY, since 2026-10-13 13:22 UTC (6:52 PM IST).** #116 + #117 merged; infrastructure apply
 green (16/16 preflight; `--expected-rds 0`); deploy-prod run 38400636237 approved by the owner in GitHub. First

@@ -53,10 +53,20 @@ from live import universe
 log = logging.getLogger("live")
 
 
-def load_costs(symbols, slippage_bps: float) -> dict[str, SymbolCosts]:
+def load_costs(symbols, slippage_bps: float, optional=()) -> dict[str, SymbolCosts]:
+    """Costs for every symbol (a missing one raises), and for each `optional`
+    (record-only) coin the catalog knows -- one it does not is dropped."""
     cat = ProductCatalog()
-    return {s: SymbolCosts.from_spec(cat.get(s), slippage_bps=slippage_bps)
-            for s in symbols}
+    out = {s: SymbolCosts.from_spec(cat.get(s), slippage_bps=slippage_bps)
+           for s in symbols}
+    for s in optional:
+        if s in out:
+            continue
+        try:
+            out[s] = SymbolCosts.from_spec(cat.get(s), slippage_bps=slippage_bps)
+        except Exception as exc:                        # noqa: BLE001
+            log.warning("record-only %s has no product spec (%s); not watched today", s, exc)
+    return out
 
 
 def dry_run_requested(env=None) -> bool:
@@ -98,8 +108,15 @@ async def main() -> int:
     # symbols do not exist on testnet, so a single configured list cannot be
     # right for both. resolve_products refuses to start on a partial match
     # rather than trading a smaller universe than the run claims.
-    symbols, picks = await _universe(client, venue, settings.database_url)
-    products = resolve_products(client, symbols)
+    #
+    # RECORD-ONLY COINS (owner, 2026-10-16): in top_gainers mode the bot also
+    # watches gainers ranked 11-30 and a fixed watchlist, records their
+    # signals and NEVER trades them. `symbols` stays the trade universe
+    # everywhere below; a record-only coin the venue or the catalog cannot
+    # resolve is dropped, never a reason to refuse the start.
+    symbols, record_only, picks = await _universe(client, venue, settings.database_url)
+    products = resolve_products(client, symbols, optional=record_only)
+    record_only = tuple(s for s in record_only if s in products)
 
     # AND IT HAS TO REACH THE BOT. TradingBot reads settings.symbols, so
     # resolving the venue universe here and threading it only into costs,
@@ -112,25 +129,35 @@ async def main() -> int:
     settings = replace(settings, symbols=tuple(symbols))
 
     strategy = resolve_strategy()
+    costs = load_costs(symbols, settings.risk.slippage_bps, optional=record_only)
+    record_only = tuple(s for s in record_only if s in costs)
     log.info("starting", extra={"venue": venue, "symbols": list(symbols),
+                                "record_only": list(record_only),
                                 "strategy": strategy.version,
                                 "config_hash": strategy.config_hash})
-
-    costs = load_costs(symbols, settings.risk.slippage_bps)
-    recorder = signal_recorder(strategy, symbols, picks, costs)
+    recorder = signal_recorder(strategy, symbols + record_only, picks, costs,
+                               record_only=record_only)
+    # The trade universe's products only: no broker ever holds a record-only
+    # coin's product id.
+    trade_products = {s: p for s, p in products.items() if s in symbols}
+    # Record-only history comes through its own, slower REST client, so a
+    # trade coin's gap repair never queues behind it (TradingBot.warm_record_only).
+    record_backfiller = _record_backfiller() if record_only else None
     if dry_run:
         from live.dry_run import build as build_dry_run
         from live.guards import KILL_SWITCH_PATH
         bot = build_dry_run(
             settings, client=client, venue=venue, symbols=symbols,
-            products=products, strategy=strategy, costs=costs,
+            products=trade_products, strategy=strategy, costs=costs,
             repo=PostgresRepository(settings.database_url),
             lock=SingleInstanceLock(settings.database_url),
             notifier=LogNotifier(), backfiller=Backfiller(),
-            kill_switch_path=KILL_SWITCH_PATH, signal_recorder=recorder)
+            kill_switch_path=KILL_SWITCH_PATH, signal_recorder=recorder,
+            record_only=record_only, record_backfiller=record_backfiller)
     else:
-        bot = _live_bot(settings, client, venue, symbols, products, strategy,
-                        signal_recorder=recorder)
+        bot = _live_bot(settings, client, venue, symbols, trade_products, strategy,
+                        signal_recorder=recorder, record_only=record_only,
+                        costs=costs, record_backfiller=record_backfiller)
     repick_at = _next_repick() if universe.mode() == "top_gainers" else None
     return await _serve(bot, settings, stop_at=repick_at)
 
@@ -149,13 +176,15 @@ ENV_SIGNAL_FEATURES = "DELTABOT_SIGNAL_FEATURES"
 LEARNING_COMMANDS = ("label-signals", "grade-model")
 
 
-def signal_recorder(strategy, symbols, picks: dict, costs: dict):
+def signal_recorder(strategy, symbols, picks: dict, costs: dict, record_only=()):
     """The recorder of readings at every signal (app/learning/recorder.py).
 
-    Fed PLAIN DATA from here -- today's pick (rank, 24h change, turnover),
-    each coin's listing time and contract value -- so app/ never imports
-    live/. Returns None when switched off or when anything here fails: a
-    missing measurement must never stop the bot from starting."""
+    Fed PLAIN DATA from here -- today's pick (rank, 24h change, turnover,
+    record_only), each coin's listing time and contract value -- so app/ never
+    imports live/. `symbols` is every watched coin (trade + record-only);
+    `record_only` names the ones never traded. Returns None when switched off
+    or when anything here fails: a missing measurement must never stop the bot
+    from starting."""
     if (os.environ.get(ENV_SIGNAL_FEATURES) or "1").strip().lower() in ("0", "false", "no", "off"):
         log.info("signal readings are switched off (%s)", ENV_SIGNAL_FEATURES)
         return None
@@ -174,22 +203,25 @@ def signal_recorder(strategy, symbols, picks: dict, costs: dict):
                              for s, i in (picks or {}).items()},
             pick_day=int(time.time()) // 86400 * 86400, launches=launches,
             tags={s: SF.tag_of(i.get("tags")) for s, i in (picks or {}).items()},
-            contract_values={s: c.contract_value for s, c in costs.items()})
+            contract_values={s: c.contract_value for s, c in costs.items()},
+            record_only=record_only)
     except Exception:                                   # noqa: BLE001
         log.exception("signal readings disabled: the recorder could not be built")
         return None
 
 
-async def _universe(client, venue, database_url) -> tuple[tuple[str, ...], dict]:
-    """(symbols, today's pick info): the fixed venue list (no pick info), or
-    today's top gainers plus any coin still held.
+async def _universe(client, venue, database_url
+                    ) -> tuple[tuple[str, ...], tuple[str, ...], dict]:
+    """(trade symbols, record-only symbols, today's pick info): the fixed
+    venue list (nothing record-only, no pick info), or today's top gainers
+    plus any coin still held, with the record-only coins beside them.
 
     TOP GAINERS (owner, 2026-10-13): see live/universe.py. The held coins come
     from the database because recover() checks the database's open positions
     against the universe and refuses to start on a coin it does not watch.
     """
     if universe.mode() == "fixed":
-        return symbols_for(venue), {}
+        return symbols_for(venue), (), {}
     repo = PostgresRepository(database_url, min_size=1, max_size=1)
     await repo.connect()
     try:
@@ -198,16 +230,26 @@ async def _universe(client, venue, database_url) -> tuple[tuple[str, ...], dict]
         await repo.close()
     tickers = client._read("/v2/tickers",
                            {"contract_types": "perpetual_futures"}) or []
-    return universe.pick_with_info(tickers, held)
+    return universe.pick_wide(tickers, held)
 
 
-def _live_bot(settings, client, venue, symbols, products, strategy, signal_recorder=None):
+def _record_backfiller():
+    """A REST client of its own for the record-only warm-up, at half the
+    default request rate (TradingBot.warm_record_only)."""
+    from deltabt.data.client import DeltaClient
+    return Backfiller(DeltaClient(per_second=4.0))
+
+
+def _live_bot(settings, client, venue, symbols, products, strategy, signal_recorder=None,
+              record_only=(), costs=None, record_backfiller=None):
     return LiveTradingBot(
         settings,
         PostgresRepository(settings.database_url),
-        load_costs(symbols, settings.risk.slippage_bps),
+        costs if costs is not None else load_costs(symbols, settings.risk.slippage_bps),
         strategy=strategy,
         signal_recorder=signal_recorder,
+        record_only=record_only,
+        record_backfiller=record_backfiller,
         notifier=LogNotifier(),
         backfiller=Backfiller(),
         lock=SingleInstanceLock(settings.database_url),

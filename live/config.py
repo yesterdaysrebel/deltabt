@@ -137,8 +137,13 @@ def client_from_env(env: dict[str, str] | None = None) -> LiveClient:
                       base_url=BASE_URLS[name])
 
 
-def resolve_products(client: LiveClient, symbols) -> dict[str, Product]:
+def resolve_products(client: LiveClient, symbols, *, optional=()) -> dict[str, Product]:
     """Look every symbol up on the venue the client points at.
+
+    `optional` (record-only coins, 2026-10-16) are resolved too when they can
+    be; one that is not a live perpetual is dropped with a log line instead of
+    refusing the start -- a coin the bot only records must never stop it
+    trading. The returned dict then simply lacks it.
 
     Raises if any symbol is missing rather than trading the ones it found. A
     universe that is quietly smaller than the experiment claims is a different
@@ -150,9 +155,11 @@ def resolve_products(client: LiveClient, symbols) -> dict[str, Product]:
     options -- BTCUSD is not among them -- so the contract type is filtered
     here rather than paged through.
     """
-    wanted = {s.upper() for s in symbols}
-    if not wanted:
+    required = {s.upper() for s in symbols}
+    if not required:
         raise ConfigError("no symbols to resolve")
+    extra = {s.upper() for s in optional} - required
+    wanted = required | extra
 
     try:
         rows = client._read("/v2/products",
@@ -184,7 +191,10 @@ def resolve_products(client: LiveClient, symbols) -> dict[str, Product]:
             tick_size=Decimal(str(row.get("tick_size") or "0")),
             contract_value=Decimal(str(row.get("contract_value") or "1")))
 
-    missing = sorted(wanted - set(found))
+    for sym in sorted(extra - set(found)):
+        log.warning("record-only %s is not a live perpetual on this venue; "
+                    "not watched today", sym)
+    missing = sorted(required - set(found))
     if missing:
         raise ConfigError(
             f"these symbols are not live perpetuals on this venue: {missing}. "

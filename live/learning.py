@@ -34,6 +34,12 @@ ENTERED before the graded week minus a 72h purge (a signal's label can take
 Monday): AUC, the top 30% by score vs all, and how often random 30% subsets do
 as well. One row in model_grades per week.
 
+RECORD-ONLY COINS (2026-10-16). The bot also records signals on coins it never
+trades (live/universe.py). They are labelled, marked takeable and trained on
+like any other; each scored row carries a trade-universe flag (5th element),
+and the switch-on rule must pass on all signals AND on the trade-universe
+subset alone (docs/model_switch_on_rule.md, amendment 2026-10-16).
+
 NEITHER TOUCHES A TRADE. Nothing in app/ or the live trading modules imports
 this file (tests/live_exec/test_model_never_trades.py); the model's score is
 never read by any order decision.
@@ -349,6 +355,15 @@ def _fetch(client, symbol, start, end):
 # GRADE
 # =====================================================================
 
+def is_record_only(row: dict) -> bool:
+    """A signal on a coin watched for the record only (2026-10-16): its
+    readings say so, or -- if the readings were never written -- the bot's
+    refusal does (app/risk/engine.RECORD_ONLY prefixes it)."""
+    if ((row.get("features") or {}).get("record_only")):
+        return True
+    return str(row.get("rejection_reason") or "").startswith("record_only")
+
+
 def live_frame(rows: list[dict]) -> pd.DataFrame:
     """Labelled TAKEABLE live signals in the lab's signals.parquet shape.
 
@@ -367,8 +382,13 @@ def live_frame(rows: list[dict]) -> pd.DataFrame:
         for k in SF.FEATURES:
             v = lab.get(k)
             rec[k] = float(v) if v is not None else np.nan
+        # TRADE-UNIVERSE FLAG (2026-10-16): 0 for a coin watched for the record
+        # only. Never a model input (grade() drops it with _live); it only
+        # splits the switch-on rule's test. Rows from before then are all 1.
+        rec["_trade"] = 0 if is_record_only(r) else 1
         recs.append(rec)
-    cols = ["symbol", "entry_time", "side", "R", "win", "exit_reason", "reach_1r", *SF.FEATURES]
+    cols = ["symbol", "entry_time", "side", "R", "win", "exit_reason", "reach_1r", *SF.FEATURES,
+            "_trade"]
     return pd.DataFrame(recs, columns=cols)
 
 
@@ -385,8 +405,11 @@ def grade(history: pd.DataFrame | None, live: pd.DataFrame, week_start: int) -> 
     if history is not None and not history.empty and "reach_1r" not in history:
         history = history.assign(reach_1r=np.nan)
     hist = history[cols] if history is not None and not history.empty else pd.DataFrame(columns=cols)
-    pool = pd.concat([hist.assign(_live=0), live.assign(_live=1)], ignore_index=True)
+    if "_trade" not in live:
+        live = live.assign(_trade=1)
+    pool = pd.concat([hist.assign(_live=0, _trade=1), live.assign(_live=1)], ignore_index=True)
     pool = pool.astype({c: float for c in ["side", "R", "reach_1r", *SF.FEATURES]})
+    pool["_trade"] = pool["_trade"].fillna(1).astype(int)
     pool["win"] = pool["win"].astype(int)
     train = pool[pool.entry_time < week_start - HOLD_HOURS * 3600]
     # THE GRADED WEEK IS LIVE SIGNALS ONLY (2026-10-15). The history file runs
@@ -395,28 +418,33 @@ def grade(history: pd.DataFrame | None, live: pd.DataFrame, week_start: int) -> 
     test = pool[(pool._live == 1) & (pool.entry_time >= week_start) & (pool.entry_time < week_end)]
     n_tr, n_tr_live, n_te = len(train), int(train._live.sum()), len(test)
     detail = {"purge_hours": HOLD_HOURS, "history_rows": int(len(hist)),
-              "live_rows": int(len(live)), "test_live": int(test._live.sum()) if n_te else 0}
+              "live_rows": int(len(live)), "test_live": int(test._live.sum()) if n_te else 0,
+              "test_trade_universe": int(test._trade.sum()) if n_te else 0}
     auc = top = allr = p = None
     k = 0
     if n_tr >= 100 and train.win.nunique() == 2 and n_te >= 1:
-        X = lambda df: SM.features(df.drop(columns=["_live"]))
+        X = lambda df: SM.features(df.drop(columns=["_live", "_trade"]))
         mdl = SM.model().fit(X(train), train.win)
         s = mdl.predict_proba(X(test))[:, 1]
         allr = float(test.R.mean())
         top, p, k = SM.top_vs_random(test.R.to_numpy(float), s)
         top = float(top)
         # Per-signal scores, so the switch-on rule (docs/model_switch_on_rule.md)
-        # can pool weeks later without re-training anything.
-        detail["scored"] = [[int(t), str(sym), round(float(sc), 6), round(float(r), 6)]
-                            for t, sym, sc, r in zip(test.entry_time, test.symbol, s, test.R)]
+        # can pool weeks later without re-training anything. The 5th element
+        # is the trade-universe flag (1 = a coin the bot may trade, 0 =
+        # record-only; amendment 2026-10-16).
+        detail["scored"] = [[int(t), str(sym), round(float(sc), 6), round(float(r), 6), int(tu)]
+                            for t, sym, sc, r, tu in zip(test.entry_time, test.symbol, s, test.R,
+                                                         test._trade)]
         # SECOND TARGET (owner, 2026-10-15): "reaches +1R before the stop".
         # Same frozen model settings, trained on rows whose path is known.
         tr1, te1 = train[train.reach_1r.notna()], test[test.reach_1r.notna()]
         if len(tr1) >= 100 and tr1.reach_1r.nunique() == 2 and len(te1):
             m1 = SM.model().fit(X(tr1), tr1.reach_1r.astype(int))
             s1 = m1.predict_proba(X(te1))[:, 1]
-            detail["scored_1r"] = [[int(t), str(sym), round(float(sc), 6), int(y)]
-                                   for t, sym, sc, y in zip(te1.entry_time, te1.symbol, s1, te1.reach_1r)]
+            detail["scored_1r"] = [[int(t), str(sym), round(float(sc), 6), int(y), int(tu)]
+                                   for t, sym, sc, y, tu in zip(te1.entry_time, te1.symbol, s1,
+                                                                te1.reach_1r, te1._trade)]
         if test.win.nunique() == 2:
             auc = float(roc_auc_score(test.win, s))
     rec = ModelGradeRecord(week_start=week_start, week_end=week_end, n_train=n_tr,
@@ -455,6 +483,24 @@ def _pooled(weeks: list[list], value_col: int, *, n_random: int = 2000, seed: in
     return top, float(rand.mean()), float((rand >= top).mean())
 
 
+def _is_trade_universe(row) -> bool:
+    """A scored row's trade-universe flag (5th element). Rows graded before
+    the 2026-10-16 amendment have four elements; every coin was tradeable
+    then, so they count as trade-universe signals."""
+    return len(row) < 5 or bool(row[4])
+
+
+def _rule(weeks: list[list], col: int, bar: float) -> dict:
+    weeks = [w for w in weeks if len(w) >= SWITCH_MIN_SIGNALS]
+    res = {"weeks": len(weeks), "needs_weeks": SWITCH_MIN_WEEKS}
+    if len(weeks) >= SWITCH_MIN_WEEKS:
+        top, rand, p = _pooled(weeks, col)
+        res.update(top=top, random=rand, p=p, eligible=bool(p <= SWITCH_P and top > bar))
+    else:
+        res["eligible"] = False
+    return res
+
+
 def switch_check(grades: list[dict]) -> dict:
     """Apply the fixed switch-on rule to every graded week so far.
 
@@ -462,36 +508,57 @@ def switch_check(grades: list[dict]) -> dict:
     such weeks are pooled (none dropped). 3R target: pooled top-30% mean net R
     beats random picks at p <= SWITCH_P AND is above zero. 1R target: pooled
     top-30% share reaching +1R beats random at p <= SWITCH_P AND exceeds
-    REACH_1R_BREAK_EVEN. Either passing makes the model ELIGIBLE; switching it
-    on is the owner's decision, at 0.5% risk first."""
-    out = {}
+    REACH_1R_BREAK_EVEN.
+
+    AMENDMENT 2026-10-16 (owner; before the first grade on 2026-10-19). The
+    bot now also records coins it never trades. A target is ELIGIBLE only if
+    the rule passes on ALL recorded live signals AND, separately, on the
+    trade-universe subset alone -- same test, same thresholds; a week
+    qualifies for the subset with at least SWITCH_MIN_SIGNALS subset signals.
+    Either target ELIGIBLE makes the model eligible; switching it on is the
+    owner's decision, at 0.5% risk first.
+
+    Returns {"3R": all signals, "1R": all signals, "trade_universe": {"3R",
+    "1R"}}: the per-target dicts hold the all-signals figures, and their
+    "eligible" is the VERDICT (both sets pass)."""
+    out: dict = {"trade_universe": {}}
     for key, col, bar, name in (("scored", 3, 0.0, "3R"), ("scored_1r", 3, REACH_1R_BREAK_EVEN, "1R")):
         weeks = [(g.get("detail") or {}).get(key) or [] for g in grades]
-        weeks = [w for w in weeks if len(w) >= SWITCH_MIN_SIGNALS]
-        res = {"weeks": len(weeks), "needs_weeks": SWITCH_MIN_WEEKS}
-        if len(weeks) >= SWITCH_MIN_WEEKS:
-            top, rand, p = _pooled(weeks, col)
-            res.update(top=top, random=rand, p=p,
-                       eligible=bool(p <= SWITCH_P and top > bar))
-        else:
-            res["eligible"] = False
+        res = _rule(weeks, col, bar)
+        sub = _rule([[r for r in w if _is_trade_universe(r)] for w in weeks], col, bar)
+        res["eligible"] = bool(res["eligible"] and sub["eligible"])
         out[name] = res
+        out["trade_universe"][name] = sub
     return out
+
+
+def _passes(name: str, r: dict) -> bool:
+    bar = 0.0 if name == "3R" else REACH_1R_BREAK_EVEN
+    return "top" in r and r["p"] <= SWITCH_P and r["top"] > bar
+
+
+def _rule_text(name: str, r: dict) -> str:
+    if "top" not in r:
+        return f"{r['weeks']} of {r['needs_weeks']} qualifying weeks so far"
+    verdict = "passes" if _passes(name, r) else "fails"
+    if name == "3R":
+        return (f"top picks {r['top']:+.2f}R vs random {r['random']:+.2f}R "
+                f"(p {r['p']:.2f}), {verdict}")
+    return (f"top picks reached +1R {100 * r['top']:.0f}% vs random "
+            f"{100 * r['random']:.0f}% (p {r['p']:.2f}; break-even "
+            f"{100 * REACH_1R_BREAK_EVEN:.0f}%), {verdict}")
 
 
 def switch_line(chk: dict) -> str:
     parts = []
-    for name, unit in (("3R", "R"), ("1R", "share reaching +1R")):
+    for name in ("3R", "1R"):
         r = chk[name]
-        if "top" not in r:
-            parts.append(f"{name} target: {r['weeks']} of {r['needs_weeks']} qualifying weeks so far")
-        elif name == "3R":
-            parts.append(f"3R target: top picks {r['top']:+.2f}R vs random {r['random']:+.2f}R "
-                         f"(p {r['p']:.2f}) -> {'ELIGIBLE' if r['eligible'] else 'not eligible'}")
-        else:
-            parts.append(f"1R target: top picks reached +1R {100 * r['top']:.0f}% vs random "
-                         f"{100 * r['random']:.0f}% (p {r['p']:.2f}; break-even "
-                         f"{100 * REACH_1R_BREAK_EVEN:.0f}%) -> {'ELIGIBLE' if r['eligible'] else 'not eligible'}")
+        sub = (chk.get("trade_universe") or {}).get(name)
+        text = f"{name} target: all signals {_rule_text(name, r)}"
+        if sub is not None:
+            text += f"; trade coins only {_rule_text(name, sub)}"
+        text += f" -> {'ELIGIBLE' if r['eligible'] else 'not eligible'}"
+        parts.append(text)
     return "Switch-on rule: " + "; ".join(parts) + "."
 
 
@@ -530,7 +597,8 @@ async def grade_model(repo, *, history_path=None, now: int | None = None,
     rec.detail.update({
         "live_labelled": len(lab),
         "live_not_takeable": sum(1 for r in lab if r.get("takeable") is False),
-        "live_undecided": sum(1 for r in lab if r.get("takeable") is None)})
+        "live_undecided": sum(1 for r in lab if r.get("takeable") is None),
+        "live_record_only": sum(1 for r in lab if is_record_only(r))})
     await repo.record_model_grade(rec)
     chk = switch_check(await repo.model_grades())
     rec.detail["switch_check"] = chk
