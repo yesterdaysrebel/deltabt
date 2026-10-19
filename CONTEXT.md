@@ -129,8 +129,17 @@ mean-revert). Owner's second reading (10-19): "flip of ST and WPR just crossing 
 `flip` / `cross_levels`) and `flip_st_tight` (3 bars). Signal-level (`out/signal_lab_flip/`): **−0.124R/signal
 (3,015)**, −0.11 / −0.17 by half, longs −0.23 / shorts −0.07. Account: flip_st −$122 and the latch by May (161
 trades, −0.19R); 15m/5m −0.33R; flip_st_tight −$106 (217 trades, −0.11R). Every owner entry tested loses faster
-than the live rule; shorts lose far less than longs under all three. Recommendation given: keep the live rule
-(or test flip_st shorts-only); none of dip_st / flip_st is deployed. Deploying any rule change
+than the live rule; shorts lose far less than longs under all three. Shorts-only (owner "option 2"; `sides` = 5th hash-omitted spec field): flip_st_short −0.054R/signal (2,176; account
+−$121, latch by May); the live rule's shorts −0.041R (account twin −$127, latch). HOURS AFTER THE RE-PICK (found
+10-19, pooled then checked by half): the live rule's signals in UTC 00–06 average −0.13R in BOTH halves vs −0.007 /
+−0.038R for the rest of the day; the first-come account takes ~40% of its slots in the first hour, and 10 of the
+live bot's 11 trades were entered 5:30–7:10 AM IST. But the account replay with entries only 6h+ after the pick
+(`manual_scalp_both_t3_st_late`, entry_hours_utc=(6,24)) is NOT better (−0.068R, −$81 vs 0.00R, −$31): account
+replays of ~100–260 trades swing ±0.12R and cannot resolve 0.1R; the signal-level reads are the reliable ones. For
+the flip shorts-only rule the hour effect reverses in Aug–Oct. Nothing tested is positive; the ~−0.04R group (live
+shorts, flip shorts-only, live rule 6h+) is the least bad and indistinguishable. Recommendation given: keep the live
+rule; test the hour effect on the live record (the recorder already stores every signal's hour) before deploying
+a window. None of dip_st / flip_st / *_short / *_late is deployed. Deploying any rule change
 replaces the host once (variant is baked into user_data; EIP and the Postgres volume survive).
 
 **MODEL SWITCH-ON RULE fixed 2026-10-15 (owner approved, before any grade): `docs/model_switch_on_rule.md`.**

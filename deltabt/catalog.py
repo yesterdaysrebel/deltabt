@@ -437,6 +437,38 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10, event_window_bars=3),
     ),
+    # SHORTS ONLY (owner, 2026-10-19, "option 2"): under every entry tested on
+    # the top gainers, longs lost ~3x what shorts lost (gainers mean-revert).
+    # flip_st_short = the owner's flip setup, shorts only; the live rule's
+    # shorts-only twin is here so the account replay compares like with like.
+    "flip_st_short": dict(
+        desc="flip_st, shorts only",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
+    ),
+    "manual_scalp_both_t3_st_short": dict(
+        desc="manual_scalp_both_t3_st (the live rule), shorts only",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, sides="short"),
+    ),
+    # NO ENTRIES IN THE FIRST 6 HOURS AFTER THE DAILY RE-PICK (2026-10-19).
+    # On the top-gainer replay the live rule's signals in UTC 00-06 (the coin
+    # list is re-picked at 00:00 UTC = 5:30 AM IST) average -0.13R in BOTH
+    # halves of 2026 while the rest of the day is near break-even (-0.007 /
+    # -0.038R), and the first-come account burns ~40% of its two daily slots
+    # in the first hour. Fresh picks are at their most extended right after
+    # the pick. Expressed with the existing entry window: UTC 06:00-24:00.
+    "manual_scalp_both_t3_st_late": dict(
+        desc="the live rule, entries only 6h+ after the daily re-pick (UTC 06-24)",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, entry_hours_utc=(6, 24)),
+    ),
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),

@@ -258,6 +258,10 @@ class StrategySpec:
     #: ``cross_levels``. None is the absence of the dimension and is omitted
     #: from the hash (see _hash_payload), so no existing spec's identity moves.
     event_window_bars: int | None = None
+    #: THE FIFTH ELIGIBLE FIELD (2026-10-19, owner: "option 2" = the flip setup
+    #: shorts only). "long" / "short" keeps only that side's entries; None is
+    #: both sides -- the absence of the restriction, omitted from the hash.
+    sides: str | None = None
 
     def validate(self) -> None:
         windowed = any(r.supertrend == "flip_recent" or r.wpr_rule == "cross_recent"
@@ -266,6 +270,8 @@ class StrategySpec:
             raise ValueError("flip_recent / cross_recent need event_window_bars >= 1")
         if self.event_window_bars is not None and not windowed:
             raise ValueError("event_window_bars is set but no timeframe rule uses it")
+        if self.sides not in (None, "long", "short"):
+            raise ValueError(f"sides must be None, 'long' or 'short', got {self.sides!r}")
         self.primary.validate()
         self.confirm.validate()
         if self.trigger not in TRIGGERS:
@@ -447,6 +453,9 @@ class StrategySpec:
         # THE FOURTH, 2026-10-19: no event window is the absence of the rule.
         if payload.get("event_window_bars") is None:
             payload.pop("event_window_bars", None)
+        # THE FIFTH, 2026-10-19: both sides is the absence of the restriction.
+        if payload.get("sides") is None:
+            payload.pop("sides", None)
         return payload
 
     @property
