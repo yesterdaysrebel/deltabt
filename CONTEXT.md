@@ -115,6 +115,11 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**METALS ACCOUNT LIVE since 2026-10-19 20:47 UTC (2:17 AM IST 10-20)** on `i-00a4fee08c1b6882a` (EIP 13.205.134.107,
+owner whitelisted it on the read-only key): deploy run 39303652988 rolled both stacks (two prod-deploy approvals, one
+per stack); the metals roll's LAST step "start the successor experiment" failed because `_roll.yml` only skipped
+registration for `"universe":"top_gainers"` — fixed to cover every dynamic mode. The bot itself was started by the
+deploy document and runs. The crypto bot rolled to image 070dbcd unchanged.
 **SECOND PAPER ACCOUNT `metals` (owner, 2026-10-19: "second account but we only trade metals there"):** stack
 `metals` in `live.tf` (own host/EIP/db `deltabt_metals`/report), `SPEC:flip_st_short@5/1`, watch-only, $250 at 2%,
 2/day, 5x; `DELTABOT_UNIVERSE=metals` → trade = XAUT/PAXG/SLVON/OIL (whichever are listed), record-only = the other
