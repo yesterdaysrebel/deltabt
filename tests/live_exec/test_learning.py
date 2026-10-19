@@ -369,3 +369,63 @@ def test_the_grade_flags_each_scored_signal_and_never_learns_from_the_flag():
     # the flag is not a model input: flipping it changes no score
     flipped = learning.grade(None, frame.assign(_trade=1 - frame["_trade"]), ws)
     assert [r[2] for r in flipped.detail["scored"]] == [r[2] for r in sc]
+
+
+# --- one rule at a time (2026-10-19: the live rule changed) ---------------
+
+def test_live_frame_and_switch_check_keep_to_the_running_rule():
+    rows = []
+    for i, h in enumerate(("old", "old", "new")):
+        rows.append({"symbol": "X", "bar_open": 1792000000 + i * 600, "direction": -1, "r_net": 1.0,
+                     "win": 1, "takeable": True, "mfe_r": 1.5, "features": {"lab": {}},
+                     "strategy_config_hash": h})
+    assert len(learning.live_frame(rows)) == 3
+    assert len(learning.live_frame(rows, "new")) == 1
+    legacy = {"detail": {"scored": [[1, "X", 0.9, 1.0, 1]] * 40}}            # no rule_hash: the first rule
+    mine = {"detail": {"rule_hash": "new", "scored": [[1, "X", 0.9, 1.0, 1]] * 40}}
+    chk = learning.switch_check([legacy, legacy, legacy, legacy, mine], "new")
+    assert chk["graded_weeks"] == 1 and chk["3R"]["weeks"] == 1
+    assert learning.switch_check([legacy] * 4)["3R"]["weeks"] == 4         # no filter: unchanged
+
+
+def test_takeability_is_decided_per_rule():
+    """A signal of the old rule holding a coin must not block the new rule's
+    signal on the same coin (two experiments sharing a database)."""
+    repo = InMemoryRepository()
+    sigs = _lab_signals()[:2]
+    (bo1, s1, e1, st1, _), (bo2, s2, e2, st2, _) = sigs
+    k1 = _record(repo, bo1, s1, e1, st1)
+    # the SAME signal bar under another rule: one-rule grouping would block it
+    # behind the first (same bar, later id); per-rule grouping takes both
+    rec2 = SignalRecord(
+        idempotency_key="other-rule", instance_uid="i", symbol=SYM, bar_open=int(bo1),
+        primary_timeframe="5m", confirmation_timeframe="1m", direction=int(s1),
+        outcome="REJECTED", strategy_version="flip_st_short", strategy_config_hash="h2",
+        conditions_passed=[], conditions_failed=[], indicators={}, entry_price=e1,
+        stop_price=st1, target_price=e1 + s1 * 3 * abs(e1 - st1))
+    asyncio.run(repo.record_signal(rec2))
+    asyncio.run(learning.label_signals(repo, FakeDelta(), lambda s: COSTS, now=FAR))
+    got = {r["idempotency_key"]: r["takeable"] for r in asyncio.run(repo.labelled_signals())}
+    assert got[k1] is True and got["other-rule"] is True, got
+    # and the control: the same duplicate under the SAME rule is blocked
+    repo2 = InMemoryRepository()
+    _record(repo2, bo1, s1, e1, st1)
+    asyncio.run(repo2.record_signal(SignalRecord(**{**rec2.__dict__, "strategy_config_hash": "h"})))
+    asyncio.run(learning.label_signals(repo2, FakeDelta(), lambda s: COSTS, now=FAR))
+    got2 = {r["idempotency_key"]: r["takeable"] for r in asyncio.run(repo2.labelled_signals())}
+    assert got2["other-rule"] is False, got2
+
+
+def test_grade_model_ignores_a_history_file_for_another_rule(tmp_path):
+    repo = InMemoryRepository()
+    hist = _synthetic(800, MON - 100 * 86400, MON + 7 * 86400, 4)
+    path = tmp_path / "signals.parquet"
+    hist.to_parquet(path)
+    rec = asyncio.run(learning.grade_model(repo, history_path=path, now=MON + 8 * 86400,
+                                           rule_hash="h", family="flip_st_short",
+                                           history_family="manual_scalp_both_t3_st"))
+    assert rec.detail["history_ignored"] == "manual_scalp_both_t3_st" and rec.n_train == 0
+    rec = asyncio.run(learning.grade_model(repo, history_path=path, now=MON + 8 * 86400,
+                                           rule_hash="h", family="flip_st_short",
+                                           history_family="flip_st_short", week_start=MON))
+    assert rec.detail["history_ignored"] is None and rec.n_train > 0

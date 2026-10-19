@@ -591,7 +591,8 @@ class InMemoryRepository(Repository):
                 "entry_price": r.entry_price, "stop_price": r.stop_price,
                 "target_price": r.target_price, "outcome": r.outcome,
                 "rejection_reason": r.rejection_reason, "indicators": r.indicators,
-                "features": self._s["signal_features"].get(key)}
+                "features": self._s["signal_features"].get(key),
+                "strategy_config_hash": r.strategy_config_hash}
 
     @staticmethod
     def _labellable(r) -> bool:
@@ -618,6 +619,7 @@ class InMemoryRepository(Repository):
             o = outs.get(k)
             out.append({"id": self._s["signal_ids"][k], "idempotency_key": k,
                         "symbol": r.symbol, "bar_open": int(r.bar_open),
+                        "strategy_config_hash": r.strategy_config_hash,
                         "labelled": o is not None,
                         "r_net": None if o is None else o.r_net,
                         "exit_time": None if o is None or o.exit_time is None else int(o.exit_time),
@@ -1455,7 +1457,8 @@ class PostgresRepository(Repository):
                     "extract(epoch FROM s.bar_open)::bigint AS bar_open, "
                     "s.primary_timeframe, s.direction, s.entry_price::float8 AS entry_price, "
                     "s.stop_price::float8 AS stop_price, s.target_price::float8 AS target_price, "
-                    "s.outcome, s.rejection_reason, s.indicators, s.features")
+                    "s.outcome, s.rejection_reason, s.indicators, s.features, "
+                    "s.strategy_config_hash")
     _LABELLABLE = ("s.direction IS NOT NULL AND s.entry_price IS NOT NULL "
                    "AND s.stop_price IS NOT NULL AND s.target_price IS NOT NULL")
 
@@ -1499,7 +1502,7 @@ class PostgresRepository(Repository):
                 "  SELECT s.symbol, min(s.bar_open) AS t FROM signal_outcomes o "
                 "  JOIN strategy_signals s ON s.id = o.signal_id "
                 "  WHERE o.takeable IS NULL GROUP BY s.symbol) "
-                "SELECT s.id, s.idempotency_key, s.symbol, "
+                "SELECT s.id, s.idempotency_key, s.symbol, s.strategy_config_hash, "
                 "extract(epoch FROM s.bar_open)::bigint AS bar_open, "
                 "o.id IS NOT NULL AS labelled, o.r_net, "
                 "extract(epoch FROM o.exit_time)::bigint AS exit_time, o.takeable, "

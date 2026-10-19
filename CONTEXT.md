@@ -115,6 +115,19 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**RULE SWITCH 2026-10-19 (owner: "allow model to learn and record; deploy this change now"):** the live rule becomes
+`SPEC:flip_st_short@5/1` (the owner's flip setup, shorts only; the 1m confirm MUST be stated — this family takes its
+trend from the confirmation chart; hash `dbd723813926…`), still watch-only. The model history shipped in the image
+is the flip_st_short dataset (`out/signal_lab_flip_short/signals.parquet`, 2,176 signals; `DELTABT_SIGNAL_HISTORY_FAMILY`
+names it and `grade-model` ignores a file for another rule). Labelling/takeability/grading/switch-on count run per
+rule (`strategy_config_hash`); the old rule's 1,800+ live signals and its week-12-Oct grade stay unmixed and unused;
+the switch-on count restarts. The variant is baked into user_data, so this is a HOST REPLACEMENT: deploy the new
+image first (deploy-prod), then replace the host (infrastructure dispatch with allow_replace), or the new host boots
+the old image, fails closed on the unknown family and crash-loops until the image lands. EIP and pg volume survive.
+Known data-dependent test: `tests/live/test_spec_arm.py::test_it_reproduces_the_backtest_signal_bar_for_bar` fails
+on master too once BTC 1m data extends past 2026-10-13 (live refuses a decision bar holding a no-trade minute, the
+backtest signal fires); it does not run in CI.
+
 **ENTRY-RULE CHECK 2026-10-19 (owner spotted today's GTC short / ARC long as "wrong side").** Execution was
 correct (Supertrend and %R recomputed from Delta's 5m candles match the bot's recorded indicators), but the coded
 rule `variant_a` ("%R above −80 and rising", no ceiling) CHASES: it bought ARC at %R −8 (top of its 140-bar range)

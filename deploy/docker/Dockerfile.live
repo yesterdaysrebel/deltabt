@@ -48,11 +48,15 @@ COPY deltabt ./deltabt
 COPY app ./app
 COPY live ./live
 COPY pyproject.toml ./
-# 9 months of labelled signals from scripts/signal_features_lab.py (2026-10-13):
-# the weekly grade-model pools them with live signals so it does not start
-# from zero. ~1.4 MB.
-COPY out/signal_lab/signals.parquet /app/history/signals.parquet
-ENV DELTABT_SIGNAL_HISTORY=/app/history/signals.parquet
+# 9 months of labelled signals from scripts/signal_features_lab.py: the weekly
+# grade-model pools them with live signals so it does not start from zero.
+# 2026-10-19: the live rule is flip_st_short, so its history ships (2,176
+# signals, ~0.6 MB); DELTABT_SIGNAL_HISTORY_FAMILY names the rule it belongs
+# to and grade-model ignores the file if the running rule differs. The old
+# rule's file (out/signal_lab/signals.parquet) stays in the repo for the record.
+COPY out/signal_lab_flip_short/signals.parquet /app/history/signals.parquet
+ENV DELTABT_SIGNAL_HISTORY=/app/history/signals.parquet \
+    DELTABT_SIGNAL_HISTORY_FAMILY=flip_st_short
 
 ENV NUMBA_CACHE_DIR=/tmp/numba DELTABT_DATA=/tmp/deltabt-data
 
