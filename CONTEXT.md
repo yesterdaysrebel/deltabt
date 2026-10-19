@@ -115,6 +115,13 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**LIVE SINCE 2026-10-19 14:31 UTC (8:01 PM IST): `SPEC:flip_st_short@5/1`, watch-only, on the replaced host
+`i-0aac6d85d802033bf` (EIP 13.207.73.230 kept, pg volume re-attached, 11 old-rule trades and 1,402 old-rule signals
+intact).** GOTCHA: a host replacement leaves `deltabt.service` ENABLED BUT NOT STARTED (user_data only enables it; the
+deploy roll's SSM document is what starts it). After the replacement the bot was simply absent for 10 min until
+`systemctl start deltabt.service` over SSM; a deploy-prod roll would have done the same. Model on the flip_st_short
+history (sealed Aug–Oct): FAIL — AUC 0.53, top-30% +0.015R vs −0.093R all, random matches it 15% (bar 5%).
+Switch-on count restarted; earliest eligibility ~mid/late Nov.
 **RULE SWITCH 2026-10-19 (owner: "allow model to learn and record; deploy this change now"):** the live rule becomes
 `SPEC:flip_st_short@5/1` (the owner's flip setup, shorts only; the 1m confirm MUST be stated — this family takes its
 trend from the confirmation chart; hash `dbd723813926…`), still watch-only. The model history shipped in the image
