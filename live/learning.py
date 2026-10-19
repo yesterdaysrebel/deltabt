@@ -638,6 +638,11 @@ async def grade_model(repo, *, history_path=None, now: int | None = None,
 
 def _default_history() -> str:
     from deltabt.config import OUT_DIR
+    # The metals account (DELTABOT_UNIVERSE=metals, 2026-10-19) starts from the
+    # same rule's history on the non-crypto perps, not the crypto gainers'.
+    if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "metals" \
+            and os.environ.get("DELTABT_SIGNAL_HISTORY_METALS"):
+        return os.environ["DELTABT_SIGNAL_HISTORY_METALS"]
     return os.environ.get(ENV_HISTORY) or str(OUT_DIR / "signal_lab" / "signals.parquet")
 
 

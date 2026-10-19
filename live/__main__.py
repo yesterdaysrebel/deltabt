@@ -158,7 +158,7 @@ async def main() -> int:
         bot = _live_bot(settings, client, venue, symbols, trade_products, strategy,
                         signal_recorder=recorder, record_only=record_only,
                         costs=costs, record_backfiller=record_backfiller)
-    repick_at = _next_repick() if universe.mode() == "top_gainers" else None
+    repick_at = _next_repick() if universe.mode() in universe.DYNAMIC_MODES else None
     return await _serve(bot, settings, stop_at=repick_at)
 
 
@@ -230,6 +230,8 @@ async def _universe(client, venue, database_url
         await repo.close()
     tickers = client._read("/v2/tickers",
                            {"contract_types": "perpetual_futures"}) or []
+    if universe.mode() == "metals":
+        return universe.pick_metals(tickers, held)
     return universe.pick_wide(tickers, held)
 
 
@@ -343,7 +345,7 @@ def cli_entry(argv: list[str]) -> int:
             f"the venue's universe and must be told which venue that is; it "
             f"does not default to testnet. On a host, run_live.sh writes it "
             f"into /run/deltabt/env.")
-    if universe.mode() == "top_gainers":
+    if universe.mode() in universe.DYNAMIC_MODES:
         # THE LIST CHANGES EVERY DAY, so an experiment registered today would
         # read as configuration drift tomorrow and the bot would refuse to
         # start. This mode runs unbound (no experiment); refuse to create one.

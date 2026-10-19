@@ -115,6 +115,15 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**SECOND PAPER ACCOUNT `metals` (owner, 2026-10-19: "second account but we only trade metals there"):** stack
+`metals` in `live.tf` (own host/EIP/db `deltabt_metals`/report), `SPEC:flip_st_short@5/1`, watch-only, $250 at 2%,
+2/day, 5x; `DELTABOT_UNIVERSE=metals` → trade = XAUT/PAXG/SLVON/OIL (whichever are listed), record-only = the other
+liquid non-crypto perps by turnover (`live/universe.pick_metals`). History in the image: the tradfi flip_st_short
+dataset (1,008 signals; `DELTABT_SIGNAL_HISTORY_METALS`, picked by `_default_history` when universe=metals). Its
+grades/switch count are its own (own database). After the host exists: copy the venue secret to
+`deltabt-paper/live/metals/venue-credentials` (server-side), the OWNER adds the new EIP to the read-only key's
+allowlist, then deploy-prod rolls both stacks (approval) — and START the service (see the gotcha above).
+
 **US-TOKEN / METAL PERPS EXPLORED 2026-10-19 (owner asked):** Delta lists 41 non-crypto perps (tags tradfi/xStock/
 metal), 26 with 24h turnover ≥ $250k; taker fee 0.01–0.02% (crypto 0.05%); IM 1–4%. Metals trade every minute
 round the clock (XAUT 98–100% of minutes, PAXG 75–95%, oil ~50%); US stock tokens are THIN even in US hours (TSLA
