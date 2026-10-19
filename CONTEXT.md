@@ -139,7 +139,13 @@ replays of ~100–260 trades swing ±0.12R and cannot resolve 0.1R; the signal-l
 the flip shorts-only rule the hour effect reverses in Aug–Oct. Nothing tested is positive; the ~−0.04R group (live
 shorts, flip shorts-only, live rule 6h+) is the least bad and indistinguishable. Recommendation given: keep the live
 rule; test the hour effect on the live record (the recorder already stores every signal's hour) before deploying
-a window. None of dip_st / flip_st / *_short / *_late is deployed. Deploying any rule change
+a window. None of dip_st / flip_st / *_short / *_late is deployed.
+DRY-RUN REPLAY (owner asked 10-19; `out/top_gainers/picks_dryrun.csv` = the bot's logged daily lists, TG_PICKS/TG_FROM):
+the live rule replayed over 10-13 13:22 UTC → 10-19 gives 10 trades, 1 win, −0.745R, −$36.29 vs the dry run's actual 11,
+1 win, −0.75R, −$35.85 — same quality, but only 3 of 11 trades coincide: when several coins fire on one bar the bot
+takes its evaluation order and the engine the sorted name (10-13 13:20 UTC: bot STX, replay BTW), and the paths
+diverge from there. flip_st_short on the same days: 6 trades, 3 at 3R (BTW, INJ, SIREN), +5.63R, +$27.92 — one
+week, ±0.9R SE per trade, against −0.054R/signal over 9 months; not evidence, recorded as such. Deploying any rule change
 replaces the host once (variant is baked into user_data; EIP and the Postgres volume survive).
 
 **MODEL SWITCH-ON RULE fixed 2026-10-15 (owner approved, before any grade): `docs/model_switch_on_rule.md`.**

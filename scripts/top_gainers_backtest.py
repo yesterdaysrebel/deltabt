@@ -59,7 +59,7 @@ from deltabt.portfolio import Book, RiskGates, run_portfolio  # noqa: E402
 # Overridable so another entry rule can be replayed without touching the
 # recorded result (2026-10-19: TG_FAMILY=dip_st TG_OUT=out/top_gainers_dip).
 OUT = Path(os.environ.get("TG_OUT", "out/top_gainers"))
-PICKS = Path("out/top_gainers/picks.csv")       # the daily picks are rule-independent
+PICKS = Path(os.environ.get("TG_PICKS", "out/top_gainers/picks.csv"))   # the daily picks are rule-independent
 DAY = 86400
 FIRST_DAY = pd.Timestamp("2026-01-01", tz="UTC").value // 10**9
 LAST_DAY = pd.Timestamp("2026-10-12", tz="UTC").value // 10**9   # inclusive
@@ -163,6 +163,10 @@ def _book(sym, primary, confirm, spec, allowed_days):
     # close's day, and the bot re-picks 30 s after midnight
     close_day = ((P["time"].to_numpy("int64") + primary * 60 - 1) // DAY) * DAY
     allow = np.isin(close_day, np.fromiter(allowed_days, dtype="int64"))
+    # TG_FROM (unix s): no entries before the bot actually ran (replays of a
+    # dry-run period that started mid-day; 2026-10-19).
+    if os.environ.get("TG_FROM"):
+        allow &= (P["time"].to_numpy("int64") + primary * 60) >= int(os.environ["TG_FROM"])
     sig = replace(sig, long_entry=sig.long_entry & allow, short_entry=sig.short_entry & allow)
     cat = ProductCatalog()
     return sym, Book(symbol=sym, bars=P, signals=sig, costs=SymbolCosts.from_spec(cat.get(sym)),
