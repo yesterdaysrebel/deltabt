@@ -115,6 +115,15 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**US-TOKEN / METAL PERPS EXPLORED 2026-10-19 (owner asked):** Delta lists 41 non-crypto perps (tags tradfi/xStock/
+metal), 26 with 24h turnover ≥ $250k; taker fee 0.01–0.02% (crypto 0.05%); IM 1–4%. Metals trade every minute
+round the clock (XAUT 98–100% of minutes, PAXG 75–95%, oil ~50%); US stock tokens are THIN even in US hours (TSLA
+46%, NVDA 40%, META 39%, SPY 21% of minutes; SOXLB/SNDKB 60–80%), so the no-dead-minute entry rule rarely lets a
+5m signal through. Backtest on the 26 from listing (Feb–Jul) to 10-19 (`out/tradfi*/`, `out/signal_lab_tradfi_flip_short/`):
+flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; Jan–Jul +0.09, Aug–Oct −0.22), account
+−$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
+dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
+
 **LIVE SINCE 2026-10-19 14:31 UTC (8:01 PM IST): `SPEC:flip_st_short@5/1`, watch-only, on the replaced host
 `i-0aac6d85d802033bf` (EIP 13.207.73.230 kept, pg volume re-attached, 11 old-rule trades and 1,402 old-rule signals
 intact).** GOTCHA: a host replacement leaves `deltabt.service` ENABLED BUT NOT STARTED (user_data only enables it; the
