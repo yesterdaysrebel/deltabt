@@ -406,6 +406,12 @@ def compute(primary: pd.DataFrame, confirm: pd.DataFrame | None,
 
     valid_long = fired_long & ok_long & ~too_wide_long & ~truncated
     valid_short = fired_short & ok_short & ~too_wide_short & ~truncated
+    # ONE SIDE ONLY (spec.sides, 2026-10-19): the other side's setups are not
+    # entries and not rejections -- they are simply not this rule.
+    if spec.sides == "short":
+        valid_long = fired_long = np.zeros_like(valid_long)
+    elif spec.sides == "long":
+        valid_short = fired_short = np.zeros_like(valid_short)
 
     return SignalArrays(
         time=pi.time, close=pi.close,

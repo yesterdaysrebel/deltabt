@@ -437,6 +437,24 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10, event_window_bars=3),
     ),
+    # SHORTS ONLY (owner, 2026-10-19, "option 2"): under every entry tested on
+    # the top gainers, longs lost ~3x what shorts lost (gainers mean-revert).
+    # flip_st_short = the owner's flip setup, shorts only; the live rule's
+    # shorts-only twin is here so the account replay compares like with like.
+    "flip_st_short": dict(
+        desc="flip_st, shorts only",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
+    ),
+    "manual_scalp_both_t3_st_short": dict(
+        desc="manual_scalp_both_t3_st (the live rule), shorts only",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, sides="short"),
+    ),
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),

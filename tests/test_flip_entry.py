@@ -60,3 +60,18 @@ def test_existing_specs_keep_their_hash_and_the_window_needs_a_consumer():
         StrategySpec(**{**build_spec("flip_st", 5).__dict__, "event_window_bars": None}).validate()
     with pytest.raises(ValueError):
         StrategySpec(**{**build_spec("manual_scalp_both_t3_st", 5).__dict__, "event_window_bars": 6}).validate()
+
+
+def test_shorts_only_keeps_the_shorts_and_drops_every_long():
+    from dataclasses import replace
+    P, C = _frames()
+    both, short = build_spec("flip_st", 5, 1), build_spec("flip_st_short", 5, 1)
+    a, b = rulecore.compute(P, C, both), rulecore.compute(P, C, short)
+    assert np.array_equal(a.short_entry, b.short_entry) and not b.long_entry.any()
+    assert a.long_entry.any(), "the synthetic market produced no longs to drop"
+    # the side restriction is part of the identity (a name is too, so the
+    # shorts-only twin is compared with itself, not with the live family)
+    assert replace(both, sides="short").config_hash != both.config_hash
+    assert "sides" not in both._hash_payload()
+    with pytest.raises(ValueError):
+        replace(both, sides="shorts").validate()
