@@ -132,10 +132,10 @@ jobs:
           # "made no sense" to them. The paper report stays for paper arms.
           # 2026-10-13: `bot` replaces `dryrun` (destroyed 10-13; live.tf).
           - stack: bot
-            variant: SPEC:manual_scalp_both_t3_st@5
+            variant: SPEC:flip_st_short@5/1
             instance_var: BOT_INSTANCE_ID_BOT
             document_var: SSM_MONITOR_DOCUMENT_BOT
-            strategy_hash: "fbbd2ab96ddcd2a6f8775437c38f4b344e622756dad8620dd3dadb876d5ea3be"
+            strategy_hash: "dbd723813926abb78044fa3cc258281177c1b2fff2c977830eeadfc3d095e023"
             log_group: /deltabt/paper/bot/bot
             report: brief
             unbound: true

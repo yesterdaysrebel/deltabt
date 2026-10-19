@@ -111,7 +111,11 @@ variable "live_stacks" {
     # owner re-opened the project the same day. `bot` = the owner's way: daily top-10
     # gainers, %R + Supertrend (10, 2) on 5m and 1m, 3R, 2 trades a day, one at a
     # time (CONTEXT.md "CURRENT GOAL"). Watch-only first (live_sizing dry_run "1").
-    bot = { variant = "SPEC:manual_scalp_both_t3_st@5", db_name = "deltabt_bot" }
+    # 2026-10-19 (owner): the owner's flip setup, shorts only -- Supertrend
+    # flipped bearish and %R crossed down through -20 within 6 bars, 1m ST
+    # agrees (catalog flip_st_short). The 1m confirm must be stated (@5/1):
+    # this family takes its trend from the confirmation chart. Still watch-only.
+    bot = { variant = "SPEC:flip_st_short@5/1", db_name = "deltabt_bot" }
   }
 }
 
