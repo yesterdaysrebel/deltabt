@@ -59,6 +59,7 @@ DELIBERATE_EXCEPTIONS = {
     # a running bot; the next code deploy carries it.
     "out/signal_lab/signals.parquet",
     "out/signal_lab_flip_short/signals.parquet",   # the same, for the rule live since 2026-10-19
+    "out/signal_lab_tradfi_flip_short/signals.parquet",   # the metals account's (2026-10-19)
 }
 
 

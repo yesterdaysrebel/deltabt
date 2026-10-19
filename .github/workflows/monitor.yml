@@ -139,6 +139,15 @@ jobs:
             log_group: /deltabt/paper/bot/bot
             report: brief
             unbound: true
+          # 2026-10-19: the metals paper account (live.tf `metals`), same rule.
+          - stack: metals
+            variant: SPEC:flip_st_short@5/1
+            instance_var: BOT_INSTANCE_ID_METALS
+            document_var: SSM_MONITOR_DOCUMENT_METALS
+            strategy_hash: "dbd723813926abb78044fa3cc258281177c1b2fff2c977830eeadfc3d095e023"
+            log_group: /deltabt/paper/metals/bot
+            report: brief
+            unbound: true
 
     # No `environment:` gate. The gate exists to stop unreviewed CHANGES, and
     # this job cannot make one -- gating it would only mean the report waits

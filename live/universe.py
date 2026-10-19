@@ -58,6 +58,13 @@ DEFAULT_MIN_TURNOVER_USD = 250_000.0
 DEFAULT_RECORD_TOP_N = 30
 #: Recorded every day whatever their rank (owner, 2026-10-16).
 DEFAULT_RECORD_EXTRA = ("BTCUSD", "ETHUSD", "BEATUSD", "AKEUSD")
+#: METALS MODE (owner, 2026-10-19: "second account but we only trade metals
+#: there"). The trade universe is this fixed list, whichever of them the venue
+#: lists; record-only = the other liquid NON-crypto perps (US stock/ETF tokens),
+#: by 24h turnover, up to record_top_n. DELTABOT_TRADE_SYMBOLS overrides the list.
+ENV_TRADE_SYMBOLS = "DELTABOT_TRADE_SYMBOLS"
+DEFAULT_METALS = ("XAUTUSD", "PAXGUSD", "SLVONUSD", "OILUSD")
+DYNAMIC_MODES = ("top_gainers", "metals")      # re-picked daily; run unbound
 
 
 def _num(row: Mapping, key: str) -> float | None:
@@ -120,8 +127,8 @@ def merge_held(gainers: list[str], held: Iterable[str]) -> tuple[str, ...]:
 def mode(env: Mapping[str, str] | None = None) -> str:
     src = os.environ if env is None else env
     m = (src.get(ENV_UNIVERSE) or "fixed").strip().lower()
-    if m not in ("fixed", "top_gainers"):
-        raise ValueError(f"{ENV_UNIVERSE}={m!r} is not 'fixed' or 'top_gainers'")
+    if m not in ("fixed", "top_gainers", "metals"):
+        raise ValueError(f"{ENV_UNIVERSE}={m!r} is not 'fixed', 'top_gainers' or 'metals'")
     return m
 
 
@@ -223,3 +230,52 @@ def pick_wide(tickers: Iterable[Mapping], held: Iterable[str],
                      "record_only": True}
     log.info("record-only today (watched, never traded): %s", record)
     return trade, tuple(record), info
+
+
+def pick_metals(tickers: Iterable[Mapping], held: Iterable[str],
+                env: Mapping[str, str] | None = None
+                ) -> tuple[tuple[str, ...], tuple[str, ...], dict]:
+    """(trade universe, record-only coins, pick info) for the metals account.
+
+    Trade = DEFAULT_METALS (or DELTABOT_TRADE_SYMBOLS) that the venue lists and
+    trades normally, plus anything still held. Record-only = every other
+    operational NON-crypto perpetual with 24h turnover at or above the floor,
+    highest turnover first, up to record_top_n. Info rows carry no rank (the
+    list is not ranked by gain): change and turnover come from the ticker.
+    """
+    src = os.environ if env is None else env
+    wanted = tuple(s.strip().upper() for s in (src.get(ENV_TRADE_SYMBOLS) or ",".join(DEFAULT_METALS)).split(",") if s.strip())
+    _, floor = settings_from_env(env)
+    record_n, _ = record_settings_from_env(env)
+    rows = [r for r in tickers if r.get("contract_type", "perpetual_futures") == "perpetual_futures"]
+    listed = {str(r.get("symbol") or "").upper(): r for r in rows}
+    trade: list[str] = []
+    info: dict = {}
+    for sym in wanted:
+        row = listed.get(sym)
+        if row is None or row.get("product_trading_status") != "operational":
+            log.warning("metals: %s is not listed/operational on the venue; skipped", sym)
+            continue
+        trade.append(sym)
+        info[sym] = {"rank": None, "change": _num(row, "ltp_change_24h"),
+                     "turnover": _num(row, "turnover_usd"), "tags": row.get("tags"),
+                     "record_only": False}
+    for sym in held:
+        if sym not in trade:
+            trade.append(sym)
+    if not trade:
+        raise ValueError("metals: none of the trade symbols is listed and nothing is held")
+    others = [r for r in rows if r.get("top_tag") != "crypto"
+              and r.get("product_trading_status") == "operational"
+              and str(r.get("symbol") or "").upper() not in trade
+              and (_num(r, "turnover_usd") or 0.0) >= floor]
+    others.sort(key=lambda r: -(_num(r, "turnover_usd") or 0.0))
+    record = []
+    for r in others[:max(0, record_n - len(trade))]:
+        sym = str(r["symbol"]).upper()
+        record.append(sym)
+        info[sym] = {"rank": None, "change": _num(r, "ltp_change_24h"),
+                     "turnover": _num(r, "turnover_usd"), "tags": r.get("tags"),
+                     "record_only": True}
+    log.info("metals universe: trade %s; record-only %s", trade, record)
+    return tuple(trade), tuple(record), info

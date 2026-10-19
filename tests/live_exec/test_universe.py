@@ -164,3 +164,41 @@ def test_the_signal_recorder_gets_plain_pick_data(monkeypatch):
     assert rec.launches["GTCUSD"] == 1767312000 and rec.pick_day % 86400 == 0
     monkeypatch.setenv("DELTABOT_SIGNAL_FEATURES", "0")
     assert entry.signal_recorder(strategy, ("GTCUSD",), picks, costs) is None
+
+
+# --- the metals account (owner, 2026-10-19) ----------------------------------
+
+def _tf(sym, turnover, tag="tradfi", status="operational", change=1.0):
+    return {"symbol": sym, "ltp_change_24h": str(change), "turnover_usd": turnover, "top_tag": tag,
+            "product_trading_status": status, "contract_type": "perpetual_futures", "tags": ["metal"]}
+
+
+def test_metals_mode_trades_the_metals_and_records_other_liquid_tradfi():
+    rows = [_tf("XAUTUSD", 5e8), _tf("PAXGUSD", 9e7), _tf("SLVONUSD", 5e6), _tf("OILUSD", 1e6),
+            _tf("TSLAXUSD", 1.4e6), _tf("SPYXUSD", 3e5), _tf("THINXUSD", 1e4),
+            row("GTCUSD", 46, 2e7),                      # crypto: never here
+            _tf("HALTXUSD", 2e6, status="disrupted")]
+    trade, record, info = universe.pick_metals(rows, held=[], env={})
+    assert trade == ("XAUTUSD", "PAXGUSD", "SLVONUSD", "OILUSD")
+    assert record == ("TSLAXUSD", "SPYXUSD")            # liquid non-crypto, by turnover; thin and halted out
+    assert info["XAUTUSD"]["record_only"] is False and info["XAUTUSD"]["rank"] is None
+    assert info["TSLAXUSD"]["record_only"] is True and info["TSLAXUSD"]["turnover"] == 1.4e6
+    assert "GTCUSD" not in info and "THINXUSD" not in record
+
+
+def test_metals_mode_drops_an_unlisted_metal_and_keeps_a_held_coin():
+    rows = [_tf("XAUTUSD", 5e8), _tf("PAXGUSD", 9e7)]
+    trade, record, info = universe.pick_metals(rows, held=["TSLAXUSD"], env={})
+    assert trade == ("XAUTUSD", "PAXGUSD", "TSLAXUSD") and record == ()
+    with pytest.raises(ValueError):
+        universe.pick_metals([row("GTCUSD", 46, 2e7)], held=[], env={})
+
+
+def test_metals_mode_is_dynamic_and_refuses_an_experiment(monkeypatch):
+    import live.__main__ as entry
+    from live.config import ConfigError
+    assert universe.mode({"DELTABOT_UNIVERSE": "metals"}) == "metals"
+    monkeypatch.setenv("DELTA_ENV", "prod")
+    monkeypatch.setenv("DELTABOT_UNIVERSE", "metals")
+    with pytest.raises(ConfigError, match="re-picks its coins daily"):
+        entry.cli_entry(["forward-test", "start"])
