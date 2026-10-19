@@ -1,0 +1,9 @@
+
+5m/1m at 5x  (190 coins; 0 too thin, 0 of 2730 coin-days lost: )
+  trades 91  win 18%  mean -0.385R (+/- 0.162)  P&L $-126.04 on $250  max drawdown $126.04  median hold 5.3h
+  checks: longest hold 72h (limit 72h); longest stretch with no entry 231 days
+  Jan-May: 91 trades, -0.385R, $-126.04
+  May-Oct: no trades
+  exits: stop 75, target 15, max_hold 1
+  trades sized down by the 5x cap: 0
+  refused: max_open_positions 722, max_trades_per_day 296, max_drawdown 5937, zero_contracts 5, pause 4

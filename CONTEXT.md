@@ -115,6 +115,18 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
+**ENTRY-RULE CHECK 2026-10-19 (owner spotted today's GTC short / ARC long as "wrong side").** Execution was
+correct (Supertrend and %R recomputed from Delta's 5m candles match the bot's recorded indicators), but the coded
+rule `variant_a` ("%R above −80 and rising", no ceiling) CHASES: it bought ARC at %R −8 (top of its 140-bar range)
+and shorted GTC at −75. The owner's intended setup is buy-the-dip / sell-the-bounce: Supertrend aligned and %R
+crossing back OUT of the band (`cross_levels`; catalog `dip_st`, and `dip_both_st` = plus 1m %R variant_a).
+Backtested on the same 9-month top-gainer data (`out/top_gainers_dip*/result.txt`, signal-level
+`out/signal_lab_dip/`): **dip_st −0.156R/signal (2,587) vs the live rule's −0.071R (5,273)**, worse in both halves
+(−0.14 / −0.21) and on both sides (longs −0.22, shorts −0.12); account run −$125 and the 50% latch by March;
+dip_both_st −0.385R/trade, latch by February. In both rules and both windows LONGS lose more than shorts (gainers
+mean-revert). Recommendation given: keep the live rule; the dip rule is NOT deployed. Deploying any rule change
+replaces the host once (variant is baked into user_data; EIP and the Postgres volume survive).
+
 **MODEL SWITCH-ON RULE fixed 2026-10-15 (owner approved, before any grade): `docs/model_switch_on_rule.md`.**
 Grades now test LIVE signals only (history runs into the first graded week), store per-signal scores, and grade a
 second target "reaches +1R" (owner asked; history: 49% reach +1R, a 1R exit ≈ −0.075R/trade, 1R model AUC 0.51).

@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -55,14 +56,18 @@ from deltabt.data.store import CandleStore, ProductCatalog  # noqa: E402
 from deltabt.harness import _resampled, load_symbol, params_for  # noqa: E402
 from deltabt.portfolio import Book, RiskGates, run_portfolio  # noqa: E402
 
-OUT = Path("out/top_gainers")
+# Overridable so another entry rule can be replayed without touching the
+# recorded result (2026-10-19: TG_FAMILY=dip_st TG_OUT=out/top_gainers_dip).
+OUT = Path(os.environ.get("TG_OUT", "out/top_gainers"))
+PICKS = Path("out/top_gainers/picks.csv")       # the daily picks are rule-independent
 DAY = 86400
 FIRST_DAY = pd.Timestamp("2026-01-01", tz="UTC").value // 10**9
 LAST_DAY = pd.Timestamp("2026-10-12", tz="UTC").value // 10**9   # inclusive
 WARMUP_START = FIRST_DAY - 32 * DAY
 TOP_N, MIN_TURNOVER = 10, 250_000.0
-PAIRS = [(5, 1), (15, 5), (60, 15), (240, 60)]
-FAMILY = "manual_scalp_both_t3_st"
+PAIRS = [tuple(int(x) for x in p.split("/")) for p in os.environ.get("TG_PAIRS", "5/1,15/5,60/15,240/60").split(",")]
+FAMILY = os.environ.get("TG_FAMILY", "manual_scalp_both_t3_st")
+LEVS = [float(x) for x in os.environ.get("TG_LEVS", "5,10").split(",")]
 EQUITY, RISK_PCT, MAX_LEV = 250.0, 2.0, 5.0
 GATES = replace(RiskGates(), max_open_positions=1, max_trades_per_day=2,
                 max_daily_loss_pct=0.10, max_drawdown_pct=0.50,
@@ -104,7 +109,7 @@ def cmd_picks() -> None:
     ok = allc[(allc.change > 0) & (allc.turnover >= MIN_TURNOVER)]
     picks = (ok.sort_values(["pick_day", "change"], ascending=[True, False])
                .groupby("pick_day").head(TOP_N))
-    picks[["pick_day", "symbol", "change", "turnover"]].to_csv(OUT / "picks.csv", index=False)
+    picks[["pick_day", "symbol", "change", "turnover"]].to_csv(PICKS, index=False)
     days = picks.pick_day.nunique()
     print(f"{len(cv)} crypto perps listed today; {allc.symbol.nunique()} have daily history")
     print(f"{len(picks)} coin-days over {days} days; {picks.symbol.nunique()} distinct coins")
@@ -113,7 +118,7 @@ def cmd_picks() -> None:
 
 
 def cmd_fetch() -> None:
-    picks = pd.read_csv(OUT / "picks.csv")
+    picks = pd.read_csv(PICKS)
     span = picks.groupby("symbol").pick_day.agg(["min", "max"])
     syms = sorted(span.index)
     store = CandleStore()
@@ -166,7 +171,7 @@ def _book(sym, primary, confirm, spec, allowed_days):
 
 def _run_pair(job):
     primary, confirm, lev = job
-    picks = pd.read_csv(OUT / "picks.csv")
+    picks = pd.read_csv(PICKS)
     spec = build_spec(FAMILY, primary, confirm)
     books, fund, skipped = {}, {}, []
     for sym, g in picks.groupby("symbol"):
@@ -202,7 +207,7 @@ def _summ(t: pd.DataFrame) -> dict:
 
 def cmd_run() -> None:
     # 5x is the bot's cap; 10x answers the owner's "what does 10x sound like?"
-    jobs = [(p, c, lev) for p, c in PAIRS for lev in (MAX_LEV, 10.0)]
+    jobs = [(p, c, lev) for p, c in PAIRS for lev in LEVS]
     with ProcessPoolExecutor(4) as ex:
         results = list(ex.map(_run_pair, jobs))
     lines = []
@@ -210,7 +215,7 @@ def cmd_run() -> None:
     for (primary, confirm, lev), t, rej, (nb, skipped, lost) in results:
         s = _summ(t)
         lines.append(f"\n{primary}m/{confirm}m at {lev:g}x  ({nb} coins; {len(skipped)} too thin, "
-                     f"{lost} of {len(pd.read_csv(OUT / 'picks.csv'))} coin-days lost: {' '.join(skipped[:8])})")
+                     f"{lost} of {len(pd.read_csv(PICKS))} coin-days lost: {' '.join(skipped[:8])})")
         if not s["n"]:
             lines.append("  no trades"); continue
         lines.append(f"  trades {s['n']}  win {100*s['win']:.0f}%  mean {s['meanR']:+.3f}R "

@@ -386,6 +386,36 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10),
     ),
+    # THE OWNER'S SETUP AS THEY MEANT IT (owner, 2026-10-19): buy the dip in an
+    # uptrend, sell the bounce in a downtrend. Long = Supertrend (10, 2)
+    # bullish on 5m and 1m AND 5m %R(140) crosses back UP through -80 on this
+    # bar; short mirrors (bearish, %R crosses DOWN through -20). Stop 4xATR,
+    # target 3R, 72h -- everything but the %R rule as manual_scalp_both_t3_st.
+    #
+    # WHY. manual_scalp_both_t3_st read "%R above -80 and rising" with no
+    # ceiling, so it bought at %R -8 (ARCUSD 2026-10-19 06:00 IST, price at
+    # the top of its 140-bar range) and shorted at -75 (GTCUSD 05:30 IST, near
+    # the bottom): chasing. Both stopped out within 3 h. The owner confirmed
+    # the cross-out-of-the-band reading ("1 is correct").
+    #
+    # Two readings of the 1m confirmation, backtested side by side
+    # (scripts/top_gainers_backtest.py, out/top_gainers_dip/):
+    #   dip_st       1m: Supertrend aligned only (the cross is a 5m event)
+    #   dip_both_st  1m: Supertrend aligned AND %R above -80 and rising
+    "dip_st": dict(
+        desc="Supertrend aligned on 5m+1m; 5m %R crosses out of the band (dip/bounce)",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="cross_levels"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
+    "dip_both_st": dict(
+        desc="dip_st, plus 1m %R above -80 and rising (variant_a) at the cross",
+        primary=_tf_rules(supertrend="aligned", wpr_rule="cross_levels"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10),
+    ),
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),
