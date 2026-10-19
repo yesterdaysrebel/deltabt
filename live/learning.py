@@ -307,12 +307,16 @@ def _free_from(r: dict) -> int:
 
 async def mark_takeable(repo) -> dict:
     """Decide `takeable` for every labelled signal whose predecessors on its
-    coin are all labelled. Idempotent: a decided row is never changed."""
+    coin are all labelled. Idempotent: a decided row is never changed.
+
+    PER COIN AND PER RULE (2026-10-19): the live rule can change, and a signal
+    of one rule must not hold a coin against a signal of another -- they are
+    different experiments sharing a database."""
     rows = await repo.takeability_rows()
     out = {"takeable": 0, "not_takeable": 0, "takeable_waiting": 0}
-    by_coin: dict[str, list[dict]] = {}
+    by_coin: dict[tuple, list[dict]] = {}
     for r in rows:
-        by_coin.setdefault(r["symbol"], []).append(r)
+        by_coin.setdefault((r["symbol"], r.get("strategy_config_hash")), []).append(r)
     for sym in sorted(by_coin):
         got, waiting = decide_takeable(by_coin[sym])
         out["takeable_waiting"] += waiting
@@ -364,15 +368,18 @@ def is_record_only(row: dict) -> bool:
     return str(row.get("rejection_reason") or "").startswith("record_only")
 
 
-def live_frame(rows: list[dict]) -> pd.DataFrame:
+def live_frame(rows: list[dict], rule_hash: str | None = None) -> pd.DataFrame:
     """Labelled TAKEABLE live signals in the lab's signals.parquet shape.
 
     The history holds only takeable signals; a live signal skipped because an
     earlier one on its coin was still open is the same move counted again, so
-    it is left out (as is one not yet decided)."""
+    it is left out (as is one not yet decided). With `rule_hash`, only signals
+    of that rule (2026-10-19: the running rule; others are another experiment)."""
     recs = []
     for r in rows:
         if r.get("r_net") is None or r.get("takeable") is not True:
+            continue
+        if rule_hash is not None and r.get("strategy_config_hash") != rule_hash:
             continue
         lab = ((r.get("features") or {}).get("lab")) or {}
         rec = {"symbol": r["symbol"], "entry_time": int(r["bar_open"]),
@@ -501,7 +508,7 @@ def _rule(weeks: list[list], col: int, bar: float) -> dict:
     return res
 
 
-def switch_check(grades: list[dict]) -> dict:
+def switch_check(grades: list[dict], rule_hash: str | None = None) -> dict:
     """Apply the fixed switch-on rule to every graded week so far.
 
     Weeks count only with at least SWITCH_MIN_SIGNALS live test signals; ALL
@@ -521,7 +528,12 @@ def switch_check(grades: list[dict]) -> dict:
     Returns {"3R": all signals, "1R": all signals, "trade_universe": {"3R",
     "1R"}}: the per-target dicts hold the all-signals figures, and their
     "eligible" is the VERDICT (both sets pass)."""
-    out: dict = {"trade_universe": {}}
+    # ONE RULE'S GRADES ONLY (2026-10-19): a grade carries the rule it scored
+    # (detail.rule_hash); grades without one predate this and belong to the
+    # first live rule. A rule change restarts the count.
+    if rule_hash is not None:
+        grades = [g for g in grades if (g.get("detail") or {}).get("rule_hash") == rule_hash]
+    out: dict = {"trade_universe": {}, "rule_hash": rule_hash, "graded_weeks": len(grades)}
     for key, col, bar, name in (("scored", 3, 0.0, "3R"), ("scored_1r", 3, REACH_1R_BREAK_EVEN, "1R")):
         weeks = [(g.get("detail") or {}).get(key) or [] for g in grades]
         res = _rule(weeks, col, bar)
@@ -588,19 +600,32 @@ def load_history(path: str | Path | None) -> pd.DataFrame | None:
 
 
 async def grade_model(repo, *, history_path=None, now: int | None = None,
-                      week_start: int | None = None) -> ModelGradeRecord:
+                      week_start: int | None = None, rule_hash: str | None = None,
+                      family: str | None = None,
+                      history_family: str | None = None) -> ModelGradeRecord:
+    """`rule_hash` / `family`: the running rule (the CLI resolves them from
+    DELTABOT_VARIANT). `history_family`: which rule the history file belongs
+    to (DELTABT_SIGNAL_HISTORY_FAMILY); a file for another rule is ignored."""
     now = int(time.time()) if now is None else int(now)
     ws = last_complete_week(now) if week_start is None else int(week_start)
     rows = await repo.labelled_signals()
-    rec = grade(load_history(history_path), live_frame(rows), ws)
-    lab = [r for r in rows if r.get("r_net") is not None]
+    history = load_history(history_path)
+    history_ignored = None
+    if history is not None and history_family and family and history_family != family:
+        log.warning("history file is for %s, the running rule is %s: ignoring it",
+                    history_family, family)
+        history, history_ignored = None, history_family
+    rec = grade(history, live_frame(rows, rule_hash), ws)
+    lab = [r for r in rows if r.get("r_net") is not None
+           and (rule_hash is None or r.get("strategy_config_hash") == rule_hash)]
     rec.detail.update({
+        "rule_hash": rule_hash, "family": family, "history_ignored": history_ignored,
         "live_labelled": len(lab),
         "live_not_takeable": sum(1 for r in lab if r.get("takeable") is False),
         "live_undecided": sum(1 for r in lab if r.get("takeable") is None),
         "live_record_only": sum(1 for r in lab if is_record_only(r))})
     await repo.record_model_grade(rec)
-    chk = switch_check(await repo.model_grades())
+    chk = switch_check(await repo.model_grades(), rule_hash)
     rec.detail["switch_check"] = chk
     rec.summary = summary(rec) + " " + switch_line(chk)
     await repo.record_model_grade(rec)
@@ -652,7 +677,12 @@ def main(argv: list[str]) -> int:
                 return 1 if got["errors"] and not got["labelled"] else 0
             ws = (int(pd.Timestamp(args.week, tz="UTC").value // 10**9)
                   if args.week else None)
+            from app.config.variants import resolve_strategy
+            running = resolve_strategy()
             rec = await grade_model(repo, history_path=args.history or _default_history(),
+                                    rule_hash=running.config_hash,
+                                    family=running.version.split("@")[0],
+                                    history_family=os.environ.get("DELTABT_SIGNAL_HISTORY_FAMILY") or None,
                                     week_start=ws)
             print(rec.summary)
             return 0

@@ -52,6 +52,17 @@ only filter the trades the bot can actually take, so it must work on those coins
 wider pool. `switch_check` returns the all-signals figures under `3R`/`1R` (their `eligible` is the
 combined verdict) and the subset's under `trade_universe`; the Monday line shows both.
 
+### Amendment 2026-10-19 (owner): the live rule changes to `flip_st_short`
+
+The bot's rule changes from `manual_scalp_both_t3_st` to the owner's flip setup, shorts only
+(`SPEC:flip_st_short@5/1`), still watch-only. A model learns "which of *this rule's* signals win",
+so from this change on: the history file is the 2,176-signal `flip_st_short` dataset (the image
+names the rule it belongs to and `grade-model` ignores a file for another rule); labelling and
+takeability run per rule (each signal carries its rule's `strategy_config_hash`); only live signals
+of the running rule are graded; and the switch-on count pools only grades of the running rule, so
+**the count restarts at zero**. The old rule's signals, labels and its one grade (week of 12 Oct,
+AUC 0.65) stay in the database, unmixed and unused.
+
 ELIGIBLE means the owner may switch it on; it does not switch itself on. First use is at 0.5%
 risk, like any change to real trading. The weekly report prints the rule's state each Monday.
 
