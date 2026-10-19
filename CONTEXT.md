@@ -124,7 +124,13 @@ Backtested on the same 9-month top-gainer data (`out/top_gainers_dip*/result.txt
 `out/signal_lab_dip/`): **dip_st −0.156R/signal (2,587) vs the live rule's −0.071R (5,273)**, worse in both halves
 (−0.14 / −0.21) and on both sides (longs −0.22, shorts −0.12); account run −$125 and the 50% latch by March;
 dip_both_st −0.385R/trade, latch by February. In both rules and both windows LONGS lose more than shorts (gainers
-mean-revert). Recommendation given: keep the live rule; the dip rule is NOT deployed. Deploying any rule change
+mean-revert). Owner's second reading (10-19): "flip of ST and WPR just crossing −80/−20" → `flip_st` (both events within 6 bars,
+1m ST agrees; `event_window_bars` = 4th hash-omitted spec field; `flip_recent` / `cross_recent` modes, window 1 ==
+`flip` / `cross_levels`) and `flip_st_tight` (3 bars). Signal-level (`out/signal_lab_flip/`): **−0.124R/signal
+(3,015)**, −0.11 / −0.17 by half, longs −0.23 / shorts −0.07. Account: flip_st −$122 and the latch by May (161
+trades, −0.19R); 15m/5m −0.33R; flip_st_tight −$106 (217 trades, −0.11R). Every owner entry tested loses faster
+than the live rule; shorts lose far less than longs under all three. Recommendation given: keep the live rule
+(or test flip_st shorts-only); none of dip_st / flip_st is deployed. Deploying any rule change
 replaces the host once (variant is baked into user_data; EIP and the Postgres volume survive).
 
 **MODEL SWITCH-ON RULE fixed 2026-10-15 (owner approved, before any grade): `docs/model_switch_on_rule.md`.**
