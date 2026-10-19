@@ -79,12 +79,16 @@ def test_a_family_without_a_window_hashes_as_if_the_field_did_not_exist(family):
         pytest.skip("this family retriggers its stops")
     if spec.trail_r is not None:
         pytest.skip("this family carries a trail")
+    if spec.event_window_bars is not None:
+        pytest.skip("this family carries an event window")
     del payload["entry_hours_utc"]
     del payload["ladder_rungs"]
     del payload["stop_trigger"]
     # The fourth and fifth, 2026-10-02: the trailing stop (prod pilot).
     del payload["trail_after_r"]
     del payload["trail_r"]
+    # The sixth, 2026-10-19: the flip setup's event window (owner's rule).
+    del payload["event_window_bars"]
     legacy = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

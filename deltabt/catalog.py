@@ -416,6 +416,27 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10),
     ),
+    # THE OWNER'S SETUP, SECOND READING (owner, 2026-10-19): "I check flip of
+    # ST and when WPR has just started crossing -80 or -20, i.e. flip". Long =
+    # Supertrend (10, 2) FLIPPED bullish within the last 6 bars (30 min on 5m)
+    # AND %R crossed up through -80 within the same window and is still above
+    # it; short mirrors (flip bearish, %R down through -20). 1m: Supertrend
+    # agrees. Stop 4xATR, target 3R, 72h as the other owner families.
+    # flip_st_tight = the same with a 3-bar (15 min) window.
+    "flip_st": dict(
+        desc="Supertrend flip + %R cross out of the band within 6 bars; 1m ST agrees",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6),
+    ),
+    "flip_st_tight": dict(
+        desc="flip_st with a 3-bar (15 min) window",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(supertrend="aligned"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=3),
+    ),
     "manual_scalp_both_t3_ladder": dict(
         desc="manual_scalp_both_t3 with the operator's 0.5/1/1.5/2 stop ladder",
         primary=_tf_rules(wpr_rule="variant_a"),
