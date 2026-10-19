@@ -46,7 +46,7 @@ from dataclasses import asdict, dataclass, field
 #:                  of 2025-01..2026-08 (scripts/fade_walkforward.py). It is a
 #:                  new vocabulary VALUE rather than a new field so no existing
 #:                  spec's ``config_hash`` moves.
-WPR_RULES = ("variant_a", "cross_levels", "banded", "banded_fade", "none")
+WPR_RULES = ("variant_a", "cross_levels", "cross_recent", "banded", "banded_fade", "none")
 
 #: Entry trigger vocabulary.
 #:
@@ -80,7 +80,7 @@ STOPS = ("leg_extreme", "atr", "fixed_pct")
 #: ``counter``  direction DISAGREES with the trade: a long needs a bearish
 #:              Supertrend, a short a bullish one. Pairs with ``banded_fade``
 #:              to express the exact inverse of ``manual_scalp_st_banded``.
-SUPERTREND_MODES = ("off", "aligned", "flip", "counter")
+SUPERTREND_MODES = ("off", "aligned", "flip", "flip_recent", "counter")
 
 
 @dataclass(frozen=True)
@@ -251,8 +251,21 @@ class StrategySpec:
     #: primary an 18:00 window admits the bar opening 18:00 and excludes the
     #: one opening 17:55, which fills at 18:00.
     entry_hours_utc: tuple[int, int] | None = None
+    #: THE FOURTH ELIGIBLE FIELD (2026-10-19, owner's flip setup): "both events
+    #: within the last N bars". ``supertrend="flip_recent"`` = the current leg
+    #: began within N bars; ``wpr_rule="cross_recent"`` = %R crossed out of the
+    #: band within N bars and is still across it. N = 1 is exactly ``flip`` /
+    #: ``cross_levels``. None is the absence of the dimension and is omitted
+    #: from the hash (see _hash_payload), so no existing spec's identity moves.
+    event_window_bars: int | None = None
 
     def validate(self) -> None:
+        windowed = any(r.supertrend == "flip_recent" or r.wpr_rule == "cross_recent"
+                       for r in (self.primary, self.confirm))
+        if windowed and (self.event_window_bars is None or self.event_window_bars < 1):
+            raise ValueError("flip_recent / cross_recent need event_window_bars >= 1")
+        if self.event_window_bars is not None and not windowed:
+            raise ValueError("event_window_bars is set but no timeframe rule uses it")
         self.primary.validate()
         self.confirm.validate()
         if self.trigger not in TRIGGERS:
@@ -431,6 +444,9 @@ class StrategySpec:
         if payload.get("trail_r") is None:
             payload.pop("trail_r", None)
             payload.pop("trail_after_r", None)
+        # THE FOURTH, 2026-10-19: no event window is the absence of the rule.
+        if payload.get("event_window_bars") is None:
+            payload.pop("event_window_bars", None)
         return payload
 
     @property

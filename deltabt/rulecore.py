@@ -124,7 +124,18 @@ def indicators(df: pd.DataFrame, spec: StrategySpec) -> TimeframeIndicators:
     )
 
 
-def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np.ndarray]:
+def _recent(event: np.ndarray, window: int) -> np.ndarray:
+    """True where ``event`` was true on this bar or any of the window-1 before
+    it. Causal: reads only bars <= t."""
+    if window <= 1:
+        return event.copy()
+    c = np.cumsum(event.astype(np.int64))
+    before = np.r_[np.zeros(window, dtype=np.int64), c[:-window]][:len(c)]
+    return (c - before) > 0
+
+
+def gate(ti: TimeframeIndicators, rules: TimeframeRules,
+         window: int | None = None) -> tuple[np.ndarray, np.ndarray]:
     """The long and short conjunctions on one timeframe, per bar.
 
     A disabled component contributes ``True``; a NaN never passes, so warm-up
@@ -146,6 +157,15 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np
         if rules.supertrend == "flip":
             bull &= np.isfinite(dp) & (dp >= 0)
             bear &= np.isfinite(dp) & (dp <= 0)
+        if rules.supertrend == "flip_recent":
+            # The current leg began within the last `window` bars (the flip
+            # bar itself counts), and that flip is not a warm-up artefact.
+            # window=1 is exactly "flip".
+            w_ = int(window or 1)
+            age = np.arange(n) - ti.leg_start
+            recent = ti.leg_determinate & (age >= 0) & (age < w_)
+            bull &= recent
+            bear &= recent
         if rules.supertrend == "counter":
             # The inverse gate: a long against a bearish Supertrend, a short
             # against a bullish one. See ``banded_fade`` below for why.
@@ -211,6 +231,17 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules) -> tuple[np.ndarray, np
         ok = np.isfinite(w) & np.isfinite(wp)
         long_ok &= ok & (w > rules.wpr_long_level) & (wp <= rules.wpr_long_level)
         short_ok &= ok & (w < rules.wpr_short_level) & (wp >= rules.wpr_short_level)
+    elif rules.wpr_rule == "cross_recent":
+        # cross_levels within the last `window` bars AND still across the
+        # level now (owner, 2026-10-19: "WPR has just started crossing").
+        # window=1 is exactly cross_levels.
+        w, wp = ti.wpr, _prev(ti.wpr)
+        ok = np.isfinite(w) & np.isfinite(wp)
+        w_ = int(window or 1)
+        up = ok & (w > rules.wpr_long_level) & (wp <= rules.wpr_long_level)
+        dn = ok & (w < rules.wpr_short_level) & (wp >= rules.wpr_short_level)
+        long_ok &= _recent(up, w_) & ok & (w > rules.wpr_long_level)
+        short_ok &= _recent(dn, w_) & ok & (w < rules.wpr_short_level)
 
     return long_ok, short_ok
 
@@ -296,14 +327,14 @@ def compute(primary: pd.DataFrame, confirm: pd.DataFrame | None,
     pi = indicators(primary, spec)
     n = len(pi)
 
-    long_setup, short_setup = gate(pi, spec.primary)
+    long_setup, short_setup = gate(pi, spec.primary, spec.event_window_bars)
 
     if spec.confirm.enabled:
         if confirm is None:
             raise ValueError("spec enables a confirmation gate but no frame was given")
         ci = indicators(confirm, spec)
         cidx = align_confirm(pi.time, ci.time, spec)
-        c_long, c_short = gate(ci, spec.confirm)
+        c_long, c_short = gate(ci, spec.confirm, spec.event_window_bars)
         # A primary bar with no confirmation bar yet passes nothing.
         have = cidx >= 0
         safe = np.where(have, cidx, 0)
