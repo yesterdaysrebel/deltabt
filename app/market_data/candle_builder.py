@@ -294,14 +294,18 @@ class SymbolCandleBuilder:
         or fewer trades (the caller may ask REST again, so it counts the
         final ``kept`` in ``stats.reconcile_kept``). Only ``source == "ws"``
         bars are touched; REST-built, quiet and already-reconciled minutes
-        are left alone.
+        are left alone, and so is a socket minute with NO trade (flat at the
+        previous close, volume 0): it is already the bar Delta's archive
+        holds, and a REST request starting on it returns nothing (REST fills
+        quiet minutes only after a traded one in the window), so asking only
+        logged it as "kept" (~2,000 events a day on the bot, 2026-10-20).
         """
         served = {c.start: c for c in rest_bars}
         replaced: list[Candle] = []
         kept = 0
         out = []
         for c in self.bars:
-            if c.source == "ws" and after < c.start <= upto:
+            if c.source == "ws" and after < c.start <= upto and not is_flat_no_trade(c):
                 r = served.get(c.start)
                 if r is None or r.volume < c.volume:
                     kept += 1
