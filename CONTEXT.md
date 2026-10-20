@@ -172,6 +172,16 @@ minute short of trades (BTC 5,941 at +0.3 s, 6,125 at +1 s), so a REST bar is ta
 asked again at +1 s and +2 s, then the socket bar is KEPT and a `SOCKET_BARS_KEPT` event written. A failed request
 (`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz shows `reconciled_minutes` / `reconcile_kept`.
 
+**1m %R CHECK 2026-10-20 (owner: "1 min wpr was already flipped" on VVV and ARB).** The 1m confirmation of
+flip_st_short checked only the 1m Supertrend; VVV shorted at 1m %R(140) −100, ARB (on REST bars, 10:00 AM IST)
+at −81.8. New family `flip_st_short_1m_wpr` = flip_st_short + 1m %R still above −80 (`wpr_rule="not_exhausted"`,
+hash `401e71db9612…`); it refuses both trades. 9 months, every signal (`out/signal_lab_flip_short_1m_wpr/`):
+−0.054R → −0.035R (2,176 → 1,984; the 427 blocked averaged −0.092R, Aug–Oct −0.221R; 235 fire later at +0.034R),
+both halves better but inside the noise (±0.04–0.07R); account replay −0.219R/138 trades vs −0.238R/132, both
+latch in May. Owner: "deploy both" (with the socket reconcile). **The crypto `bot` stack runs it; `metals` stays
+on flip_st_short** — the image ships the new rule's history and names metals' with
+`DELTABT_SIGNAL_HISTORY_METALS_FAMILY`. Switch-on count restarts for the bot.
+
 **ENTRY-RULE CHECK 2026-10-19 (owner spotted today's GTC short / ARC long as "wrong side").** Execution was
 correct (Supertrend and %R recomputed from Delta's 5m candles match the bot's recorded indicators), but the coded
 rule `variant_a` ("%R above −80 and rising", no ceiling) CHASES: it bought ARC at %R −8 (top of its 140-bar range)

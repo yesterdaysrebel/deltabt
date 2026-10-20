@@ -131,11 +131,12 @@ jobs:
           # plain English, IST, written for the owner after the long report
           # "made no sense" to them. The paper report stays for paper arms.
           # 2026-10-13: `bot` replaces `dryrun` (destroyed 10-13; live.tf).
+          # 2026-10-20: the bot moves to flip_st_short_1m_wpr (1m %R > -80).
           - stack: bot
-            variant: SPEC:flip_st_short@5/1
+            variant: SPEC:flip_st_short_1m_wpr@5/1
             instance_var: BOT_INSTANCE_ID_BOT
             document_var: SSM_MONITOR_DOCUMENT_BOT
-            strategy_hash: "dbd723813926abb78044fa3cc258281177c1b2fff2c977830eeadfc3d095e023"
+            strategy_hash: "401e71db9612327149f47f17aff5cc90471b3c956396874a2a0c9ec49d907f07"
             log_group: /deltabt/paper/bot/bot
             report: brief
             unbound: true

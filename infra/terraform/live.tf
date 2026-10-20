@@ -115,7 +115,9 @@ variable "live_stacks" {
     # flipped bearish and %R crossed down through -20 within 6 bars, 1m ST
     # agrees (catalog flip_st_short). The 1m confirm must be stated (@5/1):
     # this family takes its trend from the confirmation chart. Still watch-only.
-    bot = { variant = "SPEC:flip_st_short@5/1", db_name = "deltabt_bot" }
+    # 2026-10-20 (owner): + the 1m %R must still be above -80 (not already
+    # oversold) -- the VVV and ARB shorts were confirmed at 1m %R -100 / -82.
+    bot = { variant = "SPEC:flip_st_short_1m_wpr@5/1", db_name = "deltabt_bot" }
     # 2026-10-19 (owner): a SECOND $250 paper account that trades ONLY the metal
     # perps (XAUT, PAXG, silver, oil; live/universe.pick_metals) with the same
     # rule, and records the other liquid non-crypto (US stock/ETF token) perps.
