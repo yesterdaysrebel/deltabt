@@ -165,12 +165,16 @@ candles: 2,046 agree (23 signals fire on both, 19 suppressed on both). VVV short
 vs close 0.20012); the bot saw bearish (line 0.20250). The real signal came one bar later (04:25). Other
 differences: VVV 03:25 fires on Delta's candles but not on the bot's; 2 bars the bot judged that Delta's candles suppress. Cause
 = the socket's candle (see "Live and venue traps": candlestick_1m open). Stop/target/size on both trades matched the rule.
-FIX (owner approved 10-20, branch `fix/reconcile-socket-bars`): at each decision-bar close the bot refetches its
-socket-built minutes from REST and swaps them in (`TradingBot._reconcile_socket_bars`,
+FIX (owner approved 10-20; LIVE on both stacks since #135/#138/#139 + this): at each decision-bar close the bot
+refetches its socket-built minutes from REST and swaps them in (`TradingBot._reconcile_socket_bars`,
 `SymbolCandleBuilder.reconcile`), rows replaced in `market_candles` (source `rest`). REST can serve the just-closed
-minute short of trades (BTC 5,941 at +0.3 s, 6,125 at +1 s), so a REST bar is taken only with volume ≥ the socket's;
-asked again at +1 s and +2 s, then the socket bar is KEPT and a `SOCKET_BARS_KEPT` event written. A failed request
-(`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz shows `reconciled_minutes` / `reconcile_kept`.
+minute short of trades (BTC 5,941 at +0.3 s, 6,125 at +1 s), so a REST bar with LESS volume is asked again at +1 s /
++2 s while the minute is < 3 s old — then taken as final (live: the socket sometimes counts a trade REST puts
+elsewhere, TIA 7,539 vs 6,539, unchanged minutes later; REST is the archive). Only a traded minute REST does not
+serve keeps the socket bar (`SOCKET_BARS_KEPT`). No-trade socket minutes (flat, volume 0 — already the archive's
+bar; a REST window starting on one returns nothing) are skipped (#138; before that ~2,000 "kept" events a day). A
+failed request (`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz: `reconciled_minutes` /
+`reconcile_kept`. Tests are aligned to the real clock: count decision boundaries, never assume one (#139).
 
 **1m %R CHECK 2026-10-20 — BUILT, HELD (owner: "hold and close 136").** The owner saw VVV/ARB confirmed with 1m %R
 already oversold (the 1m gate checked only the 1m Supertrend). Family `flip_st_short_1m_wpr` = flip_st_short + 1m
