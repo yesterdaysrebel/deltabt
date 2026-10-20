@@ -165,7 +165,12 @@ candles: 2,046 agree (23 signals fire on both, 19 suppressed on both). VVV short
 vs close 0.20012); the bot saw bearish (line 0.20250). The real signal came one bar later (04:25). Other
 differences: VVV 03:25 fires on Delta's candles but not on the bot's; 2 bars the bot judged that Delta's candles suppress. Cause
 = the socket's candle (see "Live and venue traps": candlestick_1m open). Stop/target/size on both trades matched the rule.
-Fix (REST-reconcile each decision bar) offered, not built.
+FIX (owner approved 10-20, branch `fix/reconcile-socket-bars`): at each decision-bar close the bot refetches its
+socket-built minutes from REST and swaps them in (`TradingBot._reconcile_socket_bars`,
+`SymbolCandleBuilder.reconcile`), rows replaced in `market_candles` (source `rest`). REST can serve the just-closed
+minute short of trades (BTC 5,941 at +0.3 s, 6,125 at +1 s), so a REST bar is taken only with volume ≥ the socket's;
+asked again at +1 s and +2 s, then the socket bar is KEPT and a `SOCKET_BARS_KEPT` event written. A failed request
+(`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz shows `reconciled_minutes` / `reconcile_kept`.
 
 **ENTRY-RULE CHECK 2026-10-19 (owner spotted today's GTC short / ARC long as "wrong side").** Execution was
 correct (Supertrend and %R recomputed from Delta's 5m candles match the bot's recorded indicators), but the coded
@@ -458,8 +463,9 @@ double-billed slippage on `ltp_close` stop fills.
   `/v2/history/candles` opens at the minute's first trade. Close and volume agree. ARB, 7 days: 816 of 1,079
   socket-built minutes differ, all of them minutes whose first trade ≠ the previous close; REST-built minutes
   (startup backfill, gap repair) are exact. `candle_builder` stores the stream's open as given. Backtests,
-  the model's history and the labeller all use REST, so the live bot judges slightly different bars, and the
+  the model's history and the labeller all use REST, so the live bot judged slightly different bars, and the
   share of socket minutes grows the longer the bot runs without a restart. It flipped the ARB 10-20 decision.
+  Fixed by REST-reconciling before each decision (see RULE AUDIT 2026-10-20); the socket still drives timing.
 
 - **`/v2/positions` is single-product** and 400s without one; `/v2/positions/margined` enumerates.
   `/v2/orders/client-oid` is not a route — it is `/v2/orders/client_order_id/{cid}`. `/v2/products`

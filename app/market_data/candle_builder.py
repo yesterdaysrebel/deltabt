@@ -20,6 +20,18 @@ the backtester uses, verified to reproduce the exchange's own 5m candles
 exactly. An independently accumulated 5m bar is a second implementation of the
 same thing, and two implementations are one more than can be kept in agreement.
 
+**Socket minutes are swapped for REST minutes before a decision**
+(2026-10-20). Delta's ``candlestick_1m`` stream opens each minute at the
+PREVIOUS minute's close and stretches high/low to include it; REST
+``/v2/history/candles`` -- the archive every backtest, the model's history
+and the labeller read -- opens at the minute's first trade. Close and volume
+agree. On ARB over 7 days 816 of 1,079 socket-built minutes differed, and on
+2026-10-20 it fired a short the archive's bars do not fire. So the bot asks
+REST for its socket minutes when a decision bar closes and
+:meth:`SymbolCandleBuilder.reconcile` puts REST's bars in their place. This
+is the one exception to "a closed bar is immutable": it happens before the
+bar is evaluated, never after, and is counted.
+
 **Nothing is silently repaired.** Every rejection, gap and drop is counted and
 logged. A 5m bucket missing any of its five minutes is emitted as incomplete
 and the strategy declines to evaluate on it.
@@ -89,6 +101,12 @@ class BuilderStats:
     backfilled: int = 0
     #: No-trade minutes inserted as flat bars. NOT gaps: see the module doc.
     quiet_minutes: int = 0
+    #: Socket-built minutes replaced by Delta's REST bar before a decision
+    #: (2026-10-20; see :meth:`SymbolCandleBuilder.reconcile`).
+    reconciled: int = 0
+    #: Socket-built minutes KEPT at a decision because REST had no bar for
+    #: them or fewer trades than the socket saw.
+    reconcile_kept: int = 0
 
     def as_dict(self) -> dict:
         return dict(self.__dict__)
@@ -263,6 +281,40 @@ class SymbolCandleBuilder:
                 self._last_closed_start or 0, self.bars[-1].start
             )
         return len(merged)
+
+    def reconcile(self, rest_bars: list[Candle], upto: int, after: int = -1
+                  ) -> tuple[list[Candle], int]:
+        """Replace held SOCKET minutes in ``(after, upto]`` with REST's bars.
+
+        A REST bar is taken only when it holds at least the socket's volume:
+        a minute REST has not finished aggregating (measured 2026-10-20: BTC
+        read 5,941 contracts 0.3 s after the close, 6,125 at 1 s) must not
+        replace a complete one. Returns ``(replaced, kept)`` -- the new bars,
+        and how many socket minutes stayed because REST had no bar for them
+        or fewer trades (the caller may ask REST again, so it counts the
+        final ``kept`` in ``stats.reconcile_kept``). Only ``source == "ws"``
+        bars are touched; REST-built, quiet and already-reconciled minutes
+        are left alone.
+        """
+        served = {c.start: c for c in rest_bars}
+        replaced: list[Candle] = []
+        kept = 0
+        out = []
+        for c in self.bars:
+            if c.source == "ws" and after < c.start <= upto:
+                r = served.get(c.start)
+                if r is None or r.volume < c.volume:
+                    kept += 1
+                else:
+                    c = Candle(symbol=self.symbol, start=c.start, open=r.open,
+                               high=r.high, low=r.low, close=r.close,
+                               volume=r.volume, source="rest")
+                    replaced.append(c)
+            out.append(c)
+        if replaced:
+            self.bars = deque(out, maxlen=self.max_bars)
+        self.stats.reconciled += len(replaced)
+        return replaced, kept
 
     def insert_quiet(self, bar: Candle) -> bool:
         """Insert a flat no-trade bar. False if that minute is already held.

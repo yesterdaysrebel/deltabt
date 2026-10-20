@@ -84,7 +84,11 @@ class Repository(ABC):
     # -- market data -------------------------------------------------------
     @abstractmethod
     async def save_candles(self, symbol: str, timeframe: str, bars: list,
-                           *, source: str = "ws", complete: bool = True) -> int: ...
+                           *, source: str = "ws", complete: bool = True,
+                           replace: bool = False) -> int:
+        """Store bars; an existing (symbol, timeframe, bar_open) row is kept
+        unless ``replace`` -- used only for a socket minute swapped for
+        REST's bar before a decision (``SymbolCandleBuilder.reconcile``)."""
 
     # -- strategy ----------------------------------------------------------
     @abstractmethod
@@ -317,12 +321,12 @@ class InMemoryRepository(Repository):
         self._s["heartbeats"][instance_uid] = fields
 
     async def save_candles(self, symbol, timeframe, bars, *, source="ws",
-                           complete=True) -> int:
+                           complete=True, replace=False) -> int:
         store = self._s["candles"].setdefault((symbol, timeframe), {})
         n = 0
         for b in bars:
             start = b.start if hasattr(b, "start") else int(b["time"])
-            if start in store:
+            if start in store and not replace:
                 continue
             store[start] = b
             n += 1
@@ -824,7 +828,7 @@ class PostgresRepository(Repository):
     # -- market data -------------------------------------------------------
 
     async def save_candles(self, symbol, timeframe, bars, *, source="ws",
-                           complete=True) -> int:
+                           complete=True, replace=False) -> int:
         if not bars:
             return 0
         rows = []
@@ -838,7 +842,11 @@ class PostgresRepository(Repository):
                 """INSERT INTO market_candles (symbol, timeframe, bar_open, open,
                        high, low, close, volume, source, complete)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-                   ON CONFLICT (symbol, timeframe, bar_open) DO NOTHING""",
+                   ON CONFLICT (symbol, timeframe, bar_open) DO """
+                + ("""UPDATE SET open = EXCLUDED.open, high = EXCLUDED.high,
+                       low = EXCLUDED.low, close = EXCLUDED.close,
+                       volume = EXCLUDED.volume, source = EXCLUDED.source,
+                       complete = EXCLUDED.complete""" if replace else "NOTHING"),
                 rows)
         return len(rows)
 
