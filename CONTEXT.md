@@ -172,6 +172,18 @@ minute short of trades (BTC 5,941 at +0.3 s, 6,125 at +1 s), so a REST bar is ta
 asked again at +1 s and +2 s, then the socket bar is KEPT and a `SOCKET_BARS_KEPT` event written. A failed request
 (`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz shows `reconciled_minutes` / `reconcile_kept`.
 
+**1m %R CHECK 2026-10-20 — BUILT, HELD (owner: "hold and close 136").** The owner saw VVV/ARB confirmed with 1m %R
+already oversold (the 1m gate checked only the 1m Supertrend). Family `flip_st_short_1m_wpr` = flip_st_short + 1m
+%R still above −80 (`wpr_rule="not_exhausted"`, hash `401e71db9612…`, in the code since #135; history in
+`out/signal_lab_flip_short_1m_wpr/`). 9 months, every signal: −0.054R → −0.035R (blocked 427 at −0.092R, 235 fire
+later at +0.034R), inside the noise. Variants tested and rejected: setup on 1m + 5m ST confirm −0.196R (0.9% stops);
+5m ST only + 1m flip/cross −0.033R but Aug–Oct −0.161R. Replay of the bot's own week (its daily lists, 10-13 13:22
+UTC → 10-20): flip_st_short +3.13R closed (8) + ARB open ≈ +2.6R vs the new rule −2.13R (6) — it skipped INJ,
+SIREN, ARB (all 3R). PR #136 (switch the bot) CLOSED; the bot stays on flip_st_short. To grade the check later:
+the 1m %R is in every signal's `indicators->'confirmation'`. Replay recipe: `TG_PICKS` = the bot's lists,
+`TG_FROM` = 1791897720; the engine stamps `entry_time` = the signal bar's OPEN (entry 5 min later) and drops
+positions still open at the end of the data from `trades_*.csv`.
+
 **ENTRY-RULE CHECK 2026-10-19 (owner spotted today's GTC short / ARC long as "wrong side").** Execution was
 correct (Supertrend and %R recomputed from Delta's 5m candles match the bot's recorded indicators), but the coded
 rule `variant_a` ("%R above −80 and rising", no ceiling) CHASES: it bought ARC at %R −8 (top of its 140-bar range)
