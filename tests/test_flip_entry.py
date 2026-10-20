@@ -75,3 +75,44 @@ def test_shorts_only_keeps_the_shorts_and_drops_every_long():
     assert "sides" not in both._hash_payload()
     with pytest.raises(ValueError):
         replace(both, sides="shorts").validate()
+
+
+# --- the 1m %R "not exhausted" check (owner, 2026-10-20) ----------------------
+
+def test_not_exhausted_is_a_plain_level_test_mirrored_for_longs():
+    from deltabt.spec import TimeframeRules
+    ti = rulecore.TimeframeIndicators.__new__(rulecore.TimeframeIndicators)
+    w = np.array([np.nan, -100.0, -81.0, -80.0, -79.9, -50.0, -20.0, -19.9, 0.0])
+    object.__setattr__(ti, "wpr", w)
+    object.__setattr__(ti, "time", np.arange(len(w)))
+    rules = TimeframeRules(supertrend="off", di=False, adx_min=None, wpr_rule="not_exhausted")
+    lo, sh = rulecore.gate(ti, rules)
+    # a short only while %R is still above the oversold level (VVV: -100 -> refused)
+    assert sh.tolist() == [False, False, False, False, True, True, True, True, True]
+    # a long only while %R is still below the overbought level
+    assert lo.tolist() == [False, True, True, True, True, True, False, False, False]
+
+
+def test_the_1m_wpr_rule_is_the_live_rule_plus_one_filter():
+    live, new = build_spec("flip_st_short", 5, 1), build_spec("flip_st_short_1m_wpr", 5, 1)
+    assert live.config_hash.startswith("dbd723813926"), "the running rule keeps its identity"
+    assert new.config_hash != live.config_hash
+    assert new.primary == live.primary and new.confirm.supertrend == live.confirm.supertrend
+    P, C = _frames()
+    a, b = rulecore.compute(P, C, live), rulecore.compute(P, C, new)
+    assert b.short_entry.sum() <= a.short_entry.sum()
+    i = rulecore.align_confirm(P.time.to_numpy(), b.confirm.time, new)
+    fired = np.where(b.short_entry)[0]
+    assert (b.confirm.wpr[i[fired]] > -80.0).all(), "every short has 1m %R above -80"
+
+
+def test_each_account_names_its_own_history_rule(monkeypatch):
+    from live import learning
+    monkeypatch.setenv("DELTABT_SIGNAL_HISTORY_FAMILY", "flip_st_short_1m_wpr")
+    monkeypatch.setenv("DELTABT_SIGNAL_HISTORY_METALS_FAMILY", "flip_st_short")
+    monkeypatch.setenv("DELTABOT_UNIVERSE", "top_gainers")
+    assert learning._default_history_family() == "flip_st_short_1m_wpr"
+    monkeypatch.setenv("DELTABOT_UNIVERSE", "metals")
+    assert learning._default_history_family() == "flip_st_short"
+    monkeypatch.delenv("DELTABT_SIGNAL_HISTORY_METALS_FAMILY")
+    assert learning._default_history_family() == "flip_st_short_1m_wpr"

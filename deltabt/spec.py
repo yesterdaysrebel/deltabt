@@ -46,7 +46,8 @@ from dataclasses import asdict, dataclass, field
 #:                  of 2025-01..2026-08 (scripts/fade_walkforward.py). It is a
 #:                  new vocabulary VALUE rather than a new field so no existing
 #:                  spec's ``config_hash`` moves.
-WPR_RULES = ("variant_a", "cross_levels", "cross_recent", "banded", "banded_fade", "none")
+WPR_RULES = ("variant_a", "cross_levels", "cross_recent", "banded", "banded_fade",
+             "not_exhausted", "none")
 
 #: Entry trigger vocabulary.
 #:

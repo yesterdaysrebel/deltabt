@@ -292,6 +292,9 @@ class TradingBot:
         #: Gaps already sent for REST repair, so a hole is not refetched on
         #: every subsequent bar.
         self._repaired_gaps: set[tuple[str, int, int]] = set()
+        #: Per coin, the last minute whose socket bars were reconciled with
+        #: REST before a decision (see _reconcile_socket_bars).
+        self._reconciled_through: dict[str, int] = {}
         #: Latest funding rate (PERCENT per interval) and mark price seen on
         #: v2/ticker, per symbol. Delta publishes no "funding applied" event,
         #: so a settlement is charged at the last rate observed before it --
@@ -1006,6 +1009,9 @@ class TradingBot:
         spec = self.spec_arm
         minutes = spec.primary_minutes
         b = self.builder[symbol]
+        if (last_1m_start + 60) % (minutes * 60) != 0:
+            return                       # not this rule's bar boundary
+        await self._reconcile_socket_bars(symbol, last_1m_start)
         bar, missing = b.closed_tf_for(last_1m_start, minutes)
         if bar is None:
             return
@@ -1029,6 +1035,72 @@ class TradingBot:
         one_minute = one_minute[one_minute["time"] <= last_1m_start]
         exp = evaluate_spec(one_minute, spec, symbol=symbol)
         await self._process_explanation(symbol, exp, minutes * 60)
+
+    #: Seconds to wait before asking REST again for a minute it has not
+    #: finished aggregating (measured 2026-10-20: BTC 5,941 contracts 0.3 s
+    #: after the close, 6,125 = final at 1 s; SOL/ARB final at 0.3 s).
+    RECONCILE_RETRIES: tuple[float, ...] = (1.0, 2.0)
+    #: ...and only while the decision minute closed less than this many
+    #: seconds ago (wall clock). REST lags only in the first second or two
+    #: after a close; a minute it still lacks after that will not appear by
+    #: waiting, and a wait here delays every coin queued behind this one.
+    RECONCILE_WINDOW: float = 3.0
+
+    async def _reconcile_socket_bars(self, symbol: str, upto: int) -> None:
+        """Swap this coin's socket-built minutes up to ``upto`` for REST's.
+
+        WHY (2026-10-20). Delta's candlestick_1m stream opens each minute at
+        the previous minute's close and stretches high/low to it; REST (the
+        archive the backtests, the model's history and the labeller read)
+        opens at the minute's first trade. On 10-20 the bot shorted ARB on a
+        5m Supertrend flip that Delta's own candles do not show (line 0.20250
+        on the socket's bars, 0.20006 under a 0.20012 close on REST's); 5 of
+        2,051 decisions that day differed, all from this. So before each
+        decision the socket minutes since the last one are refetched and
+        replaced (``SymbolCandleBuilder.reconcile``). A minute REST does not
+        serve, or serves with fewer trades than the socket saw after the
+        retries, keeps the socket bar: counted and recorded, never hidden.
+        A failed request leaves the minutes for the next decision to retry.
+        """
+        if self.backfiller is None:
+            return
+        b = self.builder[symbol]
+        after = self._reconciled_through.get(symbol, -1)
+        held = [c.start for c in b.bars if c.source == "ws" and after < c.start <= upto]
+        if not held:
+            self._reconciled_through[symbol] = upto
+            return
+        bf = (self.record_backfiller
+              if symbol in self._record_only_set and self.record_backfiller is not None
+              else self.backfiller)
+        kept = len(held)
+        for wait in (0.0, *self.RECONCILE_RETRIES):
+            if wait:
+                if wall_now() - (upto + 60) + wait > self.RECONCILE_WINDOW:
+                    break                # too late for REST to catch up
+                await asyncio.sleep(wait)
+            try:
+                rest = await bf.fetch(symbol, held[0], upto)
+            except Exception as exc:                       # noqa: BLE001
+                log.error("socket-bar reconcile failed: %s", exc)
+                await self._event("candles", "RECONCILE_FAILED", symbol=symbol,
+                                  severity="WARNING",
+                                  payload={"from": held[0], "to": upto,
+                                           "minutes": len(held), "error": str(exc)})
+                return                   # not advanced: the next decision retries
+            replaced, kept = b.reconcile(rest, upto, after)
+            if replaced:
+                await self.repo.save_candles(symbol, "1m", replaced, source="rest",
+                                             replace=True)
+            if not kept:
+                break
+        b.stats.reconcile_kept += kept
+        if kept:
+            await self._event("candles", "SOCKET_BARS_KEPT", symbol=symbol,
+                              severity="INFO",
+                              payload={"from": held[0], "to": upto,
+                                       "minutes": len(held), "kept": kept})
+        self._reconciled_through[symbol] = upto
 
     async def on_closed_5m(self, symbol: str, five) -> None:
         """Evaluate the strategy on one closed primary bar."""
@@ -1661,6 +1733,9 @@ class TradingBot:
             # No-trade minutes inserted as flat bars since start: shown, so
             # the rule that keeps them out of recent_gaps is never silent.
             "quiet_minutes": self.builder.stats().get("quiet_minutes", 0),
+            # Socket minutes swapped for REST's before a decision, and kept.
+            "reconciled_minutes": self.builder.stats().get("reconciled", 0),
+            "reconcile_kept": self.builder.stats().get("reconcile_kept", 0),
             "strategy_running": self.ready and not self._stopping.is_set(),
             "seconds_since_bar_loop": max(0.0, now - self.last_bar_loop_at),
             "loop_errors_consecutive": self.loop_errors_consecutive,

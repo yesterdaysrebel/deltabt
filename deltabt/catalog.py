@@ -448,6 +448,15 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
     ),
+    # flip_st_short + the 1m %R must not be exhausted (owner, 2026-10-20: the
+    # VVV and ARB shorts were confirmed with 1m %R already at the oversold end).
+    "flip_st_short_1m_wpr": dict(
+        desc="flip_st_short, and 1m %R still above -80 (short not yet exhausted)",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(supertrend="aligned", wpr_rule="not_exhausted"),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
+    ),
     "manual_scalp_both_t3_st_short": dict(
         desc="manual_scalp_both_t3_st (the live rule), shorts only",
         primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),
