@@ -92,6 +92,11 @@ def test_reconcile_keeps_a_socket_minute_rest_lacks_or_has_fewer_trades_for():
     replaced, kept = b.reconcile([Candle(SYM, 60, 1, 2, 1, 2, 40, source="rest")], upto=120)
     assert replaced == [] and kept == 2, "REST still aggregating (40 < 50) and REST silent"
     assert [c.source for c in b.bars] == ["ws", "ws"]
+    # the LAST ask takes REST's lower bar as final; a minute REST lacks stays
+    replaced, kept = b.reconcile([Candle(SYM, 60, 1, 2, 1, 2, 40, source="rest")], upto=120,
+                                 take_lower=True)
+    assert [c.volume for c in replaced] == [40] and kept == 1
+    assert [c.source for c in b.bars] == ["rest", "ws"]
 
 
 # -- the bot ----------------------------------------------------------------------
@@ -152,7 +157,10 @@ async def test_rest_still_aggregating_is_asked_again():
 
 
 @pytest.mark.asyncio
-async def test_rest_behind_after_every_retry_keeps_the_socket_bar_and_says_so():
+async def test_rest_still_short_after_the_retries_is_taken_as_final():
+    """Live 10-20: the socket sometimes counts a trade REST does not put in
+    that minute (TIA 7,539 vs 6,539, still 6,539 minutes later). REST is the
+    archive, so after the retries its bar is taken, not the socket's."""
     start = now_aligned(WARM + 30)
     archive = gapped_archive(WARM + 20, start)
     rest = LaggingRest(archive, lag=99)
@@ -160,29 +168,66 @@ async def test_rest_behind_after_every_retry_keeps_the_socket_bar_and_says_so():
     bot.RECONCILE_RETRIES = (0.0,)
     bot.RECONCILE_WINDOW = 1e9          # the streamed minutes are ~30 min old
     k = boundary_index(archive, WARM + 1)
+    n0 = len(rest.calls)
     await socket_stream(bot, archive, WARM, k + 2)
     held = {c.start: c for c in bot.builder[SYM].bars}
-    assert held[archive[k].start].source == "ws"
-    assert held[archive[k - 1].start].source == "rest", "the rest of the window still swapped"
-    # one kept minute (the newest) at every decision the stream crossed
-    assert bot.health_snapshot()["reconcile_kept"] == boundaries(archive, WARM, k)
-    events = [e for e in await bot.repo.recent_system_events()
-              if e["event_type"] == "SOCKET_BARS_KEPT"]
-    assert events and events[0]["payload"]["kept"] == 1
+    c = held[archive[k].start]
+    assert c.source == "rest" and c.volume == archive[k].volume - 1, "REST's final bar"
+    assert c.open == archive[k].open, "and its open, not the socket's previous close"
+    assert bot.health_snapshot()["reconcile_kept"] == 0
+    assert not [e for e in await bot.repo.recent_system_events()
+                if e["event_type"] == "SOCKET_BARS_KEPT"]
+    # it WAS asked again first: two requests per decision
+    assert len(rest.calls) - n0 >= 2 * boundaries(archive, WARM, k)
 
 
 @pytest.mark.asyncio
 async def test_no_wait_once_the_minute_is_old():
     """REST lags only just after a close; for an old minute the bot does not
-    sleep (a wait delays every coin queued behind this one)."""
+    sleep (a wait delays every coin queued behind this one) and takes REST's
+    bar on the first ask."""
     start = now_aligned(WARM + 30)
     archive = gapped_archive(WARM + 20, start)
     rest = LaggingRest(archive, lag=99)
     bot = await make_bot(archive, Feed(connected_since=start, first=start), rest)
     bot.RECONCILE_RETRIES = (30.0,)      # would hang the test if slept
     k = boundary_index(archive, WARM + 1)
+    n0 = len(rest.calls)
     await socket_stream(bot, archive, WARM, k + 2)
-    assert bot.health_snapshot()["reconcile_kept"] == boundaries(archive, WARM, k)
+    held = {c.start: c for c in bot.builder[SYM].bars}
+    assert held[archive[k].start].source == "rest"
+    assert bot.health_snapshot()["reconcile_kept"] == 0
+    assert len(rest.calls) - n0 == boundaries(archive, WARM, k), "one request per decision"
+
+
+class MissingRest(DeltaRest):
+    """REST that never serves one TRADED minute."""
+
+    def __init__(self, archive, missing: int):
+        super().__init__(archive)
+        self.missing = missing
+
+    async def fetch(self, symbol, start, end):
+        return [c for c in await super().fetch(symbol, start, end) if c.start != self.missing]
+
+
+@pytest.mark.asyncio
+async def test_a_traded_minute_rest_never_serves_keeps_the_socket_bar_and_says_so():
+    start = now_aligned(WARM + 30)
+    archive = gapped_archive(WARM + 20, start)
+    k = boundary_index(archive, WARM + 1)
+    rest = MissingRest(archive, archive[k - 1].start)
+    bot = await make_bot(archive, Feed(connected_since=start, first=start), rest)
+    bot.RECONCILE_RETRIES = (0.0,)
+    bot.RECONCILE_WINDOW = 1e9
+    await socket_stream(bot, archive, WARM, k + 2)
+    held = {c.start: c for c in bot.builder[SYM].bars}
+    assert held[archive[k - 1].start].source == "ws"
+    assert held[archive[k].start].source == "rest", "the rest of the window still swapped"
+    assert bot.health_snapshot()["reconcile_kept"] == 1
+    events = [e for e in await bot.repo.recent_system_events()
+              if e["event_type"] == "SOCKET_BARS_KEPT"]
+    assert len(events) == 1 and events[0]["payload"]["kept"] == 1
 
 
 class BrokenRest(DeltaRest):

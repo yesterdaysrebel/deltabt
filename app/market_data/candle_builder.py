@@ -282,17 +282,21 @@ class SymbolCandleBuilder:
             )
         return len(merged)
 
-    def reconcile(self, rest_bars: list[Candle], upto: int, after: int = -1
-                  ) -> tuple[list[Candle], int]:
+    def reconcile(self, rest_bars: list[Candle], upto: int, after: int = -1,
+                  *, take_lower: bool = False) -> tuple[list[Candle], int]:
         """Replace held SOCKET minutes in ``(after, upto]`` with REST's bars.
 
-        A REST bar is taken only when it holds at least the socket's volume:
-        a minute REST has not finished aggregating (measured 2026-10-20: BTC
-        read 5,941 contracts 0.3 s after the close, 6,125 at 1 s) must not
-        replace a complete one. Returns ``(replaced, kept)`` -- the new bars,
-        and how many socket minutes stayed because REST had no bar for them
-        or fewer trades (the caller may ask REST again, so it counts the
-        final ``kept`` in ``stats.reconcile_kept``). Only ``source == "ws"``
+        While REST may still be aggregating the newest minute (measured
+        2026-10-20: BTC read 5,941 contracts 0.3 s after the close, 6,125 at
+        1 s) a REST bar with LESS volume than the socket's is not taken
+        (``take_lower=False``), so the caller can ask again. On its last ask
+        the caller passes ``take_lower=True``: REST's bar is final then and is
+        the archive every backtest reads, even where the socket counted a trade
+        REST does not put in that minute (live 10-20: TIA socket 7,539 vs REST
+        6,539, still 6,539 minutes later). Returns ``(replaced, kept)`` -- the
+        new bars, and how many socket minutes stayed (REST had no bar for them,
+        or fewer trades while ``take_lower`` is False); the caller counts the
+        final ``kept`` in ``stats.reconcile_kept``. Only ``source == "ws"``
         bars are touched; REST-built, quiet and already-reconciled minutes
         are left alone, and so is a socket minute with NO trade (flat at the
         previous close, volume 0): it is already the bar Delta's archive
@@ -307,7 +311,7 @@ class SymbolCandleBuilder:
         for c in self.bars:
             if c.source == "ws" and after < c.start <= upto and not is_flat_no_trade(c):
                 r = served.get(c.start)
-                if r is None or r.volume < c.volume:
+                if r is None or (r.volume < c.volume and not take_lower):
                     kept += 1
                 else:
                     c = Candle(symbol=self.symbol, start=c.start, open=r.open,

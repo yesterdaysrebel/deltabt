@@ -1057,9 +1057,10 @@ class TradingBot:
         on the socket's bars, 0.20006 under a 0.20012 close on REST's); 5 of
         2,051 decisions that day differed, all from this. So before each
         decision the socket minutes since the last one are refetched and
-        replaced (``SymbolCandleBuilder.reconcile``). A minute REST does not
-        serve, or serves with fewer trades than the socket saw after the
-        retries, keeps the socket bar: counted and recorded, never hidden.
+        replaced (``SymbolCandleBuilder.reconcile``). REST with fewer trades
+        than the socket is asked again while the minute is fresh, then taken
+        (it is final, and it is the archive). Only a minute REST does not
+        serve at all keeps the socket bar: counted and recorded, never hidden.
         A failed request leaves the minutes for the next decision to retry.
         """
         if self.backfiller is None:
@@ -1077,11 +1078,12 @@ class TradingBot:
               if symbol in self._record_only_set and self.record_backfiller is not None
               else self.backfiller)
         kept = len(held)
-        for wait in (0.0, *self.RECONCILE_RETRIES):
-            if wait:
-                if wall_now() - (upto + 60) + wait > self.RECONCILE_WINDOW:
-                    break                # too late for REST to catch up
-                await asyncio.sleep(wait)
+        waits = list(self.RECONCILE_RETRIES)
+        while True:
+            # The LAST ask takes REST's bar even with less volume: past the
+            # window (or out of retries) REST is final, and it is the archive.
+            last = (not waits
+                    or wall_now() - (upto + 60) + waits[0] > self.RECONCILE_WINDOW)
             try:
                 rest = await bf.fetch(symbol, held[0], upto)
             except Exception as exc:                       # noqa: BLE001
@@ -1091,12 +1093,13 @@ class TradingBot:
                                   payload={"from": held[0], "to": upto,
                                            "minutes": len(held), "error": str(exc)})
                 return                   # not advanced: the next decision retries
-            replaced, kept = b.reconcile(rest, upto, after)
+            replaced, kept = b.reconcile(rest, upto, after, take_lower=last)
             if replaced:
                 await self.repo.save_candles(symbol, "1m", replaced, source="rest",
                                              replace=True)
-            if not kept:
+            if not kept or last:
                 break
+            await asyncio.sleep(waits.pop(0))
         b.stats.reconcile_kept += kept
         if kept:
             await self._event("candles", "SOCKET_BARS_KEPT", symbol=symbol,
