@@ -53,6 +53,12 @@ def ohlcv(c):
     return (c.start, c.open, c.high, c.low, c.close, c.volume)
 
 
+def boundaries(archive, lo: int, hi: int, minutes: int = 5) -> int:
+    """How many decision boundaries the minutes lo..hi close. The archive is
+    aligned to the real clock, so WARM itself closes one about 1 run in 5."""
+    return sum((archive[i].start + 60) % (minutes * 60) == 0 for i in range(lo, hi + 1))
+
+
 def boundary_index(archive, after: int, minutes: int = 5) -> int:
     """Index of the first minute after ``after`` that closes a ``minutes`` bar."""
     return next(i for i in range(after, len(archive))
@@ -158,7 +164,8 @@ async def test_rest_behind_after_every_retry_keeps_the_socket_bar_and_says_so():
     held = {c.start: c for c in bot.builder[SYM].bars}
     assert held[archive[k].start].source == "ws"
     assert held[archive[k - 1].start].source == "rest", "the rest of the window still swapped"
-    assert bot.health_snapshot()["reconcile_kept"] == 1
+    # one kept minute (the newest) at every decision the stream crossed
+    assert bot.health_snapshot()["reconcile_kept"] == boundaries(archive, WARM, k)
     events = [e for e in await bot.repo.recent_system_events()
               if e["event_type"] == "SOCKET_BARS_KEPT"]
     assert events and events[0]["payload"]["kept"] == 1
@@ -175,7 +182,7 @@ async def test_no_wait_once_the_minute_is_old():
     bot.RECONCILE_RETRIES = (30.0,)      # would hang the test if slept
     k = boundary_index(archive, WARM + 1)
     await socket_stream(bot, archive, WARM, k + 2)
-    assert bot.health_snapshot()["reconcile_kept"] == 1
+    assert bot.health_snapshot()["reconcile_kept"] == boundaries(archive, WARM, k)
 
 
 class BrokenRest(DeltaRest):
