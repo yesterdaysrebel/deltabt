@@ -243,6 +243,16 @@ def gate(ti: TimeframeIndicators, rules: TimeframeRules,
         long_ok &= _recent(up, w_) & ok & (w > rules.wpr_long_level)
         short_ok &= _recent(dn, w_) & ok & (w < rules.wpr_short_level)
 
+    elif rules.wpr_rule == "not_exhausted":
+        # The move has NOT already happened (owner, 2026-10-20, on the VVV and
+        # ARB shorts: "1 min wpr was already flipped"): a short needs %R still
+        # ABOVE the oversold level, a long still BELOW the overbought one. VVV
+        # shorted with 1m %R(140) at -100. A level test, not an event.
+        w = ti.wpr
+        ok = np.isfinite(w)
+        long_ok &= ok & (w < rules.wpr_short_level)
+        short_ok &= ok & (w > rules.wpr_long_level)
+
     return long_ok, short_ok
 
 

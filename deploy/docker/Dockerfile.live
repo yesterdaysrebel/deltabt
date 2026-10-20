@@ -54,14 +54,18 @@ COPY pyproject.toml ./
 # signals, ~0.6 MB); DELTABT_SIGNAL_HISTORY_FAMILY names the rule it belongs
 # to and grade-model ignores the file if the running rule differs. The old
 # rule's file (out/signal_lab/signals.parquet) stays in the repo for the record.
-COPY out/signal_lab_flip_short/signals.parquet /app/history/signals.parquet
+# 2026-10-20: the crypto bot moves to flip_st_short_1m_wpr (1m %R must still be
+# above -80), so ITS history ships (1,984 signals); the metals account stays on
+# flip_st_short and names its file's rule separately.
+COPY out/signal_lab_flip_short_1m_wpr/signals.parquet /app/history/signals.parquet
 # The metals account's history (2026-10-19): the same rule on the 26 liquid
 # non-crypto perps from listing to 10-19 (1,008 signals). live/learning picks
 # it when DELTABOT_UNIVERSE=metals (_default_history).
 COPY out/signal_lab_tradfi_flip_short/signals.parquet /app/history/signals_metals.parquet
 ENV DELTABT_SIGNAL_HISTORY=/app/history/signals.parquet \
     DELTABT_SIGNAL_HISTORY_METALS=/app/history/signals_metals.parquet \
-    DELTABT_SIGNAL_HISTORY_FAMILY=flip_st_short
+    DELTABT_SIGNAL_HISTORY_FAMILY=flip_st_short_1m_wpr \
+    DELTABT_SIGNAL_HISTORY_METALS_FAMILY=flip_st_short
 
 ENV NUMBA_CACHE_DIR=/tmp/numba DELTABT_DATA=/tmp/deltabt-data
 

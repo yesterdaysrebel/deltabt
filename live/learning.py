@@ -646,6 +646,16 @@ def _default_history() -> str:
     return os.environ.get(ENV_HISTORY) or str(OUT_DIR / "signal_lab" / "signals.parquet")
 
 
+def _default_history_family() -> str | None:
+    """The rule the default history file belongs to. The metals account has
+    its own file and, since 2026-10-20 (crypto moved to flip_st_short_1m_wpr,
+    metals stayed on flip_st_short), its own rule name for it."""
+    if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "metals" \
+            and os.environ.get("DELTABT_SIGNAL_HISTORY_METALS_FAMILY"):
+        return os.environ["DELTABT_SIGNAL_HISTORY_METALS_FAMILY"]
+    return os.environ.get("DELTABT_SIGNAL_HISTORY_FAMILY") or None
+
+
 def main(argv: list[str]) -> int:
     from app.config.settings import Settings
     from app.persistence.repository import PostgresRepository
@@ -687,7 +697,7 @@ def main(argv: list[str]) -> int:
             rec = await grade_model(repo, history_path=args.history or _default_history(),
                                     rule_hash=running.config_hash,
                                     family=running.version.split("@")[0],
-                                    history_family=os.environ.get("DELTABT_SIGNAL_HISTORY_FAMILY") or None,
+                                    history_family=_default_history_family(),
                                     week_start=ws)
             print(rec.summary)
             return 0
