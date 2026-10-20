@@ -1040,6 +1040,11 @@ class TradingBot:
     #: finished aggregating (measured 2026-10-20: BTC 5,941 contracts 0.3 s
     #: after the close, 6,125 = final at 1 s; SOL/ARB final at 0.3 s).
     RECONCILE_RETRIES: tuple[float, ...] = (1.0, 2.0)
+    #: ...and only while the decision minute closed less than this many
+    #: seconds ago (wall clock). REST lags only in the first second or two
+    #: after a close; a minute it still lacks after that will not appear by
+    #: waiting, and a wait here delays every coin queued behind this one.
+    RECONCILE_WINDOW: float = 3.0
 
     async def _reconcile_socket_bars(self, symbol: str, upto: int) -> None:
         """Swap this coin's socket-built minutes up to ``upto`` for REST's.
@@ -1071,6 +1076,8 @@ class TradingBot:
         kept = len(held)
         for wait in (0.0, *self.RECONCILE_RETRIES):
             if wait:
+                if wall_now() - (upto + 60) + wait > self.RECONCILE_WINDOW:
+                    break                # too late for REST to catch up
                 await asyncio.sleep(wait)
             try:
                 rest = await bf.fetch(symbol, held[0], upto)

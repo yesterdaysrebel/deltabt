@@ -134,6 +134,7 @@ async def test_rest_still_aggregating_is_asked_again():
     rest = LaggingRest(archive, lag=1)
     bot = await make_bot(archive, Feed(connected_since=start, first=start), rest)
     bot.RECONCILE_RETRIES = (0.0,)
+    bot.RECONCILE_WINDOW = 1e9          # the streamed minutes are ~30 min old
     k = boundary_index(archive, WARM + 1)
     await socket_stream(bot, archive, WARM, k + 2)
     held = {c.start: c for c in bot.builder[SYM].bars}
@@ -148,6 +149,7 @@ async def test_rest_behind_after_every_retry_keeps_the_socket_bar_and_says_so():
     rest = LaggingRest(archive, lag=99)
     bot = await make_bot(archive, Feed(connected_since=start, first=start), rest)
     bot.RECONCILE_RETRIES = (0.0,)
+    bot.RECONCILE_WINDOW = 1e9          # the streamed minutes are ~30 min old
     k = boundary_index(archive, WARM + 1)
     await socket_stream(bot, archive, WARM, k + 2)
     held = {c.start: c for c in bot.builder[SYM].bars}
@@ -157,6 +159,20 @@ async def test_rest_behind_after_every_retry_keeps_the_socket_bar_and_says_so():
     events = [e for e in await bot.repo.recent_system_events()
               if e["event_type"] == "SOCKET_BARS_KEPT"]
     assert events and events[0]["payload"]["kept"] == 1
+
+
+@pytest.mark.asyncio
+async def test_no_wait_once_the_minute_is_old():
+    """REST lags only just after a close; for an old minute the bot does not
+    sleep (a wait delays every coin queued behind this one)."""
+    start = now_aligned(WARM + 30)
+    archive = gapped_archive(WARM + 20, start)
+    rest = LaggingRest(archive, lag=99)
+    bot = await make_bot(archive, Feed(connected_since=start, first=start), rest)
+    bot.RECONCILE_RETRIES = (30.0,)      # would hang the test if slept
+    k = boundary_index(archive, WARM + 1)
+    await socket_stream(bot, archive, WARM, k + 2)
+    assert bot.health_snapshot()["reconcile_kept"] == 1
 
 
 class BrokenRest(DeltaRest):
