@@ -18,11 +18,14 @@ from tests.live.test_quiet_minutes import (SYM, WARM, DeltaRest, Feed, make_arch
                                            make_bot, now_aligned, one_pass)
 
 
-def gapped_archive(n: int, start: int) -> list[Candle]:
+def gapped_archive(n: int, start: int, forced_quiet: tuple[int, ...] = ()) -> list[Candle]:
     """Delta's archive where a minute's first trade is NOT the previous close
     (the shared make_archive always opens at it, which hides the quirk)."""
     out = []
-    for i, c in enumerate(make_archive(n, start, quiet=0.0)):
+    for i, c in enumerate(make_archive(n, start, quiet=0.0, forced_quiet=forced_quiet)):
+        if c.volume == 0:
+            out.append(c)            # Delta's filler: flat at the previous close
+            continue
         o = c.open if i == 0 else round(c.open + (0.03 if i % 2 else -0.02), 4)
         out.append(Candle(SYM, c.start, o, max(c.high, o), min(c.low, o), c.close,
                           c.volume, source="rest"))
@@ -205,3 +208,24 @@ async def test_a_failed_request_leaves_the_minutes_for_the_next_decision():
     held = {c.start: c for c in bot.builder[SYM].bars}
     for i in range(WARM, k2 + 1):
         assert ohlcv(held[archive[i].start]) == ohlcv(archive[i]), i
+
+
+@pytest.mark.asyncio
+async def test_a_no_trade_socket_minute_is_not_asked_about_or_logged():
+    """2026-10-20 live: the socket sends a flat volume-0 bar for a minute nobody
+    traded; a REST window starting on it returns nothing, so every such minute
+    was logged SOCKET_BARS_KEPT (~2,000 a day). It is already the archive's bar."""
+    start = now_aligned(WARM + 30)
+    probe = make_archive(WARM + 20, start, quiet=0.0)
+    k = boundary_index(probe, WARM + 6)
+    archive = gapped_archive(WARM + 20, start, forced_quiet=(k - 4,))   # first minute of the bucket
+    assert archive[k - 4].volume == 0
+    bot = await make_bot(archive, Feed(connected_since=start, first=start))
+    bot.RECONCILE_WINDOW = 1e9
+    await socket_stream(bot, archive, WARM, k + 2)
+    held = {c.start: c for c in bot.builder[SYM].bars}
+    for i in range(WARM, k + 1):
+        assert ohlcv(held[archive[i].start]) == ohlcv(archive[i]), i
+    assert bot.health_snapshot()["reconcile_kept"] == 0
+    assert not [e for e in await bot.repo.recent_system_events()
+                if e["event_type"] == "SOCKET_BARS_KEPT"]

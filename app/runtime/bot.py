@@ -1066,7 +1066,10 @@ class TradingBot:
             return
         b = self.builder[symbol]
         after = self._reconciled_through.get(symbol, -1)
-        held = [c.start for c in b.bars if c.source == "ws" and after < c.start <= upto]
+        # A no-trade socket minute is already Delta's archive bar (see
+        # SymbolCandleBuilder.reconcile); only traded ones are asked about.
+        held = [c.start for c in b.bars if c.source == "ws" and after < c.start <= upto
+                and not is_flat_no_trade(c)]
         if not held:
             self._reconciled_through[symbol] = upto
             return
