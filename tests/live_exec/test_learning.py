@@ -168,6 +168,30 @@ def test_grade_pools_history_with_live_and_tests_only_the_unseen_week():
     assert "did better than chance" in rec.summary and "does not filter trades" in rec.summary
 
 
+def test_a_reading_empty_in_every_training_row_is_left_out_not_fatal():
+    """2026-10-26: the metals history has no open interest (oi_chg_* all
+    empty) and the model refused to train, so metals was never graded."""
+    hist = _synthetic(2000, MON - 200 * 86400, MON - 30 * 86400, 1)
+    live = _synthetic(400, MON - 30 * 86400, MON + 7 * 86400, 2)
+    for c in ("oi_chg_1h", "oi_chg_6h", "oi_chg_24h"):
+        hist[c] = np.nan
+        live[c] = np.nan
+    rec = learning.grade(hist, learning.live_frame(_live_rows(live)), MON)
+    assert rec.auc is not None and rec.auc > 0.75
+    assert rec.detail["readings_left_out"] == ["oi_chg_1h", "oi_chg_6h", "oi_chg_24h"]
+    # a reading only the LIVE rows have is still empty in training: left out too
+    live2 = live.copy(); live2["oi_chg_1h"] = 1.0
+    rec2 = learning.grade(hist, learning.live_frame(_live_rows(live2)), MON)
+    assert rec2.auc is not None
+
+
+def test_a_grade_with_every_reading_present_leaves_nothing_out():
+    hist = _synthetic(2000, MON - 200 * 86400, MON - 30 * 86400, 1)
+    live = _synthetic(400, MON - 30 * 86400, MON + 7 * 86400, 2)
+    rec = learning.grade(hist, learning.live_frame(_live_rows(live)), MON)
+    assert "readings_left_out" not in rec.detail
+
+
 def test_grade_without_history_or_signals_says_so():
     rec = learning.grade(None, learning.live_frame([]), MON)
     assert rec.n_test == 0 and rec.auc is None and "not graded" in rec.summary

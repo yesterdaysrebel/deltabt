@@ -430,7 +430,17 @@ def grade(history: pd.DataFrame | None, live: pd.DataFrame, week_start: int) -> 
     auc = top = allr = p = None
     k = 0
     if n_tr >= 100 and train.win.nunique() == 2 and n_te >= 1:
-        X = lambda df: SM.features(df.drop(columns=["_live", "_trade"]))
+        # A reading with NO value anywhere in the training rows is left out
+        # (2026-10-26): the metals history has no open interest for the metal
+        # tokens (oi_chg_* all empty), and the model refuses an all-empty
+        # input -- the metals account had never been graded. A reading the
+        # training rows do have is never dropped, so the crypto grade is
+        # unchanged. The columns left out are listed in the grade.
+        empty = [c for c in SM.features(train.drop(columns=["_live", "_trade"])).columns
+                 if train[c].isna().all()]
+        X = lambda df: SM.features(df.drop(columns=["_live", "_trade", *empty]))
+        if empty:
+            detail["readings_left_out"] = empty
         mdl = SM.model().fit(X(train), train.win)
         s = mdl.predict_proba(X(test))[:, 1]
         allr = float(test.R.mean())
