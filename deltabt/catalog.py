@@ -457,6 +457,15 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
     ),
+    # flip_st_short WITHOUT the 1m Supertrend confirmation (owner, 2026-10-26:
+    # "should we remove ST confirmation and test"). Research only; not deployed.
+    "flip_st_short_noconf": dict(
+        desc="flip_st_short, no 1m confirmation",
+        primary=_tf_rules(supertrend="flip_recent", wpr_rule="cross_recent"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
+    ),
     "manual_scalp_both_t3_st_short": dict(
         desc="manual_scalp_both_t3_st (the live rule), shorts only",
         primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),

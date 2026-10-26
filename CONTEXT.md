@@ -176,6 +176,17 @@ bar; a REST window starting on one returns nothing) are skipped (#138; before th
 failed request (`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz: `reconciled_minutes` /
 `reconcile_kept`. Tests are aligned to the real clock: count decision boundaries, never assume one (#139).
 
+**1m SUPERTREND CONFIRMATION IS NEARLY REDUNDANT (owner asked 10-26 after a 1-in-10 live week).** Family
+`flip_st_short_noconf` (research only, not deployed) = flip_st_short without the 1m gate. 9 months, every signal:
+−0.055R (2,145) vs −0.053R (2,177); 2,095 entries identical (a fresh 5m bearish flip almost always has the 1m ST
+bearish too). Bot's own paper period (its daily lists from `strategy_signals`, coins watched ≥ 1 h a day,
+`out/picks_paper_1026.csv` in the research worktree): the $250 account takes the SAME 19 trades either way (−5.65R);
+every signal −0.144R ±0.16 (114) vs −0.096R ±0.17 (109). Since the flip rule went live (10-19 14:31 UTC): replay 14
+closed, 1 win, −12.75R (it reproduces 8 of the bot's 9 real trades; the rest differ by the bot's 10-19 daily cap),
+every signal −0.32R ±0.22 (54). Reading: no confirmation problem; the setup is about break-even-to-negative over 9
+months (−0.05R) and the live week is a bad run inside that noise. The live labeller's "+0.12R takeable" for the week
+includes record-only coins (top 11–30 + watchlist), which did better than the 10 trade coins.
+
 **1m %R CHECK 2026-10-20 — BUILT, HELD (owner: "hold and close 136").** The owner saw VVV/ARB confirmed with 1m %R
 already oversold (the 1m gate checked only the 1m Supertrend). Family `flip_st_short_1m_wpr` = flip_st_short + 1m
 %R still above −80 (`wpr_rule="not_exhausted"`, hash `401e71db9612…`, in the code since #135; history in
