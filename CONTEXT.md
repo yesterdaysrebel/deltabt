@@ -375,6 +375,17 @@ reasoning about what is on master.**
 
 ## What is CLOSED, and why
 
+**Selling daily BTC/ETH options — BUILD done, TEST sealed (owner 10-28 "option 2"; pre-registered
+`docs/option_selling_prereg.md` before any option price was fetched; `scripts/option_selling_lab.py`,
+`out/options/build.txt`).** Delta still serves `MARK:` 1h history for expired daily options (12:00 UTC expiry; BTC
+0.001, ETH 0.01 contracts; fee min(0.01% notional, 3.5% premium)). 13,020 entry marks fetched (2025-01-15 → 2026-10-27);
+95% found — BTC strikes 4–5% out are often NOT listed on calm days (coverage 1–3%: ≥ 98%; 4%: ~85%; 5%: ~66%), so
+results there over-weight volatile days. Short strangle 24 h before expiry, sold at 0.9 × mark, held to expiry.
+BUILD 2025 (chooses m only): m 1/2/3/4/5% → win 74/80/86/89/92%, mean +13.8/+7.6/+3.1/+0.7/+0.9 bps of notional per
+strangle (p 0.052/0.146/0.302/0.567/0.480); avg loss ≈ 3× avg win at 1%, ≈ 12× at 5%; worst −989 … −771 bps. **m = 1%
+chosen and frozen.** At 1%: BTC +10.8 bps (+$40/yr for one 0.001-BTC strangle a day), ETH +16.8 bps (+$17/yr).
+Test = 2026 (01-01 → 10-27), opened once after this commit.
+
 **Gainer fade, no stop — DEV FAIL (2026-10-28, pre-registered `docs/gainer_fade_prereg.md` before any result,
 `scripts/gainer_fade_lab.py`, `out/gainer_fade/dev.txt`).** Owner's "different idea". Short the K previous-UTC-day
 top gainers (crypto perps, D−1 change > 0, turnover ≥ $250k) at the UTC open, cover at the close. Picks reproduce

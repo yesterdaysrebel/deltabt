@@ -1,0 +1,17 @@
+BUILD 2025: option rows 6612 (strike found for 100%)
+m = 1%: 702 strangles over 351 days | win 74% | mean +13.80 bps of notional (one-sided p 0.052) | avg win +89.62 bps, avg loss -201.22 bps, worst -988.7 bps
+    BTC: 351 | win 76% | mean +10.83 bps | $+39.88 total for one strangle a day | puts +3.76 calls +7.07 bps | worst $-7.01
+    ETH: 351 | win 72% | mean +16.77 bps | $+17.34 total for one strangle a day | puts +8.70 calls +8.07 bps | worst $-4.29
+m = 2%: 702 strangles over 351 days | win 80% | mean +7.59 bps of notional (one-sided p 0.146) | avg win +60.98 bps, avg loss -204.85 bps, worst -952.9 bps
+    BTC: 351 | win 85% | mean +8.34 bps | $+30.77 total for one strangle a day | puts +4.60 calls +3.74 bps | worst $-6.28
+    ETH: 351 | win 75% | mean +6.84 bps | $+7.96 total for one strangle a day | puts +5.46 calls +1.37 bps | worst $-4.10
+m = 3%: 679 strangles over 351 days | win 86% | mean +3.10 bps of notional (one-sided p 0.302) | avg win +41.07 bps, avg loss -222.04 bps, worst -906.6 bps
+    BTC: 329 | win 91% | mean +5.60 bps | $+19.46 total for one strangle a day | puts +3.73 calls +1.87 bps | worst $-5.21
+    ETH: 350 | win 80% | mean +0.74 bps | $+2.03 total for one strangle a day | puts +3.20 calls -2.46 bps | worst $-3.83
+m = 4%: 588 strangles over 349 days | win 89% | mean +0.69 bps of notional (one-sided p 0.567) | avg win +30.23 bps, avg loss -236.97 bps, worst -840.6 bps
+    BTC: 240 | win 95% | mean +5.35 bps | $+12.79 total for one strangle a day | puts +3.15 calls +2.21 bps | worst $-5.26
+    ETH: 348 | win 85% | mean -2.53 bps | $-1.26 total for one strangle a day | puts +1.70 calls -4.23 bps | worst $-3.59
+m = 5%: 484 strangles over 340 days | win 92% | mean +0.87 bps of notional (one-sided p 0.480) | avg win +23.14 bps, avg loss -268.28 bps, worst -771.2 bps
+    BTC: 146 | win 97% | mean +8.27 bps | $+11.72 total for one strangle a day | puts +4.93 calls +3.35 bps | worst $-2.23
+    ETH: 338 | win 91% | mean -2.33 bps | $-0.88 total for one strangle a day | puts +1.69 calls -4.02 bps | worst $-3.29
+CHOSEN m = 0.01 (highest mean bps with build win >= 70%)
