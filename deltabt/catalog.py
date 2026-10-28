@@ -466,6 +466,24 @@ FAMILIES: dict[str, dict] = {
         over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
                   target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
     ),
+    # JUST %R (owner, 2026-10-28: "how would have just wpr done?"): no
+    # Supertrend on either chart. Research only; not deployed.
+    # wpr_short = %R crossed down through -20 within 6 bars and still below it
+    # (the live rule's %R leg alone); wpr_short_x1 = the cross on this bar.
+    "wpr_short": dict(
+        desc="%R crossed below -20 within 6 bars, no Supertrend, shorts",
+        primary=_tf_rules(wpr_rule="cross_recent"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, event_window_bars=6, sides="short"),
+    ),
+    "wpr_short_x1": dict(
+        desc="%R crosses below -20 on this bar, no Supertrend, shorts",
+        primary=_tf_rules(wpr_rule="cross_levels"),
+        confirm=_tf_rules(),
+        over=dict(trigger="edge", stop="atr", stop_atr_multiplier=4.0,
+                  target_r=3.0, max_stop_pct=0.10, sides="short"),
+    ),
     "manual_scalp_both_t3_st_short": dict(
         desc="manual_scalp_both_t3_st (the live rule), shorts only",
         primary=_tf_rules(supertrend="aligned", wpr_rule="variant_a"),

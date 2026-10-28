@@ -176,6 +176,16 @@ bar; a REST window starting on one returns nothing) are skipped (#138; before th
 failed request (`RECONCILE_FAILED`) leaves the minutes for the next decision. /healthz: `reconciled_minutes` /
 `reconcile_kept`. Tests are aligned to the real clock: count decision boundaries, never assume one (#139).
 
+**JUST %R (owner 10-28: "did the ST confirmation hurt? how would just wpr have done?").** Family `wpr_short`
+(research only) = %R(140) crosses below −20 on the 5m bar, no Supertrend anywhere, same 4×ATR stop / 3R / shorts
+(`wpr_short_x1`, the one-bar cross, is the SAME rule under the edge trigger — identical output, not a bug).
+9 months, every signal: −0.046R ±0.033 (2,642) vs flip_st_short −0.053R (2,177). Split: just-%R signals the live
+rule also takes −0.104R (979); %R crosses WITHOUT a fresh ST flip −0.012R ±0.042 (1,663) — the ST flip did not pick
+better signals (if anything worse, ~1.2 SE, not significant). Bot's paper period (lists to 10-28): every signal
+−0.135R (168) vs −0.160R (133); $250 account −7.57R (21 trades) vs −5.62R (23); since 10-19 the account flips the
+other way (−0.00R, 8 trades vs −12.73R, 18) because two 72 h holds (DOT, BILL) kept the one slot — path luck, not the
+rule. Reading: dropping the Supertrend changes nothing measurable; neither version has an edge.
+
 **1m SUPERTREND CONFIRMATION IS NEARLY REDUNDANT (owner asked 10-26 after a 1-in-10 live week).** Family
 `flip_st_short_noconf` (research only, not deployed) = flip_st_short without the 1m gate. 9 months, every signal:
 −0.055R (2,145) vs −0.053R (2,177); 2,095 entries identical (a fresh 5m bearish flip almost always has the 1m ST
