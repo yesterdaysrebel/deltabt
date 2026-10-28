@@ -1,0 +1,8 @@
+DEV (Jan-Jul): 8384 liquid coin-days, 863 without 1m data or ATR (skipped)
+A k=1.0: 400 trades over 200 days | mean +0.050R (±0.056), median -0.03R, win 48%, stopped 36%, worst -2.10R | random coins same stop +0.025R, share >= picks 0.204 | $250 account -> $338 (max drawdown 29%)
+B k=1.0: 396 trades over 198 days | mean +0.032R (±0.047), median +0.02R, win 52%, stopped 28%, worst -1.28R | random coins same stop +0.037R, share >= picks 0.554 | $250 account -> $300 (max drawdown 32%)
+A k=1.5: 400 trades over 200 days | mean +0.068R (±0.042), median +0.06R, win 54%, stopped 23%, worst -1.40R | random coins same stop +0.020R, share >= picks 0.015 | $250 account -> $404 (max drawdown 21%)
+B k=1.5: 396 trades over 198 days | mean +0.030R (±0.036), median +0.05R, win 55%, stopped 19%, worst -1.23R | random coins same stop +0.025R, share >= picks 0.377 | $250 account -> $303 (max drawdown 18%)
+A k=2.0: 400 trades over 200 days | mean +0.079R (±0.033), median +0.08R, win 57%, stopped 14%, worst -1.23R | random coins same stop +0.015R, share >= picks 0.000 | $250 account -> $451 (max drawdown 22%)
+B k=2.0: 396 trades over 198 days | mean +0.032R (±0.029), median +0.06R, win 57%, stopped 12%, worst -1.09R | random coins same stop +0.019R, share >= picks 0.167 | $250 account -> $314 (max drawdown 13%)
+CHOSEN k = 2.0 (best A mean net R on dev). Dev is not a judgement (pre-registration).

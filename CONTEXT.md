@@ -344,7 +344,14 @@ top gainers (crypto perps, D−1 change > 0, turnover ≥ $250k) at the UTC open
 vs the same-day liquid market −0.50% (t −0.50, p 0.69), random pairs beat it 85% → FAIL on all three. Shape: median
 **+1.90%**, win 57% — most gainers do drift down — but squeezes (worst −162%, a coin that more than doubled again)
 outweigh it. K = 1/5/10 and by gain size: nothing. **Hold-out (Aug → 10-27) NOT opened** — kept sealed for the
-follow-up the dev shape suggested (the same fade WITH a stop), which, being dev-inspired, only the hold-out can judge. — do not re-test without new information
+follow-up the dev shape suggested (the same fade WITH a stop), which, being dev-inspired, only the hold-out can judge.
+**Gainer fade WITH A STOP (pre-registered `docs/gainer_fade_stop_prereg.md`, `scripts/gainer_fade_stop_lab.py`).**
+Stop k × 14-day daily ATR% above the 00:00 UTC entry (1m `ltp_close` fill), else exit at the UTC close; A = top 2
+gainers, B = top 2 among defi/layer/turnover < $712,048 (owner: "why not selected coins?" — by-name persistence was
+checked first on dev: rank correlation −0.05, last half's best coins −0.86% next half, so names were not used).
+DEV (Jan–Jul, chooses k only, not a judgement; 400 trades, first ~2 weeks lack a 14-day ATR): A k=1/1.5/2 →
++0.050/+0.068/+0.079R vs random coins under the same stop +0.025/+0.020/+0.015R; B +0.032/+0.030/+0.032R, no
+better than its random (+0.037/+0.025/+0.019R). **k = 2.0 frozen.** Hold-out to be opened once after this commit. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
