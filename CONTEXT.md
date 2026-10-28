@@ -380,7 +380,18 @@ tailwind assumed:** 2025 −0.011R, 2026 −0.007R per trade. Filters (vs A, 202
 −0.029; b 04:00 confirmation −0.001 / −0.068; c skip negative funding +0.022 (p 0.095) / −0.047; d skip two-day runs
 −0.001 / −0.074 — none adopted. Reading: "top gainers fall more than other coins next day" was a 2026 effect; across
 two years the fade is about break-even. Per the pre-registration it does NOT go to paper unless the owner
-re-decides. — do not re-test without new information
+re-decides.
+**Survivorship challenge (owner 10-28: "I would challenge it") — NOT the reason.** Delta still lists 26 expired perps
+(`/v2/products?states=expired`); 23 serve 2025/2026 history (`scripts/gainer_fade_delisted_check.py`,
+`out/gainer_fade/delisted_check.txt`; FTM no 1m, MATIC/RNDR ended 2024; PEPE/FLOKI/BONK/SHIB moved to 1000× contracts,
+old-name days dropped where the new one traded). TRAP: the REST pager anchors on `end` and stops at an empty page, so a
+delisted coin fetched to "today" returns no 1m at all, and its daily cache carries flat filler after the delisting —
+fetch to the settlement time and cut the daily rows there. Added 2,053 liquid coin-days to 2025: rule A **+0.006R**
+(693 trades) vs random +0.002R, share 0.344 → still FAIL; the delisted coins were picked 99 times at −0.035R (not
+good shorts on their pump days). 2026 unchanged (+0.078R, PASS). Why 2025 failed (descriptive): winners smaller
+(+0.35R vs +0.54R) at the same 57% win rate; 2025 picks were smaller gainers (median +15% vs +22%; 31% under +10%);
+no gain size works in both years (>40%: +0.21R in 2025, −0.02R in 2026); a 3-month losing run each summer
+(2025 Jul–Sep −15.7R, 2026 Jun–Aug −12R). — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
