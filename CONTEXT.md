@@ -335,7 +335,16 @@ already merged — do not build on it. Before a rebuild, local refs had last bee
 2026-09-17 10:41 UTC, which made `origin/master` read one PR behind reality; **`git fetch` before
 reasoning about what is on master.**
 
-## What is CLOSED, and why — do not re-test without new information
+## What is CLOSED, and why
+
+**Gainer fade, no stop — DEV FAIL (2026-10-28, pre-registered `docs/gainer_fade_prereg.md` before any result,
+`scripts/gainer_fade_lab.py`, `out/gainer_fade/dev.txt`).** Owner's "different idea". Short the K previous-UTC-day
+top gainers (crypto perps, D−1 change > 0, turnover ≥ $250k) at the UTC open, cover at the close. Picks reproduce
+`out/top_gainers/picks.csv` exactly (2,730/2,730 coin-days). Dev (Jan–Jul), K = 2: net **−0.30%**/trade (424), excess
+vs the same-day liquid market −0.50% (t −0.50, p 0.69), random pairs beat it 85% → FAIL on all three. Shape: median
+**+1.90%**, win 57% — most gainers do drift down — but squeezes (worst −162%, a coin that more than doubled again)
+outweigh it. K = 1/5/10 and by gain size: nothing. **Hold-out (Aug → 10-27) NOT opened** — kept sealed for the
+follow-up the dev shape suggested (the same fade WITH a stop), which, being dev-inspired, only the hold-out can judge. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.

@@ -1,0 +1,11 @@
+DEV: pick days 2026-01-01 .. 2026-07-31; 186 coins; liquid coin-days 8384, eligible 4218
+PRIMARY K=2  picks  424 over 212 days | short -0.20%  net -0.30%  (median +1.90%, win 57%, worst -162.1%, best +86.6%) | excess vs market -0.50% (t -0.50, one-sided p 0.691) | random picks +0.31%, share >= picks 0.854
+DEV DECISION: net>0 False | excess>0 & p<=0.05 False | beats random p<=0.05 False => FAIL
+context (not decisions):
+  K=1  picks  212 over 212 days | short +0.52%  net +0.42%  (median +2.47%, win 59%, worst -129.6%, best +65.4%) | excess vs market +0.22% (t +0.15, one-sided p 0.441) | random picks +0.30%, share >= picks 0.394
+  K=5  picks 1057 over 212 days | short -0.20%  net -0.30%  (median +1.42%, win 58%, worst -248.9%, best +86.6%) | excess vs market -0.51% (t -0.99, one-sided p 0.838) | random picks +0.31%, share >= picks 0.959
+  K=10 picks 2010 over 212 days | short +0.19%  net +0.09%  (median +1.26%, win 58%, worst -248.9%, best +89.4%) | excess vs market -0.20% (t -0.66, one-sided p 0.745) | random picks +0.33%, share >= picks 0.769
+  previous-day gain   0-10%: n 1082  short +0.33%  excess +0.01%
+  previous-day gain  10-20%: n  601  short -0.20%  excess -0.63%
+  previous-day gain  20-40%: n  248  short +0.93%  excess +0.60%
+  previous-day gain    >40%: n   79  short -1.13%  excess -0.86%
