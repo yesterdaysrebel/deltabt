@@ -138,6 +138,39 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
+**GAINER-FADE PAPER RUNNER (owner 2026-10-28: "get variant A running as paper; scrap crypto and metals bot";
+"both, side by side"; "2%"; "keep a backup").** `live/fade.py`, run mode `DELTABOT_UNIVERSE=fade` (live_sizing
+`universe`, an SSM parameter — switching it is NOT a host replacement; the variant string stays). Once a UTC day
+(00:01:30) it shorts the two previous-UTC-day top gainers (research definitions; parity test vs the lab) on two
+simulated $250 accounts at 2% risk / 5x cap: **A** (stop 2×ATR14%, exit at the day's last 1m close) and **QUICK**
+(same + take-profit 0.2× the stop distance). Entry = close of the 00:00 minute (the lab used the daily open).
+Every 30 s it walks closed 1m candles (stop first, `ltp_close` fill), settles fees + real funding; tables
+`fade_positions` / `fade_days` / `fade_heartbeat`; own FastAPI `/healthz` `/readyz` in the brief-report shape; an
+"alive" log line every 5 min for the CloudWatch silence alarm. `db_probe.collect` returns ONLY `{"fade": …}` in
+fade mode (the inherited signal-bot tables are stale); `brief_report` renders "Gainer-fade paper accounts".
+`_roll.yml` treats `fade` as unbound. Smoke-tested locally on live Delta data against a throwaway Postgres
+(10-28: AIN + EVAA; QUICK hit both targets, A stopped EVAA). NO ORDER PATH. **Backups before scrapping:**
+pg_dump files on each pg volume + snapshots `snap-01e227faede28a963` (bot) and `snap-02cb8add4ffb7daa3` (metals),
+tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-backup`). **Metals destroy is a
+separate step:** `aws_ebs_volume.pgdata` has `prevent_destroy` and tf_guard refuses a bare destroy (needs an
+`infrastructure` dispatch with `allow_replace`, plus `Replaces-Host: metals`); `live.tf` and `monitor.yml` must lose
+`metals` in the same commit (`test_the_three_tables_name_the_same_stacks`).
+**Fade learning (owner 10-28 "how will model training work here?" → "approved"; `live/fade_learning.py`, rules
+fixed first in `docs/fade_model_switch_on_rule.md`).** After the morning entries the runner records every eligible
+gainer (top 20 by D−1 change, traded or not) in `fade_candidates` with readings known at entry — the research daily
+ones plus, new, the order book (spread, ±1% USD depth, imbalance) and the last 50 trades (aggressive-buyer share) —
+labels each a day later as if shorted under both exits (size-free R before funding). The GRADE is a separate process,
+`live/fade_grade.py` via `python -m live grade-model` (Mondays in the monitor document; it grades every complete week
+not yet graded) — never imported by the runner (`test_model_never_trades` covers it): the model's own daily top 2 vs
+the rule's top 2 vs random 2. It never chooses a trade; eligibility needs 4 pooled
+qualifying weeks beating both at p ≤ 0.05, and the owner decides. Expect a FAIL on the daily readings alone (764
+filters, rank corr −0.23); the book/flow readings are the only new information (~2–3 months to a fair verdict).
+TRAPS found while building it: `DeltaClient._get` returns the whole envelope (`{"success","result"}`); a thin coin
+can have NO trade in the 00:00 minute (REST serves no candle for leading no-trade minutes) — the runner now enters
+at the first traded minute within 15 min and skips a coin with none (it would otherwise have waited for a candle
+that never comes and MISSED the day); a thin coin's last minutes may have no candle, so the 24 h exit closes at the
+last traded minute once the day is over; the weekly grade drops all-empty readings (same trap as #141).
+
 **LIVE SINCE 2026-10-19 14:31 UTC (8:01 PM IST): `SPEC:flip_st_short@5/1`, watch-only, on the replaced host
 `i-0aac6d85d802033bf` (EIP 13.207.73.230 kept, pg volume re-attached, 11 old-rule trades and 1,402 old-rule signals
 intact).** GOTCHA: a host replacement leaves `deltabt.service` ENABLED BUT NOT STARTED (user_data only enables it; the
@@ -335,7 +368,91 @@ already merged — do not build on it. Before a rebuild, local refs had last bee
 2026-09-17 10:41 UTC, which made `origin/master` read one PR behind reality; **`git fetch` before
 reasoning about what is on master.**
 
-## What is CLOSED, and why — do not re-test without new information
+## What is CLOSED, and why
+
+**Gainer fade, no stop — DEV FAIL (2026-10-28, pre-registered `docs/gainer_fade_prereg.md` before any result,
+`scripts/gainer_fade_lab.py`, `out/gainer_fade/dev.txt`).** Owner's "different idea". Short the K previous-UTC-day
+top gainers (crypto perps, D−1 change > 0, turnover ≥ $250k) at the UTC open, cover at the close. Picks reproduce
+`out/top_gainers/picks.csv` exactly (2,730/2,730 coin-days). Dev (Jan–Jul), K = 2: net **−0.30%**/trade (424), excess
+vs the same-day liquid market −0.50% (t −0.50, p 0.69), random pairs beat it 85% → FAIL on all three. Shape: median
+**+1.90%**, win 57% — most gainers do drift down — but squeezes (worst −162%, a coin that more than doubled again)
+outweigh it. K = 1/5/10 and by gain size: nothing. **Hold-out (Aug → 10-27) NOT opened** — kept sealed for the
+follow-up the dev shape suggested (the same fade WITH a stop), which, being dev-inspired, only the hold-out can judge.
+**Gainer fade WITH A STOP (pre-registered `docs/gainer_fade_stop_prereg.md`, `scripts/gainer_fade_stop_lab.py`).**
+Stop k × 14-day daily ATR% above the 00:00 UTC entry (1m `ltp_close` fill), else exit at the UTC close; A = top 2
+gainers, B = top 2 among defi/layer/turnover < $712,048 (owner: "why not selected coins?" — by-name persistence was
+checked first on dev: rank correlation −0.05, last half's best coins −0.86% next half, so names were not used).
+DEV (Jan–Jul, chooses k only, not a judgement; 400 trades, first ~2 weeks lack a 14-day ATR): A k=1/1.5/2 →
++0.050/+0.068/+0.079R vs random coins under the same stop +0.025/+0.020/+0.015R; B +0.032/+0.030/+0.032R, no
+better than its random (+0.037/+0.025/+0.019R). **k = 2.0 frozen.**
+**HOLD-OUT (opened once, pick days 08-01 → 10-27, `out/gainer_fade/stop_holdout.txt`): A PASSES, B FAILS.**
+A: 176 trades / 88 days, **+0.069R ±0.065** (median +0.08R, win 56%, stopped 22%, worst −1.23R) vs random coins
+under the same stop **−0.028R**, 0 of 2,000 random draws as good (bar 0.025); $250 → $310, max drawdown 19%.
+B: −0.010R vs random −0.040R (p 0.084), $250 → $238 — the coin-group selection adds nothing (dev agreed).
+Strength, stated plainly: "the top gainers fall MORE than other coins over the next UTC day" now holds in both
+windows against random picks; the PROFIT per trade is small and only ~1 SE above zero on the hold-out alone
+(dev +0.079R ±0.033 was used to pick the idea and k). Not included: funding (shorts on pumped coins usually
+RECEIVE it — likely a tailwind, unmeasured), survivorship (delisted collapses missing — likely understates shorts),
+entry exactly 00:00 UTC. Both positions are open ~24 h a day, every day. Per the pre-registration the owner decides
+whether it goes to PAPER; never straight to money.
+**Ladder on A (owner 10-28, "can ladder help?") — NO EFFECT.** The repo's standard rungs, untuned
+((0.5,0), (1,0.5), (1.5,1), (2,1.5); exits before rungs; 1m ltp), paired on A's 576 trades: −0.012R ±0.015 (dev),
++0.023R ±0.031 (hold-out), **−0.002R ±0.014 both** — changes only 88 trades (42 better, 46 worse); smaller average
+loss (−0.40 vs −0.53R) bought with fewer and smaller wins. Exploratory (both windows already seen), but paired and
+untuned. Same lesson as every exit test in this repo: the exit is not the lever.
+**Trailing stop on A (owner 10-28) — NO HELP.** Paired on the same 576 trades: the old trail bot's 0.5R behind the
+best price from +0.5R → −0.011R ±0.016 (dev −0.017, hold-out +0.003; win rate 57 → 61% but average win 0.54 →
+0.41R); a wider 1R from +1R → −0.008R ±0.006 (touches 16 trades). Rule A keeps its plain stop + 24 h exit.
+**2025 REPLICATION — FAIL; all four squeeze filters REJECTED (2026-10-28, pre-registered
+`docs/gainer_fade_2025_prereg.md` before any 2025 data was fetched; `scripts/gainer_fade_2025_lab.py`,
+`out/gainer_fade/judge_2025.txt`).** The new code reproduces A's 572 trades of 2026 exactly (max R diff 4e-16).
+2025 (pick days 01-15 → 12-31, 150 coins listed today): A **+0.009R ±0.022** (689 trades), win 57%, avg win +0.35R
+vs avg loss −0.43R, PF 1.05; random coins under the same stop +0.001R, share ≥ A 0.21 → FAIL; $250 → $268 with a
+33% drawdown. 2026 for comparison: +0.076R, random beats it 0 times. **Funding is a slight COST, not the
+tailwind assumed:** 2025 −0.011R, 2026 −0.007R per trade. Filters (vs A, 2025 / 2026): a closed-near-high −0.013 /
+−0.029; b 04:00 confirmation −0.001 / −0.068; c skip negative funding +0.022 (p 0.095) / −0.047; d skip two-day runs
+−0.001 / −0.074 — none adopted. Reading: "top gainers fall more than other coins next day" was a 2026 effect; across
+two years the fade is about break-even. Per the pre-registration it does NOT go to paper unless the owner
+re-decides.
+**Survivorship challenge (owner 10-28: "I would challenge it") — NOT the reason.** Delta still lists 26 expired perps
+(`/v2/products?states=expired`); 23 serve 2025/2026 history (`scripts/gainer_fade_delisted_check.py`,
+`out/gainer_fade/delisted_check.txt`; FTM no 1m, MATIC/RNDR ended 2024; PEPE/FLOKI/BONK/SHIB moved to 1000× contracts,
+old-name days dropped where the new one traded). TRAP: the REST pager anchors on `end` and stops at an empty page, so a
+delisted coin fetched to "today" returns no 1m at all, and its daily cache carries flat filler after the delisting —
+fetch to the settlement time and cut the daily rows there. Added 2,053 liquid coin-days to 2025: rule A **+0.006R**
+(693 trades) vs random +0.002R, share 0.344 → still FAIL; the delisted coins were picked 99 times at −0.035R (not
+good shorts on their pump days). 2026 unchanged (+0.078R, PASS). Why 2025 failed (descriptive): winners smaller
+(+0.35R vs +0.54R) at the same 57% win rate; 2025 picks were smaller gainers (median +15% vs +22%; 31% under +10%);
+no gain size works in both years (>40%: +0.21R in 2025, −0.02R in 2026); a 3-month losing run each summer
+(2025 Jul–Sep −15.7R, 2026 Jun–Aug −12R).
+**"Can the win rate be raised on 2026?" (owner 10-28) — yes on 2026, and it does not carry.** 764 filters (single +
+pairs of entry-time readings: D−1 change/turnover/ATR/wick, D−2 change, funding at 00:00, weekday), each keeping ≥ 300
+trades. Best 2026 win rate 64% (+0.089R) → same filter on 2025 55%, −0.024R; best 2026 profit +0.109R → 2025 −0.012R;
+the 50 most profitable on 2026 average −0.000R on 2025 (no filter +0.006R). Rank correlation of a filter's 2026 vs
+2025 profit **−0.23**: the better it looked on 2026, the worse on 2025. TRAP caught in this search: "price below the
+open at 04:00" used as a filter on a 00:00 entry is LOOK-AHEAD (picks trades already winning; showed 70–76% win
+rates). The pre-registered filter b was correct (it moves the entry to 04:00).
+**Four filters from EXTERNAL sources — all REJECTED (owner 10-28: "use external refs";
+`docs/gainer_fade_external_prereg.md` before computing them; `scripts/gainer_fade_external_lab.py`,
+`out/gainer_fade/external_judge.txt`; Delta `OI:<SYM>` 1h history fetched for 216 coins, none empty).** Judged on
+BOTH years (adopt only if better than A in each year AND pooled day-block p ≤ 0.0125). Vs A, 2025 / 2026:
+H1 illiquid half (Zaremba 2021, Kozlowski 2020) +0.000 / −0.080R; H2 low abnormal volume (Llorente 2002; large-move
+volume study) −0.004 / −0.060R; H3 funding ≥ day median, crowded longs (practitioner) +0.023 / −0.051R; H4 OI rose
+during D−1 (practitioner) +0.008 / −0.009R (OI rises on almost every pump — barely filters). None better in both
+years; pooled p 0.48–0.96. Same shape as every filter before it: what helps one year hurts the other.
+**The look-ahead "70–76% win" turned into a tradable EXIT (owner 10-28: "are you sure it failed?") — worse in both
+years.** Short at 00:00 as A; at a check time, close if not in profit, else hold (stop as A). Mean R 2025 / 2026:
+A +0.006 / +0.078; check 1 h −0.007 / +0.047; 2 h −0.019 / +0.054; 4 h (9:30 IST) −0.015 / +0.047; 8 h +0.002 /
++0.067. Win rate falls to 36–47% (cut trades are small losses) and the trades losing at the check that would have
+recovered are thrown away. Same lesson as the ladder: early exits cost more than they save.
+**WIN-RATE SCAN (owner 10-28: "park variant A; find 70–80% win rate in both years, open to anything").** A is PARKED.
+`scripts/winrate_scan.py` (`out/gainer_fade/winrate_scan.csv`): stop {1,2,3}×ATR14% × take-profit {0.1…1.0}× stop,
+24 h max, on fade / random short / momentum (long top-2 gainers) / random long, both years. Small targets reach 70–89%
+wins on ANY entry including random — win rate alone means nothing; random longs lose in every cell. Only cell meeting
+win 70–80% + net R > 0 + above random, in BOTH years: **fade, stop 2×ATR (~20–22% above), take-profit 0.2× stop
+(~4–4.5% drop)** — 2025: 72% win, +0.010R ±0.013 vs random +0.001 (p 0.18, NOT distinguishable), $250 → $281, worst
+drop 15%; 2026: 79% win, +0.032R ±0.015 (p 0.024), $250 → $356, worst drop 20%. One loss ≈ 2.3–2.9 wins. 1 of 60
+cells, both years already seen; it is the same fade effect reshaped, not a new edge. Forward data is the only judge. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.

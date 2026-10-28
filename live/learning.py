@@ -682,6 +682,16 @@ def main(argv: list[str]) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = Settings.from_env()
 
+    # A GAINER-FADE stack (DELTABOT_UNIVERSE=fade, 2026-10-28) has its own learning: the runner
+    # records and labels its candidates, and the grade is live/fade_grade.py -- still in this
+    # separate process, never in the runner. The signal bot's leftover signals are not relabelled.
+    if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "fade":
+        if args.cmd == "grade-model":
+            from live.fade_grade import main as fade_grade
+            return fade_grade(settings.database_url)
+        print("Fade stack: candidates are labelled by the runner itself; nothing to do.")
+        return 0
+
     async def run() -> int:
         repo = PostgresRepository(settings.database_url, min_size=1, max_size=2)
         await repo.connect()

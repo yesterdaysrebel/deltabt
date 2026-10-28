@@ -1,0 +1,16 @@
+[2025] rule A: 689 trades | mean +0.009R (±0.022) | with funding -0.002R | win 57% | avg win +0.35R avg loss -0.43R | PF 1.05 | stopped 11% | $250 -> $268 (max dd 33%) | random coins same stop +0.001R, share >= A 0.210
+STEP 2 (2025 replication): mean > 0 True | beats random p <= 0.05 False => FAIL
+[2026] rule A: 572 trades | mean +0.076R (±0.030) | with funding +0.069R | win 57% | avg win +0.54R avg loss -0.53R | PF 1.33 | stopped 16% | $250 -> $554 (max dd 34%) | random coins same stop +0.004R, share >= A 0.000
+STEP 3 filters (judged on 2025; 2026 = direction check):
+  [2025] filter a: 671 trades | mean -0.004R (±0.017) | with funding -0.014R | win 55% | avg win +0.28R avg loss -0.36R | PF 0.97 | stopped 8% | $250 -> $229 (max dd 40%) | vs A -0.013R (P(diff<=0) 0.7440)
+  [2026] filter a: 570 trades | mean +0.047R (±0.025) | with funding +0.040R | win 57% | avg win +0.40R avg loss -0.43R | PF 1.26 | stopped 11% | $250 -> $410 (max dd 15%) | vs A -0.029R (P(diff<=0) 0.8556)
+  filter a: better on 2025 False, p <= 0.0125 False, same sign on 2026 False => REJECT
+  [2025] filter b: 634 trades | mean +0.008R (±0.021) | with funding -0.000R | win 57% | avg win +0.29R avg loss -0.37R | PF 1.05 | stopped 6% | $250 -> $265 (max dd 28%) | vs A -0.001R (P(diff<=0) 0.5332)
+  [2026] filter b: 558 trades | mean +0.008R (±0.023) | with funding +0.003R | win 53% | avg win +0.39R avg loss -0.42R | PF 1.04 | stopped 11% | $250 -> $263 (max dd 35%) | vs A -0.068R (P(diff<=0) 0.9898)
+  filter b: better on 2025 False, p <= 0.0125 False, same sign on 2026 False => REJECT
+  [2025] filter c: 649 trades | mean +0.031R (±0.019) | with funding +0.036R | win 58% | avg win +0.32R avg loss -0.36R | PF 1.20 | stopped 8% | $250 -> $359 (max dd 19%) | vs A +0.022R (P(diff<=0) 0.0950)
+  [2026] filter c: 570 trades | mean +0.028R (±0.027) | with funding +0.035R | win 54% | avg win +0.45R avg loss -0.46R | PF 1.13 | stopped 13% | $250 -> $331 (max dd 20%) | vs A -0.047R (P(diff<=0) 0.9664)
+  filter c: better on 2025 True, p <= 0.0125 False, same sign on 2026 False => REJECT
+  [2025] filter d: 594 trades | mean +0.008R (±0.017) | with funding +0.001R | win 58% | avg win +0.26R avg loss -0.34R | PF 1.05 | stopped 7% | $250 -> $267 (max dd 20%) | vs A -0.001R (P(diff<=0) 0.5274)
+  [2026] filter d: 561 trades | mean +0.001R (±0.020) | with funding -0.002R | win 56% | avg win +0.30R avg loss -0.38R | PF 1.01 | stopped 9% | $250 -> $248 (max dd 23%) | vs A -0.074R (P(diff<=0) 0.9972)
+  filter d: better on 2025 False, p <= 0.0125 False, same sign on 2026 False => REJECT

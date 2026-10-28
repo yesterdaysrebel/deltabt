@@ -64,7 +64,7 @@ DEFAULT_RECORD_EXTRA = ("BTCUSD", "ETHUSD", "BEATUSD", "AKEUSD")
 #: by 24h turnover, up to record_top_n. DELTABOT_TRADE_SYMBOLS overrides the list.
 ENV_TRADE_SYMBOLS = "DELTABOT_TRADE_SYMBOLS"
 DEFAULT_METALS = ("XAUTUSD", "PAXGUSD", "SLVONUSD", "OILUSD")
-DYNAMIC_MODES = ("top_gainers", "metals")      # re-picked daily; run unbound
+DYNAMIC_MODES = ("top_gainers", "metals", "fade")   # re-picked daily / own runner; run unbound
 
 
 def _num(row: Mapping, key: str) -> float | None:
@@ -127,8 +127,8 @@ def merge_held(gainers: list[str], held: Iterable[str]) -> tuple[str, ...]:
 def mode(env: Mapping[str, str] | None = None) -> str:
     src = os.environ if env is None else env
     m = (src.get(ENV_UNIVERSE) or "fixed").strip().lower()
-    if m not in ("fixed", "top_gainers", "metals"):
-        raise ValueError(f"{ENV_UNIVERSE}={m!r} is not 'fixed', 'top_gainers' or 'metals'")
+    if m not in ("fixed", "top_gainers", "metals", "fade"):
+        raise ValueError(f"{ENV_UNIVERSE}={m!r} is not 'fixed', 'top_gainers', 'metals' or 'fade'")
     return m
 
 
