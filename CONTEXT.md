@@ -366,7 +366,10 @@ whether it goes to PAPER; never straight to money.
 ((0.5,0), (1,0.5), (1.5,1), (2,1.5); exits before rungs; 1m ltp), paired on A's 576 trades: −0.012R ±0.015 (dev),
 +0.023R ±0.031 (hold-out), **−0.002R ±0.014 both** — changes only 88 trades (42 better, 46 worse); smaller average
 loss (−0.40 vs −0.53R) bought with fewer and smaller wins. Exploratory (both windows already seen), but paired and
-untuned. Same lesson as every exit test in this repo: the exit is not the lever. — do not re-test without new information
+untuned. Same lesson as every exit test in this repo: the exit is not the lever.
+**Trailing stop on A (owner 10-28) — NO HELP.** Paired on the same 576 trades: the old trail bot's 0.5R behind the
+best price from +0.5R → −0.011R ±0.016 (dev −0.017, hold-out +0.003; win rate 57 → 61% but average win 0.54 →
+0.41R); a wider 1R from +1R → −0.008R ±0.006 (touches 16 trades). Rule A keeps its plain stop + 24 h exit. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
