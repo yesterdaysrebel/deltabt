@@ -361,7 +361,12 @@ windows against random picks; the PROFIT per trade is small and only ~1 SE above
 (dev +0.079R ±0.033 was used to pick the idea and k). Not included: funding (shorts on pumped coins usually
 RECEIVE it — likely a tailwind, unmeasured), survivorship (delisted collapses missing — likely understates shorts),
 entry exactly 00:00 UTC. Both positions are open ~24 h a day, every day. Per the pre-registration the owner decides
-whether it goes to PAPER; never straight to money. — do not re-test without new information
+whether it goes to PAPER; never straight to money.
+**Ladder on A (owner 10-28, "can ladder help?") — NO EFFECT.** The repo's standard rungs, untuned
+((0.5,0), (1,0.5), (1.5,1), (2,1.5); exits before rungs; 1m ltp), paired on A's 576 trades: −0.012R ±0.015 (dev),
++0.023R ±0.031 (hold-out), **−0.002R ±0.014 both** — changes only 88 trades (42 better, 46 worse); smaller average
+loss (−0.40 vs −0.53R) bought with fewer and smaller wins. Exploratory (both windows already seen), but paired and
+untuned. Same lesson as every exit test in this repo: the exit is not the lever. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
