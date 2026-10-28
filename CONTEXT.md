@@ -398,7 +398,15 @@ trades. Best 2026 win rate 64% (+0.089R) → same filter on 2025 55%, −0.024R;
 the 50 most profitable on 2026 average −0.000R on 2025 (no filter +0.006R). Rank correlation of a filter's 2026 vs
 2025 profit **−0.23**: the better it looked on 2026, the worse on 2025. TRAP caught in this search: "price below the
 open at 04:00" used as a filter on a 00:00 entry is LOOK-AHEAD (picks trades already winning; showed 70–76% win
-rates). The pre-registered filter b was correct (it moves the entry to 04:00). — do not re-test without new information
+rates). The pre-registered filter b was correct (it moves the entry to 04:00).
+**Four filters from EXTERNAL sources — all REJECTED (owner 10-28: "use external refs";
+`docs/gainer_fade_external_prereg.md` before computing them; `scripts/gainer_fade_external_lab.py`,
+`out/gainer_fade/external_judge.txt`; Delta `OI:<SYM>` 1h history fetched for 216 coins, none empty).** Judged on
+BOTH years (adopt only if better than A in each year AND pooled day-block p ≤ 0.0125). Vs A, 2025 / 2026:
+H1 illiquid half (Zaremba 2021, Kozlowski 2020) +0.000 / −0.080R; H2 low abnormal volume (Llorente 2002; large-move
+volume study) −0.004 / −0.060R; H3 funding ≥ day median, crowded longs (practitioner) +0.023 / −0.051R; H4 OI rose
+during D−1 (practitioner) +0.008 / −0.009R (OI rises on almost every pump — barely filters). None better in both
+years; pooled p 0.48–0.96. Same shape as every filter before it: what helps one year hurts the other. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.

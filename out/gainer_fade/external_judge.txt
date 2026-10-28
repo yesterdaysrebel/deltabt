@@ -1,0 +1,15 @@
+coverage: abnormal volume known 98% | funding 100% | OI change 100% of liquid coin-days
+[2025] rule A: 693 trades | mean +0.006R (±0.022) | with funding -0.003R | win 57% | avg win +0.35R avg loss -0.45R | PF 1.03 | stopped 12% | $250 -> $258 (max dd 37%)
+[2026] rule A: 572 trades | mean +0.078R (±0.030) | with funding +0.071R | win 57% | avg win +0.54R avg loss -0.54R | PF 1.34 | stopped 16% | $250 -> $567 (max dd 34%)
+  [2025] H1: 660 trades | mean +0.007R (±0.017) | with funding +0.002R | win 58% | avg win +0.27R avg loss -0.37R | PF 1.04 | stopped 7% | $250 -> $264 (max dd 23%) | vs A +0.000R
+  [2026] H1: 562 trades | mean -0.002R (±0.022) | with funding -0.003R | win 55% | avg win +0.34R avg loss -0.41R | PF 0.99 | stopped 11% | $250 -> $235 (max dd 22%) | vs A -0.080R
+  H1: better in 2025 True, better in 2026 False, pooled -0.036R P(diff<=0) 0.9648 (bar 0.0125), pooled mean +0.003R => REJECT
+  [2025] H2: 669 trades | mean +0.002R (±0.015) | with funding +0.001R | win 56% | avg win +0.24R avg loss -0.29R | PF 1.02 | stopped 5% | $250 -> $253 (max dd 14%) | vs A -0.004R
+  [2026] H2: 571 trades | mean +0.018R (±0.016) | with funding +0.020R | win 56% | avg win +0.25R avg loss -0.28R | PF 1.14 | stopped 4% | $250 -> $301 (max dd 12%) | vs A -0.060R
+  H2: better in 2025 False, better in 2026 False, pooled -0.029R P(diff<=0) 0.9308 (bar 0.0125), pooled mean +0.010R => REJECT
+  [2025] H3: 688 trades | mean +0.029R (±0.019) | with funding +0.032R | win 58% | avg win +0.33R avg loss -0.38R | PF 1.18 | stopped 9% | $250 -> $356 (max dd 22%) | vs A +0.023R
+  [2026] H3: 572 trades | mean +0.026R (±0.027) | with funding +0.033R | win 54% | avg win +0.44R avg loss -0.46R | PF 1.12 | stopped 13% | $250 -> $324 (max dd 20%) | vs A -0.051R
+  H3: better in 2025 True, better in 2026 False, pooled -0.011R P(diff<=0) 0.7522 (bar 0.0125), pooled mean +0.028R => REJECT
+  [2025] H4: 679 trades | mean +0.014R (±0.020) | with funding +0.004R | win 58% | avg win +0.33R avg loss -0.43R | PF 1.08 | stopped 11% | $250 -> $290 (max dd 25%) | vs A +0.008R
+  [2026] H4: 570 trades | mean +0.068R (±0.029) | with funding +0.063R | win 59% | avg win +0.50R avg loss -0.56R | PF 1.30 | stopped 16% | $250 -> $512 (max dd 19%) | vs A -0.009R
+  H4: better in 2025 True, better in 2026 False, pooled +0.001R P(diff<=0) 0.4830 (bar 0.0125), pooled mean +0.039R => REJECT
