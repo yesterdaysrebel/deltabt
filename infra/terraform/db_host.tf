@@ -57,6 +57,10 @@ locals {
   db_on_host = var.db_location == "host"
   #: Live stacks whose Postgres runs on the host. Empty when db_location = "rds".
   pg_stacks = local.db_on_host ? { for k, s in local.stacks : k => s if s.live } : {}
+  #: Data volumes KEPT after their stack was removed (no host, no attachment). 2026-10-28 (owner:
+  #: "scrap crypto and metals bot", "keep a backup"): `metals` holds deltabt_metals and the
+  #: keep-before-fade dump. Deleting one is a deliberate edit here AND of prevent_destroy below.
+  retired_pg_volumes = ["metals"]
   #: The docker bridge address deploy/aws/run_live.sh recognises as "local".
   pg_local_address = "172.17.0.1"
 }
@@ -64,7 +68,7 @@ locals {
 # --- the data volume: outlives any host ------------------------------------
 
 resource "aws_ebs_volume" "pgdata" {
-  for_each = local.pg_stacks
+  for_each = toset(concat(keys(local.pg_stacks), local.retired_pg_volumes))
 
   availability_zone = aws_subnet.public[var.bot_subnet_index].availability_zone
   size              = var.pg_volume_gb
@@ -169,3 +173,4 @@ resource "aws_iam_role_policy" "pg_host" {
     ]
   })
 }
+

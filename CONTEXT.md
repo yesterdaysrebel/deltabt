@@ -115,7 +115,7 @@ takeable T (R record-only); taken X)"), fed by `app/reports/learning_probe.py`, 
 Known gap: live readings use the bot's ~7-8 days of bars, the lab full history, so Wilder-smoothed readings on
 240m bars (st_4h_agrees) can differ slightly.
 
-**METALS ACCOUNT LIVE since 2026-10-19 20:47 UTC (2:17 AM IST 10-20)** on `i-00a4fee08c1b6882a` (EIP 13.205.134.107,
+**(SCRAPPED 2026-10-28, see GAINER-FADE below) METALS ACCOUNT LIVE 2026-10-19 20:47 UTC (2:17 AM IST 10-20)** on `i-00a4fee08c1b6882a` (EIP 13.205.134.107,
 owner whitelisted it on the read-only key): deploy run 39303652988 rolled both stacks (two prod-deploy approvals, one
 per stack); the metals roll's LAST step "start the successor experiment" failed because `_roll.yml` only skipped
 registration for `"universe":"top_gainers"` — fixed to cover every dynamic mode. The bot itself was started by the
@@ -151,10 +151,15 @@ fade mode (the inherited signal-bot tables are stale); `brief_report` renders "G
 `_roll.yml` treats `fade` as unbound. Smoke-tested locally on live Delta data against a throwaway Postgres
 (10-28: AIN + EVAA; QUICK hit both targets, A stopped EVAA). NO ORDER PATH. **Backups before scrapping:**
 pg_dump files on each pg volume + snapshots `snap-01e227faede28a963` (bot) and `snap-02cb8add4ffb7daa3` (metals),
-tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-backup`). **Metals destroy is a
-separate step:** `aws_ebs_volume.pgdata` has `prevent_destroy` and tf_guard refuses a bare destroy (needs an
-`infrastructure` dispatch with `allow_replace`, plus `Replaces-Host: metals`); `live.tf` and `monitor.yml` must lose
-`metals` in the same commit (`test_the_three_tables_name_the_same_stacks`).
+tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-backup`). **LIVE since 2026-10-28 12:40 UTC** on the bot host (deploy run 40686903238, image dde1ef9; #143 set
+`universe` "fade"). 10-28 itself is MISSED (started past the 3 h window); first entries 10-29 00:01:30 UTC. Health is
+on port **8000**. **Metals scrapped 10-28:** `deltabt.service` stopped + disabled 12:46 UTC, then the stack removed
+from `live.tf` + `monitor.yml` (infra/destroy-metals). Its pg volume is KEPT, still managed, detached: `db_host.tf`
+`retired_pg_volumes` (OpenTofu `removed` cannot target one for_each key). The destroy needs an `infrastructure`
+dispatch with `allow_replace` (the push apply is refused by tf_guard: it destroys `aws_instance`/`aws_eip`/log group).
+Afterwards: delete GitHub vars `BOT_INSTANCE_ID_METALS`/`SSM_MONITOR_DOCUMENT_METALS`, owner drops EIP
+13.205.134.107 from the read-only key's allowlist; secret `deltabt-paper/live/metals/venue-credentials` is not
+Terraform's (delete by hand).
 **Fade learning (owner 10-28 "how will model training work here?" → "approved"; `live/fade_learning.py`, rules
 fixed first in `docs/fade_model_switch_on_rule.md`).** After the morning entries the runner records every eligible
 gainer (top 20 by D−1 change, traded or not) in `fade_candidates` with readings known at entry — the research daily
