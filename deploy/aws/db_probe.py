@@ -216,6 +216,16 @@ async def collect_fade(con, now=None) -> dict:
             for r in await con.fetch("SELECT day, status, detail FROM fade_days ORDER BY day DESC LIMIT 3")]
         hb = await con.fetchval("SELECT at FROM fade_heartbeat WHERE id = 1")
         out["heartbeat_at"] = hb.isoformat() if hb else None
+        if await con.fetchval("SELECT to_regclass('fade_candidates') IS NOT NULL"):
+            lr = await con.fetchrow(
+                "SELECT count(*) n, count(*) FILTER (WHERE r_a IS NOT NULL) labelled, count(DISTINCT day) days, "
+                "avg(r_a) ra, avg(r_quick) rq FROM fade_candidates")
+            out["learning"] = {"candidates": int(lr["n"]), "labelled": int(lr["labelled"]), "days": int(lr["days"]),
+                               "mean_r_a": None if lr["ra"] is None else round(float(lr["ra"]), 3),
+                               "mean_r_quick": None if lr["rq"] is None else round(float(lr["rq"]), 3)}
+            g = await con.fetchrow("SELECT week_start, summary FROM fade_grades ORDER BY week_start DESC LIMIT 1")
+            if g is not None:
+                out["learning"]["grade"] = {"week": g["week_start"].strftime("%Y-%m-%d"), "summary": g["summary"]}
     except Exception as exc:                    # noqa: BLE001
         out["error"] = f"{type(exc).__name__}: {exc}"[:200]
     return out

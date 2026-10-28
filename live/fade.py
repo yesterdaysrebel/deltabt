@@ -10,8 +10,8 @@ Once a UTC day it shorts the two previous-UTC-day top gainers on two simulated $
 
 Picks, ATR, stop fill, fees and sizing are the research definitions (scripts/gainer_fade_lab.py,
 gainer_fade_stop_lab.py, gainer_fade_2025_lab.py). Two differences, both deliberate and recorded on
-every row: the entry price is the CLOSE of the 00:00 UTC minute (the first price this process can
-act on), not the daily open; and only coins Delta lists as tradable now are eligible.
+every row: the entry price is the CLOSE of the first traded minute from 00:00 UTC (within 15 min;
+a coin with no trade by then is skipped), not the daily open; and only coins Delta lists as tradable now are eligible.
 
 NO ORDER IS EVER SENT. Nothing here holds keys or imports an order path; positions live in the
 `fade_positions` table only.
@@ -44,6 +44,7 @@ START_EQUITY = 250.0
 ACCOUNTS = {"A": None, "QUICK": QUICK_TP}            # account -> take-profit fraction of the stop
 ENTRY_AFTER = 90                                     # s past midnight: the 00:00 minute has closed
 GIVE_UP_ENTRY = 3 * HOUR                             # a day not entered by then is recorded as missed
+FIRST_TRADE_WINDOW = 15 * MINUTE                     # enter at the first traded minute within this
 
 
 # ============================================================ pure logic (tested)
@@ -107,12 +108,15 @@ class Position:
         return self.day + DAY
 
 
-def walk(p: Position, bars: pd.DataFrame) -> bool:
+def walk(p: Position, bars: pd.DataFrame, day_complete: bool = False) -> bool:
     """Advance `p` over closed 1m bars (time, high, low, close); True once it has exited.
 
     A minute whose high reaches the stop exits at max(stop, close) -- the research `ltp_close`
     fill -- and is checked BEFORE the target, so a minute touching both counts as the stop.
+    `day_complete`: the day is over and `bars` reach its end; a thin coin whose last minutes had
+    no trade (REST serves no candle for them) exits at its last traded close.
     """
+    last_close = None
     for b in bars.sort_values("time").itertuples():
         t = int(b.time)
         if t <= p.last_checked or t < p.entry_time or t >= p.end:
@@ -124,9 +128,13 @@ def walk(p: Position, bars: pd.DataFrame) -> bool:
         if p.target is not None and b.low <= p.target:
             p.exit_time, p.exit_price, p.exit_reason = t + MINUTE, p.target, "TARGET"
             return True
+        last_close = float(b.close)
         if t == p.end - MINUTE:
-            p.exit_time, p.exit_price, p.exit_reason = p.end, float(b.close), "TIME"
+            p.exit_time, p.exit_price, p.exit_reason = p.end, last_close, "TIME"
             return True
+    if day_complete and last_close is not None:
+        p.exit_time, p.exit_price, p.exit_reason = p.end, last_close, "TIME"
+        return True
     return False
 
 
@@ -140,6 +148,17 @@ def settle(p: Position, funding_rates: list[float] = ()) -> dict:
     pnl = gross - fees + funding
     risk = (p.stop - p.entry) * qty
     return dict(gross=gross, fees=fees, funding=funding, pnl=pnl, risk=risk, r=pnl / risk if risk > 0 else None)
+
+
+def first_trade(client, symbol: str, day: int, now: float):
+    """(bar time, close) of the first TRADED minute in [00:00, 00:15) UTC; "wait" while that window
+    is still open and nothing has traded; None once it has closed with no trade. REST serves no
+    candle for a no-trade minute at the start of a window, so the first row IS the first trade."""
+    rows = client.candles(symbol, "1m", day, day + FIRST_TRADE_WINDOW - MINUTE, drop_forming=True)
+    rows = sorted((x for x in rows if day <= int(x["time"]) < day + FIRST_TRADE_WINDOW), key=lambda x: int(x["time"]))
+    if rows:
+        return int(rows[0]["time"]), float(rows[0]["close"])
+    return "wait" if now < day + FIRST_TRADE_WINDOW + MINUTE else None
 
 
 # ============================================================ I/O
@@ -214,6 +233,8 @@ class FadeRunner:
         self._pool = await asyncpg.create_pool(min_size=1, max_size=3, **connect_kwargs(self.database_url))
         async with self._pool.acquire() as con:
             await con.execute(SCHEMA)
+            from live import fade_learning
+            await fade_learning.ensure_schema(con)
         self.ready = True
         log.info("fade paper runner started; accounts %s", list(ACCOUNTS))
         return True
@@ -255,6 +276,8 @@ class FadeRunner:
                 else:
                     await self._enter(con, day)
             await self._monitor(con, now)
+            from live import fade_learning                # records, labels, grades; never trades
+            await fade_learning.step(self, con, now)
             await con.execute(
                 "INSERT INTO fade_heartbeat (id, at, detail) VALUES (1, now(), $1) "
                 "ON CONFLICT (id) DO UPDATE SET at = now(), detail = EXCLUDED.detail",
@@ -280,7 +303,7 @@ class FadeRunner:
         cv = await asyncio.to_thread(self._universe)
 
         def daily(sym):
-            rows = self.client.candles(sym, "1d", day - (ATR_DAYS + 6) * DAY, day - DAY, drop_forming=False)
+            rows = self.client.candles(sym, "1d", day - 40 * DAY, day - DAY, drop_forming=False)  # 30-day volume base
             return pd.DataFrame(rows, columns=["time", "open", "high", "low", "close", "volume"]).astype(float) \
                 if rows else pd.DataFrame(columns=["time", "open", "high", "low", "close", "volume"])
 
@@ -291,18 +314,34 @@ class FadeRunner:
                 d["time"] = d.time.astype("int64")
                 data[sym] = d
         r = readings(data, cv, day)
+        self._day_cache = (day, data, cv, r)            # for live/fade_learning.record
         pk = picks(r)
         if pk.empty:
             await con.execute("INSERT INTO fade_days (day, status, detail) VALUES ($1,'NO_PICKS',$2) "
                               "ON CONFLICT DO NOTHING", _ts(day), json.dumps({"coins": len(r)}))
             return
         entered = []
+        firsts = {}
+        for p in pk.itertuples():
+            f = await asyncio.to_thread(first_trade, self.client, p.symbol, day, time.time())
+            if f == "wait":
+                return                                   # its first minute is not served yet: next tick
+            firsts[p.symbol] = f
         for rank, p in enumerate(pk.itertuples(), 1):
-            first = await asyncio.to_thread(self.client.candles, p.symbol, "1m", day, day, drop_forming=False)
-            first = [x for x in first if int(x["time"]) == day]
-            if not first:
-                return                                   # the 00:00 minute is not served yet: next tick
-            entry = float(first[0]["close"])
+            if firsts[p.symbol] is None:
+                # no trade at all in the first 15 minutes: nothing to fill against
+                for account in ACCOUNTS:
+                    await con.execute(
+                        """INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp,
+                           entry_time, entry_price, stop_price, contracts, contract_value, equity_before, status,
+                           skip_reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$2,0,0,0,$8,$9,'SKIPPED',$10)
+                           ON CONFLICT (account, day, symbol) DO NOTHING""",
+                        account, _ts(day), p.symbol, rank, float(p.prev_change), float(p.prev_turnover),
+                        float(p.atrp), cv[p.symbol], await self._equity(con, account),
+                        "no trade in the first 15 minutes")
+                entered.append(dict(symbol=p.symbol, change=round(float(p.prev_change), 4), skipped="no trade"))
+                continue
+            entry_t, entry = firsts[p.symbol]
             dist = K_STOP * float(p.atrp)
             stop = entry * (1 + dist)
             for account, tp in ACCOUNTS.items():
@@ -317,7 +356,7 @@ class FadeRunner:
                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$8)
                        ON CONFLICT (account, day, symbol) DO NOTHING""",
                     account, _ts(day), p.symbol, rank, float(p.prev_change), float(p.prev_turnover), float(p.atrp),
-                    _ts(day), entry, stop, target, n, cv[p.symbol], eq, status, why)
+                    _ts(entry_t), entry, stop, target, n, cv[p.symbol], eq, status, why)
             entered.append(dict(symbol=p.symbol, change=round(float(p.prev_change), 4), entry=entry,
                                 stop=round(stop, 8), atrp=round(float(p.atrp), 4)))
         await con.execute("INSERT INTO fade_days (day, status, detail) VALUES ($1,'ENTERED',$2) "
@@ -364,12 +403,20 @@ class FadeRunner:
                          target=r["target_price"], contracts=r["contracts"], cv=r["contract_value"],
                          last_checked=int(r["last_checked"].timestamp()))
             bars = bars_by_sym.get(p.symbol)
-            done = walk(p, bars) if bars is not None and len(bars) else False
-            if not done and now >= p.end + HOUR:
-                # the day ended and no candle closes it (halt / delisting): close at the last price seen
-                last = bars.close.iloc[-1] if bars is not None and len(bars) else p.entry
-                p.exit_time, p.exit_price, p.exit_reason = p.end, float(last), "NO_DATA"
-                done = True
+            done = walk(p, bars, day_complete=now >= p.end + 2 * MINUTE) if bars is not None and len(bars) else False
+            if not done and now >= p.end + 2 * MINUTE:
+                # The day is over. `bars` start AT last_checked, so the last traded minute is in it
+                # even when walk() had nothing new to read: close there (a thin coin's last minutes
+                # may have no candle at all).
+                prior = bars[bars.time < p.end] if bars is not None and len(bars) else None
+                if prior is not None and len(prior):
+                    p.exit_time, p.exit_reason = p.end, "TIME"
+                    p.exit_price = float(prior.sort_values("time").close.iloc[-1])
+                    done = True
+                elif now >= p.end + HOUR:
+                    # no candle at all (halt / delisting): close at the entry, recorded as such
+                    p.exit_time, p.exit_price, p.exit_reason = p.end, p.entry, "NO_DATA"
+                    done = True
             if done:
                 fr = await asyncio.to_thread(self._funding, p)
                 m = settle(p, fr)

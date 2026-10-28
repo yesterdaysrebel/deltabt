@@ -158,3 +158,64 @@ def test_health_has_the_shape_the_report_reads():
     r.ready, r.last_loop_at = True, time.time()
     h = r.health()
     assert h["status"] == "healthy" and h["ready"] is True and all(c["ok"] for c in h["checks"])
+
+
+def test_a_thin_coin_with_no_last_minute_exits_at_its_last_trade_once_the_day_is_over():
+    p = _pos()
+    bars = _bars([(D0 + 60, 101, 99, 100), (D0 + 3600, 101, 97, 98)])        # no 23:59 candle
+    assert not F.walk(p, bars), "the day is not known to be over"
+    q = _pos()
+    assert F.walk(q, bars, day_complete=True)
+    assert (q.exit_reason, q.exit_price, q.exit_time) == ("TIME", 98.0, D0 + DAY)
+
+
+def test_learning_readings_from_daily_book_and_flow():
+    from live import fade_learning as FL
+    d = _daily(np.r_[np.full(39, 100.0), 130.0], opens=np.r_[np.full(39, 100.0), 100.0], start=D0 - 40 * DAY)
+    d.loc[d.index[-1], "volume"] = 3_000_000.0
+    x = FL.daily_extras(d, D0)
+    last = d.iloc[-1]
+    assert x["wick"] == pytest.approx((last.high - last.close) / (last.high - last.low))
+    assert x["prev2_change"] == pytest.approx(0.0)
+    assert x["abnormal_vol"] == pytest.approx(3.0 * (last.high + last.low + last.close) / 3 / d.iloc[-2][["high", "low", "close"]].mean(), rel=1e-6)
+    book = {"buy": [{"price": "99.9", "size": 10}, {"price": "90", "size": 999}],
+            "sell": [{"price": "100.1", "size": 30}]}
+    b = FL.book_readings(book, cv=1.0)
+    assert b["spread_bps"] == pytest.approx(20.0)
+    assert b["book_imbalance"] == pytest.approx((999 - 3003) / (999 + 3003))     # the 90 bid is >1% away
+    f = FL.flow_readings([{"size": 1, "price": "10", "buyer_role": "taker"},
+                          {"size": 3, "price": "10", "buyer_role": "maker"}], cv=1.0)
+    assert f["taker_buy_share"] == pytest.approx(0.25)
+    assert FL._result({"success": True, "result": {"buy": []}}) == {"buy": []}
+
+
+def test_the_weekly_grade_compares_model_rule_and_random_picks():
+    from live import fade_learning as FL
+    rng = np.random.default_rng(0)
+    rows = []
+    for d in range(42):
+        day = D0 + d * DAY
+        for rank in range(1, 16):
+            sig = rng.normal()
+            win = sig > 0
+            rows.append({"day": day, "symbol": f"C{rank}", "rank": rank,
+                         "r_a": 0.6 if win else -0.5, "r_quick": 0.2 if win else -0.6,
+                         **{f: np.nan for f in FL.FEATURES if f != "rank"}, "prev_change": sig})
+    df = pd.DataFrame(rows)
+    res = FL.grade_week(df, D0 + 35 * DAY)
+    assert res["n_test"] == 7 * 15 and res["days"] == 7
+    assert res["model_a"] > res["rule_a"] and res["random_p_a"] < 0.05, "an informative reading is found"
+    few = FL.grade_week(df[df.day < D0 + 5 * DAY], D0 + 3 * DAY)
+    assert few["summary"].startswith("not graded")
+
+
+def test_entry_is_the_first_traded_minute_within_15_minutes():
+    class C:
+        def __init__(self, rows): self.rows = rows
+        def candles(self, s, res, a, b, drop_forming=True): return [x for x in self.rows if a <= x["time"] <= b]
+    thin = C([{"time": D0 + 120, "close": "1.5"}, {"time": D0 + 180, "close": "1.6"}])
+    assert F.first_trade(thin, "X", D0, D0 + 300) == (D0 + 120, 1.5), "00:00 had no trade: 00:02 is the entry"
+    assert F.first_trade(C([]), "X", D0, D0 + 300) == "wait"
+    assert F.first_trade(C([]), "X", D0, D0 + 20 * 60) is None, "no trade at all in 15 minutes: skipped"
+    late = C([{"time": D0 + 16 * 60, "close": "2"}])
+    assert F.first_trade(late, "X", D0, D0 + 20 * 60) is None

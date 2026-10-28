@@ -660,6 +660,16 @@ def fade_lines(f: dict) -> list[str]:
     if f.get("open"):
         out += ["", "**Open now:** " + ", ".join(f"{FADE_NAMES.get(o['account'], o['account'])} {o['symbol']}"
                                                   for o in f["open"])]
+    lr = f.get("learning")
+    if lr:
+        out += ["", "**Learning (records every eligible gainer, traded or not; never chooses trades):** "
+                f"{lr['candidates']} candidates over {lr['days']} days, {lr['labelled']} labelled"
+                + (f" — as if all shorted: A {lr['mean_r_a']:+.3f}R, quick {lr['mean_r_quick']:+.3f}R each"
+                   if lr.get("mean_r_a") is not None else "") + "."]
+        g = lr.get("grade")
+        out.append(f"Last weekly grade (week of {g['week']}): {g['summary']}" if g else
+                   "No weekly grade yet (needs ~4 weeks of labelled candidates; rules in "
+                   "docs/fade_model_switch_on_rule.md).")
     out += ["", "*Paper only: no order is ever sent. Rule A passed its sealed Aug–Oct 2026 test but was "
                 "break-even on 2025; the quick version was found by a 60-cell scan. Live results here are "
                 "the first data neither was built on.*"]

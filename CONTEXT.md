@@ -155,6 +155,19 @@ tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-back
 separate step:** `aws_ebs_volume.pgdata` has `prevent_destroy` and tf_guard refuses a bare destroy (needs an
 `infrastructure` dispatch with `allow_replace`, plus `Replaces-Host: metals`); `live.tf` and `monitor.yml` must lose
 `metals` in the same commit (`test_the_three_tables_name_the_same_stacks`).
+**Fade learning (owner 10-28 "how will model training work here?" → "approved"; `live/fade_learning.py`, rules
+fixed first in `docs/fade_model_switch_on_rule.md`).** After the morning entries the runner records every eligible
+gainer (top 20 by D−1 change, traded or not) in `fade_candidates` with readings known at entry — the research daily
+ones plus, new, the order book (spread, ±1% USD depth, imbalance) and the last 50 trades (aggressive-buyer share) —
+labels each a day later as if shorted under both exits (size-free R before funding), and grades on Mondays: the
+model's own daily top 2 vs the rule's top 2 vs random 2. It never chooses a trade; eligibility needs 4 pooled
+qualifying weeks beating both at p ≤ 0.05, and the owner decides. Expect a FAIL on the daily readings alone (764
+filters, rank corr −0.23); the book/flow readings are the only new information (~2–3 months to a fair verdict).
+TRAPS found while building it: `DeltaClient._get` returns the whole envelope (`{"success","result"}`); a thin coin
+can have NO trade in the 00:00 minute (REST serves no candle for leading no-trade minutes) — the runner now enters
+at the first traded minute within 15 min and skips a coin with none (it would otherwise have waited for a candle
+that never comes and MISSED the day); a thin coin's last minutes may have no candle, so the 24 h exit closes at the
+last traded minute once the day is over; the weekly grade drops all-empty readings (same trap as #141).
 
 **LIVE SINCE 2026-10-19 14:31 UTC (8:01 PM IST): `SPEC:flip_st_short@5/1`, watch-only, on the replaced host
 `i-0aac6d85d802033bf` (EIP 13.207.73.230 kept, pg volume re-attached, 11 old-rule trades and 1,402 old-rule signals
