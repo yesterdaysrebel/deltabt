@@ -391,7 +391,14 @@ fetch to the settlement time and cut the daily rows there. Added 2,053 liquid co
 good shorts on their pump days). 2026 unchanged (+0.078R, PASS). Why 2025 failed (descriptive): winners smaller
 (+0.35R vs +0.54R) at the same 57% win rate; 2025 picks were smaller gainers (median +15% vs +22%; 31% under +10%);
 no gain size works in both years (>40%: +0.21R in 2025, −0.02R in 2026); a 3-month losing run each summer
-(2025 Jul–Sep −15.7R, 2026 Jun–Aug −12R). — do not re-test without new information
+(2025 Jul–Sep −15.7R, 2026 Jun–Aug −12R).
+**"Can the win rate be raised on 2026?" (owner 10-28) — yes on 2026, and it does not carry.** 764 filters (single +
+pairs of entry-time readings: D−1 change/turnover/ATR/wick, D−2 change, funding at 00:00, weekday), each keeping ≥ 300
+trades. Best 2026 win rate 64% (+0.089R) → same filter on 2025 55%, −0.024R; best 2026 profit +0.109R → 2025 −0.012R;
+the 50 most profitable on 2026 average −0.000R on 2025 (no filter +0.006R). Rank correlation of a filter's 2026 vs
+2025 profit **−0.23**: the better it looked on 2026, the worse on 2025. TRAP caught in this search: "price below the
+open at 04:00" used as a filter on a 00:00 entry is LOOK-AHEAD (picks trades already winning; showed 70–76% win
+rates). The pre-registered filter b was correct (it moves the entry to 04:00). — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
