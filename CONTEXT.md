@@ -155,11 +155,11 @@ tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-back
 `universe` "fade"). 10-28 itself is MISSED (started past the 3 h window); first entries 10-29 00:01:30 UTC. Health is
 on port **8000**. **Metals scrapped 10-28:** `deltabt.service` stopped + disabled 12:46 UTC, then the stack removed
 from `live.tf` + `monitor.yml` (infra/destroy-metals). Its pg volume is KEPT, still managed, detached: `db_host.tf`
-`retired_pg_volumes` (OpenTofu `removed` cannot target one for_each key). The destroy needs an `infrastructure`
-dispatch with `allow_replace` (the push apply is refused by tf_guard: it destroys `aws_instance`/`aws_eip`/log group).
-Afterwards: delete GitHub vars `BOT_INSTANCE_ID_METALS`/`SSM_MONITOR_DOCUMENT_METALS`, owner drops EIP
-13.205.134.107 from the read-only key's allowlist; secret `deltabt-paper/live/metals/venue-credentials` is not
-Terraform's (delete by hand).
+`retired_pg_volumes` (OpenTofu `removed` cannot target one for_each key). DESTROYED 10-28 13:25 UTC
+(#144 + `infrastructure` dispatch with `allow_replace`, run 40695776673 — this repo's apply has NO approval gate, the
+dispatch applies at once): instance terminated, EIP released, GitHub vars deleted, owner removed 13.205.134.107 from
+the key's allowlist. Left: secret `deltabt-paper/live/metals/venue-credentials` (not Terraform's; delete by hand).
+The host keeps Name tag `deltabt-paper-bot` (owner: "keep it as is") — workflows find hosts by that tag.
 **Fade learning (owner 10-28 "how will model training work here?" → "approved"; `live/fade_learning.py`, rules
 fixed first in `docs/fade_model_switch_on_rule.md`).** After the morning entries the runner records every eligible
 gainer (top 20 by D−1 change, traded or not) in `fade_candidates` with readings known at entry — the research daily
@@ -375,7 +375,15 @@ reasoning about what is on master.**
 
 ## What is CLOSED, and why
 
-**Selling daily BTC/ETH options — BUILD done, TEST sealed (owner 10-28 "option 2"; pre-registered
+**OPTION-SELLING PAPER ACCOUNT (owner 10-28 "let's start options now" → "approved"): `live/options_paper.py`**, in
+the fade runner's loop on the bot host. 12:00 UTC daily: one BTC + one ETH 1% strangle, 1 contract/leg, sold at the
+REAL best bid (mark/bid/ask/size stored), settled at Delta's `settlement_price` of the expired option (= payout per
+unit; Delta settles on its index's 30-min average — 10-28: 81,400.67 vs 30-min index avg 81,397, perp 1h close
+81,288). $250 simulated; tables `option_legs` / `option_days`; report section "Option-selling paper account". Read
+per `docs/options_paper_read.md` (~120 strangles ≈ 60 days before the mean is 2 SE from zero; 2026 SD 134 bps).
+Live snapshot 10-28 21:00 IST: bids 99–100% of mark, 7k–13k contracts at the best bid.
+
+**Selling daily BTC/ETH options — BUILD done, TEST PASSED (owner 10-28 "option 2"; pre-registered
 `docs/option_selling_prereg.md` before any option price was fetched; `scripts/option_selling_lab.py`,
 `out/options/build.txt`).** Delta still serves `MARK:` 1h history for expired daily options (12:00 UTC expiry; BTC
 0.001, ETH 0.01 contracts; fee min(0.01% notional, 3.5% premium)). 13,020 entry marks fetched (2025-01-15 → 2026-10-27);

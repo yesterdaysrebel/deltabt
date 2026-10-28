@@ -549,7 +549,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     # signal bot's: its report is its two accounts (db_probe.collect_fade).
     if isinstance(db.get("fade"), dict):
         fade = db["fade"]
-        problems += fade_problems(fade, now)
+        problems += fade_problems(fade, now) + options_problems(db.get("options"), now)
         out = [f"# Gainer-fade paper accounts · {ist(now, with_day=True)} IST", ""]
         if problems:
             out.append("**⚠️ Needs your attention:**")
@@ -561,13 +561,14 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
             out += [f"*Note:* {n}" for n in log_notes]
         out.append("")
         out += fade_lines(fade)
+        out += options_lines(db.get("options"))
         accts = fade.get("accounts") or {}
         facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
                  "verdict": "clear" if not problems else "attention", "problems": problems,
                  "closed": sum(a.get("closed", 0) for a in accts.values()),
                  "total_r": round(sum(a.get("r", 0) for a in accts.values()), 2),
                  "total_pnl": round(sum(a.get("pnl", 0) for a in accts.values()), 2),
-                 "fade": accts, "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
+                 "fade": accts, "options": db.get("options"), "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
         return "\n".join(out) + "\n", facts, problems
 
     day_n = (now - started).days + 1 if started else None
@@ -673,6 +674,52 @@ def fade_lines(f: dict) -> list[str]:
     out += ["", "*Paper only: no order is ever sent. Rule A passed its sealed Aug–Oct 2026 test but was "
                 "break-even on 2025; the quick version was found by a 60-cell scan. Live results here are "
                 "the first data neither was built on.*"]
+    return out
+
+
+def options_problems(o: dict | None, now: dt.datetime) -> list[str]:
+    """What needs the owner on the option-selling paper account (live/options_paper.py)."""
+    if not o:
+        return []
+    if o.get("error"):
+        return [f"the option figures could not be read ({o['error']})"]
+    out = []
+    d = (o.get("days") or [None])[0]
+    if d and d.get("status") == "MISSED":
+        out.append(f"the option sale for expiry {d['expiry']} was MISSED (none by 6:00 PM IST)")
+    late = [x["symbol"] for x in o.get("open") or []
+            if (t := parse_time(x.get("expiry"))) and (now - t).total_seconds() > 3 * 3600]
+    if late:
+        out.append("option legs past expiry and not settled after 3 hours: " + ", ".join(late))
+    return out
+
+
+def options_lines(o: dict | None) -> list[str]:
+    out = ["", "## Option-selling paper account ($250; one BTC + one ETH strangle a day, 1% out)", ""]
+    if not o:
+        return out + ["Not started yet (first sale at 5:30 PM IST)."]
+    if o.get("error"):
+        return out + [f"Figures unavailable ({o['error']})."]
+    n, w = o.get("strangles", 0), o.get("wins", 0)
+    if n:
+        out += table(["Equity", "Strangles", "Won / lost", "Win rate", "Avg per strangle", "Worst", "P&L"],
+                     [[f"${o['equity']:,.2f}", str(n), f"{w} / {n - w}", f"{100 * w / n:.0f}%",
+                       f"{o['mean_bps'] / 100:+.2f}% of size", money(o.get("worst")), money(o.get("pnl"))]],
+                     right=set(range(7)))
+    else:
+        out.append("No strangle settled yet.")
+    if o.get("last"):
+        out += ["", f"**Last settled ({o['last'][0]['expiry']}):** "
+                + ", ".join(f"{x['underlying']} {money(x['pnl'])}" for x in o["last"])]
+    if o.get("open"):
+        out += ["", "**Open now:** " + ", ".join(f"{x['symbol']} (sold at {x['bid']})" for x in o["open"])]
+    if o.get("legs_sold"):
+        fill = (f"sold at {100 * o['bid_over_mark']:.0f}% of mark on average (backtest assumed 90%)"
+                if o.get("bid_over_mark") is not None else "no mark recorded")
+        out += ["", f"**Fills:** {o['legs_sold']} legs {fill}"
+                + (f"; {o['skipped']} legs skipped (no strike or no bid)" if o.get("skipped") else "") + "."]
+    out += ["", "*Paper only: no order is ever sent. Passed its sealed 2026 backtest (76% of strangles won, "
+                "+0.24% of size each); losses are uncapped — the worst 2026 strangle lost 15.8% of size.*"]
     return out
 
 

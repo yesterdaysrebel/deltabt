@@ -231,6 +231,43 @@ async def collect_fade(con, now=None) -> dict:
     return out
 
 
+async def collect_options(con) -> dict | None:
+    """The option-selling paper account (live/options_paper.py, owner 2026-10-28), or None
+    before its tables exist. A strangle is one underlying's put + call for one expiry; it
+    counts once both legs have settled (a skipped leg leaves a one-legged strangle)."""
+    try:
+        if not await con.fetchval("SELECT to_regclass('option_legs') IS NOT NULL"):
+            return None
+        s = await con.fetch(
+            "SELECT expiry, underlying, sum(pnl) pnl, sum(notional) notional FROM option_legs "
+            "WHERE status <> 'SKIPPED' GROUP BY expiry, underlying "
+            "HAVING bool_and(status = 'SETTLED') ORDER BY expiry, underlying")
+        fills = await con.fetchrow(
+            "SELECT count(*) n, avg(best_bid / NULLIF(mark, 0)) bid_mark, "
+            "avg((best_ask - best_bid) / NULLIF(mark, 0)) spread, min(bid_size) min_bid_size "
+            "FROM option_legs WHERE status <> 'SKIPPED'")
+        pnl = sum(float(r["pnl"]) for r in s)
+        last = s[-1]["expiry"] if s else None
+        return {
+            "strangles": len(s), "wins": sum(1 for r in s if float(r["pnl"]) > 0),
+            "pnl": round(pnl, 2), "equity": round(250.0 + pnl, 2),
+            "mean_bps": round(1e4 * sum(float(r["pnl"]) / float(r["notional"]) for r in s) / len(s), 1) if s else None,
+            "worst": round(min(float(r["pnl"]) for r in s), 2) if s else None,
+            "legs_sold": int(fills["n"]),
+            "bid_over_mark": None if fills["bid_mark"] is None else round(float(fills["bid_mark"]), 3),
+            "spread_over_mark": None if fills["spread"] is None else round(float(fills["spread"]), 3),
+            "skipped": int(await con.fetchval("SELECT count(*) FROM option_legs WHERE status = 'SKIPPED'")),
+            "last": [{"expiry": r["expiry"].strftime("%Y-%m-%d"), "underlying": r["underlying"],
+                      "pnl": round(float(r["pnl"]), 2)} for r in s if r["expiry"] == last],
+            "open": [{"symbol": r["symbol"], "bid": r["best_bid"], "expiry": r["expiry"].isoformat()}
+                     for r in await con.fetch("SELECT symbol, best_bid, expiry FROM option_legs "
+                                              "WHERE status = 'OPEN' ORDER BY symbol")],
+            "days": [{"expiry": r["expiry"].strftime("%Y-%m-%d"), "status": r["status"]}
+                     for r in await con.fetch("SELECT expiry, status FROM option_days ORDER BY expiry DESC LIMIT 2")]}
+    except Exception as exc:                    # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"[:200]}
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
@@ -238,7 +275,7 @@ async def collect(con) -> dict:
     database. Every query here is SELECT.
     """
     if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "fade":
-        return {"fade": await collect_fade(con)}
+        return {"fade": await collect_fade(con), "options": await collect_options(con)}
     out = {t: await con.fetchval(f"select count(*) from {t}") for t in COUNTS}
 
     # WHOSE NUMBERS ARE THESE?
