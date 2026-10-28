@@ -369,7 +369,18 @@ loss (−0.40 vs −0.53R) bought with fewer and smaller wins. Exploratory (both
 untuned. Same lesson as every exit test in this repo: the exit is not the lever.
 **Trailing stop on A (owner 10-28) — NO HELP.** Paired on the same 576 trades: the old trail bot's 0.5R behind the
 best price from +0.5R → −0.011R ±0.016 (dev −0.017, hold-out +0.003; win rate 57 → 61% but average win 0.54 →
-0.41R); a wider 1R from +1R → −0.008R ±0.006 (touches 16 trades). Rule A keeps its plain stop + 24 h exit. — do not re-test without new information
+0.41R); a wider 1R from +1R → −0.008R ±0.006 (touches 16 trades). Rule A keeps its plain stop + 24 h exit.
+**2025 REPLICATION — FAIL; all four squeeze filters REJECTED (2026-10-28, pre-registered
+`docs/gainer_fade_2025_prereg.md` before any 2025 data was fetched; `scripts/gainer_fade_2025_lab.py`,
+`out/gainer_fade/judge_2025.txt`).** The new code reproduces A's 572 trades of 2026 exactly (max R diff 4e-16).
+2025 (pick days 01-15 → 12-31, 150 coins listed today): A **+0.009R ±0.022** (689 trades), win 57%, avg win +0.35R
+vs avg loss −0.43R, PF 1.05; random coins under the same stop +0.001R, share ≥ A 0.21 → FAIL; $250 → $268 with a
+33% drawdown. 2026 for comparison: +0.076R, random beats it 0 times. **Funding is a slight COST, not the
+tailwind assumed:** 2025 −0.011R, 2026 −0.007R per trade. Filters (vs A, 2025 / 2026): a closed-near-high −0.013 /
+−0.029; b 04:00 confirmation −0.001 / −0.068; c skip negative funding +0.022 (p 0.095) / −0.047; d skip two-day runs
+−0.001 / −0.074 — none adopted. Reading: "top gainers fall more than other coins next day" was a 2026 effect; across
+two years the fade is about break-even. Per the pre-registration it does NOT go to paper unless the owner
+re-decides. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
