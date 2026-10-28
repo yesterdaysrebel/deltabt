@@ -411,7 +411,15 @@ years; pooled p 0.48–0.96. Same shape as every filter before it: what helps on
 years.** Short at 00:00 as A; at a check time, close if not in profit, else hold (stop as A). Mean R 2025 / 2026:
 A +0.006 / +0.078; check 1 h −0.007 / +0.047; 2 h −0.019 / +0.054; 4 h (9:30 IST) −0.015 / +0.047; 8 h +0.002 /
 +0.067. Win rate falls to 36–47% (cut trades are small losses) and the trades losing at the check that would have
-recovered are thrown away. Same lesson as the ladder: early exits cost more than they save. — do not re-test without new information
+recovered are thrown away. Same lesson as the ladder: early exits cost more than they save.
+**WIN-RATE SCAN (owner 10-28: "park variant A; find 70–80% win rate in both years, open to anything").** A is PARKED.
+`scripts/winrate_scan.py` (`out/gainer_fade/winrate_scan.csv`): stop {1,2,3}×ATR14% × take-profit {0.1…1.0}× stop,
+24 h max, on fade / random short / momentum (long top-2 gainers) / random long, both years. Small targets reach 70–89%
+wins on ANY entry including random — win rate alone means nothing; random longs lose in every cell. Only cell meeting
+win 70–80% + net R > 0 + above random, in BOTH years: **fade, stop 2×ATR (~20–22% above), take-profit 0.2× stop
+(~4–4.5% drop)** — 2025: 72% win, +0.010R ±0.013 vs random +0.001 (p 0.18, NOT distinguishable), $250 → $281, worst
+drop 15%; 2026: 79% win, +0.032R ±0.015 (p 0.024), $250 → $356, worst drop 20%. One loss ≈ 2.3–2.9 wins. 1 of 60
+cells, both years already seen; it is the same fade effect reshaped, not a new edge. Forward data is the only judge. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
