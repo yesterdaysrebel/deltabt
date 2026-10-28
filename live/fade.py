@@ -13,6 +13,8 @@ gainer_fade_stop_lab.py, gainer_fade_2025_lab.py). Two differences, both deliber
 every row: the entry price is the CLOSE of the first traded minute from 00:00 UTC (within 15 min;
 a coin with no trade by then is skipped), not the daily open; and only coins Delta lists as tradable now are eligible.
 
+The same loop also runs the option-selling paper account (live/options_paper.py, owner 2026-10-28).
+
 NO ORDER IS EVER SENT. Nothing here holds keys or imports an order path; positions live in the
 `fade_positions` table only.
 """
@@ -233,8 +235,9 @@ class FadeRunner:
         self._pool = await asyncpg.create_pool(min_size=1, max_size=3, **connect_kwargs(self.database_url))
         async with self._pool.acquire() as con:
             await con.execute(SCHEMA)
-            from live import fade_learning
+            from live import fade_learning, options_paper
             await fade_learning.ensure_schema(con)
+            await options_paper.ensure_schema(con)
         self.ready = True
         log.info("fade paper runner started; accounts %s", list(ACCOUNTS))
         return True
@@ -278,6 +281,8 @@ class FadeRunner:
             await self._monitor(con, now)
             from live import fade_learning                # records and labels; never trades or grades
             await fade_learning.step(self, con, now)
+            from live import options_paper                # the option-selling paper account; never trades
+            await options_paper.step(self, con, now)
             await con.execute(
                 "INSERT INTO fade_heartbeat (id, at, detail) VALUES (1, now(), $1) "
                 "ON CONFLICT (id) DO UPDATE SET at = now(), detail = EXCLUDED.detail",

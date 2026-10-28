@@ -1,0 +1,5 @@
+TEST 2026 (opened once), m = 1%: 600 strangles over 300 days | win 76% | mean +24.35 bps of notional (one-sided p 0.000) | avg win +74.56 bps, avg loss -137.60 bps, worst -1577.0 bps
+    BTC: 300 | win 78% | mean +21.31 bps | $+47.07 total for one strangle a day | puts +10.32 calls +11.00 bps | worst $-4.79
+    ETH: 300 | win 75% | mean +27.39 bps | $+18.20 total for one strangle a day | puts +14.65 calls +12.74 bps | worst $-3.03
+PASS conditions: win >= 70% True | mean > 0 & p <= 0.05 True | BTC and ETH each > 0 True => PASS
+$250 account, one BTC + one ETH strangle a day: -> $315, lowest $244, worst day $-7.01, worst week $-13.85
