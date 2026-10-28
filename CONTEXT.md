@@ -138,6 +138,24 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
+**GAINER-FADE PAPER RUNNER (owner 2026-10-28: "get variant A running as paper; scrap crypto and metals bot";
+"both, side by side"; "2%"; "keep a backup").** `live/fade.py`, run mode `DELTABOT_UNIVERSE=fade` (live_sizing
+`universe`, an SSM parameter — switching it is NOT a host replacement; the variant string stays). Once a UTC day
+(00:01:30) it shorts the two previous-UTC-day top gainers (research definitions; parity test vs the lab) on two
+simulated $250 accounts at 2% risk / 5x cap: **A** (stop 2×ATR14%, exit at the day's last 1m close) and **QUICK**
+(same + take-profit 0.2× the stop distance). Entry = close of the 00:00 minute (the lab used the daily open).
+Every 30 s it walks closed 1m candles (stop first, `ltp_close` fill), settles fees + real funding; tables
+`fade_positions` / `fade_days` / `fade_heartbeat`; own FastAPI `/healthz` `/readyz` in the brief-report shape; an
+"alive" log line every 5 min for the CloudWatch silence alarm. `db_probe.collect` returns ONLY `{"fade": …}` in
+fade mode (the inherited signal-bot tables are stale); `brief_report` renders "Gainer-fade paper accounts".
+`_roll.yml` treats `fade` as unbound. Smoke-tested locally on live Delta data against a throwaway Postgres
+(10-28: AIN + EVAA; QUICK hit both targets, A stopped EVAA). NO ORDER PATH. **Backups before scrapping:**
+pg_dump files on each pg volume + snapshots `snap-01e227faede28a963` (bot) and `snap-02cb8add4ffb7daa3` (metals),
+tag `Role=keep-before-fade` (the host's retention only deletes `Role=pgdata-backup`). **Metals destroy is a
+separate step:** `aws_ebs_volume.pgdata` has `prevent_destroy` and tf_guard refuses a bare destroy (needs an
+`infrastructure` dispatch with `allow_replace`, plus `Replaces-Host: metals`); `live.tf` and `monitor.yml` must lose
+`metals` in the same commit (`test_the_three_tables_name_the_same_stacks`).
+
 **LIVE SINCE 2026-10-19 14:31 UTC (8:01 PM IST): `SPEC:flip_st_short@5/1`, watch-only, on the replaced host
 `i-0aac6d85d802033bf` (EIP 13.207.73.230 kept, pg volume re-attached, 11 old-rule trades and 1,402 old-rule signals
 intact).** GOTCHA: a host replacement leaves `deltabt.service` ENABLED BUT NOT STARTED (user_data only enables it; the

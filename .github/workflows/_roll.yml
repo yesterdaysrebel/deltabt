@@ -336,7 +336,7 @@ jobs:
             # top_gainers, metals) runs unbound; registering an experiment
             # would read as drift the next day and the CLI refuses it
             # (2026-10-20: the metals stack's first roll failed on this step).
-            if printf '%s' "$sizing" | grep -qE '"universe":"(top_gainers|metals)"'; then
+            if printf '%s' "$sizing" | grep -qE '"universe":"(top_gainers|metals|fade)"'; then
               echo "id=none" >> "$GITHUB_OUTPUT"
               echo "::notice::${{ matrix.stack }} re-picks its universe daily and runs without an experiment"
               exit 0

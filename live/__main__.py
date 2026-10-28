@@ -93,6 +93,16 @@ async def main() -> int:
     if dry_run:
         os.environ["DELTABOT_EXECUTION_PROFILE"] = "paper"
 
+    # THE GAINER-FADE PAPER RUNNER (owner, 2026-10-28) replaces the signal bot on its stack: a
+    # once-a-day rule with its own tables and no order path at all (live/fade.py). Nothing
+    # below -- venue universe, products, experiment, broker -- applies to it.
+    if universe.mode() == "fade":
+        from live.fade import FadeRunner
+        from live.fade import create_app as fade_app
+        log.warning("GAINER-FADE PAPER RUNNER: simulated accounts only; no order path exists.")
+        runner = FadeRunner(settings.database_url)
+        return await _serve(runner, settings, app_factory=fade_app)
+
     venue = venue_name()
     client = client_from_env()
     if dry_run:
@@ -262,13 +272,13 @@ def _live_bot(settings, client, venue, symbols, products, strategy, signal_recor
     )
 
 
-async def _serve(bot, settings, stop_at: float | None = None) -> int:
+async def _serve(bot, settings, stop_at: float | None = None, app_factory=None) -> int:
     # The API comes up FIRST and stays up even if the bot refuses to start, so
     # /readyz can report WHY rather than the probe simply timing out. On this
     # bot that matters more: "refused because the circuit breakers are off" is
     # a message somebody needs to read.
     api = uvicorn.Server(uvicorn.Config(
-        create_app(bot), host=settings.api_host, port=settings.api_port,
+        (app_factory or create_app)(bot), host=settings.api_host, port=settings.api_port,
         log_config=None, access_log=False))
     api_task = asyncio.create_task(api.serve(), name="api")
 

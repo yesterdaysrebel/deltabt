@@ -171,12 +171,64 @@ async def collect_learning(con, now=None):
     return json.loads(json.dumps(out, default=str))
 
 
+async def collect_fade(con, now=None) -> dict:
+    """The gainer-fade paper runner's figures (live/fade.py, owner 2026-10-28).
+
+    A fade stack writes none of the signal bot's tables; the old ones it inherits are stale,
+    so collect() reports ONLY this when the container runs DELTABOT_UNIVERSE=fade. Small on
+    purpose: the whole SSM output is capped at 24 KB."""
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    out = {"accounts": {}}
+    try:
+        for r in await con.fetch(
+                "SELECT account, count(*) FILTER (WHERE status = 'CLOSED') n, "
+                "count(*) FILTER (WHERE status = 'CLOSED' AND pnl > 0) wins, "
+                "COALESCE(sum(pnl) FILTER (WHERE status = 'CLOSED'), 0) pnl, "
+                "COALESCE(sum(r) FILTER (WHERE status = 'CLOSED'), 0) r, "
+                "avg(r) FILTER (WHERE status = 'CLOSED' AND pnl > 0) avg_win, "
+                "avg(r) FILTER (WHERE status = 'CLOSED' AND pnl <= 0) avg_loss, "
+                "count(*) FILTER (WHERE status = 'OPEN') open, "
+                "count(*) FILTER (WHERE status = 'SKIPPED') skipped "
+                "FROM fade_positions GROUP BY account ORDER BY account"):
+            out["accounts"][r["account"]] = {
+                "closed": int(r["n"]), "wins": int(r["wins"]), "pnl": round(float(r["pnl"]), 2),
+                "r": round(float(r["r"]), 2), "equity": round(250.0 + float(r["pnl"]), 2),
+                "avg_win_r": None if r["avg_win"] is None else round(float(r["avg_win"]), 2),
+                "avg_loss_r": None if r["avg_loss"] is None else round(float(r["avg_loss"]), 2),
+                "open": int(r["open"]), "skipped": int(r["skipped"])}
+        since = now - _dt.timedelta(hours=36)
+        out["recent"] = [
+            {"account": r["account"], "symbol": r["symbol"], "entry": r["entry_time"].isoformat(),
+             "exit": r["exit_time"].isoformat(), "reason": r["exit_reason"],
+             "r": None if r["r"] is None else round(float(r["r"]), 2), "pnl": round(float(r["pnl"]), 2)}
+            for r in await con.fetch(
+                "SELECT account, symbol, entry_time, exit_time, exit_reason, r, pnl FROM fade_positions "
+                "WHERE status = 'CLOSED' AND exit_time >= $1 ORDER BY exit_time", since)]
+        out["open"] = [
+            {"account": r["account"], "symbol": r["symbol"], "entry": r["entry_time"].isoformat(),
+             "entry_price": r["entry_price"], "stop": r["stop_price"], "target": r["target_price"]}
+            for r in await con.fetch(
+                "SELECT account, symbol, entry_time, entry_price, stop_price, target_price "
+                "FROM fade_positions WHERE status = 'OPEN' ORDER BY entry_time")]
+        out["days"] = [
+            {"day": r["day"].strftime("%Y-%m-%d"), "status": r["status"],
+             "detail": json.loads(r["detail"]) if isinstance(r["detail"], str) else r["detail"]}
+            for r in await con.fetch("SELECT day, status, detail FROM fade_days ORDER BY day DESC LIMIT 3")]
+        hb = await con.fetchval("SELECT at FROM fade_heartbeat WHERE id = 1")
+        out["heartbeat_at"] = hb.isoformat() if hb else None
+    except Exception as exc:                    # noqa: BLE001
+        out["error"] = f"{type(exc).__name__}: {exc}"[:200]
+    return out
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
     Split out from main() so the scoping can be tested against a real
     database. Every query here is SELECT.
     """
+    if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "fade":
+        return {"fade": await collect_fade(con)}
     out = {t: await con.fetchval(f"select count(*) from {t}") for t in COUNTS}
 
     # WHOSE NUMBERS ARE THESE?

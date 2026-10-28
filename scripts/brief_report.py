@@ -545,6 +545,31 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
                     f"the simulator opened {opened.get(sym, 0)} -- the dry run is not holding "
                     f"what a real bot would")
 
+    # THE GAINER-FADE PAPER RUNNER (owner, 2026-10-28) has its own figures and none of the
+    # signal bot's: its report is its two accounts (db_probe.collect_fade).
+    if isinstance(db.get("fade"), dict):
+        fade = db["fade"]
+        problems += fade_problems(fade, now)
+        out = [f"# Gainer-fade paper accounts · {ist(now, with_day=True)} IST", ""]
+        if problems:
+            out.append("**⚠️ Needs your attention:**")
+            out += [f"- {p}" for p in problems]
+        else:
+            out.append("**✅ All normal — nothing needs you.**")
+        if log_notes:
+            out.append("")
+            out += [f"*Note:* {n}" for n in log_notes]
+        out.append("")
+        out += fade_lines(fade)
+        accts = fade.get("accounts") or {}
+        facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
+                 "verdict": "clear" if not problems else "attention", "problems": problems,
+                 "closed": sum(a.get("closed", 0) for a in accts.values()),
+                 "total_r": round(sum(a.get("r", 0) for a in accts.values()), 2),
+                 "total_pnl": round(sum(a.get("pnl", 0) for a in accts.values()), 2),
+                 "fade": accts, "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
+        return "\n".join(out) + "\n", facts, problems
+
     day_n = (now - started).days + 1 if started else None
     title_day = f"day {day_n} of {READ_AT_DAYS}" if day_n else "day ?"
     out = [f"# Dry run journal — {title_day} · {ist(now, with_day=True)} IST", ""]
@@ -583,6 +608,62 @@ SKIP_LABEL = {"daily_cap": "daily cap", "open_position": "already in a trade",
               "loss_limits": "loss limit", "venue_check": "venue check",
               "halt": "market halted", "cooldown": "cooldown", "other": "other",
               "record_only": "record-only coin"}
+
+
+FADE_NAMES = {"A": "A — 24 h hold", "QUICK": "Quick — 4% target"}
+
+
+def fade_problems(f: dict, now: dt.datetime) -> list[str]:
+    """What needs the owner on a gainer-fade stack."""
+    out = []
+    if f.get("error"):
+        out.append(f"the fade figures could not be read ({f['error']})")
+        return out
+    hb = parse_time(f.get("heartbeat_at"))
+    if hb is None or (now - hb).total_seconds() > 15 * 60:
+        out.append("the fade runner has not completed a pass in over 15 minutes")
+    today = now.strftime("%Y-%m-%d")
+    days = {d.get("day"): d.get("status") for d in f.get("days") or []}
+    if days.get(today) == "MISSED":
+        out.append("today's picks were MISSED (no entry by 8:30 AM IST)")
+    elif today not in days and now.hour >= 3:
+        out.append("today's picks have not been made (due at 5:31 AM IST)")
+    return out
+
+
+def fade_lines(f: dict) -> list[str]:
+    out = ["## Gainer-fade paper accounts ($250 each, 2% risk, same daily picks)", ""]
+    rows = []
+    for acct, a in sorted((f.get("accounts") or {}).items()):
+        n, w = a.get("closed", 0), a.get("wins", 0)
+        rows.append([FADE_NAMES.get(acct, acct), f"${a.get('equity', 0):,.2f}", str(n),
+                     f"{w} / {n - w}", f"{100 * w / n:.0f}%" if n else "—",
+                     "—" if a.get("avg_win_r") is None else f"{a['avg_win_r']:+.2f}R",
+                     "—" if a.get("avg_loss_r") is None else f"{a['avg_loss_r']:+.2f}R",
+                     f"{a.get('r', 0):+.2f}R", money(a.get("pnl"))])
+    if rows:
+        out += table(["Account", "Equity", "Trades", "Won / lost", "Win rate", "Avg win", "Avg loss",
+                      "Total R", "P&L"], rows, right=set(range(1, 9)))
+    else:
+        out.append("No trades yet.")
+    d = (f.get("days") or [None])[0]
+    if d:
+        picks = (d.get("detail") or {}).get("picks") or []
+        names = ", ".join(f"{p['symbol']} (+{100 * p['change']:.0f}% yesterday)" for p in picks) or "none"
+        out += ["", f"**Latest picks ({d['day']}, {d['status'].lower()}):** {names}"]
+    if f.get("recent"):
+        out += ["", "**Closed in the last 36 hours:**"]
+        for r in f["recent"]:
+            rr = "—" if r["r"] is None else f"{r['r']:+.2f}R"
+            out.append(f"- {FADE_NAMES.get(r['account'], r['account'])}: {r['symbol']} — "
+                       f"{r['reason'].lower()} at {ist(parse_time(r['exit']))} IST, {rr}, {money(r['pnl'])}")
+    if f.get("open"):
+        out += ["", "**Open now:** " + ", ".join(f"{FADE_NAMES.get(o['account'], o['account'])} {o['symbol']}"
+                                                  for o in f["open"])]
+    out += ["", "*Paper only: no order is ever sent. Rule A passed its sealed Aug–Oct 2026 test but was "
+                "break-even on 2025; the quick version was found by a 60-cell scan. Live results here are "
+                "the first data neither was built on.*"]
+    return out
 
 
 def learning_lines(lr: dict | None) -> list[str]:

@@ -202,3 +202,18 @@ def test_metals_mode_is_dynamic_and_refuses_an_experiment(monkeypatch):
     monkeypatch.setenv("DELTABOT_UNIVERSE", "metals")
     with pytest.raises(ConfigError, match="re-picks its coins daily"):
         entry.cli_entry(["forward-test", "start"])
+
+
+def test_fade_mode_is_dynamic_and_refuses_an_experiment(monkeypatch):
+    """2026-10-28: the gainer-fade paper runner (live/fade.py) runs unbound like the
+    daily-re-picked modes; _roll.yml's sizing grep must say so too."""
+    import live.__main__ as entry
+    from live.config import ConfigError
+    assert universe.mode({"DELTABOT_UNIVERSE": "fade"}) == "fade"
+    assert "fade" in universe.DYNAMIC_MODES
+    monkeypatch.setenv("DELTA_ENV", "prod")
+    monkeypatch.setenv("DELTABOT_UNIVERSE", "fade")
+    with pytest.raises(ConfigError, match="re-picks its coins daily"):
+        entry.cli_entry(["forward-test", "start"])
+    roll = open(".github/workflows/_roll.yml").read()
+    assert '"universe":"(top_gainers|metals|fade)"' in roll
