@@ -304,8 +304,10 @@ variable "live_sizing" {
     # 2026-10-13 (owner): the owner's way -- top 10 gainers, at most 2 trades a
     # day, $250 at 2%, position <= 5x equity, take profit 3R. Watch-only (dry_run "1") for 1-2 days,
     # then "0" with a Trading key.
+    # 2026-10-28 (owner): "scrap crypto and metals bot" -> the bot host runs the gainer-fade paper
+    # runner (live/fade.py, accounts A + QUICK, its own constants). Only `universe` is read in fade mode.
     bot = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
-    universe = "top_gainers", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
+    universe = "fade", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
     metals = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
     universe = "metals", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
   }
