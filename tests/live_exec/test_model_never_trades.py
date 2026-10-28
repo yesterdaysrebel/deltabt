@@ -12,7 +12,7 @@ import ast
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-GRADER = {"live.learning", "deltabt.signal_model", "sklearn"}
+GRADER = {"live.learning", "live.fade_grade", "deltabt.signal_model", "sklearn"}
 
 
 def _imports(tree) -> set[str]:
@@ -35,7 +35,7 @@ def _trading_files():
     for p in sorted((ROOT / "app").rglob("*.py")):
         yield p
     for p in sorted((ROOT / "live").glob("*.py")):
-        if p.name not in ("learning.py", "__main__.py"):
+        if p.name not in ("learning.py", "fade_grade.py", "__main__.py"):
             yield p
 
 

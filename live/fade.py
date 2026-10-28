@@ -276,7 +276,7 @@ class FadeRunner:
                 else:
                     await self._enter(con, day)
             await self._monitor(con, now)
-            from live import fade_learning                # records, labels, grades; never trades
+            from live import fade_learning                # records and labels; never trades or grades
             await fade_learning.step(self, con, now)
             await con.execute(
                 "INSERT INTO fade_heartbeat (id, at, detail) VALUES (1, now(), $1) "

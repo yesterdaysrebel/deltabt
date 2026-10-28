@@ -159,8 +159,10 @@ separate step:** `aws_ebs_volume.pgdata` has `prevent_destroy` and tf_guard refu
 fixed first in `docs/fade_model_switch_on_rule.md`).** After the morning entries the runner records every eligible
 gainer (top 20 by D−1 change, traded or not) in `fade_candidates` with readings known at entry — the research daily
 ones plus, new, the order book (spread, ±1% USD depth, imbalance) and the last 50 trades (aggressive-buyer share) —
-labels each a day later as if shorted under both exits (size-free R before funding), and grades on Mondays: the
-model's own daily top 2 vs the rule's top 2 vs random 2. It never chooses a trade; eligibility needs 4 pooled
+labels each a day later as if shorted under both exits (size-free R before funding). The GRADE is a separate process,
+`live/fade_grade.py` via `python -m live grade-model` (Mondays in the monitor document; it grades every complete week
+not yet graded) — never imported by the runner (`test_model_never_trades` covers it): the model's own daily top 2 vs
+the rule's top 2 vs random 2. It never chooses a trade; eligibility needs 4 pooled
 qualifying weeks beating both at p ≤ 0.05, and the owner decides. Expect a FAIL on the daily readings alone (764
 filters, rank corr −0.23); the book/flow readings are the only new information (~2–3 months to a fair verdict).
 TRAPS found while building it: `DeltaClient._get` returns the whole envelope (`{"success","result"}`); a thin coin

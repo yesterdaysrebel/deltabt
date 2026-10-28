@@ -4,10 +4,10 @@
 Each morning, after the two trades are entered, the runner RECORDS every eligible gainer (up to
 the top 20 by yesterday's gain), traded or not, with readings known at entry -- the daily ones
 the research used and two new kinds no history has: the order book and the recent trade flow.
-A day later each candidate is LABELLED as if shorted under both exits (A, QUICK). Every Monday
-the model is GRADED on the week just ended: does its own daily top 2 beat the rule's top 2 and
-two random candidates? It never chooses a trade; docs/fade_model_switch_on_rule.md says when it
-might, and the owner decides.
+A day later each candidate is LABELLED as if shorted under both exits (A, QUICK). The GRADE is
+NOT here: it runs in its own process (live/fade_grade.py via `python -m live grade-model`), so the
+model is unreachable from the trading runner (tests/live_exec/test_model_never_trades.py). It
+never chooses a trade; docs/fade_model_switch_on_rule.md says when it might, and the owner decides.
 """
 from __future__ import annotations
 
@@ -26,9 +26,6 @@ log = logging.getLogger(__name__)
 N_CANDIDATES = 20
 RECORD_UNTIL = 6 * F.HOUR          # a day's candidates are recorded within 6 h of midnight or not at all
 LABEL_AFTER = F.DAY + 5 * F.MINUTE
-GRADE_FROM_HOUR = 1                # Mondays, from 01:00 UTC
-MIN_TRAIN, MIN_TEST = 400, 50
-N_RANDOM = 2000
 FEATURES = ["rank", "prev_change", "log_turnover", "atrp", "wick", "prev2_change", "abnormal_vol",
             "fund_8h", "oi_change", "btc_change", "spread_bps", "log_bid_depth", "log_ask_depth",
             "book_imbalance", "taker_buy_share", "log_trade_usd"]
@@ -141,56 +138,6 @@ def label(entry: float, atrp: float, day: int, bars: pd.DataFrame, entry_time: i
     return out
 
 
-def _model():
-    from deltabt.signal_model import model
-    return model()
-
-
-def grade_week(rows: pd.DataFrame, week_start: int, seed: int = 0) -> dict:
-    """Train on labelled candidates before week_start - 1 day, test on the week: each day the
-    model's own top 2 vs the rule's top 2 (rank 1-2) vs 2 random candidates, by mean R_A and R_QUICK."""
-    rows = rows.dropna(subset=["r_a", "r_quick"])
-    train = rows[rows.day < week_start - F.DAY]
-    test = rows[(rows.day >= week_start) & (rows.day < week_start + 7 * F.DAY)]
-    res = {"n_train": len(train), "n_test": len(test), "days": int(test.day.nunique())}
-    if len(train) < MIN_TRAIN or len(test) < MIN_TEST or train.r_a.gt(0).nunique() < 2:
-        res["summary"] = (f"not graded: {len(train)} training rows (need {MIN_TRAIN}), "
-                          f"{len(test)} this week (need {MIN_TEST})")
-        return res
-    # a reading with no value in any training row is left out (the model refuses an all-empty
-    # input; the same trap stopped the metals grade until #141)
-    use = [f for f in FEATURES if train[f].notna().any()]
-    res["readings_left_out"] = [f for f in FEATURES if f not in use]
-    m = _model().fit(train[use], (train.r_a > 0).astype(int))
-    test = test.assign(score=m.predict_proba(test[use])[:, 1])
-    model_pk = test.sort_values(["day", "score"], ascending=[True, False]).groupby("day").head(F.TOP_N)
-    rule_pk = test[test["rank"] <= F.TOP_N]
-    rng = np.random.default_rng(seed)
-    by_day = {d: g for d, g in test.groupby("day")}
-    rand = {"a": [], "quick": []}
-    for _ in range(N_RANDOM):
-        ra, rq = [], []
-        for g in by_day.values():
-            idx = rng.choice(len(g), min(F.TOP_N, len(g)), replace=False)
-            ra += list(g.r_a.to_numpy()[idx])
-            rq += list(g.r_quick.to_numpy()[idx])
-        rand["a"].append(np.mean(ra))
-        rand["quick"].append(np.mean(rq))
-    for k in ("a", "quick"):
-        col = f"r_{k}"
-        res[f"model_{k}"] = float(model_pk[col].mean())
-        res[f"rule_{k}"] = float(rule_pk[col].mean())
-        res[f"random_{k}"] = float(np.mean(rand[k]))
-        res[f"random_p_{k}"] = float((np.array(rand[k]) >= model_pk[col].mean()).mean())
-    res["picks"] = [[int(r.day), r.symbol, round(float(r.score), 4), round(float(r.r_a), 4),
-                     round(float(r.r_quick), 4), int(r["rank"])] for _, r in model_pk.iterrows()]
-    res["summary"] = (f"model's daily top 2: A {res['model_a']:+.3f}R / quick {res['model_quick']:+.3f}R vs the "
-                      f"rule's {res['rule_a']:+.3f}R / {res['rule_quick']:+.3f}R vs random "
-                      f"{res['random_a']:+.3f}R / {res['random_quick']:+.3f}R; random did as well "
-                      f"{100 * res['random_p_a']:.0f}% of the time (A). It does not choose trades.")
-    return res
-
-
 # ============================================================ I/O (called from FadeRunner.tick)
 
 def _result(resp):
@@ -287,35 +234,10 @@ async def label_due(runner, con, now: float) -> None:
                           lab["exit_a"], lab["exit_quick"])
 
 
-async def grade_due(con, now: float) -> None:
-    ts = pd.Timestamp(int(now), unit="s", tz="UTC")
-    if ts.weekday() != 0 or ts.hour < GRADE_FROM_HOUR:
-        return
-    week_start = int((ts.normalize() - pd.Timedelta(days=7)).timestamp())
-    if await con.fetchval("SELECT 1 FROM fade_grades WHERE week_start = $1", F._ts(week_start)):
-        return
-    raw = await con.fetch("SELECT day, symbol, rank, readings, r_a, r_quick FROM fade_candidates WHERE r_a IS NOT NULL")
-    rows = pd.DataFrame([{"day": int(x["day"].timestamp()), "symbol": x["symbol"], "r_a": x["r_a"],
-                          "r_quick": x["r_quick"],
-                          **(json.loads(x["readings"]) if isinstance(x["readings"], str) else x["readings"]),
-                          "rank": x["rank"]} for x in raw])
-    for f in FEATURES:
-        if f not in rows:
-            rows[f] = np.nan
-    rows[FEATURES] = rows[FEATURES].astype(float) if len(rows) else rows[FEATURES]
-    res = await asyncio.to_thread(grade_week, rows, week_start) if len(rows) else {
-        "n_train": 0, "n_test": 0, "days": 0, "summary": "not graded: nothing labelled yet"}
-    await con.execute("INSERT INTO fade_grades (week_start, n_train, n_test, days, summary, detail) "
-                      "VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", F._ts(week_start), res["n_train"],
-                      res["n_test"], res.get("days", 0), res["summary"], json.dumps(res, default=float))
-    log.info("fade weekly grade %s: %s", ts.date(), res["summary"])
-
-
 async def step(runner, con, now: float) -> None:
     """One learning pass; never raises into the trading loop."""
     day = int(now) // F.DAY * F.DAY
-    for name, fn in (("record", lambda: record(runner, con, day, now)), ("label", lambda: label_due(runner, con, now)),
-                     ("grade", lambda: grade_due(con, now))):
+    for name, fn in (("record", lambda: record(runner, con, day, now)), ("label", lambda: label_due(runner, con, now))):
         try:
             await fn()
         except Exception:                                         # noqa: BLE001

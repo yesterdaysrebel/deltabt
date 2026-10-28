@@ -190,6 +190,7 @@ def test_learning_readings_from_daily_book_and_flow():
 
 
 def test_the_weekly_grade_compares_model_rule_and_random_picks():
+    from live import fade_grade as FG
     from live import fade_learning as FL
     rng = np.random.default_rng(0)
     rows = []
@@ -202,10 +203,10 @@ def test_the_weekly_grade_compares_model_rule_and_random_picks():
                          "r_a": 0.6 if win else -0.5, "r_quick": 0.2 if win else -0.6,
                          **{f: np.nan for f in FL.FEATURES if f != "rank"}, "prev_change": sig})
     df = pd.DataFrame(rows)
-    res = FL.grade_week(df, D0 + 35 * DAY)
+    res = FG.grade_week(df, D0 + 35 * DAY)
     assert res["n_test"] == 7 * 15 and res["days"] == 7
     assert res["model_a"] > res["rule_a"] and res["random_p_a"] < 0.05, "an informative reading is found"
-    few = FL.grade_week(df[df.day < D0 + 5 * DAY], D0 + 3 * DAY)
+    few = FG.grade_week(df[df.day < D0 + 5 * DAY], D0 + 3 * DAY)
     assert few["summary"].startswith("not graded")
 
 
