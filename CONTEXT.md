@@ -346,7 +346,14 @@ results there over-weight volatile days. Short strangle 24 h before expiry, sold
 BUILD 2025 (chooses m only): m 1/2/3/4/5% → win 74/80/86/89/92%, mean +13.8/+7.6/+3.1/+0.7/+0.9 bps of notional per
 strangle (p 0.052/0.146/0.302/0.567/0.480); avg loss ≈ 3× avg win at 1%, ≈ 12× at 5%; worst −989 … −771 bps. **m = 1%
 chosen and frozen.** At 1%: BTC +10.8 bps (+$40/yr for one 0.001-BTC strangle a day), ETH +16.8 bps (+$17/yr).
-Test = 2026 (01-01 → 10-27), opened once after this commit.
+**TEST 2026 (opened once, `out/options/test.txt`): PASS.** 600 strangles / 300 days, **win 76%**, **+24.4 bps** of
+notional per strangle (one-sided p 0.000), avg win +74.6 / avg loss −137.6 bps, worst −1,577 bps; BTC +21.3 bps (78%
+win, +$47 for one 0.001-BTC strangle a day), ETH +27.4 bps (75%, +$18); puts and calls both positive. $250 selling one
+BTC + one ETH strangle a day → $315, low $244, worst day −$7.01, worst week −$13.85. NOT modelled and must be checked
+before any paper/real use: real bid fills (0.9 × mark assumed), Delta's short-option margin and intraday
+liquidation (positions held to expiry here), settlement on Delta's index average (perp 11:59 close used), and the
+tail — losses are uncapped; the worst strangle in two years lost 15.8% of notional, and a crash day bigger than any
+in 2025–26 would cost more.
 
 **Gainer fade, no stop — DEV FAIL (2026-10-28, pre-registered `docs/gainer_fade_prereg.md` before any result,
 `scripts/gainer_fade_lab.py`, `out/gainer_fade/dev.txt`).** Owner's "different idea". Short the K previous-UTC-day
