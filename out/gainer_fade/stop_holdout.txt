@@ -1,0 +1,6 @@
+HOLD-OUT (pick days 2026-08-01 .. 2026-10-27), opened once; k = 2.0 frozen from dev. 4187 liquid coin-days, 119 skipped (no 1m data or ATR)
+A k=2.0: 176 trades over 88 days | mean +0.069R (±0.065), median +0.08R, win 56%, stopped 22%, worst -1.23R | random coins same stop -0.028R, share >= picks 0.000 | $250 account -> $310 (max drawdown 19%)
+  A: mean net R > 0 True | beats random p <= 0.025 True => PASS
+B k=2.0: 176 trades over 88 days | mean -0.010R (±0.039), median +0.03R, win 53%, stopped 11%, worst -1.15R | random coins same stop -0.040R, share >= picks 0.084 | $250 account -> $238 (max drawdown 17%)
+  B: mean net R > 0 False | beats random p <= 0.025 False => FAIL
+VERDICT: at least one version PASSES -> owner decides on paper

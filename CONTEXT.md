@@ -351,7 +351,17 @@ gainers, B = top 2 among defi/layer/turnover < $712,048 (owner: "why not selecte
 checked first on dev: rank correlation −0.05, last half's best coins −0.86% next half, so names were not used).
 DEV (Jan–Jul, chooses k only, not a judgement; 400 trades, first ~2 weeks lack a 14-day ATR): A k=1/1.5/2 →
 +0.050/+0.068/+0.079R vs random coins under the same stop +0.025/+0.020/+0.015R; B +0.032/+0.030/+0.032R, no
-better than its random (+0.037/+0.025/+0.019R). **k = 2.0 frozen.** Hold-out to be opened once after this commit. — do not re-test without new information
+better than its random (+0.037/+0.025/+0.019R). **k = 2.0 frozen.**
+**HOLD-OUT (opened once, pick days 08-01 → 10-27, `out/gainer_fade/stop_holdout.txt`): A PASSES, B FAILS.**
+A: 176 trades / 88 days, **+0.069R ±0.065** (median +0.08R, win 56%, stopped 22%, worst −1.23R) vs random coins
+under the same stop **−0.028R**, 0 of 2,000 random draws as good (bar 0.025); $250 → $310, max drawdown 19%.
+B: −0.010R vs random −0.040R (p 0.084), $250 → $238 — the coin-group selection adds nothing (dev agreed).
+Strength, stated plainly: "the top gainers fall MORE than other coins over the next UTC day" now holds in both
+windows against random picks; the PROFIT per trade is small and only ~1 SE above zero on the hold-out alone
+(dev +0.079R ±0.033 was used to pick the idea and k). Not included: funding (shorts on pumped coins usually
+RECEIVE it — likely a tailwind, unmeasured), survivorship (delisted collapses missing — likely understates shorts),
+entry exactly 00:00 UTC. Both positions are open ~24 h a day, every day. Per the pre-registration the owner decides
+whether it goes to PAPER; never straight to money. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
