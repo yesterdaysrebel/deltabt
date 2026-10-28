@@ -406,7 +406,12 @@ BOTH years (adopt only if better than A in each year AND pooled day-block p ≤ 
 H1 illiquid half (Zaremba 2021, Kozlowski 2020) +0.000 / −0.080R; H2 low abnormal volume (Llorente 2002; large-move
 volume study) −0.004 / −0.060R; H3 funding ≥ day median, crowded longs (practitioner) +0.023 / −0.051R; H4 OI rose
 during D−1 (practitioner) +0.008 / −0.009R (OI rises on almost every pump — barely filters). None better in both
-years; pooled p 0.48–0.96. Same shape as every filter before it: what helps one year hurts the other. — do not re-test without new information
+years; pooled p 0.48–0.96. Same shape as every filter before it: what helps one year hurts the other.
+**The look-ahead "70–76% win" turned into a tradable EXIT (owner 10-28: "are you sure it failed?") — worse in both
+years.** Short at 00:00 as A; at a check time, close if not in profit, else hold (stop as A). Mean R 2025 / 2026:
+A +0.006 / +0.078; check 1 h −0.007 / +0.047; 2 h −0.019 / +0.054; 4 h (9:30 IST) −0.015 / +0.047; 8 h +0.002 /
++0.067. Win rate falls to 36–47% (cut trades are small losses) and the trades losing at the check that would have
+recovered are thrown away. Same lesson as the ladder: early exits cost more than they save. — do not re-test without new information
 
 Full record: `docs/exit_fill_review_2026-09-13.md` (six blind external reviewers, own code), on
 master since #54.
