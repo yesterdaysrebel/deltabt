@@ -171,6 +171,18 @@ async def collect_learning(con, now=None):
     return json.loads(json.dumps(out, default=str))
 
 
+#: The fade journal's columns, and how many of the newest trades it carries. 4 trades a day; at
+#: ~130 bytes a row 120 rows gzip to a few KB, well inside the 24 KB SSM cap.
+FADE_JOURNAL_FIELDS = ("account", "symbol", "contracts", "contract_value", "opened", "entry_price",
+                       "stop_price", "target_price", "status", "closed", "exit_price", "exit_reason",
+                       "r", "pnl")
+FADE_JOURNAL_ROWS = 120
+#: One row per strangle (an underlying's put + call for one expiry); 2 a day.
+OPTION_JOURNAL_FIELDS = ("expiry", "underlying", "sold", "spot", "put", "call", "premium", "paid",
+                         "fees", "pnl", "status")
+OPTION_JOURNAL_ROWS = 60
+
+
 async def collect_fade(con, now=None) -> dict:
     """The gainer-fade paper runner's figures (live/fade.py, owner 2026-10-28).
 
@@ -196,20 +208,26 @@ async def collect_fade(con, now=None) -> dict:
                 "avg_win_r": None if r["avg_win"] is None else round(float(r["avg_win"]), 2),
                 "avg_loss_r": None if r["avg_loss"] is None else round(float(r["avg_loss"]), 2),
                 "open": int(r["open"]), "skipped": int(r["skipped"])}
-        since = now - _dt.timedelta(hours=36)
-        out["recent"] = [
-            {"account": r["account"], "symbol": r["symbol"], "entry": r["entry_time"].isoformat(),
-             "exit": r["exit_time"].isoformat(), "reason": r["exit_reason"],
-             "r": None if r["r"] is None else round(float(r["r"]), 2), "pnl": round(float(r["pnl"]), 2)}
+        # THE JOURNAL (owner, 2026-10-29: "make report simple ... a table just like we had before with
+        # trade journal"): every trade, oldest first, as compact arrays. The newest FADE_JOURNAL_ROWS
+        # only (~30 days); the account table above still counts every trade.
+        out["journal_fields"] = list(FADE_JOURNAL_FIELDS)
+        rows = await con.fetch(
+            "SELECT * FROM (SELECT account, symbol, contracts, contract_value, "
+            "extract(epoch from entry_time)::bigint opened, entry_price, stop_price, target_price, status, "
+            "extract(epoch from exit_time)::bigint closed, exit_price, exit_reason, r, pnl, id "
+            "FROM fade_positions WHERE status IN ('OPEN', 'CLOSED') ORDER BY entry_time DESC, id DESC "
+            "LIMIT $1) t ORDER BY opened, id", FADE_JOURNAL_ROWS)
+        out["journal"] = [[None if r[k] is None else round(float(r[k]), 4) if k in ("r", "pnl") else r[k]
+                           for k in FADE_JOURNAL_FIELDS] for r in rows]
+        out["journal_omitted"] = int(await con.fetchval(
+            "SELECT count(*) FROM fade_positions WHERE status IN ('OPEN', 'CLOSED')")) - len(rows)
+        out["skipped"] = [
+            {"day": r["day"].strftime("%Y-%m-%d"), "account": r["account"], "symbol": r["symbol"],
+             "reason": r["skip_reason"]}
             for r in await con.fetch(
-                "SELECT account, symbol, entry_time, exit_time, exit_reason, r, pnl FROM fade_positions "
-                "WHERE status = 'CLOSED' AND exit_time >= $1 ORDER BY exit_time", since)]
-        out["open"] = [
-            {"account": r["account"], "symbol": r["symbol"], "entry": r["entry_time"].isoformat(),
-             "entry_price": r["entry_price"], "stop": r["stop_price"], "target": r["target_price"]}
-            for r in await con.fetch(
-                "SELECT account, symbol, entry_time, entry_price, stop_price, target_price "
-                "FROM fade_positions WHERE status = 'OPEN' ORDER BY entry_time")]
+                "SELECT day, account, symbol, skip_reason FROM fade_positions WHERE status = 'SKIPPED' "
+                "AND day >= $1 ORDER BY day, account", now - _dt.timedelta(hours=36))]
         out["days"] = [
             {"day": r["day"].strftime("%Y-%m-%d"), "status": r["status"],
              "detail": json.loads(r["detail"]) if isinstance(r["detail"], str) else r["detail"]}
@@ -247,7 +265,20 @@ async def collect_options(con) -> dict | None:
             "avg((best_ask - best_bid) / NULLIF(mark, 0)) spread, min(bid_size) min_bid_size "
             "FROM option_legs WHERE status <> 'SKIPPED'")
         pnl = sum(float(r["pnl"]) for r in s)
-        last = s[-1]["expiry"] if s else None
+        # The journal: newest OPTION_JOURNAL_ROWS strangles, oldest first. A strangle is OPEN while
+        # any leg is, SKIPPED when no leg sold; `paid` is what settlement took back.
+        j = await con.fetch(
+            "SELECT * FROM (SELECT extract(epoch from expiry)::bigint expiry, underlying, "
+            "extract(epoch from min(entry_time))::bigint sold, max(spot) spot, "
+            "max(strike) FILTER (WHERE kind = 'P' AND status <> 'SKIPPED') put, "
+            "max(strike) FILTER (WHERE kind = 'C' AND status <> 'SKIPPED') call, "
+            "sum(premium) premium, sum(settle_value * contract_value * contracts) paid, "
+            "sum(fee_in) + COALESCE(sum(fee_out), 0) fees, sum(pnl) pnl, "
+            "CASE WHEN bool_and(status = 'SKIPPED') THEN 'SKIPPED' WHEN bool_or(status = 'OPEN') THEN 'OPEN' "
+            "ELSE 'SETTLED' END status FROM option_legs GROUP BY expiry, underlying "
+            "ORDER BY expiry DESC, underlying DESC LIMIT $1) t ORDER BY expiry, underlying",
+            OPTION_JOURNAL_ROWS)
+        n_all = int(await con.fetchval("SELECT count(DISTINCT (expiry, underlying)) FROM option_legs"))
         return {
             "strangles": len(s), "wins": sum(1 for r in s if float(r["pnl"]) > 0),
             "pnl": round(pnl, 2), "equity": round(250.0 + pnl, 2),
@@ -257,8 +288,10 @@ async def collect_options(con) -> dict | None:
             "bid_over_mark": None if fills["bid_mark"] is None else round(float(fills["bid_mark"]), 3),
             "spread_over_mark": None if fills["spread"] is None else round(float(fills["spread"]), 3),
             "skipped": int(await con.fetchval("SELECT count(*) FROM option_legs WHERE status = 'SKIPPED'")),
-            "last": [{"expiry": r["expiry"].strftime("%Y-%m-%d"), "underlying": r["underlying"],
-                      "pnl": round(float(r["pnl"]), 2)} for r in s if r["expiry"] == last],
+            "journal_fields": list(OPTION_JOURNAL_FIELDS),
+            "journal": [[None if r[k] is None else round(float(r[k]), 4) if k in ("premium", "paid", "fees", "pnl")
+                         else r[k] for k in OPTION_JOURNAL_FIELDS] for r in j],
+            "journal_omitted": n_all - len(j),
             "open": [{"symbol": r["symbol"], "bid": r["best_bid"], "expiry": r["expiry"].isoformat()}
                      for r in await con.fetch("SELECT symbol, best_bid, expiry FROM option_legs "
                                               "WHERE status = 'OPEN' ORDER BY symbol")],

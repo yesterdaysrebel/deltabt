@@ -134,9 +134,12 @@ def test_the_brief_report_renders_both_accounts_and_flags_a_stalled_runner():
                                "avg_loss_r": -0.5, "open": 1, "skipped": 0},
                          "QUICK": {"closed": 4, "wins": 4, "pnl": 3.0, "r": 0.8, "equity": 253.0, "avg_win_r": 0.2,
                                    "avg_loss_r": None, "open": 0, "skipped": 0}},
-            "recent": [{"account": "QUICK", "symbol": "XUSD", "entry": "2026-10-29T00:00:00+00:00",
-                        "exit": "2026-10-29T01:00:00+00:00", "reason": "TARGET", "r": 0.19, "pnl": 0.9}],
-            "open": [{"account": "A", "symbol": "XUSD", "entry": "2026-10-29T00:00:00+00:00"}],
+            "journal_fields": ["account", "symbol", "contracts", "contract_value", "opened", "entry_price", "stop_price", "target_price", "status", "closed", "exit_price", "exit_reason", "r", "pnl"],
+            "journal": [["QUICK", "XUSD", 9, 10, 1793232000, 0.22409, 0.2758, 0.2137, "CLOSED", 1793235600,
+                         0.2137, "TARGET", 0.19, 0.9],
+                        ["A", "XUSD", 9, 10, 1793232000, 0.22409, 0.2758, None, "OPEN", None, None, None,
+                         None, None]],
+            "journal_omitted": 6,
             "days": [{"day": "2026-10-29", "status": "ENTERED", "detail": {"picks": [{"symbol": "XUSD", "change": 0.5}]}}],
             "heartbeat_at": (now - dt.timedelta(minutes=2)).isoformat()}
     hz = '{"status":"healthy","ready":true,"checks":[{"name":"runner_loop_alive","ok":true}]}'
@@ -144,7 +147,10 @@ def test_the_brief_report_renders_both_accounts_and_flags_a_stalled_runner():
                                    probe_problems=[], log_events=[], snapshots=False, expect_experiment=False)
     assert problems == [] and "All normal" in txt
     assert "A — 24 h hold" in txt and "Quick — 4% target" in txt and "75%" in txt and "100%" in txt
-    assert "XUSD (+50% yesterday)" in txt and facts["closed"] == 8
+    assert "Open now (1)" in txt and "Closed (1, plus 6 older not shown)" in txt and facts["closed"] == 8
+    closed = txt[txt.index("Closed (1"):]
+    assert "#" in closed and "\n7  Quick" in closed and "target" in closed and "+0.19" in closed and "+0.90" in closed
+    assert "\n8  A " in txt[txt.index("Open now"):txt.index("Closed (1")]
     stalled = dict(fade, heartbeat_at=(now - dt.timedelta(hours=1)).isoformat(), days=[])
     _, _, problems = B.build({"HEALTHZ": hz}, {"fade": stalled}, now, stack="bot", errors_24h=0,
                              probe_problems=[], log_events=[], snapshots=False, expect_experiment=False)

@@ -550,18 +550,22 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     if isinstance(db.get("fade"), dict):
         fade = db["fade"]
         problems += fade_problems(fade, now) + options_problems(db.get("options"), now)
-        out = [f"# Gainer-fade paper accounts · {ist(now, with_day=True)} IST", ""]
+        # Owner, 2026-10-29: "make report simple ... a table just like we had before with trade
+        # journal" -- the attention list, one account table, then every trade.
+        out = [f"# Paper trade journal · {ist(now, with_day=True)} IST", ""]
         if problems:
             out.append("**⚠️ Needs your attention:**")
             out += [f"- {p}" for p in problems]
         else:
             out.append("**✅ All normal — nothing needs you.**")
-        if log_notes:
-            out.append("")
-            out += [f"*Note:* {n}" for n in log_notes]
         out.append("")
+        out += accounts_lines(fade, db.get("options"))
         out += fade_lines(fade)
         out += options_lines(db.get("options"))
+        out += ["", "---", "*Paper only: no order is ever sent. Times are IST. R and P&L are after fees and "
+                     "funding.*"]
+        out += [f"*Note:* {n}" for n in log_notes]
+        out += learning_note(fade.get("learning"))
         accts = fade.get("accounts") or {}
         facts = {"stack": stack, "day": now.strftime("%Y-%m-%d"),
                  "verdict": "clear" if not problems else "attention", "problems": problems,
@@ -632,49 +636,81 @@ def fade_problems(f: dict, now: dt.datetime) -> list[str]:
     return out
 
 
-def fade_lines(f: dict) -> list[str]:
-    out = ["## Gainer-fade paper accounts ($250 each, 2% risk, same daily picks)", ""]
+#: How a fade trade closed (live/fade.py exit_reason).
+FADE_HOW = {"TARGET": "target", "STOP": "stop", "TIME": "24 h up", "NO_DATA": "no data"}
+
+
+def _rows(block: dict | None) -> list[dict]:
+    fields = (block or {}).get("journal_fields") or []
+    return [dict(zip(fields, row)) for row in (block or {}).get("journal") or []]
+
+
+def accounts_lines(f: dict, o: dict | None) -> list[str]:
+    """One table: each paper account's equity and closed-trade totals."""
     rows = []
     for acct, a in sorted((f.get("accounts") or {}).items()):
         n, w = a.get("closed", 0), a.get("wins", 0)
-        rows.append([FADE_NAMES.get(acct, acct), f"${a.get('equity', 0):,.2f}", str(n),
-                     f"{w} / {n - w}", f"{100 * w / n:.0f}%" if n else "—",
-                     "—" if a.get("avg_win_r") is None else f"{a['avg_win_r']:+.2f}R",
-                     "—" if a.get("avg_loss_r") is None else f"{a['avg_loss_r']:+.2f}R",
-                     f"{a.get('r', 0):+.2f}R", money(a.get("pnl"))])
-    if rows:
-        out += table(["Account", "Equity", "Trades", "Won / lost", "Win rate", "Avg win", "Avg loss",
-                      "Total R", "P&L"], rows, right=set(range(1, 9)))
+        rows.append([f"Fade {FADE_NAMES.get(acct, acct)}", f"${a.get('equity', 0):,.2f}", str(n), str(w),
+                     str(n - w), f"{100 * w / n:.0f}%" if n else "—", f"{a.get('r', 0):+.2f}",
+                     money(a.get("pnl"))])
+    if o and not o.get("error"):
+        n, w = o.get("strangles", 0), o.get("wins", 0)
+        rows.append(["Options strangles", f"${o.get('equity', 250):,.2f}", str(n), str(w), str(n - w),
+                     f"{100 * w / n:.0f}%" if n else "—", "—", money(o.get("pnl", 0))])
+    if not rows:
+        return ["No account has traded yet."]
+    return table(["account ($250 each)", "equity", "closed", "won", "lost", "win rate", "total R", "P&L $"],
+                 rows, right=set(range(1, 8)))
+
+
+def fade_lines(f: dict) -> list[str]:
+    """The gainer-fade journal: open trades, then every closed one, newest first."""
+    out = ["", "## Fade trades — short yesterday's top gainers at 5:30 AM IST, 2% risk"]
+    rows = _rows(f)
+    omitted = int(f.get("journal_omitted") or 0)
+    num = {id(r): omitted + i + 1 for i, r in enumerate(rows)}
+    acct = lambda r: FADE_NAMES.get(r["account"], r["account"]).split(" — ")[0]
+    size = lambda r: f"{r['contracts'] * r['contract_value'] * r['entry_price']:,.0f}"
+    open_ = [r for r in rows if r["status"] == "OPEN"][::-1]
+    closed = [r for r in rows if r["status"] == "CLOSED"][::-1]
+
+    out += ["", f"**Open now ({len(open_)})**"]
+    if open_:
+        out += table(["#", "acct", "symbol", "side", "qty", "size $", "opened", "entry", "stop", "target"],
+                     [[str(num[id(r)]), acct(r), r["symbol"], "short", str(r["contracts"]), size(r),
+                       when(r["opened"]), price(r["entry_price"]), price(r["stop_price"]),
+                       price(r["target_price"])] for r in open_], right={0, 4, 5, 7, 8, 9})
     else:
-        out.append("No trades yet.")
-    d = (f.get("days") or [None])[0]
-    if d:
-        picks = (d.get("detail") or {}).get("picks") or []
-        names = ", ".join(f"{p['symbol']} (+{100 * p['change']:.0f}% yesterday)" for p in picks) or "none"
-        out += ["", f"**Latest picks ({d['day']}, {d['status'].lower()}):** {names}"]
-    if f.get("recent"):
-        out += ["", "**Closed in the last 36 hours:**"]
-        for r in f["recent"]:
-            rr = "—" if r["r"] is None else f"{r['r']:+.2f}R"
-            out.append(f"- {FADE_NAMES.get(r['account'], r['account'])}: {r['symbol']} — "
-                       f"{r['reason'].lower()} at {ist(parse_time(r['exit']))} IST, {rr}, {money(r['pnl'])}")
-    if f.get("open"):
-        out += ["", "**Open now:** " + ", ".join(f"{FADE_NAMES.get(o['account'], o['account'])} {o['symbol']}"
-                                                  for o in f["open"])]
-    lr = f.get("learning")
-    if lr:
-        out += ["", "**Learning (records every eligible gainer, traded or not; never chooses trades):** "
-                f"{lr['candidates']} candidates over {lr['days']} days, {lr['labelled']} labelled"
-                + (f" — as if all shorted: A {lr['mean_r_a']:+.3f}R, quick {lr['mean_r_quick']:+.3f}R each"
-                   if lr.get("mean_r_a") is not None else "") + "."]
-        g = lr.get("grade")
-        out.append(f"Last weekly grade (week of {g['week']}): {g['summary']}" if g else
-                   "No weekly grade yet (needs ~4 weeks of labelled candidates; rules in "
-                   "docs/fade_model_switch_on_rule.md).")
-    out += ["", "*Paper only: no order is ever sent. Rule A passed its sealed Aug–Oct 2026 test but was "
-                "break-even on 2025; the quick version was found by a 60-cell scan. Live results here are "
-                "the first data neither was built on.*"]
+        out.append("Nothing open.")
+
+    out += ["", f"**Closed ({len(closed)}{f', plus {omitted} older not shown' if omitted else ''}), newest first**"]
+    if closed:
+        out += table(["#", "acct", "symbol", "qty", "opened", "entry", "stop", "target", "closed", "exit",
+                      "how", "held", "R", "P&L $"],
+                     [[str(num[id(r)]), acct(r), r["symbol"], str(r["contracts"]), when(r["opened"]),
+                       price(r["entry_price"]), price(r["stop_price"]), price(r["target_price"]),
+                       when(r["closed"]), price(r["exit_price"]),
+                       FADE_HOW.get(str(r["exit_reason"]), str(r["exit_reason"] or "—").lower()),
+                       duration((r["closed"] - r["opened"]) if r["closed"] and r["opened"] else None),
+                       "—" if r["r"] is None else f"{r['r']:+.2f}", money(r["pnl"])] for r in closed],
+                     right={0, 3, 5, 6, 7, 9, 11, 12, 13})
+    else:
+        out.append("No trade has closed yet.")
+    if f.get("skipped"):
+        out.append("Skipped picks: " + ", ".join(
+            f"{s['day']} {s['account']} {s['symbol']} ({str(s['reason'] or '?').lower().replace('_', ' ')})"
+            for s in f["skipped"]) + ".")
+    out.append("A holds to the next 5:30 AM IST; Quick also takes a 4% target. Both stop at the same price.")
     return out
+
+
+def learning_note(lr: dict | None) -> list[str]:
+    if not lr:
+        return []
+    return [f"*Learning (records every eligible gainer, never chooses trades): {lr['candidates']} candidates "
+            f"over {plural(lr['days'], 'day')}, {lr['labelled']} labelled"
+            + (f"; weekly grade {lr['grade']['week']}: {lr['grade']['summary']}" if lr.get("grade") else "")
+            + ".*"]
 
 
 def options_problems(o: dict | None, now: dt.datetime) -> list[str]:
@@ -695,31 +731,34 @@ def options_problems(o: dict | None, now: dt.datetime) -> list[str]:
 
 
 def options_lines(o: dict | None) -> list[str]:
-    out = ["", "## Option-selling paper account ($250; one BTC + one ETH strangle a day, 1% out)", ""]
+    """The option journal: one row per strangle (a put ~1% below and a call ~1% above), newest first."""
+    out = ["", "## Option strangles — sell BTC + ETH at 5:30 PM IST, settle next day 5:30 PM IST", ""]
     if not o:
         return out + ["Not started yet (first sale at 5:30 PM IST)."]
     if o.get("error"):
         return out + [f"Figures unavailable ({o['error']})."]
-    n, w = o.get("strangles", 0), o.get("wins", 0)
-    if n:
-        out += table(["Equity", "Strangles", "Won / lost", "Win rate", "Avg per strangle", "Worst", "P&L"],
-                     [[f"${o['equity']:,.2f}", str(n), f"{w} / {n - w}", f"{100 * w / n:.0f}%",
-                       f"{o['mean_bps'] / 100:+.2f}% of size", money(o.get("worst")), money(o.get("pnl"))]],
-                     right=set(range(7)))
+    rows = _rows(o)[::-1]
+    omitted = int(o.get("journal_omitted") or 0)
+    day = lambda ts: dt.datetime.fromtimestamp(float(ts), dt.timezone.utc).astimezone(IST).strftime("%d %b")
+    if rows:
+        out += table(["expiry", "coin", "sold", "spot", "put", "call", "premium $", "paid out $", "fees $",
+                      "status", "P&L $"],
+                     [[day(r["expiry"]), r["underlying"], when(r["sold"]), price(r["spot"]), price(r["put"]),
+                       price(r["call"]), "—" if r["premium"] is None else f"{r['premium']:,.2f}",
+                       "—" if r["paid"] is None else f"{r['paid']:,.2f}",
+                       "—" if r["fees"] is None else f"{r['fees']:,.2f}", str(r["status"]).lower(),
+                       money(r["pnl"])] for r in rows], right={3, 4, 5, 6, 7, 8, 10})
+        if omitted:
+            out.append(f"Plus {omitted} older strangles not shown (counted in the account table).")
     else:
-        out.append("No strangle settled yet.")
-    if o.get("last"):
-        out += ["", f"**Last settled ({o['last'][0]['expiry']}):** "
-                + ", ".join(f"{x['underlying']} {money(x['pnl'])}" for x in o["last"])]
-    if o.get("open"):
-        out += ["", "**Open now:** " + ", ".join(f"{x['symbol']} (sold at {x['bid']})" for x in o["open"])]
+        out.append("No strangle sold yet.")
     if o.get("legs_sold"):
         fill = (f"sold at {100 * o['bid_over_mark']:.0f}% of mark on average (backtest assumed 90%)"
                 if o.get("bid_over_mark") is not None else "no mark recorded")
-        out += ["", f"**Fills:** {o['legs_sold']} legs {fill}"
-                + (f"; {o['skipped']} legs skipped (no strike or no bid)" if o.get("skipped") else "") + "."]
-    out += ["", "*Paper only: no order is ever sent. Passed its sealed 2026 backtest (76% of strangles won, "
-                "+0.24% of size each); losses are uncapped — the worst 2026 strangle lost 15.8% of size.*"]
+        out.append(f"Fills: {o['legs_sold']} legs {fill}"
+                   + (f"; {o['skipped']} legs skipped (no strike or no bid)" if o.get("skipped") else "") + ".")
+    out.append("One contract a leg (0.001 BTC, 0.01 ETH) at the real best bid. Losses are uncapped: the "
+               "worst 2026 backtest strangle lost 15.8% of its size.")
     return out
 
 
