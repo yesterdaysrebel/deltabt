@@ -48,7 +48,11 @@ def test_leg_pnl_is_the_labs_formula_with_the_real_fill_and_settlement():
 def _opts(**kw):
     o = {"strangles": 4, "wins": 3, "pnl": 1.23, "equity": 251.23, "mean_bps": 21.0, "worst": -0.9,
          "legs_sold": 8, "bid_over_mark": 0.992, "spread_over_mark": 0.015, "skipped": 0,
-         "last": [{"expiry": "2026-10-31", "underlying": "BTC", "pnl": 0.41}],
+         "journal_fields": ["expiry", "underlying", "sold", "spot", "put", "call", "premium", "paid", "fees",
+                            "pnl", "status"],
+         "journal": [[1793448000, "BTC", 1793361600, 80600.0, 79800.0, 81400.0, 0.52, 0.0, 0.0081, 0.5119, "SETTLED"],
+                     [1793534400, "BTC", 1793448060, 81000.0, 80200.0, 81800.0, 0.49, None, 0.0081, None, "OPEN"]],
+         "journal_omitted": 0,
          "open": [{"symbol": "P-BTC-79800-011126", "bid": 268.0, "expiry": "2026-11-01T12:00:00+00:00"}],
          "days": [{"expiry": "2026-11-01", "status": "ENTERED"}]}
     o.update(kw)
@@ -60,8 +64,10 @@ def test_the_report_shows_the_account_and_flags_a_missed_sale_or_a_stuck_leg():
     import brief_report as B
     now = dt.datetime(2026, 11, 1, 1, 30, tzinfo=dt.timezone.utc)
     text = "\n".join(B.options_lines(_opts()))
-    assert "$251.23" in text and "75%" in text and "+0.21% of size" in text and "99% of mark" in text
-    assert "P-BTC-79800-011126" in text
+    assert "99% of mark" in text and "79800" in text and "+0.51" in text and "settled" in text
+    assert text.index("open") < text.index("settled"), "newest strangle first"
+    acct = "\n".join(B.accounts_lines({"accounts": {}}, _opts()))
+    assert "$251.23" in acct and "75%" in acct
     assert B.options_problems(_opts(), now) == []
     assert "MISSED" in B.options_problems(_opts(days=[{"expiry": "2026-11-01", "status": "MISSED"}]), now)[0]
     late = now + dt.timedelta(hours=14)

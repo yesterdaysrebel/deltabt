@@ -147,7 +147,7 @@ simulated $250 accounts at 2% risk / 5x cap: **A** (stop 2×ATR14%, exit at the 
 Every 30 s it walks closed 1m candles (stop first, `ltp_close` fill), settles fees + real funding; tables
 `fade_positions` / `fade_days` / `fade_heartbeat`; own FastAPI `/healthz` `/readyz` in the brief-report shape; an
 "alive" log line every 5 min for the CloudWatch silence alarm. `db_probe.collect` returns ONLY `{"fade": …}` in
-fade mode (the inherited signal-bot tables are stale); `brief_report` renders "Gainer-fade paper accounts".
+fade mode (the inherited signal-bot tables are stale); `brief_report` renders "Paper trade journal" (owner 10-29: simple, like the old trade journal): attention list, one account table (A, Quick, options), the fade journal (open, then closed newest first; newest 120 trades) and the strangle journal (newest 60).
 `_roll.yml` treats `fade` as unbound. Smoke-tested locally on live Delta data against a throwaway Postgres
 (10-28: AIN + EVAA; QUICK hit both targets, A stopped EVAA). NO ORDER PATH. **Backups before scrapping:**
 pg_dump files on each pg volume + snapshots `snap-01e227faede28a963` (bot) and `snap-02cb8add4ffb7daa3` (metals),
@@ -379,7 +379,7 @@ reasoning about what is on master.**
 the fade runner's loop on the bot host. 12:00 UTC daily: one BTC + one ETH 1% strangle, 1 contract/leg, sold at the
 REAL best bid (mark/bid/ask/size stored), settled at Delta's `settlement_price` of the expired option (= payout per
 unit; Delta settles on its index's 30-min average — 10-28: 81,400.67 vs 30-min index avg 81,397, perp 1h close
-81,288). $250 simulated; tables `option_legs` / `option_days`; report section "Option-selling paper account". Read
+81,288). $250 simulated; tables `option_legs` / `option_days`; report section "Option strangles" (one row per strangle). Read
 per `docs/options_paper_read.md` (~120 strangles ≈ 60 days before the mean is 2 SE from zero; 2026 SD 134 bps).
 Live snapshot 10-28 21:00 IST: bids 99–100% of mark, 7k–13k contracts at the best bid.
 
