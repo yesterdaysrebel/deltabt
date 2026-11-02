@@ -138,6 +138,22 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
+**FADE REAL-MONEY RUN — BUILT, OFF (owner 2026-11-02: "worth starting fade in live right now?" → told the
+two-year evidence is ~break-even → "approved on tiny run, I have 176$"; rule A, 3% risk, stop the run below
+$140, own sub-account).** Rules fixed first in `docs/fade_live_prereg.md`; code `live/fade_live.py`, called from
+the fade runner's loop. Same picks as paper A: sells each with a reduce-only-safe order shape — IOC limit 1%
+under the bid, exchange-held bracket stop (mark-triggered, 1.5R cap) at 2×ATR% — leverage set to **1x** and
+read back (Delta defaults these coins to 20x), size = 3% of the wallet balance (≤45% notional each), a stop
+that is not seen resting within 30 s → bought back + HALTED; buys back reduce-only at 24 h, cancels leftovers
+only once flat; reconciles every pass (unknown position → HALTED, untouched; SENDING row → looked up by client
+order id, never resent). STOPPED (final) below $140; `python -m live fade-live-resume` clears a HALT. Tables
+`fade_live_positions` / `_state` / `_events`; report puts a REAL row first and a real-vs-paper journal.
+**OFF unless** sizing `dry_run` is exactly "0", `DELTA_ENV` prod, a key is set and the wallet is $140–$220.
+Next: owner makes the sub-account + Trading key (whitelist 13.207.73.230) into
+`deltabt-paper/live/bot/venue-credentials` themself → restart → owner-approved `python -m live fade-live-probe`
+(1 XRPUSD contract through the exact order shape) → second PR: bot sizing `dry_run "0"`, `equity_usd "176"`,
+`risk_per_trade "0.03"`.
+
 **GAINER-FADE PAPER RUNNER (owner 2026-10-28: "get variant A running as paper; scrap crypto and metals bot";
 "both, side by side"; "2%"; "keep a backup").** `live/fade.py`, run mode `DELTABOT_UNIVERSE=fade` (live_sizing
 `universe`, an SSM parameter — switching it is NOT a host replacement; the variant string stays). Once a UTC day

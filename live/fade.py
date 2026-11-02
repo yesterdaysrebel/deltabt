@@ -15,8 +15,9 @@ a coin with no trade by then is skipped), not the daily open; and only coins Del
 
 The same loop also runs the option-selling paper account (live/options_paper.py, owner 2026-10-28).
 
-NO ORDER IS EVER SENT. Nothing here holds keys or imports an order path; positions live in the
-`fade_positions` table only.
+The paper accounts never send an order; their positions live in the `fade_positions` table only.
+The REAL-MONEY account (live/fade_live.py, owner 2026-11-02, docs/fade_live_prereg.md) trades the
+same picks from the same loop, and only when that module's strict switch is on.
 """
 from __future__ import annotations
 
@@ -223,6 +224,7 @@ class FadeRunner:
     last_loop_at: float = 0.0
     last_error: str | None = None
     ready: bool = False
+    live: object = None                                # live.fade_live.LiveFade when real money is on
 
     # -- lifecycle (what live.__main__._serve expects) --------------------------------
     async def start(self) -> bool:
@@ -233,13 +235,23 @@ class FadeRunner:
         self.client = self.client or DeltaClient(per_second=2.0)
         self.catalog = self.catalog or ProductCatalog()
         self._pool = await asyncpg.create_pool(min_size=1, max_size=3, **connect_kwargs(self.database_url))
+        from live import fade_learning, fade_live, options_paper
         async with self._pool.acquire() as con:
             await con.execute(SCHEMA)
-            from live import fade_learning, options_paper
             await fade_learning.ensure_schema(con)
             await options_paper.ensure_schema(con)
+            await fade_live.ensure_schema(con)
+            if self.live is None:
+                try:
+                    self.live, why = await asyncio.to_thread(fade_live.from_env)
+                except Exception as exc:                 # noqa: BLE001 -- paper must still run
+                    self.live, why = None, f"could not start: {type(exc).__name__}: {exc}"[:300]
+                if self.live is None:
+                    await fade_live.record_off(con, why)
+                    log.info("fade live account off: %s", why)
         self.ready = True
-        log.info("fade paper runner started; accounts %s", list(ACCOUNTS))
+        log.info("fade paper runner started; accounts %s%s", list(ACCOUNTS),
+                 " + LIVE (real money)" if self.live else "")
         return True
 
     async def stop(self) -> None:
@@ -279,6 +291,8 @@ class FadeRunner:
                 else:
                     await self._enter(con, day)
             await self._monitor(con, now)
+            if self.live is not None:                     # the real account: same picks, real orders
+                await self.live.step(con, now)
             from live import fade_learning                # records and labels; never trades or grades
             await fade_learning.step(self, con, now)
             from live import options_paper                # the option-selling paper account; never trades
