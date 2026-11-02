@@ -99,7 +99,11 @@ async def main() -> int:
     if universe.mode() == "fade":
         from live.fade import FadeRunner
         from live.fade import create_app as fade_app
-        log.warning("GAINER-FADE PAPER RUNNER: simulated accounts only; no order path exists.")
+        from live.fade_live import enabled as fade_live_enabled
+        if fade_live_enabled()[0]:
+            log.warning("GAINER-FADE RUNNER: paper accounts + the REAL-MONEY account (live/fade_live.py).")
+        else:
+            log.warning("GAINER-FADE PAPER RUNNER: simulated accounts only; the real account is off.")
         runner = FadeRunner(settings.database_url)
         return await _serve(runner, settings, app_factory=fade_app)
 
@@ -385,6 +389,13 @@ if __name__ == "__main__":
     # stops the service before calling the CLI. The paper entry point has had
     # this dispatch all along; the live one was written to the same shape and
     # this was the piece that got left out.
+    if len(sys.argv) > 1 and sys.argv[1] == "fade-live-probe":
+        # ONE real contract through the real account's order shape (docs/fade_live_prereg.md step 3).
+        from live.fade_live import probe
+        sys.exit(probe(*sys.argv[2:3]))
+    if len(sys.argv) > 1 and sys.argv[1] == "fade-live-resume":
+        from live.fade_live import resume
+        sys.exit(asyncio.run(resume(os.environ["DATABASE_URL"])))
     if len(sys.argv) > 1 and sys.argv[1] in LEARNING_COMMANDS:
         # Labelling and grading read public candles and the database only;
         # they need no venue, no keys and no universe. Imported here and

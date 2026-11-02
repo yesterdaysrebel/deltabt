@@ -549,21 +549,27 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     # signal bot's: its report is its two accounts (db_probe.collect_fade).
     if isinstance(db.get("fade"), dict):
         fade = db["fade"]
-        problems += fade_problems(fade, now) + options_problems(db.get("options"), now)
+        live = db.get("live") if live_is_on(db.get("live")) else None
+        problems += live_problems(live, now) + fade_problems(fade, now) + options_problems(db.get("options"), now)
         # Owner, 2026-10-29: "make report simple ... a table just like we had before with trade
-        # journal" -- the attention list, one account table, then every trade.
-        out = [f"# Paper trade journal · {ist(now, with_day=True)} IST", ""]
+        # journal" -- the attention list, one account table, then every trade. The real-money account
+        # (owner 2026-11-02) comes first once it exists.
+        out = [f"# {'Trade' if live else 'Paper trade'} journal · {ist(now, with_day=True)} IST", ""]
         if problems:
             out.append("**⚠️ Needs your attention:**")
             out += [f"- {p}" for p in problems]
         else:
             out.append("**✅ All normal — nothing needs you.**")
         out.append("")
-        out += accounts_lines(fade, db.get("options"))
+        out += accounts_lines(fade, db.get("options"), live)
+        if live:
+            out += live_lines(live)
         out += fade_lines(fade)
         out += options_lines(db.get("options"))
-        out += ["", "---", "*Paper only: no order is ever sent. Times are IST. R and P&L are after fees and "
-                     "funding.*"]
+        out += ["", "---", ("*REAL MONEY: the Delta account trades with real orders; every other account is "
+                            "paper. " if live else "*Paper only: no order is ever sent. ")
+                + "Times are IST. R and P&L are after fees" + (" (real account: before funding)." if live
+                                                                else " and funding.") + "*"]
         out += [f"*Note:* {n}" for n in log_notes]
         out += learning_note(fade.get("learning"))
         accts = fade.get("accounts") or {}
@@ -572,7 +578,9 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
                  "closed": sum(a.get("closed", 0) for a in accts.values()),
                  "total_r": round(sum(a.get("r", 0) for a in accts.values()), 2),
                  "total_pnl": round(sum(a.get("pnl", 0) for a in accts.values()), 2),
-                 "fade": accts, "options": db.get("options"), "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
+                 "fade": accts, "options": db.get("options"),
+                 "live": None if not live else {k: live.get(k) for k in ("state", "closed", "wins", "pnl", "r")},
+                 "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
         return "\n".join(out) + "\n", facts, problems
 
     day_n = (now - started).days + 1 if started else None
@@ -645,9 +653,105 @@ def _rows(block: dict | None) -> list[dict]:
     return [dict(zip(fields, row)) for row in (block or {}).get("journal") or []]
 
 
-def accounts_lines(f: dict, o: dict | None) -> list[str]:
-    """One table: each paper account's equity and closed-trade totals."""
+def live_is_on(lv: dict | None) -> bool:
+    """The real account belongs in the report once it has ever been switched on or traded."""
+    if not lv:
+        return False
+    if lv.get("error"):
+        return True
+    st = (lv.get("state") or {}).get("status")
+    return bool(lv.get("journal")) or st in ("RUNNING", "HALTED", "STOPPED")
+
+
+#: How far from the paper entry a real fill may land before the report says so, in R.
+LIVE_SLIP_FLAG_R = 0.25
+
+
+def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
+    """What needs the owner on the real-money account (live/fade_live.py)."""
+    if not lv:
+        return []
+    if lv.get("error"):
+        return [f"the REAL account's figures could not be read ({lv['error']})"]
+    out = []
+    st = lv.get("state") or {}
+    if st.get("status") == "HALTED":
+        out.append(f"the REAL account is HALTED, no new trades until you look: {st.get('reason')}")
+    elif st.get("status") == "STOPPED":
+        out.append(f"the REAL-money run has STOPPED (pre-set floor): {st.get('reason')}")
+    elif st.get("status") == "OFF":
+        out.append(f"the REAL account is OFF: {st.get('reason')}")
+    bat = parse_time(st.get("balance_at"))
+    if st.get("status") == "RUNNING" and (bat is None or (now - bat).total_seconds() > 30 * 60):
+        out.append("the REAL account has not read its Delta balance in over 30 minutes")
+    since = now.timestamp() - 36 * 3600
+    for r in _rows(lv):
+        when_ = r.get("closed") or r.get("opened") or r.get("day") or 0
+        if when_ < since:
+            continue
+        if r["status"] == "FAILED":
+            out.append(f"REAL {r['symbol']}: the order failed ({r.get('skip_reason')})")
+        if r.get("exit_reason") in ("UNPROTECTED", "LIQUIDATION", "UNKNOWN_EXIT", "MANUAL_CLOSE"):
+            out.append(f"REAL {r['symbol']}: closed by {r['exit_reason']}, not its stop or the 24 h exit")
+        pe, e, s = r.get("paper_entry"), r.get("entry_price"), r.get("stop_price")
+        if pe and e and s and s > pe and (pe - e) / (s - pe) > LIVE_SLIP_FLAG_R:
+            out.append(f"REAL {r['symbol']}: sold at {price(e)}, {(pe - e) / (s - pe):.2f}R worse than paper's {price(pe)}")
+    for r in _rows(lv):
+        if r["status"] == "OPEN" and r.get("day") and now.timestamp() > r["day"] + 86400 + 15 * 60:
+            out.append(f"REAL {r['symbol']}: still open more than 15 minutes past its 24 h exit")
+    errs = [e for e in lv.get("events") or [] if e.get("kind") in ("ERROR", "EXIT_INCOMPLETE", "REJECTED")]
+    if errs:
+        out.append(f"the REAL account logged {plural(len(errs), 'error')} in 36 hours (last: "
+                   f"{errs[-1]['kind']} {errs[-1].get('symbol') or ''} {errs[-1]['detail'][:120]})")
+    return out
+
+
+def live_lines(lv: dict) -> list[str]:
+    """The real-money journal: every real trade beside the paper fill on the same pick."""
+    st = lv.get("state") or {}
+    out = ["", f"## REAL trades on Delta — account {str(st.get('status', '?')).lower()}"
+               + (f", balance ${st['balance']:,.2f}" if st.get("balance") is not None else "")]
+    rows = _rows(lv)
+    open_ = [r for r in rows if r["status"] in ("OPEN", "SENDING")][::-1]
+    done = [r for r in rows if r["status"] == "CLOSED"][::-1]
+    skipped = [r for r in rows if r["status"] in ("SKIPPED", "FAILED")][::-1][:6]
+    slip = lambda r: ("—" if not (r.get("paper_entry") and r.get("entry_price") and r.get("stop_price"))
+                      else f"{(r['entry_price'] - r['paper_entry']) / (r['stop_price'] - r['paper_entry']):+.2f}R")
+    out += ["", f"**Open now ({len(open_)})**"]
+    if open_:
+        out += table(["symbol", "qty", "sold", "at", "paper at", "vs paper", "stop"],
+                     [[r["symbol"], str(r.get("contracts") or "—"), when(r.get("opened")), price(r.get("entry_price")),
+                       price(r.get("paper_entry")), slip(r), price(r.get("stop_price"))] for r in open_],
+                     right={1, 3, 4, 5, 6})
+    else:
+        out.append("Nothing open.")
+    out += ["", f"**Closed ({len(done)}), newest first**"]
+    if done:
+        out += table(["symbol", "qty", "sold", "at", "vs paper", "stop", "closed", "exit", "how", "R", "P&L $"],
+                     [[r["symbol"], str(r.get("contracts") or "—"), when(r.get("opened")), price(r.get("entry_price")),
+                       slip(r), price(r.get("stop_price")), when(r.get("closed")), price(r.get("exit_price")),
+                       str(r.get("exit_reason") or "—").lower().replace("_", " "),
+                       "—" if r.get("r") is None else f"{r['r']:+.2f}", money(r.get("pnl"))] for r in done],
+                     right={1, 3, 4, 5, 7, 9, 10})
+    else:
+        out.append("No real trade has closed yet.")
+    if skipped:
+        out.append("Not traded: " + "; ".join(
+            f"{dt.datetime.fromtimestamp(r['day'], dt.timezone.utc):%d %b} {r['symbol']} ({r.get('skip_reason')})"
+            for r in skipped) + ".")
+    out.append("Rule A for real: same picks as paper, 3% risk, stop resting at Delta, bought back after 24 h; "
+               "the run stops itself under $140. \"vs paper\" is the real sale against paper's, in R (+ is better).")
+    return out
+
+
+def accounts_lines(f: dict, o: dict | None, lv: dict | None = None) -> list[str]:
+    """One table: each account's equity and closed-trade totals (the real one first)."""
     rows = []
+    if lv and not lv.get("error"):
+        n, w = lv.get("closed", 0), lv.get("wins", 0)
+        bal = (lv.get("state") or {}).get("balance")
+        rows.append(["REAL Delta (rule A, 3%)", "—" if bal is None else f"${bal:,.2f}", str(n), str(w), str(n - w),
+                     f"{100 * w / n:.0f}%" if n else "—", f"{lv.get('r', 0):+.2f}", money(lv.get("pnl"))])
     for acct, a in sorted((f.get("accounts") or {}).items()):
         n, w = a.get("closed", 0), a.get("wins", 0)
         rows.append([f"Fade {FADE_NAMES.get(acct, acct)}", f"${a.get('equity', 0):,.2f}", str(n), str(w),
@@ -659,8 +763,8 @@ def accounts_lines(f: dict, o: dict | None) -> list[str]:
                      f"{100 * w / n:.0f}%" if n else "—", "—", money(o.get("pnl", 0))])
     if not rows:
         return ["No account has traded yet."]
-    return table(["account ($250 each)", "equity", "closed", "won", "lost", "win rate", "total R", "P&L $"],
-                 rows, right=set(range(1, 8)))
+    return table(["account (paper ones $250)" if lv else "account ($250 each)", "equity", "closed", "won", "lost",
+                  "win rate", "total R", "P&L $"], rows, right=set(range(1, 8)))
 
 
 def fade_lines(f: dict) -> list[str]:

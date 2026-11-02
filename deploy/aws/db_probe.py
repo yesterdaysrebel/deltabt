@@ -301,6 +301,52 @@ async def collect_options(con) -> dict | None:
         return {"error": f"{type(exc).__name__}: {exc}"[:200]}
 
 
+#: The real account's journal columns (live/fade_live.py); newest LIVE_JOURNAL_ROWS rows.
+LIVE_JOURNAL_FIELDS = ("day", "symbol", "status", "skip_reason", "contracts", "paper_entry", "entry_price",
+                       "stop_price", "opened", "closed", "exit_price", "exit_reason", "pnl", "r")
+LIVE_JOURNAL_ROWS = 80
+
+
+async def collect_live(con, now=None) -> dict | None:
+    """The gainer-fade REAL-MONEY account (live/fade_live.py, owner 2026-11-02), or None before its
+    tables exist. `state` OFF means the account is not trading, with the reason."""
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    try:
+        if not await con.fetchval("SELECT to_regclass('fade_live_positions') IS NOT NULL"):
+            return None
+        st = await con.fetchrow("SELECT status, reason, at, balance, balance_at FROM fade_live_state WHERE id = 1")
+        agg = await con.fetchrow(
+            "SELECT count(*) FILTER (WHERE status = 'CLOSED') n, count(*) FILTER (WHERE status = 'CLOSED' AND pnl > 0) "
+            "wins, COALESCE(sum(pnl) FILTER (WHERE status = 'CLOSED'), 0) pnl, "
+            "COALESCE(sum(r) FILTER (WHERE status = 'CLOSED'), 0) r FROM fade_live_positions")
+        rows = await con.fetch(
+            "SELECT * FROM (SELECT extract(epoch from day)::bigint d, symbol, status, skip_reason, contracts, "
+            "paper_entry, entry_price, stop_price, extract(epoch from entry_time)::bigint o, "
+            "extract(epoch from exit_time)::bigint c, exit_price, exit_reason, pnl, r, id FROM fade_live_positions "
+            "ORDER BY day DESC, id DESC LIMIT $1) t ORDER BY d, id", LIVE_JOURNAL_ROWS)
+        total = int(await con.fetchval("SELECT count(*) FROM fade_live_positions"))
+        events = await con.fetch(
+            "SELECT extract(epoch from at)::bigint at, kind, symbol, detail::text detail FROM fade_live_events "
+            "WHERE at >= $1 ORDER BY at", now - _dt.timedelta(hours=36))
+        rn = lambda v: None if v is None else round(float(v), 4)
+        return {
+            "state": None if st is None else {
+                "status": st["status"], "reason": st["reason"], "at": st["at"].isoformat(),
+                "balance": rn(st["balance"]),
+                "balance_at": st["balance_at"].isoformat() if st["balance_at"] else None},
+            "closed": int(agg["n"]), "wins": int(agg["wins"]), "pnl": round(float(agg["pnl"]), 2),
+            "r": round(float(agg["r"]), 2),
+            "journal_fields": list(LIVE_JOURNAL_FIELDS),
+            "journal": [[r["d"], r["symbol"], r["status"], r["skip_reason"], r["contracts"], r["paper_entry"],
+                         r["entry_price"], r["stop_price"], r["o"], r["c"], r["exit_price"], r["exit_reason"],
+                         rn(r["pnl"]), rn(r["r"])] for r in rows],
+            "journal_omitted": total - len(rows),
+            "events": [{"at": e["at"], "kind": e["kind"], "symbol": e["symbol"], "detail": (e["detail"] or "")[:200]}
+                       for e in events][-20:]}
+    except Exception as exc:                    # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"[:200]}
+
+
 async def collect(con) -> dict:
     """Everything the report reads, given an open connection.
 
@@ -308,7 +354,8 @@ async def collect(con) -> dict:
     database. Every query here is SELECT.
     """
     if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "fade":
-        return {"fade": await collect_fade(con), "options": await collect_options(con)}
+        return {"fade": await collect_fade(con), "options": await collect_options(con),
+                "live": await collect_live(con)}
     out = {t: await con.fetchval(f"select count(*) from {t}") for t in COUNTS}
 
     # WHOSE NUMBERS ARE THESE?
