@@ -304,7 +304,11 @@ variable "live_sizing" {
     # then "0" with a Trading key.
     # 2026-10-28 (owner): "scrap crypto and metals bot" -> the bot host runs the gainer-fade paper
     # runner (live/fade.py, accounts A + QUICK, its own constants). Only `universe` is read in fade mode.
-    bot = { equity_usd = "250", risk_per_trade = "0.02", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
+    # 2026-11-02 (owner): "approved on tiny run, I have 176$" -> the REAL-MONEY account (live/fade_live.py,
+    # docs/fade_live_prereg.md): rule A on the sub-account, 3% risk, the run stops below $140. In fade mode
+    # dry_run "0" switches it on (with DELTA_ENV prod, a key, and a $140-$220 wallet); equity_usd is the
+    # sub-account's starting balance and risk_per_trade its risk. Probe PASS 2026-11-02 11:06 UTC.
+    bot = { equity_usd = "176", risk_per_trade = "0.03", min_contract_risk_cap = "0.03", dry_run = "0", pause_symbol_after_loss_seconds = "14400",
     universe = "fade", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
   }
 }
