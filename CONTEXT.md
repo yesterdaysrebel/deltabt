@@ -138,7 +138,7 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
-**FADE REAL-MONEY RUN — BUILT, OFF (owner 2026-11-02: "worth starting fade in live right now?" → told the
+**FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
 two-year evidence is ~break-even → "approved on tiny run, I have 176$"; rule A, 3% risk, stop the run below
 $140, own sub-account).** Rules fixed first in `docs/fade_live_prereg.md`; code `live/fade_live.py`, called from
 the fade runner's loop. Same picks as paper A: sells each with a reduce-only-safe order shape — IOC limit 1%
@@ -149,10 +149,13 @@ only once flat; reconciles every pass (unknown position → HALTED, untouched; S
 order id, never resent). STOPPED (final) below $140; `python -m live fade-live-resume` clears a HALT. Tables
 `fade_live_positions` / `_state` / `_events`; report puts a REAL row first and a real-vs-paper journal.
 **OFF unless** sizing `dry_run` is exactly "0", `DELTA_ENV` prod, a key is set and the wallet is $140–$220.
-Next: owner makes the sub-account + Trading key (whitelist 13.207.73.230) into
-`deltabt-paper/live/bot/venue-credentials` themself → restart → owner-approved `python -m live fade-live-probe`
-(1 XRPUSD contract through the exact order shape) → second PR: bot sizing `dry_run "0"`, `equity_usd "176"`,
-`risk_per_trade "0.03"`.
+2026-11-02: owner made the sub-account ($176.56 USD) and a Trading key (read + trade, whitelisted to
+13.207.73.230) in `deltabt-paper/live/bot/venue-credentials`; **probe PASS 11:06 UTC** (1 XRPUSD sold at 1.2500 vs
+bid 1.2501 with the bracket, stop seen resting, bought back 1.2503, Delta auto-cancelled the bracket, cost ~$0.002).
+Fade mode has NO daily restart: the sizing is read only at container start (a deploy, or a crash restart).
+TRAP 2026-11-02: the owner deleted `deltabt-paper/pg/bot` (the DB password) by mistake with the metals key;
+run_live.sh exits 90 "pg data exists, its secret is empty" and the rollback fails the same way — the bot was
+down 12 min until `aws secretsmanager restore-secret --secret-id deltabt-paper/pg/bot` (owner ran it).
 
 **GAINER-FADE PAPER RUNNER (owner 2026-10-28: "get variant A running as paper; scrap crypto and metals bot";
 "both, side by side"; "2%"; "keep a backup").** `live/fade.py`, run mode `DELTABOT_UNIVERSE=fade` (live_sizing
