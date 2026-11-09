@@ -14,6 +14,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -41,7 +42,7 @@ COLS = ["open_time", "open", "high", "low", "close", "volume", "close_time", "qu
 def get(url: str, tries: int = 4) -> bytes | None:
     for i in range(tries):
         try:
-            with urllib.request.urlopen(url, timeout=60) as r:
+            with urllib.request.urlopen(urllib.parse.quote(url, safe=":/?&="), timeout=60) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -74,9 +75,14 @@ def symbols() -> list[str]:
 
 
 def daily_one(sym: str) -> pd.DataFrame:
+    """One symbol's daily candles; a symbol that cannot be fetched is logged and left out (never fatal)."""
     parts = []
     for m in MONTHS:
-        b = get(f"{ARCHIVE}/monthly/klines/{sym}/1d/{sym}-1d-{m}.zip")
+        try:
+            b = get(f"{ARCHIVE}/monthly/klines/{sym}/1d/{sym}-1d-{m}.zip")
+        except Exception as exc:                                     # noqa: BLE001
+            print(f"  skipped {sym} {m}: {exc}", flush=True)
+            continue
         if b:
             parts.append(read_zip(b))
     if not parts:
@@ -110,7 +116,11 @@ def panel(d: pd.DataFrame) -> pd.DataFrame:
 
 def minute_one(x) -> dict | None:
     day = pd.to_datetime(x.time, unit="s").strftime("%Y-%m-%d")
-    b = get(f"{ARCHIVE}/daily/klines/{x.symbol}/1m/{x.symbol}-1m-{day}.zip")
+    try:
+        b = get(f"{ARCHIVE}/daily/klines/{x.symbol}/1m/{x.symbol}-1m-{day}.zip")
+    except Exception as exc:                                         # noqa: BLE001
+        print(f"  skipped 1m {x.symbol} {day}: {exc}", flush=True)
+        return None
     if not b:
         return None
     m = read_zip(b)
