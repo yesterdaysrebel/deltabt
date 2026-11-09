@@ -23,17 +23,22 @@ import gainer_fade_2025_lab as L   # noqa: E402
 DAY, FEE, MM, MARGIN = 86400, 0.0005, 0.005, 300.0
 LEVS, ROES, STOPS = (5, 10, 20), (0.10, 0.20, 0.30, 0.50, 0.75, 1.00), ("liq", "half")
 ROWS = Path("out/gainer_fade/high_lev_rows.parquet")
+OUT = Path("out/gainer_fade/high_lev_roe.txt")
+if "--low" in sys.argv:                              # addendum A: 1-3x, with rule A's own stop as a variant
+    LEVS, STOPS = (1, 2, 3), ("liq", "half", "rule")
+    ROWS = Path("out/gainer_fade/low_lev_rows.parquet")
+    OUT = Path("out/gainer_fade/low_lev_roe.txt")
 
 
 def key(lev, x, st):
     return f"L{lev}_X{int(round(100 * x))}_{st}"
 
 
-def outcomes(e, h, lo, c) -> dict:
+def outcomes(e, h, lo, c, dist) -> dict:
     out = {}
     for lev, x, st in itertools.product(LEVS, ROES, STOPS):
         liq = e * (1 + 1 / lev - MM)
-        stop = liq if st == "liq" else e * (1 + 0.5 / lev)
+        stop = liq if st == "liq" else min(e * (1 + dist), liq) if st == "rule" else e * (1 + 0.5 / lev)
         tg = e * (1 - x / lev)
         s = np.nonzero(h >= stop)[0]
         t = np.nonzero(lo <= tg)[0]
@@ -72,7 +77,7 @@ def binance_one(x):
     if not len(c):
         return None
     return {"venue": "Binance", "symbol": x.symbol, "time": int(x.time), "year": str(x.year), "dist": float(x.dist),
-            **outcomes(float(x.open), h, lo, c)}
+            **outcomes(float(x.open), h, lo, c, float(x.dist))}
 
 
 def delta_one(x):
@@ -84,7 +89,8 @@ def delta_one(x):
     if m.empty:
         return None
     return {"venue": "Delta", "symbol": x.symbol, "time": int(x.time), "year": str(x.window), "dist": 2 * float(x.atrp),
-            **outcomes(float(x.open), m.high.to_numpy(float), m.low.to_numpy(float), m.close.to_numpy(float))}
+            **outcomes(float(x.open), m.high.to_numpy(float), m.low.to_numpy(float), m.close.to_numpy(float),
+                       2 * float(x.atrp))}
 
 
 def build():
@@ -147,7 +153,7 @@ def main():
                      f"{100 * (mm > 0).mean():3.0f}%  mean month ${mm.mean():>7,.0f}  worst ${mm.min():>7,.0f}")
     text = "\n".join(lines)
     print(text)
-    Path("out/gainer_fade/high_lev_roe.txt").write_text(text + "\n")
+    OUT.write_text(text + "\n")
 
 
 if __name__ == "__main__":
