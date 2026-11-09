@@ -148,6 +148,10 @@ GST vs 0.05% modelled). An independent review agent found no code bug (`scripts/
 dollar) but: Jan-Jul 2026 is the tuning period, and the ladder's lead over flat sizing is day-order luck (shuffle control).
 Also tested and failed today: 1:1 target, 75%-deployed tight stop, 0.3x target, top 1/3/4 picks, fixed coin list, size
 after a loss, monthly stops, 15% ladder, leverage > 1x. The Quick branch `feat/fade-live-quick` is NOT merged.
+Harness checks: an independent review of `scripts/fade_binance_test.py` found no bug (picks and 7 trades rebuilt from raw
+files; a generous daily-only rerun also gives ~0R); the positive control (`--control`, same code on Binance 2025-2026,
+`out/gainer_fade/binance_control.txt`) reproduces Delta's direction (A +0.031R / +0.065R, QUICK +0.012R / +0.020R). Six
+Binance years for rule A, before funding: −0.018, +0.036, −0.035, +0.009, +0.031, +0.065R — positive in the last two only.
 
 **FADE REAL-MONEY RUN, VERSION 2 — RULE QUICK, $1,200, 5% risk, floor $960 (owner 2026-11-09: "approved, we will
 deploy fade quick in real"; rules `docs/fade_live_quick_prereg.md`, branch `feat/fade-live-quick`).** The entry's
