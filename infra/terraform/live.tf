@@ -316,7 +316,9 @@ variable "live_sizing" {
     # 30% position cap, market stop; under $1,000 it stops until a refill (`fade-live-capital`), refills
     # <= $3,000. dry_run "1" = EXITS-ONLY (version 1's open positions are still bought back) until the
     # market-stop probe passes; a second PR sets "0".
-    bot = { equity_usd = "1500", risk_per_trade = "0.10", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
+    # 2026-11-09 21:31 UTC: probe PASS at 2x on XRPUSD (isolated margin, auto top-up off, margin = notional/2,
+    # liquidation +49.5%, market stop resting size 1). Owner: "Yes" -> dry_run "0": run 3 begins at the next pass.
+    bot = { equity_usd = "1500", risk_per_trade = "0.10", min_contract_risk_cap = "0.03", dry_run = "0", pause_symbol_after_loss_seconds = "14400",
     universe = "fade", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
   }
 }
