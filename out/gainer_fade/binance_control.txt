@@ -1,0 +1,29 @@
+999 trades, 414 coins; per year: 2025 550, 2026 449
+
+=== A: mean net R per trade ===
+  2025: +0.031R ± 0.033  win 56%  stopped 24%  n 550
+  2026: +0.065R ± 0.050  win 51%  stopped 37%  n 449
+  pooled +0.046R, z +1.60; years > 0: 2/4
+  RULE 1 (A has an edge): FAIL
+
+=== QUICK: mean net R per trade ===
+  2025: +0.012R ± 0.017  win 80%  stopped 12%  n 550
+  2026: +0.020R ± 0.020  win 85%  stopped 14%  n 449
+  pooled +0.016R, z +1.21; years > 0: 2/4
+  RULE 2 (QUICK has an edge): FAIL
+
+=== accounts: $1,500 at the start of each year, rule A ===
+  sizing                 2025: end / low / drop | 2026: end / low / drop
+  flat 3%                $   2,147 $ 1,146  52% | $   2,817 $ 1,208  34%
+  flat 5%                $   2,340 $   865  73% | $   3,285 $ 1,006  51%
+  flat 10%               $   2,419 $   453  89% | $   2,990 $   602  72%
+  ladder 10/5/3          $   2,147 $ 1,146  66% | $   1,872 $   823  50%
+  rolling 90d            $   3,925 $ 1,051  69% | $   1,964 $   823  50%
+  20 trades won >= 65%   $   1,741 $   735  78% | $   1,385 $   823  62%
+  RULE 3 (ladder kept over flat): 0/4 years -> FAIL
+  RULE 4 (rolling 90d replaces the ladder): 2/4 years -> FAIL
+  RULE 4 (20 trades won >= 65% replaces the ladder): 0/4 years -> FAIL
+
+=== accounts: QUICK, for comparison ===
+  flat 3%                $   1,756 drop  38% | $   1,899 drop  22%
+  flat 5%                $   1,852 drop  57% | $   2,120 drop  34%
