@@ -1,109 +1,129 @@
 Run the REAL-MONEY account's code (live/fade_live.py, run 3) through Delta 2025 and 2026, day by day, against a
 
 === 2025 — clean ===
-bot:       end $2,031.48  refills 2 ($1,015.76)  trades 559  skipped 4  not closed 0  state RUNNING (refilled $+502.41 by the owner; high-water mark set to $1,500.00)
-reference: end $2,031.52  refills 2 ($1,015.83)  trades 559
-day-end balance, bot vs reference: max gap 0.005%, mean 0.0021%
+bot:       end $2,103.14  refills 3 ($1,748.46)  trades 557  skipped 6  not closed 0  state RUNNING (refilled $+641.67 by the owner; high-water mark set to $1,500.00)
+reference: end $2,103.21  refills 3 ($1,748.65)  trades 557
+day-end balance, bot vs reference: max gap 0.011%, mean 0.0026%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 155, 0.05: 121, 0.1: 283}  reference {0.03: 155, 0.05: 121, 0.1: 283}
-events: {'CAPITAL': 2, 'CLOSED_AT_DELTA': 71, 'NEW_RUN': 1, 'STOPPED': 2}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 5.0%, median 5.0%, max 9.7% of the balance
-  [PASS] 2025 clean: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2025 clean: same trades, refills and ladder steps as the reference
+risk steps: bot {0.03: 157, 0.05: 168, 0.1: 232}  reference {0.03: 157, 0.05: 168, 0.1: 232}
+events: {'CAPITAL': 3, 'CLOSED_AT_DELTA': 71, 'NEW_RUN': 1, 'STOPPED': 3}
+leverage used: {1: 365, 2: 192}
+risk actually taken per trade: mean 6.0%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 557
+  [PASS] 2025 clean: every trade's ladder step follows its morning balance and mark
+  [PASS] 2025 clean: every trade's size and leverage follow the written rule
+  [PASS] 2025 clean: end within 1% of the reference, same trades and refills
   [PASS] 2025 clean: nothing left open, no unexplained HALT
   [PASS] 2025 clean: each recorded R equals the research R
-skipped: run stopped; run stopped: balance $986.65 is under $1000; run stopped: balance $997.59 is under $1000
-owner 2025-07-15: rc 0 recorded $+513.35: balance $1,500.00, high-water mark $1,500.00, refills so far $513.35 of $3,000; state RUNNING
-owner 2025-09-03: rc 0 recorded $+502.41: balance $1,500.00, high-water mark $1,500.00, refills so far $1,015.76 of $3,000; state RUNNING
+skipped: run stopped; run stopped: balance $858.33 is under $1000; run stopped: balance $922.15 is under $1000; run stopped: balance $971.06 is under $1000
+owner 2025-04-13: rc 0 recorded $+577.85: balance $1,500.00, high-water mark $1,500.00, refills so far $577.85 of $3,000; state RUNNING
+owner 2025-07-15: rc 0 recorded $+528.94: balance $1,500.00, high-water mark $1,500.00, refills so far $1,106.79 of $3,000; state RUNNING
+owner 2025-08-20: rc 0 recorded $+641.67: balance $1,500.00, high-water mark $1,500.00, refills so far $1,748.46 of $3,000; state RUNNING
 
 === 2025 — faults: restart daily, 3% of reads fail ===
-bot:       end $2,031.46  refills 2 ($1,015.76)  trades 559  skipped 4  not closed 0  state RUNNING (refilled $+502.41 by the owner; high-water mark set to $1,500.00)
-reference: end $2,031.52  refills 2 ($1,015.83)  trades 559
-day-end balance, bot vs reference: max gap 0.005%, mean 0.0022%
+bot:       end $2,103.13  refills 3 ($1,748.48)  trades 557  skipped 6  not closed 0  state RUNNING (refilled $+641.67 by the owner; high-water mark set to $1,500.00)
+reference: end $2,103.21  refills 3 ($1,748.65)  trades 557
+day-end balance, bot vs reference: max gap 0.011%, mean 0.0022%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 155, 0.05: 121, 0.1: 283}  reference {0.03: 155, 0.05: 121, 0.1: 283}
-events: {'CAPITAL': 2, 'CLOSED_AT_DELTA': 103, 'ERROR': 1990, 'NEW_RUN': 1, 'STOPPED': 2}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 5.0%, median 5.0%, max 9.7% of the balance
-  [PASS] 2025 faults: restart daily, 3% of reads fail: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2025 faults: restart daily, 3% of reads fail: same trades, refills and ladder steps as the reference
+risk steps: bot {0.03: 157, 0.05: 168, 0.1: 232}  reference {0.03: 157, 0.05: 168, 0.1: 232}
+events: {'CAPITAL': 3, 'CLOSED_AT_DELTA': 88, 'ERROR': 1995, 'NEW_RUN': 1, 'STOPPED': 3}
+leverage used: {1: 365, 2: 192}
+risk actually taken per trade: mean 6.0%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 557
+  [PASS] 2025 faults: restart daily, 3% of reads fail: every trade's ladder step follows its morning balance and mark
+  [PASS] 2025 faults: restart daily, 3% of reads fail: every trade's size and leverage follow the written rule
+  [PASS] 2025 faults: restart daily, 3% of reads fail: end within 1% of the reference, same trades and refills
   [PASS] 2025 faults: restart daily, 3% of reads fail: nothing left open, no unexplained HALT
   [PASS] 2025 faults: restart daily, 3% of reads fail: each recorded R equals the research R
-skipped: run stopped; run stopped: balance $986.65 is under $1000; run stopped: balance $997.59 is under $1000
-owner 2025-07-15: rc 0 recorded $+513.35: balance $1,500.00, high-water mark $1,500.00, refills so far $513.35 of $3,000; state RUNNING
-owner 2025-09-03: rc 0 recorded $+502.41: balance $1,500.00, high-water mark $1,500.00, refills so far $1,015.76 of $3,000; state RUNNING
-venue reads failed: 2005
-faults vs clean end balance: 0.0008%
+skipped: run stopped; run stopped: balance $858.33 is under $1000; run stopped: balance $922.14 is under $1000; run stopped: balance $971.05 is under $1000
+owner 2025-04-13: rc 0 recorded $+577.86: balance $1,500.00, high-water mark $1,500.00, refills so far $577.86 of $3,000; state RUNNING
+owner 2025-07-15: rc 0 recorded $+528.95: balance $1,500.00, high-water mark $1,500.00, refills so far $1,106.80 of $3,000; state RUNNING
+owner 2025-08-20: rc 0 recorded $+641.67: balance $1,500.00, high-water mark $1,500.00, refills so far $1,748.48 of $3,000; state RUNNING
+venue reads failed: 2011
+faults vs clean end balance: 0.0002%
 
 === 2026 — clean ===
-bot:       end $6,592.93  refills 0 ($0.00)  trades 465  skipped 0  not closed 0  state RUNNING (run 3 started at $1500.00)
-reference: end $6,594.10  refills 0 ($0.00)  trades 465
-day-end balance, bot vs reference: max gap 0.021%, mean 0.0140%
+bot:       end $15,000.04  refills 0 ($0.00)  trades 465  skipped 0  not closed 0  state RUNNING (run 3 started at $1500.00)
+reference: end $15,006.03  refills 0 ($0.00)  trades 465
+day-end balance, bot vs reference: max gap 0.045%, mean 0.0308%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 181, 0.05: 64, 0.1: 220}  reference {0.03: 181, 0.05: 64, 0.1: 220}
+risk steps: bot {0.03: 187, 0.05: 75, 0.1: 203}  reference {0.03: 187, 0.05: 75, 0.1: 203}
 events: {'CLOSED_AT_DELTA': 90, 'NEW_RUN': 1}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 4.5%, median 4.1%, max 9.7% of the balance
-  [PASS] 2026 clean: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2026 clean: same trades, refills and ladder steps as the reference
+leverage used: {1: 280, 2: 185}
+risk actually taken per trade: mean 5.8%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 465
+  [PASS] 2026 clean: every trade's ladder step follows its morning balance and mark
+  [PASS] 2026 clean: every trade's size and leverage follow the written rule
+  [PASS] 2026 clean: end within 1% of the reference, same trades and refills
   [PASS] 2026 clean: nothing left open, no unexplained HALT
   [PASS] 2026 clean: each recorded R equals the research R
 
 === 2026 — faults: restart daily, 3% of reads fail ===
-bot:       end $6,592.89  refills 0 ($0.00)  trades 465  skipped 0  not closed 0  state RUNNING (run 3 started at $1500.00)
-reference: end $6,594.10  refills 0 ($0.00)  trades 465
-day-end balance, bot vs reference: max gap 0.021%, mean 0.0145%
+bot:       end $14,999.89  refills 0 ($0.00)  trades 465  skipped 0  not closed 0  state RUNNING (run 3 started at $1500.00)
+reference: end $15,006.03  refills 0 ($0.00)  trades 465
+day-end balance, bot vs reference: max gap 0.046%, mean 0.0317%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 181, 0.05: 64, 0.1: 220}  reference {0.03: 181, 0.05: 64, 0.1: 220}
-events: {'CLOSED_AT_DELTA': 117, 'ERROR': 1602, 'NEW_RUN': 1}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 4.5%, median 4.1%, max 9.7% of the balance
-  [PASS] 2026 faults: restart daily, 3% of reads fail: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2026 faults: restart daily, 3% of reads fail: same trades, refills and ladder steps as the reference
+risk steps: bot {0.03: 187, 0.05: 75, 0.1: 203}  reference {0.03: 187, 0.05: 75, 0.1: 203}
+events: {'CLOSED_AT_DELTA': 117, 'ERROR': 1625, 'NEW_RUN': 1}
+leverage used: {1: 280, 2: 185}
+risk actually taken per trade: mean 5.8%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 465
+  [PASS] 2026 faults: restart daily, 3% of reads fail: every trade's ladder step follows its morning balance and mark
+  [PASS] 2026 faults: restart daily, 3% of reads fail: every trade's size and leverage follow the written rule
+  [PASS] 2026 faults: restart daily, 3% of reads fail: end within 1% of the reference, same trades and refills
   [PASS] 2026 faults: restart daily, 3% of reads fail: nothing left open, no unexplained HALT
   [PASS] 2026 faults: restart daily, 3% of reads fail: each recorded R equals the research R
-venue reads failed: 1617
-faults vs clean end balance: 0.0007%
+venue reads failed: 1632
+faults vs clean end balance: 0.0010%
 
 === 2025-stress — clean ===
-bot:       end $943.06  refills 5 ($2,642.12)  trades 331  skipped 12  not closed 0  state STOPPED (balance $943.06 under the $1000 floor: refill and run fade-live-capital)
-reference: end $943.03  refills 5 ($2,642.29)  trades 331  budget spent
-day-end balance, bot vs reference: max gap 0.005%, mean 0.0019%
+bot:       end $999.60  refills 5 ($2,671.69)  trades 263  skipped 11  not closed 0  state STOPPED (balance $999.60 under the $1000 floor: refill and run fade-live-capital)
+reference: end $999.53  refills 5 ($2,671.99)  trades 263  budget spent
+day-end balance, bot vs reference: max gap 0.007%, mean 0.0058%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 24, 0.05: 143, 0.1: 164}  reference {0.03: 24, 0.05: 143, 0.1: 164}
-events: {'CAPITAL': 5, 'CLOSED_AT_DELTA': 34, 'NEW_RUN': 1, 'REFILL_REFUSED': 1, 'STOPPED': 6}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 5.3%, median 5.0%, max 9.5% of the balance
-  [PASS] 2025-stress clean: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2025-stress clean: same trades, refills and ladder steps as the reference
+risk steps: bot {0.03: 37, 0.05: 128, 0.1: 98}  reference {0.03: 37, 0.05: 128, 0.1: 98}
+events: {'CAPITAL': 5, 'CLOSED_AT_DELTA': 26, 'NEW_RUN': 1, 'REFILL_REFUSED': 1, 'STOPPED': 6}
+leverage used: {1: 177, 2: 86}
+risk actually taken per trade: mean 6.1%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 263
+  [PASS] 2025-stress clean: every trade's ladder step follows its morning balance and mark
+  [PASS] 2025-stress clean: every trade's size and leverage follow the written rule
+  [PASS] 2025-stress clean: end within 1% of the reference, same trades and refills
   [PASS] 2025-stress clean: nothing left open, no unexplained HALT
   [PASS] 2025-stress clean: each recorded R equals the research R
   [PASS] 2025-stress clean: the run ends when the $3,000 budget would be passed
-skipped: run stopped; run stopped: balance $943.06 is under $1000; run stopped: balance $945.27 is under $1000; run stopped: balance $949.03 is under $1000; run stopped: balance $980.96 is under $1000; run stopped: balance $988.63 is under $1000; run stopped: balance $993.99 is under $1000
-owner 2025-03-24: rc 0 recorded $+550.97: balance $1,500.00, high-water mark $1,500.00, refills so far $550.97 of $3,000; state RUNNING
-owner 2025-04-15: rc 0 recorded $+511.37: balance $1,500.00, high-water mark $1,500.00, refills so far $1,062.34 of $3,000; state RUNNING
-owner 2025-05-13: rc 0 recorded $+554.73: balance $1,500.00, high-water mark $1,500.00, refills so far $1,617.07 of $3,000; state RUNNING
-owner 2025-07-11: rc 0 recorded $+519.04: balance $1,500.00, high-water mark $1,500.00, refills so far $2,136.11 of $3,000; state RUNNING
-owner 2025-07-26: rc 0 recorded $+506.01: balance $1,500.00, high-water mark $1,500.00, refills so far $2,642.12 of $3,000; state RUNNING
-owner 2025-08-20: rc 1 refills would reach $3,199.07, over the $3,000 budget: the run is over (docs/fade_live_ladder_prereg.md)
+skipped: run stopped; run stopped: balance $929.36 is under $1000; run stopped: balance $937.15 is under $1000; run stopped: balance $984.37 is under $1000; run stopped: balance $984.53 is under $1000; run stopped: balance $992.89 is under $1000; run stopped: balance $999.60 is under $1000
+owner 2025-02-27: rc 0 recorded $+515.63: balance $1,500.00, high-water mark $1,500.00, refills so far $515.63 of $3,000; state RUNNING
+owner 2025-04-10: rc 0 recorded $+562.85: balance $1,500.00, high-water mark $1,500.00, refills so far $1,078.48 of $3,000; state RUNNING
+owner 2025-04-24: rc 0 recorded $+515.47: balance $1,500.00, high-water mark $1,500.00, refills so far $1,593.94 of $3,000; state RUNNING
+owner 2025-05-13: rc 0 recorded $+570.64: balance $1,500.00, high-water mark $1,500.00, refills so far $2,164.58 of $3,000; state RUNNING
+owner 2025-06-30: rc 0 recorded $+507.11: balance $1,500.00, high-water mark $1,500.00, refills so far $2,671.69 of $3,000; state RUNNING
+owner 2025-07-14: rc 1 refills would reach $3,172.09, over the $3,000 budget: the run is over (docs/fade_live_ladder_prereg.md)
 
 === 2025-stress — faults: restart daily, 3% of reads fail ===
-bot:       end $943.06  refills 5 ($2,642.13)  trades 331  skipped 12  not closed 0  state STOPPED (balance $943.06 under the $1000 floor: refill and run fade-live-capital)
-reference: end $943.03  refills 5 ($2,642.29)  trades 331  budget spent
-day-end balance, bot vs reference: max gap 0.005%, mean 0.0019%
+bot:       end $999.60  refills 5 ($2,671.70)  trades 263  skipped 11  not closed 0  state STOPPED (balance $999.60 under the $1000 floor: refill and run fade-live-capital)
+reference: end $999.53  refills 5 ($2,671.99)  trades 263  budget spent
+day-end balance, bot vs reference: max gap 0.007%, mean 0.0057%
 per-trade R recorded by the bot vs the research R (before funding): max |diff| 0.0000, mean 0.00000
-risk steps: bot {0.03: 24, 0.05: 143, 0.1: 164}  reference {0.03: 24, 0.05: 143, 0.1: 164}
-events: {'CAPITAL': 5, 'CLOSED_AT_DELTA': 47, 'ERROR': 1446, 'NEW_RUN': 1, 'REFILL_REFUSED': 1, 'STOPPED': 6}
-risk actually taken per trade (the 30% cap binds below a 33% stop): mean 5.3%, median 5.0%, max 9.5% of the balance
-  [PASS] 2025-stress faults: restart daily, 3% of reads fail: every day-end balance within 0.1% of the reference (faults: 2%)
-  [PASS] 2025-stress faults: restart daily, 3% of reads fail: same trades, refills and ladder steps as the reference
+risk steps: bot {0.03: 37, 0.05: 128, 0.1: 98}  reference {0.03: 37, 0.05: 128, 0.1: 98}
+events: {'CAPITAL': 5, 'CLOSED_AT_DELTA': 45, 'ERROR': 1271, 'NEW_RUN': 1, 'REFILL_REFUSED': 1, 'STOPPED': 6}
+leverage used: {1: 177, 2: 86}
+risk actually taken per trade: mean 6.1%, median 5.0%, max 10.0% of the balance
+decisions against the written rule: 0 ladder steps and 0 sizes differ of 263
+  [PASS] 2025-stress faults: restart daily, 3% of reads fail: every trade's ladder step follows its morning balance and mark
+  [PASS] 2025-stress faults: restart daily, 3% of reads fail: every trade's size and leverage follow the written rule
+  [PASS] 2025-stress faults: restart daily, 3% of reads fail: end within 1% of the reference, same trades and refills
   [PASS] 2025-stress faults: restart daily, 3% of reads fail: nothing left open, no unexplained HALT
   [PASS] 2025-stress faults: restart daily, 3% of reads fail: each recorded R equals the research R
   [PASS] 2025-stress faults: restart daily, 3% of reads fail: the run ends when the $3,000 budget would be passed
-skipped: run stopped; run stopped: balance $943.06 is under $1000; run stopped: balance $945.27 is under $1000; run stopped: balance $949.03 is under $1000; run stopped: balance $980.95 is under $1000; run stopped: balance $988.63 is under $1000; run stopped: balance $993.98 is under $1000
-owner 2025-03-24: rc 0 recorded $+550.97: balance $1,500.00, high-water mark $1,500.00, refills so far $550.97 of $3,000; state RUNNING
-owner 2025-04-15: rc 0 recorded $+511.37: balance $1,500.00, high-water mark $1,500.00, refills so far $1,062.34 of $3,000; state RUNNING
-owner 2025-05-13: rc 0 recorded $+554.73: balance $1,500.00, high-water mark $1,500.00, refills so far $1,617.07 of $3,000; state RUNNING
-owner 2025-07-11: rc 0 recorded $+519.05: balance $1,500.00, high-water mark $1,500.00, refills so far $2,136.12 of $3,000; state RUNNING
-owner 2025-07-26: rc 0 recorded $+506.02: balance $1,500.00, high-water mark $1,500.00, refills so far $2,642.13 of $3,000; state RUNNING
-owner 2025-08-20: rc 1 refills would reach $3,199.08, over the $3,000 budget: the run is over (docs/fade_live_ladder_prereg.md)
-venue reads failed: 1452
+skipped: run stopped; run stopped: balance $929.36 is under $1000; run stopped: balance $937.15 is under $1000; run stopped: balance $984.37 is under $1000; run stopped: balance $984.53 is under $1000; run stopped: balance $992.89 is under $1000; run stopped: balance $999.60 is under $1000
+owner 2025-02-27: rc 0 recorded $+515.63: balance $1,500.00, high-water mark $1,500.00, refills so far $515.63 of $3,000; state RUNNING
+owner 2025-04-10: rc 0 recorded $+562.85: balance $1,500.00, high-water mark $1,500.00, refills so far $1,078.48 of $3,000; state RUNNING
+owner 2025-04-24: rc 0 recorded $+515.47: balance $1,500.00, high-water mark $1,500.00, refills so far $1,593.95 of $3,000; state RUNNING
+owner 2025-05-13: rc 0 recorded $+570.64: balance $1,500.00, high-water mark $1,500.00, refills so far $2,164.58 of $3,000; state RUNNING
+owner 2025-06-30: rc 0 recorded $+507.11: balance $1,500.00, high-water mark $1,500.00, refills so far $2,671.70 of $3,000; state RUNNING
+owner 2025-07-14: rc 1 refills would reach $3,172.09, over the $3,000 budget: the run is over (docs/fade_live_ladder_prereg.md)
+venue reads failed: 1276
 faults vs clean end balance: 0.0000%
 
-26/26 checks pass
+32/32 checks pass

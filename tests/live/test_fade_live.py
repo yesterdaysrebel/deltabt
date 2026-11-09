@@ -59,14 +59,27 @@ def test_from_env_makes_no_venue_call_and_is_exits_only_without_the_switch(monke
 
 
 def test_sizing_cap_leverage_and_ticks():
-    # 10% of $1,500 = $150 between a bid of 1.00 and a stop 20% above: 750 contracts by risk, but at most
-    # 30% of the balance ($450) as notional at 1x: 450 -- the cap binds (risk actually used 6%).
-    assert L.contracts_for(1500, 0.10, 1.0, 1.2, 1.0) == 450
-    assert L.contracts_for(1500, 0.03, 1.0, 1.2, 1.0) == 225        # 3%: risk binds
-    assert L.contracts_for(1500, 0.10, 1.0, 1.4, 1.0) == 375        # a 40% stop: risk binds under the cap
-    assert L.contracts_for(1500, 0.10, 0.2, 0.3, 1000) == 1         # $100 risk a contract: 1.5 -> 1
-    assert L.contracts_for(0, 0.10, 1.0, 1.2, 1.0) == 0 and L.contracts_for(1500, 0.10, 1.2, 1.0, 1.0) == 0
-    assert L.leverage_ok(0.30, 2.5) and not L.leverage_ok(0.33, 2.5)  # 1x: 0.975 >= 3 x dist
+    from live.fade import lever_plan
+    # 10% risk on a 20% stop wants 50% notional: 2x on 25% margin would do, but at 2x liquidation (1/2 - 2.5%
+    # = 47.5%) is not 2 x 20% = 40% away... it is: 47.5% >= 40% -> 2x, notional 50%, risk the full 10%.
+    assert lever_plan(0.10, 0.20, 2.5) == (0.5, 2)
+    # a 15% stop wants 67%: capped at 60% notional, 2x (margin 30%)
+    assert lever_plan(0.10, 0.15, 2.5) == (0.6, 2)
+    # a 25% stop: 2x would liquidate 47.5% away < 50% -> 1x, 30% notional (margin cap), risk 7.5%
+    assert lever_plan(0.10, 0.25, 2.5) == (0.3, 1)
+    # a 30% stop at 3% risk wants 10% notional: 1x
+    assert lever_plan(0.03, 0.30, 2.5) == (0.1, 1)
+    # a 5% stop: 3x allowed (1/3 - 2.5% = 30.8% >= 10%), but 60% notional needs only 2x
+    assert lever_plan(0.10, 0.05, 2.5) == (0.6, 2)
+    # past 48.75% even 1x cannot keep liquidation 2x away
+    assert lever_plan(0.10, 0.49, 2.5) == (0.0, 0)
+    # contracts: $1,500, bid 1.00, stop 1.20 -> 50% notional = 750 contracts at 2x
+    assert L.contracts_for(1500, 0.10, 1.0, 1.2, 1.0, 2.5) == (750, 2)
+    assert L.contracts_for(1500, 0.03, 1.0, 1.2, 1.0, 2.5) == (225, 1)        # 3%: 15% notional, 1x
+    assert L.contracts_for(1500, 0.10, 0.2, 0.25, 1000, 2.5) == (2, 1)       # 25% stop: 1x, 30% = $450 -> 2 of $200
+    assert L.contracts_for(1500, 0.10, 0.2, 0.3, 1000, 2.5) == (0, 0)        # 50% stop: liquidation cannot be 2x away
+    assert L.contracts_for(0, 0.10, 1.0, 1.2, 1.0, 2.5) == (0, 0)
+    assert L.contracts_for(1500, 0.10, 1.2, 1.0, 1.0, 2.5) == (0, 0)
     assert L.to_tick(1.23456, Decimal("0.001"), up=True) == Decimal("1.235")
     assert L.to_tick(1.23456, Decimal("0.001"), up=False) == Decimal("1.234")
     pnl, r = L.money(1.0, 0.9, 26, 1.0, 1.2, 0.05)
@@ -102,7 +115,7 @@ class FakeDelta:
 
     FEE = 0.01
 
-    def __init__(self, balance=1500.0, attach_stop=True, fill=None, stop_size=None):
+    def __init__(self, balance=1500.0, attach_stop=True, fill=None, stop_size=None, margin="isolated"):
         self.bal = balance
         self.attach_stop = attach_stop
         self.fill = fill                              # contracts an entry fills (None = all)
@@ -120,6 +133,7 @@ class FakeDelta:
         self.by_cid: dict[str, dict] = {}
         self.fail: dict[str, int] = {}               # method -> how many more calls raise
         self.no_balance = False
+        self.margin = margin                          # "isolated" | "cross" | "topup" | "silent"
         self._id = 100
 
     def _sym(self, pid):
@@ -138,7 +152,16 @@ class FakeDelta:
         self._maybe_fail("get_balance")
         return [] if self.no_balance else [{"asset_symbol": "USD", "balance": str(round(self.bal, 6))}]
     def get_position(self, pid):
-        return {"product_id": pid, "size": self.pos[pid]} if self.pos.get(pid) else None
+        if not self.pos.get(pid):
+            return None
+        row = {"product_id": pid, "size": self.pos[pid]}
+        if self.margin == "silent":
+            return row
+        lev, e, n = self.lev.get(pid, 1), self.entry.get(pid, 1.0), abs(self.pos[pid])
+        cv = float(self.products[self._sym(pid)]["contract_value"])
+        row.update(margin=str(e * n * cv / lev), liquidation_price=str(e * (1 + 1 / lev - 0.025)),
+                   auto_topup=self.margin == "topup", margin_mode="cross" if self.margin == "cross" else "isolated")
+        return row
     def get_positions(self):
         self._maybe_fail("get_positions")
         return [{"product_id": pid, "product_symbol": self._sym(pid) if pid in (1, 2) else "ZUSD", "size": n}
@@ -262,8 +285,9 @@ async def test_a_full_day_sell_with_a_market_stop_then_buy_back_after_24_hours()
             "a MARKET stop and no take-profit"
         x = next(p for p in sells if p["product_id"] == 1)
         assert x["limit_price"] == "0.99" and x["bracket_stop_loss_price"] == "1.2"   # bid 1.00, 2 x 10% ATR
-        # $150 at risk would be 750 contracts; the 30% cap ($450 of a $1,500 wallet) binds at 450
-        assert x["size"] == 450 and fake.lev == {1: 1, 2: 1}
+        # $150 at risk on a 20% stop: 750 contracts = 50% of the wallet as notional, carried at 2x (margin 25%)
+        assert x["size"] == 750 and fake.lev == {1: 2, 2: 1}   # YUSD's 24% stop: 2x would liquidate 47.5% away
+        assert rows["XUSD"]["leverage"] == 2
         assert rows["XUSD"]["risk_pct"] == 0.10 and rows["XUSD"]["target_price"] is None
         assert '"spread_bps": 10.0' in rows["XUSD"]["detail"]
         # the second pick is sized off the wallet after the first's entry fee
@@ -277,7 +301,7 @@ async def test_a_full_day_sell_with_a_market_stop_then_buy_back_after_24_hours()
         buys = [p for p in fake.sent if p["side"] == "buy"]
         assert len(buys) == 2 and all(p["reduce_only"] for p in buys) and fake.pos == {1: 0, 2: 0}
         assert not fake.pending and len(fake.cancelled) == 2                     # the stops, once flat
-        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 450 - 0.02)) < 1e-9
+        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 750 - 0.02)) < 1e-9
         st = await _state(con)
         assert st["status"] == "RUNNING" and st["balance"] == pytest.approx(fake.bal)   # the closes explain it
     finally:
@@ -300,7 +324,8 @@ async def test_a_stop_that_fires_at_delta_is_recorded_and_its_loss_is_not_a_capi
         assert x["r"] < -1.0                                                    # slipped past the stop
         st = await _state(con)
         assert st["status"] == "RUNNING" and st["balance"] == pytest.approx(fake.bal)
-        assert fake.bal == pytest.approx(1500 - 0.01 - 0.01 - 0.25 * 450 - 0.02)
+        n = (await _rows(con))["XUSD"]["contracts"]
+        assert n == 750 and fake.bal == pytest.approx(1500 - 0.01 - 0.01 - 0.25 * n - 0.02)
     finally:
         await con.close()
 
@@ -328,7 +353,7 @@ async def test_a_fill_without_a_resting_stop_is_bought_back_and_the_account_halt
 @pytest.mark.asyncio
 async def test_a_stop_smaller_than_the_position_does_not_count_as_protection():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
-    fake = FakeDelta(stop_size=100)                  # the leg says 100 contracts; 450 were sold
+    fake = FakeDelta(stop_size=100)                  # the leg says 100 contracts; 750 were sold
     try:
         await _acct(fake).step(con, D0 + 120)
         x = (await _rows(con))["XUSD"]
@@ -469,6 +494,42 @@ async def test_a_deposit_no_trade_explains_halts_on_the_second_look_and_the_owne
 
 @requires_pg
 @pytest.mark.asyncio
+async def test_the_monthly_reset_restarts_the_ladder_and_the_budget_counts_net_money_in():
+    con = await _db(picks=None)
+    fake = FakeDelta(balance=1500)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 60)
+        # a good month: $2,400, mark $2,600; the owner withdraws $900 back to $1,500 at the month start
+        fake.bal = 2400.0
+        await con.execute("UPDATE fade_live_state SET balance = 2400, high_water = 2600")
+        fake.bal = 1500.0
+        rc, msg = await L.record_capital(con, acct, D0 + 600, reset=True)
+        st = await _state(con)
+        assert rc == 0 and "month reset" in msg and st["high_water"] == 1500 and st["added_usd"] == -900
+        # a bad month: $1,200 with the mark at $1,600; topped up $300 back to $1,500 -> 10% again, not 5%
+        await con.execute("UPDATE fade_live_state SET balance = 1200, high_water = 1600")
+        fake.bal = 1500.0
+        rc, _ = await L.record_capital(con, acct, D0 + 700, reset=True)
+        st = await _state(con)
+        from live.fade import ladder_risk
+        assert rc == 0 and st["high_water"] == 1500 and ladder_risk(st["balance"], st["high_water"]) == 0.10
+        assert st["added_usd"] == -600                   # $300 in, paid from the $900 taken out
+        # without --reset a top-up keeps the dollar drawdown (unchanged behaviour)
+        await con.execute("UPDATE fade_live_state SET balance = 1200, high_water = 1600")
+        rc, _ = await L.record_capital(con, acct, D0 + 800)
+        assert (await _state(con))["high_water"] == 1900
+        # the budget is net money in: $3,000 more than taken out is refused
+        await con.execute("UPDATE fade_live_state SET balance = 1500, added_usd = 2900")
+        fake.bal = 1700.0
+        rc, msg = await L.record_capital(con, acct, D0 + 900, reset=True)
+        assert rc == 1 and "over the $3,000 budget" in msg
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
 async def test_a_withdrawal_halts_and_does_not_fake_a_drawdown_once_recorded():
     con = await _db(picks=None)
     fake = FakeDelta(balance=1500)
@@ -481,7 +542,7 @@ async def test_a_withdrawal_halts_and_does_not_fake_a_drawdown_once_recorded():
         assert (await _state(con))["status"] == "HALTED"
         rc, _ = await L.record_capital(con, acct, D0 + 900)
         st = await _state(con)
-        assert rc == 0 and st["balance"] == 1100 and st["high_water"] == 1100 and st["added_usd"] == 0
+        assert rc == 0 and st["balance"] == 1100 and st["high_water"] == 1100 and st["added_usd"] == -400   # net money in
         from live.fade import ladder_risk
         assert ladder_risk(st["balance"], st["high_water"]) == 0.10
     finally:
@@ -828,7 +889,7 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         await acct.step(con, D0 + 120)
         real = fake.place_order
 
-        def two_legs(order):                             # the limit leg fills 150 of 450; market fills the rest at 1.01
+        def two_legs(order):                             # the limit leg fills 150 of 750; market fills the rest at 1.01
             p = order.to_payload()
             if p["side"] == "buy" and p["order_type"] == "limit_order":
                 fake.book["XUSD"] = (1.0, 1.001, 1.0)
@@ -839,9 +900,9 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         fake.place_order = two_legs
         await acct.step(con, D0 + DAY + 10)
         x = (await _rows(con))["XUSD"]
-        px = (150 * 1.001 + 300 * 1.01) / 450
+        px = (150 * 1.001 + 600 * 1.01) / 750
         assert x["status"] == "CLOSED" and x["exit_price"] == pytest.approx(px)
-        assert x["pnl"] == pytest.approx((1.0 - px) * 450 - 0.03)          # three fees of $0.01
+        assert x["pnl"] == pytest.approx((1.0 - px) * 750 - 0.03)          # three fees of $0.01
     finally:
         await con.close()
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
@@ -853,9 +914,9 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         fake.place_order = lambda order: real(order) if order.to_payload()["side"] == "sell" else \
             real(type(order)(**{**order.__dict__, "size": 1}))            # each leg fills one contract only
         await acct.step(con, D0 + DAY + 10)
-        assert (await _rows(con))["XUSD"]["status"] == "OPEN" and fake.pos[1] == -448
+        assert (await _rows(con))["XUSD"]["status"] == "OPEN" and fake.pos[1] == -748
         st = await _state(con)
-        assert st["status"] == "HALTED" and "left 448 contracts open" in st["reason"]
+        assert st["status"] == "HALTED" and "left 748 contracts open" in st["reason"]
         assert await con.fetchval("SELECT count(*) FROM fade_live_events WHERE kind = 'EXIT_INCOMPLETE'") == 1
     finally:
         await con.close()
@@ -957,6 +1018,53 @@ async def test_entry_refusals_and_skips():
             assert not fake.sent and {r["skip_reason"] for r in (await _rows(con)).values()} == {"kill switch engaged"}
         finally:
             await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_position_not_on_isolated_margin_is_bought_back_and_halts():
+    for mode, why in (("cross", "margin mode is cross"), ("topup", "auto top-up"), ("silent", "not reported")):
+        con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+        fake = FakeDelta(margin=mode)
+        try:
+            await _acct(fake).step(con, D0 + 120)
+            x = (await _rows(con))["XUSD"]
+            assert (x["status"], x["exit_reason"]) == ("CLOSED", "MARGIN") and fake.pos[1] == 0, mode
+            st = await _state(con)
+            assert st["status"] == "HALTED" and why in st["reason"], (mode, st["reason"])
+        finally:
+            await con.close()
+
+
+def test_margin_problem_reads_isolated_margin():
+    ok = {"margin": "375", "liquidation_price": "1.475", "auto_topup": False, "margin_mode": "isolated"}
+    assert L.margin_problem(ok, 1.0, 750, 1.0, 2) is None
+    assert "not about" in L.margin_problem(dict(ok, margin="750"), 1.0, 750, 1.0, 2)       # 1x margin at "2x"
+    assert "above the entry" in L.margin_problem(dict(ok, liquidation_price="1.95"), 1.0, 750, 1.0, 2)
+    assert "above the entry" in L.margin_problem(dict(ok, liquidation_price="25"), 1.0, 750, 1.0, 2)  # cross-like
+    assert "auto top-up" in L.margin_problem(dict(ok, auto_topup="true"), 1.0, 750, 1.0, 2)
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_leverage_that_cannot_be_set_skips_that_coin_only():
+    con = await _db()
+    fake = FakeDelta()
+    real = fake.set_order_leverage
+
+    def refuse(pid, lev):
+        if pid == 1:
+            import live.client as C
+            raise C.VenueRejected(400, "/v2/products/1/orders/leverage", {"error": {"code": "max_leverage_1"}})
+        return real(pid, lev)
+    fake.set_order_leverage = refuse
+    try:
+        await _acct(fake).step(con, D0 + 120)
+        rows = await _rows(con)
+        assert rows["XUSD"]["status"] == "SKIPPED" and rows["XUSD"]["skip_reason"].startswith("leverage 2x could not")
+        assert rows["YUSD"]["status"] == "OPEN" and (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
 
 
 @requires_pg

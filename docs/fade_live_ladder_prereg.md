@@ -17,13 +17,13 @@ refills; with refills the expected cost is about $1,000 a year of deposits, more
 1. **Picks:** the paper runner's rule A picks (top 2 previous-UTC-day gainers, Delta perpetuals, turnover
    ≥ $250k), entered once paper has entered them, within 30 minutes of 00:00 UTC; a pick not entered by then is
    recorded as skipped.
-2. **Order:** sell at 1x leverage (read back), immediate-or-cancel limit 1% under the bid, with an exchange-held
+2. **Order:** sell at the leverage of amendment 1 (read back), immediate-or-cancel limit 1% under the bid, with an exchange-held
    **market** stop (mark-triggered) at entry × (1 + 2 × ATR14%). No take-profit. Bought back reduce-only 24 h later.
-   Skipped when: the stop is too far for 1x (liquidation not 3× the stop distance away, ≈ 32.5%), the spread is
+   Skipped when: the stop is more than 32.5% away, liquidation cannot sit 2× the stop distance away even at 1x, the spread is
    wider than 1% of the bid, the mark is at or past the stop, two positions are open, the coin is still open
    from yesterday, or less than one contract.
 3. **Size:** risk per trade = 10% of the wallet balance; 5% from 20% under the high-water mark; 3% from 35%
-   under; back to 10% only at a new high. Each position's notional ≤ **30%** of the balance.
+   under; back to 10% only at a new high. **Amendment 1 (leverage, below) sets the position size and leverage.**
 4. **High-water mark:** the best accepted wallet balance of the run. A refill resets it to the new balance; any
    other deposit or withdrawal moves it by the same dollars (never below the balance).
 5. **Stop and refill:** under **$1,000** at an entry check the run STOPS (no entries; open positions keep their
@@ -63,7 +63,7 @@ account's), never on one month's balance (a month of zero-edge trades ends above
 ## Validation done before the first order
 `scripts/fade_live_sim.py` runs this module's code against a simulated Delta through every calendar day of Delta
 2025 and 2026, plus a stress year (2025 with 0.10R taken off every trade, which spends the refill budget)
-(`out/gainer_fade/live_sim.txt`, 26/26 checks pass, exit code 1 on any failure). Against a reference written
+(`out/gainer_fade/live_sim.txt`; 32/32 checks after amendment 1, exit code 1 on any failure). Against a reference written
 from these rules with the numbers typed in (not imported from the bot), every day-end balance agrees within
 0.005% (2025), 0.021% (2026) and 0.005% (stress), with identical trades, ladder steps and refills; the stress
 year's sixth refill is refused at $3,199. With a restart every day and 3% of venue reads failing, results agree
@@ -79,3 +79,40 @@ shape of Delta's stop rows (size field or not) is checked only by the live probe
 ## What "10% risk" means in practice
 The 30% position cap binds whenever the stop is under 33% away, which is almost always: in the simulation the
 risk actually taken averaged **5.0% (2025) and 4.5% (2026)** of the balance at the "10%" step, maximum 9.7%.
+
+## Amendment 1 — leverage (2026-11-09, before any order; owner: "I still want to try with leverage, you decide cap
+and leverage can vary based on position size")
+- Notional wanted = risk step ÷ stop distance, capped at **60% of the balance**.
+- **Isolated margin ≤ 30% of the balance**: the leverage is the least of 1x, 2x, 3x that carries the notional, but
+  only leverages whose liquidation (1/L − maintenance) is at least **2× the stop distance** away are allowed; if the
+  allowed leverage cannot carry it, the notional is cut to 30% × that leverage.
+- The worst gap through the stop can liquidate at most about 30% of the balance **per position** (its isolated
+  margin); with two positions open on a bad day, about 60% — the same bound as 1x/30% before. At 2x the full 30%
+  is lost at about a +47.5% gap instead of about +97.5%, so losing all of it is more likely than at 1x.
+- Liquidation distance is measured from the worst fill the entry allows (1% under the bid); a product without a
+  maintenance margin is treated as 2.5%.
+- **Isolated margin is enforced, not assumed:** after every fill the bot reads Delta's position and requires no
+  auto top-up, isolated mode, margin within 15% of notional ÷ leverage and a liquidation price about 1/L above
+  the entry; otherwise it buys the position back and HALTs. The probe (at 2x) fails on the same check, and a
+  leverage that does not read back. If Delta cannot show isolated margin, this amendment is not switched on.
+- A leverage Delta refuses for a coin skips that coin; a network error retries on the next pass.
+Evidence (descriptive; leverage is a sizing choice, not an edge): on the seven periods of the target grid
+(daily open, no funding) the run-3 account with leverage ends Delta 2026 at about $21–23k (plan $9,335) and the
+Binance years at or above the plan, Delta 2025 about level; refills over the seven periods about $6.9k (plan
+$4.4k), within the $3,000 budget in each. In `scripts/fade_live_sim.py` (bot entry, funding) 2025 ends $2,103
+after 3 refills (plan: $2,031, 2 refills) and 2026 $15,000 (plan $6,593); 2x on ~35–40% of trades; risk taken
+averages ~6%. 32/32 checks pass, with daily restarts and 3% failed reads identical; every ladder step, size and
+leverage decision matches the written rule; loosening the margin cap, the liquidation buffer or the notional cap
+is each detected.
+
+## Amendment 2 — monthly withdrawals (2026-11-09, before any order; owner: "I will not let the account just gather
+money I will withdraw profits as well, so account might reset to 1500$ every month")
+- At a month start the owner withdraws profit or tops up a loss (back to about $1,500), then runs
+  `python -m live fade-live-capital --reset` with the account flat: the change is recorded and the high-water
+  mark is set to the new balance, so the ladder restarts at 10% (as in the monthly-reset test).
+- The $3,000 budget is **net money from the owner's pocket**: deposits less withdrawals over the run. A top-up
+  or refill that would take it past $3,000 is refused.
+- Without `--reset`, a deposit or withdrawal keeps the ladder's dollar drawdown (unchanged).
+- Expectation with monthly resets (`target grid` trades, ladder + amendment 1, 24 h hold, 92 months 2021–26):
+  about +$155 a month on average, 43 of 92 months up, median month −$41, worst −$1,639, best +$2,982;
+  Delta 2026 +$738 a month, Binance 2023 −$230 a month.

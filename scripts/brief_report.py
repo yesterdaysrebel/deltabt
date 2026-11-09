@@ -692,7 +692,7 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
             continue
         if r["status"] == "FAILED":
             out.append(f"REAL {r['symbol']}: the order failed ({r.get('skip_reason')})")
-        if r.get("exit_reason") in ("UNPROTECTED", "LIQUIDATION", "UNKNOWN_EXIT", "MANUAL_CLOSE"):
+        if r.get("exit_reason") in ("UNPROTECTED", "MARGIN", "LIQUIDATION", "UNKNOWN_EXIT", "MANUAL_CLOSE"):
             out.append(f"REAL {r['symbol']}: closed by {r['exit_reason']}, not its stop or the 24 h exit")
         pe, e, s = r.get("paper_entry"), r.get("entry_price"), r.get("stop_price")
         if pe and e and s and s > pe and (pe - e) / (s - pe) > LIVE_SLIP_FLAG_R:
@@ -715,7 +715,7 @@ def live_lines(lv: dict) -> list[str]:
     out = ["", f"## REAL trades on Delta — account {str(st.get('status', '?')).lower()}"
                + (f", balance ${bal:,.2f}" if bal is not None else "")
                + (f", {100 * (1 - bal / hw):.0f}% under its high of ${hw:,.2f}" if hw and bal is not None else "")
-               + (f", refills ${st['added_usd']:,.2f} of $3,000" if st.get("added_usd") else "")]
+               + (f", net money in ${st['added_usd']:+,.2f} of $3,000" if st.get("added_usd") else "")]
     rows = _rows(lv)
     open_ = [r for r in rows if r["status"] in ("OPEN", "SENDING")][::-1]
     done = [r for r in rows if r["status"] == "CLOSED"][::-1]

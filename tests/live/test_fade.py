@@ -231,10 +231,10 @@ def test_entry_is_the_first_traded_minute_within_15_minutes():
 
 # ============================================================ the LADDER account (owner 2026-11-09)
 
-def test_ladder_sizing_uses_the_step_and_a_30pct_cap():
+def test_ladder_sizing_uses_the_step_and_lever_plan():
     from live.fade import size_ladder
-    assert size_ladder(1500, 1500, 1.0, 1.2, 1.0) == (450, 0.10)       # $150 risk -> 750; 30% cap -> 450
-    assert size_ladder(1500, 1500, 1.0, 1.3, 1.0) == (450, 0.10)       # 500 by risk; cap 450
+    assert size_ladder(1500, 1500, 1.0, 1.2, 1.0) == (750, 0.10)       # 50% notional at 2x: the full 10%
+    assert size_ladder(1500, 1500, 1.0, 1.3, 1.0) == (450, 0.10)       # 30% stop: 1x, 30% notional (risk 9%)
     assert size_ladder(1500, 2000, 1.0, 1.3, 1.0) == (250, 0.05)       # 25% under the mark: 5%
     assert size_ladder(1250, 2000, 1.0, 1.3, 1.0) == (125, 0.03)       # 37.5% under: 3%
     assert size_ladder(0, 2000, 1.0, 1.3, 1.0) == (0, 0.03)

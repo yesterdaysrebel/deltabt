@@ -1,0 +1,91 @@
+4637 trades; $300 isolated margin per trade, 2 a day
+
+Delta 2026 (IN-SAMPLE: where the owner found it) — every setting
+setting            win   liq    total $   $/month  months up  worst month
+L5_X10_liq         90%    5%      2,438       244    7/10          -1,180
+L5_X10_half        84%    0%        583        58    7/10          -1,042
+L5_X20_liq         80%   10%      4,015       402    6/10          -1,055
+L5_X20_half        71%    0%      1,180       118    6/10          -1,003
+L5_X30_liq         72%   12%      5,070       507    6/10            -645
+L5_X30_half        64%    0%      2,472       247    5/10            -638
+L5_X50_liq         65%   15%      8,335       834    8/10            -818
+L5_X50_half        56%    0%      4,519       452    7/10            -854
+L5_X75_liq         59%   18%      6,758       676    7/10          -1,490
+L5_X75_half        51%    0%      2,859       286    6/10            -903
+L5_X100_liq        58%   18%      6,995       700    8/10          -1,920
+L5_X100_half       49%    0%      3,106       311    6/10          -1,542
+L10_X10_liq        91%    9%     -1,498      -150    5/10          -1,506
+L10_X10_half       84%    0%     -2,195      -220    4/10          -1,615
+L10_X20_liq        83%   15%        264        26    7/10          -2,060
+L10_X20_half       72%    1%     -1,693      -169    6/10          -1,983
+L10_X30_liq        78%   19%      3,110       311    5/10          -1,760
+L10_X30_half       64%    1%       -549       -55    5/10          -1,607
+L10_X50_liq        66%   28%      1,775       178    5/10          -2,448
+L10_X50_half       51%    1%     -1,783      -178    4/10          -1,579
+L10_X75_liq        59%   33%      5,474       547    5/10          -1,290
+L10_X75_half       43%    1%       -935       -93    4/10          -1,468
+L10_X100_liq       55%   35%      7,385       739    7/10          -1,690
+L10_X100_half      40%    1%        125        12    5/10          -2,136
+L20_X10_liq        89%   11%     -6,330      -633    2/10          -2,292
+L20_X10_half       78%    1%     -8,720      -872    1/10          -1,922
+L20_X20_liq        83%   17%     -4,050      -405    4/10          -2,772
+L20_X20_half       69%    1%     -6,750      -675    3/10          -1,940
+L20_X30_liq        77%   22%     -1,794      -179    6/10          -2,262
+L20_X30_half       62%    1%     -6,176      -618    2/10          -3,058
+L20_X50_liq        67%   32%     -2,238      -224    6/10          -3,250
+L20_X50_half       49%    1%     -8,157      -816    5/10          -2,631
+L20_X75_liq        56%   42%     -3,424      -342    5/10          -3,673
+L20_X75_half       39%    1%     -8,916      -892    4/10          -3,445
+L20_X100_liq       48%   50%     -7,284      -728    4/10          -3,181
+L20_X100_half      31%    1%    -12,475    -1,248    2/10          -3,334
+
+chosen on Delta 2026: L5_X50_liq ($8,335)
+
+the chosen setting on the six OTHER periods
+period                 trades   win   liq    total $   $/month  months up     worst
+dev Binance 2021          571   60%   20%     -4,035      -336    6/12       -2,813
+dev Binance 2022          640   62%    9%      7,350       612    8/12         -742
+dev Binance 2023          701   58%   12%     -3,936      -328    3/12       -2,040
+held Binance 2024         697   58%   12%      2,095       175    6/12       -2,263
+held Binance 2025-26      999   64%   24%      5,007       228   10/22       -1,508
+held Delta 2025           564   59%   11%      2,555       213    7/12         -940
+all six: 82 months, median $-9, mean $110, up 49%
+RULE: positive in 4/6 (need 5), median month $-9 (need > 0), mean month $110 (need >= $1,000) -> FAIL
+
+every setting on the six other periods (total $, months up)
+L5_X10_liq       total $    17,002  periods up 5/6  months up  67%  mean month $    207  worst $ -1,425
+L5_X10_half      total $    11,417  periods up 5/6  months up  66%  mean month $    139  worst $   -978
+L5_X20_liq       total $    13,243  periods up 4/6  months up  57%  mean month $    162  worst $ -1,842
+L5_X20_half      total $     2,566  periods up 3/6  months up  51%  mean month $     31  worst $ -2,128
+L5_X30_liq       total $    15,446  periods up 5/6  months up  56%  mean month $    188  worst $ -2,522
+L5_X30_half      total $    -2,063  periods up 2/6  months up  49%  mean month $    -25  worst $ -3,201
+L5_X50_liq       total $     9,037  periods up 4/6  months up  49%  mean month $    110  worst $ -2,813
+L5_X50_half      total $   -11,891  periods up 2/6  months up  48%  mean month $   -145  worst $ -3,095
+L5_X75_liq       total $     7,489  periods up 4/6  months up  54%  mean month $     91  worst $ -3,423
+L5_X75_half      total $   -14,787  periods up 1/6  months up  46%  mean month $   -180  worst $ -4,602
+L5_X100_liq      total $    11,976  periods up 4/6  months up  60%  mean month $    146  worst $ -3,505
+L5_X100_half     total $   -12,626  periods up 2/6  months up  48%  mean month $   -154  worst $ -4,835
+L10_X10_liq      total $    10,993  periods up 4/6  months up  63%  mean month $    134  worst $ -2,280
+L10_X10_half     total $     2,218  periods up 3/6  months up  56%  mean month $     27  worst $ -2,240
+L10_X20_liq      total $    19,688  periods up 4/6  months up  65%  mean month $    240  worst $ -1,830
+L10_X20_half     total $     1,470  periods up 3/6  months up  49%  mean month $     18  worst $ -2,164
+L10_X30_liq      total $    12,421  periods up 3/6  months up  56%  mean month $    151  worst $ -2,582
+L10_X30_half     total $    -9,237  periods up 2/6  months up  40%  mean month $   -113  worst $ -2,037
+L10_X50_liq      total $    -2,513  periods up 1/6  months up  46%  mean month $    -31  worst $ -4,943
+L10_X50_half     total $   -32,086  periods up 1/6  months up  37%  mean month $   -391  worst $ -3,462
+L10_X75_liq      total $   -19,025  periods up 1/6  months up  48%  mean month $   -232  worst $ -5,956
+L10_X75_half     total $   -51,228  periods up 1/6  months up  33%  mean month $   -625  worst $ -4,173
+L10_X100_liq     total $   -29,220  periods up 1/6  months up  46%  mean month $   -356  worst $ -6,159
+L10_X100_half    total $   -63,139  periods up 1/6  months up  32%  mean month $   -770  worst $ -5,006
+L20_X10_liq      total $   -10,658  periods up 2/6  months up  49%  mean month $   -130  worst $ -4,410
+L20_X10_half     total $   -19,405  periods up 2/6  months up  41%  mean month $   -237  worst $ -3,403
+L20_X20_liq      total $    -2,709  periods up 2/6  months up  52%  mean month $    -33  worst $ -4,140
+L20_X20_half     total $    -4,341  periods up 2/6  months up  49%  mean month $    -53  worst $ -2,803
+L20_X30_liq      total $    -1,110  periods up 3/6  months up  51%  mean month $    -14  worst $ -3,990
+L20_X30_half     total $   -14,288  periods up 2/6  months up  44%  mean month $   -174  worst $ -3,332
+L20_X50_liq      total $   -29,500  periods up 1/6  months up  41%  mean month $   -360  worst $ -3,942
+L20_X50_half     total $   -43,332  periods up 1/6  months up  37%  mean month $   -528  worst $ -3,357
+L20_X75_liq      total $   -72,227  periods up 1/6  months up  38%  mean month $   -881  worst $ -5,670
+L20_X75_half     total $   -62,633  periods up 1/6  months up  33%  mean month $   -764  worst $ -4,689
+L20_X100_liq     total $   -99,056  periods up 1/6  months up  33%  mean month $ -1,208  worst $ -7,366
+L20_X100_half    total $   -77,273  periods up 1/6  months up  29%  mean month $   -942  worst $ -5,245
