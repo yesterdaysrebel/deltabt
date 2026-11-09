@@ -138,6 +138,17 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
+**VERDICT 2026-11-09 — THE FADE HAS NO PROVEN EDGE; DO NOT SCALE REAL MONEY ON IT.** Pre-registered Binance test
+(`docs/fade_binance_prereg.md`, `scripts/fade_binance_test.py`, `out/gainer_fade/binance_judge.txt`; 2021-2024, 2,609
+trades, 309 coins incl. delisted, before funding): rule A pooled −0.002R (z −0.20), QUICK +0.001R (z +0.08), each > 0
+in only 2 of 4 years; the ladder kept over flat in 2/4 years; rolling-90d and win-rate step-ups 0/4 — all FAIL. On Delta
+with funding + the bot's real entry (`scripts/fade_costed.py`): A 2025 −0.013R, 2026 +0.087R; QUICK 2025 +0.003R, 2026
++0.037R. Cost model verified on the real account's 4 trades (funding matches Delta to ~$0.0001; fee is 0.0531%/side incl.
+GST vs 0.05% modelled). An independent review agent found no code bug (`scripts/fade_ladder_account.py` reproduced to the
+dollar) but: Jan-Jul 2026 is the tuning period, and the ladder's lead over flat sizing is day-order luck (shuffle control).
+Also tested and failed today: 1:1 target, 75%-deployed tight stop, 0.3x target, top 1/3/4 picks, fixed coin list, size
+after a loss, monthly stops, 15% ladder, leverage > 1x. The Quick branch `feat/fade-live-quick` is NOT merged.
+
 **FADE REAL-MONEY RUN, VERSION 2 — RULE QUICK, $1,200, 5% risk, floor $960 (owner 2026-11-09: "approved, we will
 deploy fade quick in real"; rules `docs/fade_live_quick_prereg.md`, branch `feat/fade-live-quick`).** The entry's
 bracket gets a take-profit leg at 0.2× the stop distance (mark-triggered, like the stop); a `TAKE_PROFIT` close is
