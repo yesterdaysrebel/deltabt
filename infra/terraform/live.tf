@@ -308,7 +308,10 @@ variable "live_sizing" {
     # docs/fade_live_prereg.md): rule A on the sub-account, 3% risk, the run stops below $140. In fade mode
     # dry_run "0" switches it on (with DELTA_ENV prod, a key, and a $140-$220 wallet); equity_usd is the
     # sub-account's starting balance and risk_per_trade its risk. Probe PASS 2026-11-02 11:06 UTC.
-    bot = { equity_usd = "176", risk_per_trade = "0.03", min_contract_risk_cap = "0.03", dry_run = "0", pause_symbol_after_loss_seconds = "14400",
+    # 2026-11-09 (owner): "approved, we will deploy fade quick in real" -> version 2
+    # (docs/fade_live_quick_prereg.md): rule QUICK, $1,200, 5% risk, floor $960. dry_run "1" until the
+    # two-leg probe passes; a second PR sets "0".
+    bot = { equity_usd = "1200", risk_per_trade = "0.05", min_contract_risk_cap = "0.03", dry_run = "1", pause_symbol_after_loss_seconds = "14400",
     universe = "fade", top_n = "10", min_turnover_usd = "250000", max_trades_per_day = "2", max_leverage = "5" }
   }
 }

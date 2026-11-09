@@ -138,7 +138,16 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
-**FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
+**FADE REAL-MONEY RUN, VERSION 2 — RULE QUICK, $1,200, 5% risk, floor $960 (owner 2026-11-09: "approved, we will
+deploy fade quick in real"; rules `docs/fade_live_quick_prereg.md`, branch `feat/fade-live-quick`).** The entry's
+bracket gets a take-profit leg at 0.2× the stop distance (mark-triggered, like the stop); a `TAKE_PROFIT` close is
+normal, a missing target leg is logged (`TAKE_PROFIT_MISSING`) and the position kept; `MAX_RISK_PCT` 0.05,
+`FLOOR_USD` 960; start band $960–$1,500. Sizing set to equity 1200 / risk 0.05 / **dry_run "1"** until the two-leg
+probe passes, then a second PR sets "0" and `fade-live-resume` clears the version-1 HALT (topping the wallet up
+past $220 makes the running v1 bot HALT at its next entry check — intended; exits still run). Deploy only after
+any v1 position's 24 h exit: an OFF account runs no exits. Version 1 (below) record: 4 trades 11-03..11-08, −$1.08.
+
+**(VERSION 1, SUPERSEDED 2026-11-09) FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
 two-year evidence is ~break-even → "approved on tiny run, I have 176$"; rule A, 3% risk, stop the run below
 $140, own sub-account).** Rules fixed first in `docs/fade_live_prereg.md`; code `live/fade_live.py`, called from
 the fade runner's loop. Same picks as paper A: sells each with a reduce-only-safe order shape — IOC limit 1%

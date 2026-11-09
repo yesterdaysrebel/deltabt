@@ -1,9 +1,10 @@
-"""The gainer-fade REAL-MONEY account (live/fade_live.py; rules in docs/fade_live_prereg.md).
+"""The gainer-fade REAL-MONEY account (live/fade_live.py; rules in docs/fade_live_quick_prereg.md).
 
-The pure rules always run. The account's day -- entries, the exchange-held stop, the 24 h exit, a stop
-that fires at Delta, the floor, a halt -- runs against PostgreSQL (DELTABOT_TEST_DSN) and a fake Delta
-that answers in the venue's shapes: brackets rest as PENDING reduce-only `stop_loss_order` rows,
-positions are signed sizes, a close shows in order history as a filled reduce-only buy.
+The pure rules always run. The account's day -- entries, the exchange-held stop and take-profit, the
+24 h exit, a leg that fires at Delta, the floor, a halt -- runs against PostgreSQL (DELTABOT_TEST_DSN)
+and a fake Delta that answers in the venue's shapes: bracket legs rest as PENDING reduce-only
+`stop_loss_order` / `take_profit_order` rows, positions are signed sizes, a close shows in order history
+as a filled reduce-only buy.
 """
 from __future__ import annotations
 
@@ -23,10 +24,11 @@ DAY = 86400
 
 def test_the_switch_is_strict():
     on = {"DELTABOT_DRY_RUN": "0", "DELTA_ENV": "prod", "DELTA_API_KEY": "k", "DELTA_API_SECRET": "s",
-          "DELTABOT_RISK_PER_TRADE": "0.03", "DELTABOT_EQUITY": "176"}
+          "DELTABOT_RISK_PER_TRADE": "0.05", "DELTABOT_EQUITY": "1200"}
     assert L.enabled(on) == (True, "on")
     for k, v in (("DELTABOT_DRY_RUN", "1"), ("DELTABOT_DRY_RUN", ""), ("DELTA_ENV", "testnet"),
-                 ("DELTA_API_SECRET", ""), ("DELTABOT_RISK_PER_TRADE", "0.05"), ("DELTABOT_EQUITY", "120")):
+                 ("DELTA_API_SECRET", ""), ("DELTABOT_RISK_PER_TRADE", "0.06"), ("DELTABOT_EQUITY", "960"),
+                 ("DELTABOT_EQUITY", "176")):          # version 1's sizing must not switch version 2 on
         assert not L.enabled(dict(on, **{k: v}))[0], (k, v)
     unset = dict(on)
     del unset["DELTABOT_DRY_RUN"]                 # unset is NOT "0" here, unlike live/__main__
@@ -34,12 +36,16 @@ def test_the_switch_is_strict():
 
 
 def test_sizing_leverage_and_ticks():
-    # 3% of $176 = $5.28 between a bid of 1.00 and a stop 20% above, 1 coin per contract: 26 contracts,
-    # but at most 45% of the balance as notional ($79.2): 79 contracts would be allowed, so risk binds.
-    assert L.contracts_for(176, 0.03, 1.0, 1.2, 1.0) == 26
-    # a 3% stop would allow 176 contracts by risk; the 45% notional cap binds at 79
-    assert L.contracts_for(176, 0.03, 1.0, 1.03, 1.0) == 79
-    assert L.contracts_for(176, 0.03, 0.2, 0.3, 100) == 0          # one contract risks $10
+    # 5% of $1,200 = $60 between a bid of 1.00 and a stop 20% above, 1 coin per contract: 300 contracts;
+    # at most 45% of the balance as notional ($540) would allow 540, so risk binds.
+    assert L.contracts_for(1200, 0.05, 1.0, 1.2, 1.0) == 300
+    # a 3% stop would allow 2,000 contracts by risk; the 45% notional cap binds at 540
+    assert L.contracts_for(1200, 0.05, 1.0, 1.03, 1.0) == 540
+    assert L.contracts_for(1200, 0.05, 0.2, 0.3, 1000) == 0        # one contract risks $100
+    # rule QUICK: the take-profit is 0.2 x the stop distance under the entry, rounded away from it
+    assert L.target_for(1.0, 1.2, Decimal("0.0001")) == Decimal("0.96")
+    assert L.target_for(2.0, 2.48, Decimal("0.0001")) == Decimal("1.904")
+    assert L.target_for(1.0, 1.2, Decimal("0.05")) == Decimal("0.95")   # 0.96 is not on a 0.05 grid: down
     assert L.leverage_ok(0.30, 2.5) and not L.leverage_ok(0.33, 2.5)  # 1x: 0.975 >= 3 x dist
     assert L.to_tick(1.23456, Decimal("0.001"), up=True) == Decimal("1.235")
     assert L.to_tick(1.23456, Decimal("0.001"), up=False) == Decimal("1.234")
@@ -52,9 +58,10 @@ def test_sizing_leverage_and_ticks():
 class FakeDelta:
     """Just enough of live.client.LiveClient, answering in Delta's shapes."""
 
-    def __init__(self, balance=176.0, attach_stop=True):
+    def __init__(self, balance=1200.0, attach_stop=True, attach_target=True):
         self.bal = balance
         self.attach_stop = attach_stop
+        self.attach_target = attach_target
         self.products = {"XUSD": dict(id=1, tick_size="0.0001", contract_value="1", maintenance_margin="2.5"),
                          "YUSD": dict(id=2, tick_size="0.0001", contract_value="1", maintenance_margin="2.5")}
         self.book = {"XUSD": (1.0000, 1.0010, 1.0005), "YUSD": (2.0000, 2.0020, 2.0010)}
@@ -105,6 +112,11 @@ class FakeDelta:
                 self._id += 1
                 self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True,
                                          stop_order_type="stop_loss_order", stop_price=p["bracket_stop_loss_price"]))
+            if self.attach_target and "bracket_take_profit_price" in p:
+                self._id += 1
+                self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True,
+                                         stop_order_type="take_profit_order",
+                                         stop_price=p["bracket_take_profit_price"]))
         else:
             n = min(size, -self.pos.get(pid, 0)) if p.get("reduce_only") else size
             self.pos[pid] = self.pos.get(pid, 0) + n
@@ -116,7 +128,8 @@ class FakeDelta:
         self.by_cid[p["client_order_id"]] = row
         return row
 
-    def fire_stop(self, sym, price):
+    def fire_stop(self, sym, price, kind="stop_loss_order"):
+        """A bracket leg fires at Delta: the position closes and Delta cancels the other leg."""
         pid = self.products[sym]["id"]
         n = -self.pos.get(pid, 0)
         self.pos[pid] = 0
@@ -124,7 +137,10 @@ class FakeDelta:
         self._id += 1
         self.history.insert(0, dict(id=self._id, product_id=pid, side="buy", size=n, unfilled_size=0,
                                     average_fill_price=str(price), paid_commission="0.02", reduce_only=True,
-                                    stop_order_type="stop_loss_order", state="closed"))
+                                    stop_order_type=kind, state="closed"))
+
+    def fire_target(self, sym, price):
+        self.fire_stop(sym, price, kind="take_profit_order")
 
 
 # ============================================================ the account's day (PostgreSQL)
@@ -154,7 +170,7 @@ async def _paper_day(con, picks, day):
 
 
 def _acct(fake, **kw):
-    return L.LiveFade(fake, risk_pct=0.03, start_usd=176, kill_switch_path="/nonexistent/kill",
+    return L.LiveFade(fake, risk_pct=0.05, start_usd=1200, kill_switch_path="/nonexistent/kill",
                       protect_wait=0.0, sleep=lambda s: None, **kw)
 
 
@@ -177,8 +193,11 @@ async def test_a_full_day_sell_with_a_resting_stop_then_buy_back_after_24_hours(
                                        and p["stop_trigger_method"] == "mark_price" for p in sells)
         x = next(p for p in sells if p["product_id"] == 1)
         assert x["limit_price"] == "0.99" and x["bracket_stop_loss_price"] == "1.2"   # bid 1.00, 2 x 10% ATR
-        assert x["size"] == 26 and fake.lev == {1: 1, 2: 1}                       # $5.28 / $0.20 a contract
+        assert x["bracket_take_profit_price"] == "0.96"                          # 0.2 x 0.20 under the bid
+        assert x["size"] == 300 and fake.lev == {1: 1, 2: 1}                      # $60 / $0.20 a contract
         assert rows["XUSD"]["paper_entry"] == 1.0 and rows["XUSD"]["entry_price"] == 1.0
+        assert rows["XUSD"]["target_price"] == 0.96 and rows["YUSD"]["target_price"] == 1.904
+        assert not await con.fetchval("SELECT count(*) FROM fade_live_events WHERE kind = 'TAKE_PROFIT_MISSING'")
         await acct.step(con, D0 + 3600)                                          # nothing to do mid-day
         assert len(fake.sent) == 2
         await acct.step(con, D0 + DAY + 10)                                      # 24 h later
@@ -187,8 +206,8 @@ async def test_a_full_day_sell_with_a_resting_stop_then_buy_back_after_24_hours(
             {"XUSD": ("CLOSED", "TIME"), "YUSD": ("CLOSED", "TIME")}
         buys = [p for p in fake.sent if p["side"] == "buy"]
         assert len(buys) == 2 and all(p["reduce_only"] for p in buys) and fake.pos == {1: 0, 2: 0}
-        assert not fake.pending and len(fake.cancelled) == 2                     # old stops cancelled once flat
-        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 26 - 0.02)) < 1e-9
+        assert not fake.pending and len(fake.cancelled) == 4                     # both legs cancelled once flat
+        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 300 - 0.02)) < 1e-9
         assert await con.fetchval("SELECT status FROM fade_live_state") == "RUNNING"
     finally:
         await con.close()
@@ -208,6 +227,43 @@ async def test_a_stop_that_fires_at_delta_is_recorded_from_order_history():
         assert (x["status"], x["exit_reason"], x["exit_price"]) == ("CLOSED", "STOP_LOSS", 1.21)
         assert x["r"] < -1.0                                                    # slipped past the stop
         assert await con.fetchval("SELECT status FROM fade_live_state") == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_take_profit_that_fires_at_delta_is_a_normal_close_not_a_halt():
+    con = await _db()
+    fake = FakeDelta()
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fire_target("XUSD", 0.96)
+        await acct.step(con, D0 + 2 * 3600)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"], x["exit_price"]) == ("CLOSED", "TAKE_PROFIT", 0.96)
+        assert abs(x["r"] - (0.04 * 300 - 0.03) / 60) < 1e-9                    # +0.2R less fees
+        assert await con.fetchval("SELECT status FROM fade_live_state") == "RUNNING"
+        await acct.step(con, D0 + DAY + 10)                                      # 24 h: only YUSD left to buy back
+        assert [p["product_id"] for p in fake.sent if p["side"] == "buy"] == [2]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_missing_take_profit_is_reported_but_the_position_is_kept():
+    con = await _db()
+    fake = FakeDelta(attach_target=False)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        rows = await _rows(con)
+        assert {s: r["status"] for s, r in rows.items()} == {"XUSD": "OPEN", "YUSD": "OPEN"}
+        assert await con.fetchval("SELECT count(*) FROM fade_live_events WHERE kind = 'TAKE_PROFIT_MISSING'") == 2
+        assert await con.fetchval("SELECT status FROM fade_live_state") == "RUNNING"
+        assert not [p for p in fake.sent if p["side"] == "buy"], "the stop still protects it: nothing bought back"
     finally:
         await con.close()
 
@@ -234,7 +290,7 @@ async def test_a_fill_without_a_resting_stop_is_bought_back_and_the_account_halt
 @pytest.mark.asyncio
 async def test_under_the_floor_the_run_stops_and_sends_nothing():
     con = await _db()
-    fake = FakeDelta(balance=139.0)
+    fake = FakeDelta(balance=959.0)
     try:
         await _acct(fake).step(con, D0 + 120)
         assert not fake.sent
@@ -248,7 +304,7 @@ async def test_under_the_floor_the_run_stops_and_sends_nothing():
 @pytest.mark.asyncio
 async def test_a_wallet_that_is_not_the_sub_account_halts_before_any_order():
     con = await _db()
-    fake = FakeDelta(balance=900.0)
+    fake = FakeDelta(balance=1600.0)
     try:
         await _acct(fake).step(con, D0 + 120)
         assert not fake.sent and await con.fetchval("SELECT status FROM fade_live_state") == "HALTED"
@@ -308,7 +364,7 @@ async def test_a_coin_picked_two_days_running_is_bought_back_before_it_is_sold_a
         sides = [p["side"] for p in fake.sent]
         assert sides == ["sell", "buy", "sell"]
         st = [r["status"] for r in await con.fetch("SELECT status FROM fade_live_positions ORDER BY day")]
-        assert st == ["CLOSED", "OPEN"] and fake.pos[1] == -26
+        assert st == ["CLOSED", "OPEN"] and fake.pos[1] == -300
     finally:
         await con.close()
 
@@ -337,7 +393,7 @@ async def test_the_report_shows_real_trades_beside_paper_and_flags_a_halt():
         assert B.live_is_on(lv) and B.live_problems(lv, now) == []
         text = "\n".join(B.live_lines(lv) + B.accounts_lines({"accounts": {}}, None, lv))
         assert "REAL trades on Delta" in text and "Open now (1)" in text and "Closed (1)" in text
-        assert "stop loss" in text and "REAL Delta (rule A, 3%)" in text and "$176.00" in text
+        assert "stop loss" in text and "REAL Delta (Quick, 5%)" in text and "$1,200.00" in text
         halted = dict(lv, state=dict(lv["state"], status="HALTED", reason="test"))
         assert "HALTED" in B.live_problems(halted, now)[0]
         assert not B.live_is_on({"state": {"status": "OFF", "reason": 'dry_run is not "0"'}, "journal": []})

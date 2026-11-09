@@ -699,7 +699,8 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
     for r in _rows(lv):
         if r["status"] == "OPEN" and r.get("day") and now.timestamp() > r["day"] + 86400 + 15 * 60:
             out.append(f"REAL {r['symbol']}: still open more than 15 minutes past its 24 h exit")
-    errs = [e for e in lv.get("events") or [] if e.get("kind") in ("ERROR", "EXIT_INCOMPLETE", "REJECTED")]
+    errs = [e for e in lv.get("events") or []
+            if e.get("kind") in ("ERROR", "EXIT_INCOMPLETE", "REJECTED", "TAKE_PROFIT_MISSING")]
     if errs:
         out.append(f"the REAL account logged {plural(len(errs), 'error')} in 36 hours (last: "
                    f"{errs[-1]['kind']} {errs[-1].get('symbol') or ''} {errs[-1]['detail'][:120]})")
@@ -739,8 +740,9 @@ def live_lines(lv: dict) -> list[str]:
         out.append("Not traded: " + "; ".join(
             f"{dt.datetime.fromtimestamp(r['day'], dt.timezone.utc):%d %b} {r['symbol']} ({r.get('skip_reason')})"
             for r in skipped) + ".")
-    out.append("Rule A for real: same picks as paper, 3% risk, stop resting at Delta, bought back after 24 h; "
-               "the run stops itself under $140. \"vs paper\" is the real sale against paper's, in R (+ is better).")
+    out.append("Rule Quick for real (since 2026-11-10; earlier rows are rule A at 3%): same picks as paper, 5% risk, "
+               "stop and 4% take-profit resting at Delta, the rest bought back after 24 h; the run stops itself under "
+               "$960. \"vs paper\" is the real sale against paper's, in R (+ is better).")
     return out
 
 
@@ -750,7 +752,7 @@ def accounts_lines(f: dict, o: dict | None, lv: dict | None = None) -> list[str]
     if lv and not lv.get("error"):
         n, w = lv.get("closed", 0), lv.get("wins", 0)
         bal = (lv.get("state") or {}).get("balance")
-        rows.append(["REAL Delta (rule A, 3%)", "—" if bal is None else f"${bal:,.2f}", str(n), str(w), str(n - w),
+        rows.append(["REAL Delta (Quick, 5%)","—" if bal is None else f"${bal:,.2f}", str(n), str(w), str(n - w),
                      f"{100 * w / n:.0f}%" if n else "—", f"{lv.get('r', 0):+.2f}", money(lv.get("pnl"))])
     for acct, a in sorted((f.get("accounts") or {}).items()):
         n, w = a.get("closed", 0), a.get("wins", 0)

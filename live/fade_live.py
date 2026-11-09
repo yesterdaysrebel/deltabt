@@ -1,10 +1,12 @@
-"""Gainer-fade REAL-MONEY account (owner, 2026-11-02: "approved on tiny run, I have 176$ in account on
-delta"; rule A, 3% risk, stop below $140, own sub-account). The rules were fixed before any order in
-docs/fade_live_prereg.md; this module is them, nothing more.
+"""Gainer-fade REAL-MONEY account. Version 2 (owner, 2026-11-09: "approved, we will deploy fade quick in
+real"; $1,200, 5% risk): rule QUICK, the run stops below $960, own sub-account. Version 1 (2026-11-02,
+rule A, $176, 3%) is superseded. The rules were fixed before any order in docs/fade_live_quick_prereg.md;
+this module is them, nothing more.
 
 It rides the paper runner (live/fade.py): once the paper picks for a UTC day are entered, each pick is
-SOLD on Delta with an immediate-or-cancel limit 1% under the bid and an exchange-held stop at the paper
-stop distance; 24 h later it is bought back reduce-only. Every venue call goes through
+SOLD on Delta with an immediate-or-cancel limit 1% under the bid and an exchange-held bracket: a stop at
+the paper stop distance and a take-profit QUICK_TP x that distance below the entry; whatever is still
+open 24 h later is bought back reduce-only. Every venue call goes through
 live.client.LiveClient (one send per order, ambiguous writes looked up by client order id, never
 resent) and every order through live.orders.OrderRequest.
 
@@ -32,10 +34,13 @@ from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 log = logging.getLogger(__name__)
 
 ACCOUNT = "LIVE"
-#: docs/fade_live_prereg.md -- the owner's choices of 2026-11-02.
-FLOOR_USD = 140.0
-MAX_RISK_PCT = 0.03
-#: A wallet holding more than this x DELTABOT_EQUITY is not the $176 sub-account.
+#: docs/fade_live_quick_prereg.md -- the owner's choices of 2026-11-09 ($1,200 start, 5% risk, floor
+#: at 80% of the start).
+FLOOR_USD = 960.0
+MAX_RISK_PCT = 0.05
+#: Rule QUICK: the take-profit sits this fraction of the stop distance below the entry (live/fade.py).
+TP_FRACTION = 0.2
+#: A wallet holding more than this x DELTABOT_EQUITY is not the sub-account.
 WRONG_ACCOUNT_RATIO = 1.25
 #: One position's notional may use at most this share of the balance (two must fit at 1x).
 MAX_POSITION_SHARE = 0.45
@@ -76,6 +81,7 @@ CREATE TABLE IF NOT EXISTS fade_live_positions (
     ref_price      DOUBLE PRECISION,          -- best bid when the order was sent
     limit_price    DOUBLE PRECISION,
     stop_price     DOUBLE PRECISION,
+    target_price   DOUBLE PRECISION,          -- the bracket take-profit (rule QUICK); NULL on rule A rows
     entry_cid      TEXT,
     entry_time     TIMESTAMPTZ,
     entry_price    DOUBLE PRECISION,          -- average fill
@@ -84,7 +90,7 @@ CREATE TABLE IF NOT EXISTS fade_live_positions (
     exit_time      TIMESTAMPTZ,
     exit_price     DOUBLE PRECISION,
     exit_fee       DOUBLE PRECISION,
-    exit_reason    TEXT,                      -- TIME | STOP_LOSS | LIQUIDATION | UNPROTECTED | MANUAL_CLOSE | UNKNOWN_EXIT
+    exit_reason    TEXT,                      -- TIME | STOP_LOSS | TAKE_PROFIT | LIQUIDATION | UNPROTECTED | MANUAL_CLOSE | UNKNOWN_EXIT
     pnl            DOUBLE PRECISION,          -- price move x size - fees; funding is in the wallet, not here
     r              DOUBLE PRECISION,
     detail         JSONB,
@@ -105,7 +111,11 @@ CREATE TABLE IF NOT EXISTS fade_live_events (
     symbol  TEXT,
     detail  JSONB
 );
+ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS target_price DOUBLE PRECISION;
 """
+
+#: How a bracket leg's close is recorded (live/ledger.py) -- both are the plan working, not a fault.
+BRACKET_EXITS = ("STOP_LOSS", "TAKE_PROFIT")
 
 
 # ============================================================ pure logic (tested)
@@ -145,6 +155,12 @@ def contracts_for(balance: float, risk_pct: float, ref: float, stop: float, cv: 
     by_risk = risk_pct * balance / ((stop - ref) * cv)
     by_margin = MAX_POSITION_SHARE * balance * LEVERAGE / (ref * cv)
     return int(min(by_risk, by_margin) // 1)
+
+
+def target_for(ref: float, stop: float, tick: Decimal, fraction: float = TP_FRACTION) -> Decimal:
+    """The short's take-profit: `fraction` x (stop - ref) below `ref`, rounded DOWN on the tick grid so a
+    target fill is never a smaller win than paper's."""
+    return to_tick(ref - fraction * (stop - ref), tick, up=False)
 
 
 def to_tick(price: float, tick: Decimal, up: bool) -> Decimal:
@@ -226,10 +242,16 @@ class LiveFade:
         row = self.client.get_position(product_id)
         return _signed(row) if row else 0
 
-    def stop_resting(self, product_id: int) -> bool:
-        return any(r.get("reduce_only") and r.get("stop_order_type") == "stop_loss_order"
+    def leg_resting(self, product_id: int, kind: str) -> bool:
+        return any(r.get("reduce_only") and r.get("stop_order_type") == kind
                    and r.get("product_id") in (None, product_id)
                    for r in self.client.get_pending_orders(product_id))
+
+    def stop_resting(self, product_id: int) -> bool:
+        return self.leg_resting(product_id, "stop_loss_order")
+
+    def target_resting(self, product_id: int) -> bool:
+        return self.leg_resting(product_id, "take_profit_order")
 
     def wait_protected(self, product_id: int) -> bool:
         deadline = time.monotonic() + self.protect_wait
@@ -364,7 +386,7 @@ class LiveFade:
             await self._closed_at_venue(con, r, now)
 
     async def _closed_at_venue(self, con, r, now: float) -> None:
-        """Flat at Delta while we hold it OPEN: its stop (or a liquidation) closed it."""
+        """Flat at Delta while we hold it OPEN: its stop, its take-profit (or a liquidation) closed it."""
         from live.ledger import close_facts
         o = await asyncio.to_thread(self.last_close, r["product_id"])
         if o is None:
@@ -386,8 +408,8 @@ class LiveFade:
         await asyncio.to_thread(self.cancel_leftovers, r["product_id"])
         await event(con, "CLOSED_AT_DELTA", r["symbol"], facts)
         log.warning("fade live %s closed at Delta: %s, %s", r["symbol"], reason, pnl)
-        if reason != "STOP_LOSS":                       # live/ledger.py's name for the bracket stop
-            await self.set_state(con, "HALTED", f"{r['symbol']} closed at Delta by {reason}, not its stop")
+        if reason not in BRACKET_EXITS:
+            await self.set_state(con, "HALTED", f"{r['symbol']} closed at Delta by {reason}, not its bracket")
 
     async def _close(self, con, r, now: float, reason: str, why: str) -> None:
         """Buy back an OPEN position ourselves (24 h exit, or no stop resting)."""
@@ -494,17 +516,22 @@ class LiveFade:
             return
         limit = to_tick(bid * (1 - SLIP), prod["tick"], up=False)
         cap = to_tick(float(stop) + STOP_CAP_R * unit, prod["tick"], up=True)
+        target = target_for(bid, float(stop), prod["tick"])
+        if not 0 < target < limit:
+            await self._skip(con, day, p, f"take-profit {target} is not below the entry limit {limit}")
+            return
         cid = client_order_id("fade-live", str(day), sym, "entry")
         # Written BEFORE the send: a crash after it leaves a SENDING row that _reconcile resolves by cid.
         row_id = await con.fetchval(
             "INSERT INTO fade_live_positions (day, symbol, rank, status, product_id, contract_value, contracts, "
-            "leverage, balance_before, paper_entry, ref_price, limit_price, stop_price, entry_cid) "
-            "VALUES ($1,$2,$3,'SENDING',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id",
+            "leverage, balance_before, paper_entry, ref_price, limit_price, stop_price, target_price, entry_cid) "
+            "VALUES ($1,$2,$3,'SENDING',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id",
             _ts(day), sym, p["rank"], prod["id"], prod["cv"], n, LEVERAGE, bal, p["entry_price"], bid,
-            float(limit), float(stop), cid)
+            float(limit), float(stop), float(target), cid)
         order = OrderRequest(product_id=prod["id"], size=n, side=Side.SELL, order_type=OrderType.LIMIT,
                              client_order_id=cid, limit_price=limit, time_in_force=TimeInForce.IOC,
                              bracket_stop_loss_price=stop, bracket_stop_loss_limit_price=cap,
+                             bracket_take_profit_price=target,
                              stop_trigger_method=StopTriggerMethod.MARK, note="fade-live entry")
         try:
             o = await asyncio.to_thread(self.client.place_order, order)
@@ -530,6 +557,11 @@ class LiveFade:
         if not await asyncio.to_thread(self.wait_protected, r["product_id"]):
             fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
             await self._close(con, fresh, now, "UNPROTECTED", f"no stop resting {self.protect_wait:.0f}s after the fill")
+            return
+        # A missing take-profit is not a danger (the stop and the 24 h exit still hold): say so, keep going.
+        if r["target_price"] is not None and not await asyncio.to_thread(self.target_resting, r["product_id"]):
+            await event(con, "TAKE_PROFIT_MISSING", r["symbol"], {"target": r["target_price"]})
+            log.error("fade live %s: no take-profit resting at Delta", r["symbol"])
 
 
 async def ensure_schema(con) -> None:
@@ -581,7 +613,7 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     if not client.is_prod:
         print("refusing: DELTA_ENV is not prod (this probe exists to test the prod key)")
         return 2
-    acct = LiveFade(client, risk_pct=MAX_RISK_PCT, start_usd=float(src.get("DELTABOT_EQUITY") or 176))
+    acct = LiveFade(client, risk_pct=MAX_RISK_PCT, start_usd=float(src.get("DELTABOT_EQUITY") or 1200))
     print("1. wallet rows:")
     for b in client.get_balance():
         print(f"   {b.get('asset_symbol')}: balance={b.get('balance')} available={b.get('available_balance')}")
@@ -601,19 +633,23 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     bid = float(t["quotes"]["best_bid"])
     stop = to_tick(bid * 1.25, p["tick"], up=True)
     cap = to_tick(bid * 1.25 + 1.5 * (bid * 0.25), p["tick"], up=True)
+    # Far legs on purpose (25% each way): the probe proves the order SHAPE, it must not trade on a leg.
+    target = to_tick(bid * 0.75, p["tick"], up=False)
     cid = client_order_id("fade-live-probe", symbol, str(int(time.time())))
     o = client.place_order(OrderRequest(
         product_id=p["id"], size=1, side=Side.SELL, order_type=OrderType.LIMIT, client_order_id=cid,
         limit_price=to_tick(bid * (1 - SLIP), p["tick"], up=False), time_in_force=TimeInForce.IOC,
-        bracket_stop_loss_price=stop, bracket_stop_loss_limit_price=cap, stop_trigger_method=StopTriggerMethod.MARK,
-        note="fade-live probe"))
+        bracket_stop_loss_price=stop, bracket_stop_loss_limit_price=cap, bracket_take_profit_price=target,
+        stop_trigger_method=StopTriggerMethod.MARK, note="fade-live probe"))
     print(f"4. sold {filled(o)} at {fill_price(o)} (bid was {bid}), fee {fee(o)}, state {o.get('state')}")
     rc = 0
     try:
         if filled(o):
             ok = acct.wait_protected(p["id"])
             print(f"5. stop resting at Delta: {'YES' if ok else 'NO -- the account would flatten and halt'}")
-            rc = 0 if ok else 1
+            tp = acct.target_resting(p["id"])
+            print(f"5b. take-profit resting at Delta ({target}): {'YES' if tp else 'NO -- rule QUICK would not work'}")
+            rc = 0 if ok and tp else 1
     finally:
         row, left = acct.buy_back(symbol, client_order_id("fade-live-probe", cid, "exit"))
         n = acct.cancel_leftovers(p["id"])
