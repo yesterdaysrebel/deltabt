@@ -52,7 +52,15 @@ ACCOUNTS = {"A": None, "QUICK": QUICK_TP, "LADDER": None}   # account -> take-pr
 #: for the owner.
 ACCOUNT_START = {"A": START_EQUITY, "QUICK": START_EQUITY, "LADDER": 1500.0}
 LADDER = ((0.0, 0.10), (0.20, 0.05), (0.35, 0.03))  # (drawdown from the high-water mark, risk per trade)
-LADDER_POSITION_CAP = 0.30
+#: Leverage (owner 2026-11-09: "I still want to try with leverage, you decide"; docs/fade_live_ladder_prereg.md
+#: amendment 1). A position may use up to NOTIONAL_CAP of the balance as notional, with at most MARGIN_CAP of it
+#: as (isolated) margin -- so a gap through the stop can liquidate at most that, as at 1x/30% before -- at the
+#: least leverage that allows it, 1x-3x, and only while liquidation stays LIQ_BUFFER x the stop distance away.
+NOTIONAL_CAP = 0.60
+MARGIN_CAP = 0.30
+MAX_LEV = 3
+LIQ_BUFFER = 2.0
+PAPER_MM_PCT = 2.5                                   # Delta's usual maintenance margin, for the paper twin
 LADDER_FLOOR = 1000.0
 LADDER_REFILL_TO = 1500.0
 LADDER_REFILL_BUDGET = 3000.0
@@ -71,15 +79,30 @@ def ladder_risk(balance: float, high_water: float) -> float:
     return risk
 
 
-def size_ladder(equity: float, high_water: float, entry: float, stop: float, cv: float) -> tuple[int, float]:
-    """(contracts, ladder step) for the LADDER account: the ladder's risk, notional <= 30% of equity at 1x (so the
-    risk actually taken is min(step, 0.30 x stop distance): about 6% at the 10% step for a typical 20% stop)."""
+def lever_plan(risk: float, dist: float, mm_pct: float) -> tuple[float, int]:
+    """(notional as a share of the balance, leverage) for a short risking `risk` of the balance with its stop `dist`
+    away: the notional `risk / dist`, capped at NOTIONAL_CAP and at MARGIN_CAP x the leverage, where the leverage is
+    the least (1..MAX_LEV) that carries it and liquidation (1/L - maintenance) stays >= LIQ_BUFFER x dist.
+    (0, 0) if even 1x would put liquidation inside that buffer."""
+    if not dist > 0:
+        return 0.0, 0
+    mm = mm_pct / 100.0
+    if 1.0 - mm < LIQ_BUFFER * dist:
+        return 0.0, 0
+    top = max(L for L in range(1, MAX_LEV + 1) if 1.0 / L - mm >= LIQ_BUFFER * dist)
+    want = min(risk / dist, NOTIONAL_CAP)
+    lev = min(max(1, math.ceil(want / MARGIN_CAP - 1e-9)), top)
+    return min(want, MARGIN_CAP * lev), lev
+
+
+def size_ladder(equity: float, high_water: float, entry: float, stop: float, cv: float,
+                mm_pct: float = PAPER_MM_PCT) -> tuple[int, float]:
+    """(contracts, ladder step) for the LADDER account, sized by lever_plan (the real account's rule)."""
     risk = ladder_risk(equity, high_water)
     if not (equity > 0 and stop > entry > 0 and cv > 0):
         return 0, risk
-    by_risk = risk * equity / ((stop - entry) * cv)
-    by_cap = LADDER_POSITION_CAP * equity / (entry * cv)
-    return int(math.floor(min(by_risk, by_cap) + 1e-9)), risk
+    share, lev = lever_plan(risk, (stop - entry) / entry, mm_pct)
+    return int(math.floor(share * equity / (entry * cv) + 1e-9)), risk
 
 
 def ladder_book(closed: list[tuple[int, float]], added: list[tuple[int, float]],

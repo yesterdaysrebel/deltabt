@@ -155,8 +155,11 @@ Binance years for rule A, before funding: −0.018, +0.036, −0.035, +0.009, +0
 
 **FADE REAL-MONEY RUN 3 — RULE A LADDER, $1,500 (owner 2026-11-09: "Let's run rule a ladder in paper and in
 real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/fade-ladder`).** Risk 10/5/3 by
-drawdown from the high-water mark (steps at 20%/35%), each position ≤ 30% of the balance at 1x (so the "10%"
-step really risks ~4.5–5% on average), MARKET stop, no take-profit. Under $1,000 at an entry check it STOPS until
+drawdown from the high-water mark (steps at 20%/35%); AMENDMENT 1 (leverage, `feat/fade-leverage`): notional ≤ 60%
+of the balance on isolated margin ≤ 30%, 1x-3x per position with liquidation ≥ 2× the stop away
+(`live.fade.lever_plan`; risk taken ~6% average, 2x on ~40% of trades; the probe must show isolated margin),
+MARKET stop, no take-profit. PR #149 merged 2026-11-09 but NOT deployed: a GitHub Actions outage blocked the
+infrastructure apply and deploy-prod; the old run-1 bot halts at its next entry check on the topped-up wallet. Under $1,000 at an entry check it STOPS until
 the owner refills to ≥ $1,400 and runs `python -m live fade-live-capital` (mark reset, ladder back at 10%);
 refills ≤ $3,000 for the run. With prod keys but `dry_run` ≠ "0" the account is EXITS-ONLY (reconciles, buys back,
 never sells), so deploys/restarts never strand a position; the wallet band is checked only when a run begins.

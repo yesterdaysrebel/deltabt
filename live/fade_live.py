@@ -1,6 +1,7 @@
 """Gainer-fade REAL-MONEY account. Version 3 (owner, 2026-11-09: "Let's run rule a ladder in paper and in
 real"; "approved on 1-6"): rule A, $1,500, sized by the drawdown ladder 10/5/3 (steps at 20% and 35% below
-the high-water mark), each position at most 30% of the balance at 1x, a MARKET stop. Below $1,000 at an
+the high-water mark), each position up to 60% of the balance as notional on at most 30% of it as isolated
+margin (1x-3x, live.fade.lever_plan; amendment 1), a MARKET stop. Below $1,000 at an
 entry check the run STOPS until the owner refills it (`python -m live fade-live-capital`), which resets the
 high-water mark so the ladder restarts at 10%; refills are capped at $3,000 for the run. Version 1
 (2026-11-02, rule A flat 3%, $176) and the unmerged version 2 (QUICK) are superseded. The rules were fixed
@@ -58,11 +59,14 @@ MAX_RISK_PCT = 0.10
 TP_FRACTION: float | None = None
 #: A wallet holding more than this x DELTABOT_EQUITY is not the sub-account.
 WRONG_ACCOUNT_RATIO = 1.25
-#: One position's notional may use at most this share of the balance (owner 2026-11-09: 30%, not 45%).
-MAX_POSITION_SHARE = 0.30
-LEVERAGE = 1
-#: live/broker.py: liquidation must sit this many times further away than the stop.
-LIQUIDATION_BUFFER = 3.0
+#: Position size and leverage come from live.fade.lever_plan (amendment 1, 2026-11-09): notional <= 60% of the
+#: balance, isolated margin <= 30%, 1x-3x, liquidation >= 2x the stop distance away. The probe runs at 1x.
+PROBE_LEVERAGE = 2                                   # the probe proves the leveraged shape: isolated margin
+#: Position fields recorded on every real entry (and printed by the probe): what proves isolated margin.
+MARGIN_FIELDS = ("margin", "margin_mode", "liquidation_price", "bankruptcy_price", "entry_price", "size",
+                 "isolated_margin", "position_margin")
+#: Stops further than this are not traded (the universe every test was run on).
+MAX_DIST = 0.325
 #: The worst price an entry or a 24 h exit may fill at, as a fraction beyond the touch.
 SLIP = 0.01
 #: The stop is a MARKET stop (owner 2026-11-09): at 1x a capped stop-limit that a gap jumps past leaves the
@@ -201,19 +205,15 @@ def high_water_after(status: str, balance: float, high_water: float | None, chan
     return max(balance, high_water + change)
 
 
-def leverage_ok(dist: float, maintenance_pct: float, leverage: int = LEVERAGE) -> bool:
-    """Liquidation (1/leverage - maintenance) at least LIQUIDATION_BUFFER x the stop distance away."""
-    return dist > 0 and 1.0 / leverage - maintenance_pct / 100.0 >= LIQUIDATION_BUFFER * dist
-
-
-def contracts_for(balance: float, risk_pct: float, ref: float, stop: float, cv: float) -> int:
-    """Whole contracts risking at most `risk_pct` of the balance between ref and stop, using at most
-    MAX_POSITION_SHARE of it as notional at 1x."""
+def contracts_for(balance: float, risk_pct: float, ref: float, stop: float, cv: float,
+                  maintenance_pct: float) -> tuple[int, int]:
+    """(whole contracts, leverage): the notional live.fade.lever_plan allows for `risk_pct` of the balance between
+    ref and stop. (0, 0) when there is nothing to trade, or liquidation could not sit 2x the stop away."""
+    from live.fade import lever_plan
     if not (balance > 0 and stop > ref > 0 and cv > 0):
-        return 0
-    by_risk = risk_pct * balance / ((stop - ref) * cv)
-    by_margin = MAX_POSITION_SHARE * balance * LEVERAGE / (ref * cv)
-    return int(math.floor(min(by_risk, by_margin) + 1e-9))   # 249.99999 is 250 contracts
+        return 0, 0
+    share, lev = lever_plan(risk_pct, (stop - ref) / ref, maintenance_pct)
+    return int(math.floor(share * balance / (ref * cv) + 1e-9)), lev   # 249.99999 is 250 contracts
 
 
 def target_for(ref: float, stop: float, tick: Decimal, fraction: float = 0.2) -> Decimal:
@@ -746,20 +746,23 @@ class LiveFade:
         if spread > MAX_SPREAD:
             await self._skip(con, day, p, f"spread {spread:.2%} is wider than {MAX_SPREAD:.0%} (bid {bid:g} ask {ask:g})")
             return
-        if not leverage_ok(dist, prod["mm"]):
-            await self._skip(con, day, p, f"stop {dist:.0%} away is too far for 1x leverage")
+        if dist > MAX_DIST:
+            await self._skip(con, day, p, f"stop {dist:.0%} away is past the {MAX_DIST:.1%} limit")
             return
         from live.fade import ladder_risk
         hw = await self.high_water(con, bal)
         risk = min(self.risk_pct, ladder_risk(bal, hw))
-        n = contracts_for(bal, risk, bid, float(stop), prod["cv"])
+        n, lev = contracts_for(bal, risk, bid, float(stop), prod["cv"], prod["mm"])
+        if lev < 1:
+            await self._skip(con, day, p, f"stop {dist:.0%} away: liquidation cannot sit 2x further")
+            return
         if n < 1:
             await self._skip(con, day, p, f"below one contract at {risk:.0%} risk")
             return
-        await asyncio.to_thread(self.client.set_order_leverage, prod["id"], LEVERAGE)
+        await asyncio.to_thread(self.client.set_order_leverage, prod["id"], lev)
         got = await asyncio.to_thread(self.client.get_order_leverage, prod["id"])
-        if int(round(got)) != LEVERAGE:
-            await self._skip(con, day, p, f"leverage reads {got:g}x, not {LEVERAGE}x")
+        if int(round(got)) != lev:
+            await self._skip(con, day, p, f"leverage reads {got:g}x, not {lev}x")
             return
         limit = to_tick(bid * (1 - SLIP), prod["tick"], up=False)
         target = None
@@ -774,7 +777,7 @@ class LiveFade:
             "INSERT INTO fade_live_positions (day, symbol, rank, status, product_id, contract_value, contracts, "
             "leverage, balance_before, paper_entry, ref_price, limit_price, stop_price, target_price, risk_pct, "
             "entry_cid, detail) VALUES ($1,$2,$3,'SENDING',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
-            _ts(day), sym, p["rank"], prod["id"], prod["cv"], n, LEVERAGE, bal, p["entry_price"], bid,
+            _ts(day), sym, p["rank"], prod["id"], prod["cv"], n, lev, bal, p["entry_price"], bid,
             float(limit), float(stop), None if target is None else float(target), risk, cid,
             json.dumps({"ask": ask, "mark": mark, "spread_bps": round(1e4 * spread, 1), "high_water": hw}))
         order = OrderRequest(product_id=prod["id"], size=n, side=Side.SELL, order_type=OrderType.LIMIT,
@@ -806,6 +809,13 @@ class LiveFade:
             fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
             await self._close(con, fresh, now, "UNPROTECTED", f"no stop resting {self.protect_wait:.0f}s after the fill")
             return
+        try:                                             # isolated margin and liquidation, as Delta reports them
+            pos = await asyncio.to_thread(self.client.get_position, r["product_id"]) or {}
+            await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb "
+                              "WHERE id = $1", r["id"], json.dumps({"venue_position": {
+                                  k: pos.get(k) for k in MARGIN_FIELDS if k in pos}}, default=str))
+        except Exception:                                # noqa: BLE001 -- a record, never a reason to undo the trade
+            log.exception("fade live %s: position margin not recorded", r["symbol"])
         # A missing take-profit is not a danger (the stop and the 24 h exit still hold): say so, keep going.
         if r["target_price"] is not None and not await asyncio.to_thread(self.target_resting, r["product_id"]):
             await event(con, "TAKE_PROFIT_MISSING", r["symbol"], {"target": r["target_price"]})
@@ -884,7 +894,7 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
         return 2
     p = acct.product(symbol)
     print(f"2. {symbol}: product {p['id']}, tick {p['tick']}, contract {p['cv']}, maintenance {p['mm']}%")
-    client.set_order_leverage(p["id"], LEVERAGE)
+    client.set_order_leverage(p["id"], PROBE_LEVERAGE)
     print(f"3. leverage set, reads back {client.get_order_leverage(p['id'])}x")
     t = client.get_ticker(symbol)
     bid = float(t["quotes"]["best_bid"])
@@ -902,6 +912,10 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     rc = 0
     try:
         if filled(o):
+            pos = client.get_position(p["id"]) or {}
+            print(f"5a. position at Delta: {({k: pos.get(k) for k in MARGIN_FIELDS if k in pos}) or pos}")
+            print("    PASS needs isolated margin: margin about entry x size x contract / 2, and a liquidation price "
+                  "about 50% above the entry")
             ok = acct.wait_protected(p["id"])
             legs = [{k: r.get(k) for k in ("stop_order_type", "size", "stop_price", "limit_price", "order_type")}
                     for r in client.get_pending_orders(p["id"])]

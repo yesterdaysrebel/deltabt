@@ -59,14 +59,27 @@ def test_from_env_makes_no_venue_call_and_is_exits_only_without_the_switch(monke
 
 
 def test_sizing_cap_leverage_and_ticks():
-    # 10% of $1,500 = $150 between a bid of 1.00 and a stop 20% above: 750 contracts by risk, but at most
-    # 30% of the balance ($450) as notional at 1x: 450 -- the cap binds (risk actually used 6%).
-    assert L.contracts_for(1500, 0.10, 1.0, 1.2, 1.0) == 450
-    assert L.contracts_for(1500, 0.03, 1.0, 1.2, 1.0) == 225        # 3%: risk binds
-    assert L.contracts_for(1500, 0.10, 1.0, 1.4, 1.0) == 375        # a 40% stop: risk binds under the cap
-    assert L.contracts_for(1500, 0.10, 0.2, 0.3, 1000) == 1         # $100 risk a contract: 1.5 -> 1
-    assert L.contracts_for(0, 0.10, 1.0, 1.2, 1.0) == 0 and L.contracts_for(1500, 0.10, 1.2, 1.0, 1.0) == 0
-    assert L.leverage_ok(0.30, 2.5) and not L.leverage_ok(0.33, 2.5)  # 1x: 0.975 >= 3 x dist
+    from live.fade import lever_plan
+    # 10% risk on a 20% stop wants 50% notional: 2x on 25% margin would do, but at 2x liquidation (1/2 - 2.5%
+    # = 47.5%) is not 2 x 20% = 40% away... it is: 47.5% >= 40% -> 2x, notional 50%, risk the full 10%.
+    assert lever_plan(0.10, 0.20, 2.5) == (0.5, 2)
+    # a 15% stop wants 67%: capped at 60% notional, 2x (margin 30%)
+    assert lever_plan(0.10, 0.15, 2.5) == (0.6, 2)
+    # a 25% stop: 2x would liquidate 47.5% away < 50% -> 1x, 30% notional (margin cap), risk 7.5%
+    assert lever_plan(0.10, 0.25, 2.5) == (0.3, 1)
+    # a 30% stop at 3% risk wants 10% notional: 1x
+    assert lever_plan(0.03, 0.30, 2.5) == (0.1, 1)
+    # a 5% stop: 3x allowed (1/3 - 2.5% = 30.8% >= 10%), but 60% notional needs only 2x
+    assert lever_plan(0.10, 0.05, 2.5) == (0.6, 2)
+    # past 48.75% even 1x cannot keep liquidation 2x away
+    assert lever_plan(0.10, 0.49, 2.5) == (0.0, 0)
+    # contracts: $1,500, bid 1.00, stop 1.20 -> 50% notional = 750 contracts at 2x
+    assert L.contracts_for(1500, 0.10, 1.0, 1.2, 1.0, 2.5) == (750, 2)
+    assert L.contracts_for(1500, 0.03, 1.0, 1.2, 1.0, 2.5) == (225, 1)        # 3%: 15% notional, 1x
+    assert L.contracts_for(1500, 0.10, 0.2, 0.25, 1000, 2.5) == (2, 1)       # 25% stop: 1x, 30% = $450 -> 2 of $200
+    assert L.contracts_for(1500, 0.10, 0.2, 0.3, 1000, 2.5) == (0, 0)        # 50% stop: liquidation cannot be 2x away
+    assert L.contracts_for(0, 0.10, 1.0, 1.2, 1.0, 2.5) == (0, 0)
+    assert L.contracts_for(1500, 0.10, 1.2, 1.0, 1.0, 2.5) == (0, 0)
     assert L.to_tick(1.23456, Decimal("0.001"), up=True) == Decimal("1.235")
     assert L.to_tick(1.23456, Decimal("0.001"), up=False) == Decimal("1.234")
     pnl, r = L.money(1.0, 0.9, 26, 1.0, 1.2, 0.05)
@@ -262,8 +275,9 @@ async def test_a_full_day_sell_with_a_market_stop_then_buy_back_after_24_hours()
             "a MARKET stop and no take-profit"
         x = next(p for p in sells if p["product_id"] == 1)
         assert x["limit_price"] == "0.99" and x["bracket_stop_loss_price"] == "1.2"   # bid 1.00, 2 x 10% ATR
-        # $150 at risk would be 750 contracts; the 30% cap ($450 of a $1,500 wallet) binds at 450
-        assert x["size"] == 450 and fake.lev == {1: 1, 2: 1}
+        # $150 at risk on a 20% stop: 750 contracts = 50% of the wallet as notional, carried at 2x (margin 25%)
+        assert x["size"] == 750 and fake.lev == {1: 2, 2: 1}   # YUSD's 24% stop: 2x would liquidate 47.5% away
+        assert rows["XUSD"]["leverage"] == 2
         assert rows["XUSD"]["risk_pct"] == 0.10 and rows["XUSD"]["target_price"] is None
         assert '"spread_bps": 10.0' in rows["XUSD"]["detail"]
         # the second pick is sized off the wallet after the first's entry fee
@@ -277,7 +291,7 @@ async def test_a_full_day_sell_with_a_market_stop_then_buy_back_after_24_hours()
         buys = [p for p in fake.sent if p["side"] == "buy"]
         assert len(buys) == 2 and all(p["reduce_only"] for p in buys) and fake.pos == {1: 0, 2: 0}
         assert not fake.pending and len(fake.cancelled) == 2                     # the stops, once flat
-        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 450 - 0.02)) < 1e-9
+        assert abs(rows["XUSD"]["pnl"] - ((1.0 - 1.001) * 750 - 0.02)) < 1e-9
         st = await _state(con)
         assert st["status"] == "RUNNING" and st["balance"] == pytest.approx(fake.bal)   # the closes explain it
     finally:
@@ -300,7 +314,8 @@ async def test_a_stop_that_fires_at_delta_is_recorded_and_its_loss_is_not_a_capi
         assert x["r"] < -1.0                                                    # slipped past the stop
         st = await _state(con)
         assert st["status"] == "RUNNING" and st["balance"] == pytest.approx(fake.bal)
-        assert fake.bal == pytest.approx(1500 - 0.01 - 0.01 - 0.25 * 450 - 0.02)
+        n = (await _rows(con))["XUSD"]["contracts"]
+        assert n == 750 and fake.bal == pytest.approx(1500 - 0.01 - 0.01 - 0.25 * n - 0.02)
     finally:
         await con.close()
 
@@ -328,7 +343,7 @@ async def test_a_fill_without_a_resting_stop_is_bought_back_and_the_account_halt
 @pytest.mark.asyncio
 async def test_a_stop_smaller_than_the_position_does_not_count_as_protection():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
-    fake = FakeDelta(stop_size=100)                  # the leg says 100 contracts; 450 were sold
+    fake = FakeDelta(stop_size=100)                  # the leg says 100 contracts; 750 were sold
     try:
         await _acct(fake).step(con, D0 + 120)
         x = (await _rows(con))["XUSD"]
@@ -828,7 +843,7 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         await acct.step(con, D0 + 120)
         real = fake.place_order
 
-        def two_legs(order):                             # the limit leg fills 150 of 450; market fills the rest at 1.01
+        def two_legs(order):                             # the limit leg fills 150 of 750; market fills the rest at 1.01
             p = order.to_payload()
             if p["side"] == "buy" and p["order_type"] == "limit_order":
                 fake.book["XUSD"] = (1.0, 1.001, 1.0)
@@ -839,9 +854,9 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         fake.place_order = two_legs
         await acct.step(con, D0 + DAY + 10)
         x = (await _rows(con))["XUSD"]
-        px = (150 * 1.001 + 300 * 1.01) / 450
+        px = (150 * 1.001 + 600 * 1.01) / 750
         assert x["status"] == "CLOSED" and x["exit_price"] == pytest.approx(px)
-        assert x["pnl"] == pytest.approx((1.0 - px) * 450 - 0.03)          # three fees of $0.01
+        assert x["pnl"] == pytest.approx((1.0 - px) * 750 - 0.03)          # three fees of $0.01
     finally:
         await con.close()
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
@@ -853,9 +868,9 @@ async def test_a_two_leg_buy_back_is_priced_on_both_legs_and_a_leftover_halts():
         fake.place_order = lambda order: real(order) if order.to_payload()["side"] == "sell" else \
             real(type(order)(**{**order.__dict__, "size": 1}))            # each leg fills one contract only
         await acct.step(con, D0 + DAY + 10)
-        assert (await _rows(con))["XUSD"]["status"] == "OPEN" and fake.pos[1] == -448
+        assert (await _rows(con))["XUSD"]["status"] == "OPEN" and fake.pos[1] == -748
         st = await _state(con)
-        assert st["status"] == "HALTED" and "left 448 contracts open" in st["reason"]
+        assert st["status"] == "HALTED" and "left 748 contracts open" in st["reason"]
         assert await con.fetchval("SELECT count(*) FROM fade_live_events WHERE kind = 'EXIT_INCOMPLETE'") == 1
     finally:
         await con.close()

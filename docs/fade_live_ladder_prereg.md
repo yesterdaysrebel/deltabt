@@ -17,13 +17,13 @@ refills; with refills the expected cost is about $1,000 a year of deposits, more
 1. **Picks:** the paper runner's rule A picks (top 2 previous-UTC-day gainers, Delta perpetuals, turnover
    ≥ $250k), entered once paper has entered them, within 30 minutes of 00:00 UTC; a pick not entered by then is
    recorded as skipped.
-2. **Order:** sell at 1x leverage (read back), immediate-or-cancel limit 1% under the bid, with an exchange-held
+2. **Order:** sell at the leverage of amendment 1 (read back), immediate-or-cancel limit 1% under the bid, with an exchange-held
    **market** stop (mark-triggered) at entry × (1 + 2 × ATR14%). No take-profit. Bought back reduce-only 24 h later.
-   Skipped when: the stop is too far for 1x (liquidation not 3× the stop distance away, ≈ 32.5%), the spread is
+   Skipped when: the stop is more than 32.5% away, liquidation cannot sit 2× the stop distance away even at 1x, the spread is
    wider than 1% of the bid, the mark is at or past the stop, two positions are open, the coin is still open
    from yesterday, or less than one contract.
 3. **Size:** risk per trade = 10% of the wallet balance; 5% from 20% under the high-water mark; 3% from 35%
-   under; back to 10% only at a new high. Each position's notional ≤ **30%** of the balance.
+   under; back to 10% only at a new high. **Amendment 1 (leverage, below) sets the position size and leverage.**
 4. **High-water mark:** the best accepted wallet balance of the run. A refill resets it to the new balance; any
    other deposit or withdrawal moves it by the same dollars (never below the balance).
 5. **Stop and refill:** under **$1,000** at an entry check the run STOPS (no entries; open positions keep their
@@ -63,7 +63,7 @@ account's), never on one month's balance (a month of zero-edge trades ends above
 ## Validation done before the first order
 `scripts/fade_live_sim.py` runs this module's code against a simulated Delta through every calendar day of Delta
 2025 and 2026, plus a stress year (2025 with 0.10R taken off every trade, which spends the refill budget)
-(`out/gainer_fade/live_sim.txt`, 26/26 checks pass, exit code 1 on any failure). Against a reference written
+(`out/gainer_fade/live_sim.txt`; 32/32 checks after amendment 1, exit code 1 on any failure). Against a reference written
 from these rules with the numbers typed in (not imported from the bot), every day-end balance agrees within
 0.005% (2025), 0.021% (2026) and 0.005% (stress), with identical trades, ladder steps and refills; the stress
 year's sixth refill is refused at $3,199. With a restart every day and 3% of venue reads failing, results agree
@@ -79,3 +79,23 @@ shape of Delta's stop rows (size field or not) is checked only by the live probe
 ## What "10% risk" means in practice
 The 30% position cap binds whenever the stop is under 33% away, which is almost always: in the simulation the
 risk actually taken averaged **5.0% (2025) and 4.5% (2026)** of the balance at the "10%" step, maximum 9.7%.
+
+## Amendment 1 — leverage (2026-11-09, before any order; owner: "I still want to try with leverage, you decide cap
+and leverage can vary based on position size")
+- Notional wanted = risk step ÷ stop distance, capped at **60% of the balance**.
+- **Isolated margin ≤ 30% of the balance**: the leverage is the least of 1x, 2x, 3x that carries the notional, but
+  only leverages whose liquidation (1/L − maintenance) is at least **2× the stop distance** away are allowed; if the
+  allowed leverage cannot carry it, the notional is cut to 30% × that leverage.
+- So the worst gap through the stop can liquidate at most about 30% of the balance (one position's margin), as
+  at 1x/30% before; normal stops trigger long before liquidation.
+- Typical result: stops under ~23.75% trade at 2x (up to the full step), wider stops at 1x (30% notional).
+- **The probe must show isolated margin** (the position's margin ≈ notional ÷ 2 at the probe's 2x and a
+  liquidation price about 50% above the entry). If Delta reports cross margin, this amendment is not switched on.
+- Every real entry records Delta's margin fields (`detail.venue_position`).
+
+Evidence (descriptive; leverage is a sizing choice, not an edge): on the seven periods of the target grid
+(daily open, no funding) the run-3 account ends Delta 2026 at $21,702 (plan $9,335), Delta 2025 at $2,281
+($2,897), the Binance years at or above the plan; refills $6,853 over the seven periods (plan $4,402), within the
+$3,000 budget in each. In `scripts/fade_live_sim.py` the risk actually taken averages 5.8–6.7% (was 4.5–5.0%),
+2x on ~40% of trades; 32/32 checks pass, all 2,570 ladder-step and size decisions match the written rule, and
+loosening the margin cap, the liquidation buffer or the notional cap is each detected.

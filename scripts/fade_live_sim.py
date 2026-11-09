@@ -48,10 +48,30 @@ START = 1500.0
 #: The rules as NUMBERS from docs/fade_live_ladder_prereg.md, written here, never imported from the bot: a wrong
 #: constant in live/ must show up as a gap (the independent review of 2026-11-09 found the first version shared them).
 RULE_LADDER = ((0.00, 0.10), (0.20, 0.05), (0.35, 0.03))
-RULE_CAP = 0.30
+#: Amendment 1 (leverage): notional <= 60% of the balance, isolated margin <= 30%, leverage 1-3x, liquidation
+#: (1/L - maintenance 2.5%) at least 2x the stop distance away; the least leverage that carries the notional.
+RULE_NOTIONAL, RULE_MARGIN, RULE_LEVERAGES, RULE_LIQ_X, RULE_MM = 0.60, 0.30, (1, 2, 3), 2.0, 0.025
 RULE_FLOOR = 1000.0
 RULE_REFILL_TO = 1500.0
 RULE_BUDGET = 3000.0
+
+
+def rule_step(balance: float, high_water: float) -> float:
+    """The ladder step under the written rule: 10%, 5% from 20% under the mark, 3% from 35% under."""
+    under = (high_water - balance) / high_water
+    return 0.03 if under >= 0.35 - 1e-12 else 0.05 if under >= 0.20 - 1e-12 else 0.10
+
+
+def rule_risk(step: float, dist: float) -> float:
+    """The share of the balance one trade risks under the written rule (not live.fade.lever_plan)."""
+    usable = [lev for lev in RULE_LEVERAGES if 1.0 / lev - RULE_MM >= RULE_LIQ_X * dist]
+    if not usable:
+        return 0.0
+    notional = min(step / dist, RULE_NOTIONAL)
+    for lev in sorted(usable):
+        if notional <= RULE_MARGIN * lev + 1e-12:
+            return notional * dist
+    return RULE_MARGIN * max(usable) * dist
 
 
 def reference(days: list[pd.DataFrame], skip_refill_day: bool = True) -> dict:
@@ -77,7 +97,7 @@ def reference(days: list[pd.DataFrame], skip_refill_day: bool = True) -> dict:
         under = (hw - eq) / hw
         k = [r for th, r in RULE_LADDER if under >= th - 1e-12][-1]
         dist, r = day.dist.to_numpy(float), day.R.to_numpy(float)
-        ks = np.minimum(k, RULE_CAP * dist)
+        ks = np.array([rule_risk(k, x) for x in dist])
         eq = eq + eq * float(np.sum(ks * r))
         risks += [k] * len(r)
         trades += len(r)
@@ -373,15 +393,30 @@ def report(window: str, res: dict, ref: dict, label: str) -> list[str]:
            f"events: {res['events']}"]
     taken = [(p["stop_price"] - p["entry_price"]) * p["contracts"] * p["contract_value"] / p["balance_before"]
              for p in closed if p["entry_price"] and p["balance_before"]]
-    out.append(f"risk actually taken per trade (the 30% cap binds below a 33% stop): mean {100 * np.mean(taken):.1f}%, "
+    levs = pd.Series([p["leverage"] for p in closed]).value_counts().sort_index().to_dict()
+    out.append(f"leverage used: {levs}")
+    out.append(f"risk actually taken per trade: mean {100 * np.mean(taken):.1f}%, "
                f"median {100 * np.median(taken):.1f}%, max {100 * np.max(taken):.1f}% of the balance")
     bot_refills = len([o for o in res["owner"] if o[1] == 0])
-    out += [check(f"{window} {label}: every day-end balance within 0.1% of the reference (faults: 2%)",
-                  rel.max() <= (0.02 if label.startswith("faults") else 0.001)),
-            check(f"{window} {label}: same trades, refills and ladder steps as the reference",
-                  len(closed) == ref["trades"] and bot_refills == ref["refills"] and
-                  pd.Series([p["risk_pct"] for p in closed]).value_counts().sort_index().to_dict()
-                  == pd.Series(ref["risks"]).value_counts().sort_index().to_dict()),
+    # Each DECISION against the written rule, from the bot's own morning balance and mark (a path-vs-path compare is
+    # knife-edge: a 0.04% balance difference can flip a ladder step at exactly 20% under the mark).
+    import json as _json
+    step_bad, size_bad = 0, 0
+    for p in closed:
+        det = p["detail"] if isinstance(p["detail"], dict) else _json.loads(p["detail"] or "{}")
+        if det.get("high_water") and rule_step(p["balance_before"], det["high_water"]) != p["risk_pct"]:
+            step_bad += 1
+        key = (int(p["day"].timestamp()), p["symbol"])
+        dist = float(rows.loc[key, "dist"]) if key in rows.index else None
+        taken_ = p["contracts"] * p["contract_value"] * p["entry_price"] * dist / p["balance_before"] if dist else None
+        if dist and abs(taken_ - rule_risk(p["risk_pct"], dist)) > 1e-4:
+            size_bad += 1
+    out.append(f"decisions against the written rule: {step_bad} ladder steps and {size_bad} sizes differ of {len(closed)}")
+    out += [check(f"{window} {label}: every trade's ladder step follows its morning balance and mark", step_bad == 0),
+            check(f"{window} {label}: every trade's size and leverage follow the written rule", size_bad == 0),
+            check(f"{window} {label}: end within 1% of the reference, same trades and refills",
+                  abs(res["venue"].bal / ref["end"] - 1) <= 0.01 and len(closed) == ref["trades"]
+                  and bot_refills == ref["refills"]),
             check(f"{window} {label}: nothing left open, no unexplained HALT",
                   not other and (st["status"] in ("RUNNING", "STOPPED") and not res["events"].get("HALTED"))),
             check(f"{window} {label}: each recorded R equals the research R", dr.max() < 1e-6)]
