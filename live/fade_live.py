@@ -371,6 +371,18 @@ class LiveFade:
                    and r.get("product_id") in (None, product_id)
                    for r in self.client.get_pending_orders(product_id))
 
+    def margined_position(self, product_id: int) -> dict:
+        """This product's row from Delta's MARGINED positions (/v2/positions/margined): the one that reports margin,
+        liquidation price and auto top-up. The single-product /v2/positions reply carries only size and entry
+        (found on the first deploy, 2026-11-09: the check bought back a 1-contract position for want of them)."""
+        for v in self.client.get_positions():
+            try:
+                if int(v.get("product_id")) == int(product_id):
+                    return v
+            except (TypeError, ValueError):
+                continue
+        return {}
+
     def stop_resting(self, product_id: int) -> bool:
         return self.leg_resting(product_id, "stop_loss_order")
 
@@ -841,11 +853,14 @@ class LiveFade:
         position (here after the fill; again from _reconcile if that read failed). Not as planned -> bought back,
         HALT. Returns False if it closed the position."""
         r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
-        pos = await asyncio.to_thread(self.client.get_position, r["product_id"]) or {}
+        pos = await asyncio.to_thread(self.margined_position, r["product_id"])
         await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb "
                           "WHERE id = $1", row_id, json.dumps({"venue_position": {
                               k: pos.get(k) for k in MARGIN_FIELDS if k in pos}}, default=str))
-        bad = margin_problem(pos, r["entry_price"], r["contracts"], r["contract_value"], int(r["leverage"] or 1))
+        lev = int(r["leverage"] or 1)
+        # Only a leveraged position needs the isolated-margin bound: at 1x a gap can never lose more than the
+        # position's own notional (<= 30% of the balance) in any margin mode. Run 1's positions were all 1x.
+        bad = margin_problem(pos, r["entry_price"], r["contracts"], r["contract_value"], lev) if lev > 1 else None
         if bad:
             fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
             await self._close(con, fresh, now, "MARGIN", f"not isolated margin as planned: {bad}")
@@ -962,8 +977,8 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     rc = 0
     try:
         if filled(o):
-            pos = client.get_position(p["id"]) or {}
-            print(f"5a. position at Delta: {pos}")
+            pos = acct.margined_position(p["id"])
+            print(f"5a. position at Delta (margined): {pos}")
             bad = margin_problem(pos, fill_price(o) or bid, filled(o), p["cv"], PROBE_LEVERAGE)
             print(f"5b. isolated margin at {PROBE_LEVERAGE}x: {'YES' if not bad else 'NO -- ' + bad}")
             ok = acct.wait_protected(p["id"])

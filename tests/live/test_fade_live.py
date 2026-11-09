@@ -152,10 +152,13 @@ class FakeDelta:
         self._maybe_fail("get_balance")
         return [] if self.no_balance else [{"asset_symbol": "USD", "balance": str(round(self.bal, 6))}]
     def get_position(self, pid):
-        if not self.pos.get(pid):
-            return None
-        row = {"product_id": pid, "size": self.pos[pid]}
-        if self.margin == "silent":
+        """Delta's single-product /v2/positions: size and entry only (no margin fields -- as found live)."""
+        return {"product_id": pid, "size": self.pos[pid], "entry_price": str(self.entry.get(pid, 1.0))} \
+            if self.pos.get(pid) else None
+
+    def _margined(self, pid):
+        row = {"product_id": pid, "product_symbol": self._sym(pid) if pid in (1, 2) else "ZUSD", "size": self.pos[pid]}
+        if self.margin == "silent" or pid not in (1, 2):
             return row
         lev, e, n = self.lev.get(pid, 1), self.entry.get(pid, 1.0), abs(self.pos[pid])
         cv = float(self.products[self._sym(pid)]["contract_value"])
@@ -164,8 +167,7 @@ class FakeDelta:
         return row
     def get_positions(self):
         self._maybe_fail("get_positions")
-        return [{"product_id": pid, "product_symbol": self._sym(pid) if pid in (1, 2) else "ZUSD", "size": n}
-                for pid, n in self.pos.items() if n]
+        return [self._margined(pid) for pid, n in self.pos.items() if n]
     def get_pending_orders(self, pid=None): return [o for o in self.pending if pid in (None, o["product_id"])]
     def get_open_orders(self, pid=None): return []
     def order_history(self, pid=None, page_size=20): return [o for o in self.history if pid in (None, o["product_id"])]
@@ -1034,6 +1036,22 @@ async def test_a_position_not_on_isolated_margin_is_bought_back_and_halts():
             assert st["status"] == "HALTED" and why in st["reason"], (mode, st["reason"])
         finally:
             await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_1x_position_is_not_closed_for_missing_margin_fields():
+    # The first deploy (2026-11-09): run 1's 1x AIOTUSD position was bought back because the single-product
+    # endpoint has no margin fields. A 1x position needs no isolated-margin bound; leveraged ones are checked
+    # against the MARGINED endpoint.
+    con = await _db(picks=(("XUSD", 1, 0.13, 1.0),))      # a 26% stop: 1x
+    fake = FakeDelta(margin="silent")
+    try:
+        await _acct(fake).step(con, D0 + 120)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["leverage"]) == ("OPEN", 1) and (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
 
 
 def test_margin_problem_reads_isolated_margin():

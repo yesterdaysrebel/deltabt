@@ -155,16 +155,19 @@ class SimDelta:
         return {"mark_price": repr(m), "quotes": {"best_bid": repr(b), "best_ask": repr(a)}}
     def get_balance(self): self._read(); return [{"asset_symbol": "USD", "balance": repr(self.bal)}]
     def get_position(self, pid):
-        """Isolated margin, as Delta reports it: margin = notional / leverage, liquidation 1/L - 2.5% above."""
+        """Delta's single-product /v2/positions: size and entry only."""
         self._read()
-        if not self.pos.get(pid):
-            return None
-        lev, e, n = self.lev.get(pid, 1), self.entry.get(pid, 1.0), abs(self.pos[pid])
-        return {"product_id": pid, "size": self.pos[pid], "margin": repr(e * n * CV / lev), "auto_topup": False,
-                "liquidation_price": repr(e * (1 + 1 / lev - 0.025)), "margin_mode": "isolated"}
+        return {"product_id": pid, "size": self.pos[pid]} if self.pos.get(pid) else None
     def get_positions(self):
+        """Delta's MARGINED positions: with margin, liquidation price and auto top-up (isolated)."""
         self._read()
-        return [{"product_id": p, "product_symbol": self._sym(p), "size": n} for p, n in self.pos.items() if n]
+        out = []
+        for p, n in self.pos.items():
+            if n:
+                lev, e = self.lev.get(p, 1), self.entry.get(p, 1.0)
+                out.append({"product_id": p, "product_symbol": self._sym(p), "size": n, "auto_topup": False,
+                            "margin": repr(e * abs(n) * CV / lev), "liquidation_price": repr(e * (1 + 1 / lev - 0.025))})
+        return out
     def get_pending_orders(self, pid=None):
         self._read()
         return [o for o in self.pending if pid in (None, o["product_id"])]

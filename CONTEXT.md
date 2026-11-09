@@ -158,7 +158,7 @@ real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/
 drawdown from the high-water mark (steps at 20%/35%); AMENDMENT 1 (leverage, `feat/fade-leverage`): notional ≤ 60%
 of the balance on isolated margin ≤ 30%, 1x-3x per position with liquidation ≥ 2× the stop away
 (`live.fade.lever_plan`; risk taken ~6% average, 2x on ~40% of trades; the probe must show isolated margin),
-MARKET stop, no take-profit. PR #149 merged 2026-11-09 but NOT deployed: a GitHub Actions outage blocked the
+MARKET stop, no take-profit. FIRST DEPLOY 2026-11-09 20:42 UTC (#149+#150, exits-only): the margin check read Delta's single-product /v2/positions (no margin fields), bought back run 1's 1-contract AIOTUSD (−$0.16) and HALTED; fixed to read /v2/positions/margined and to check leveraged (>1x) positions only. Earlier: PR #149 merged but NOT deployed: a GitHub Actions outage blocked the
 infrastructure apply and deploy-prod; the old run-1 bot halts at its next entry check on the topped-up wallet. Under $1,000 at an entry check it STOPS until
 the owner refills to ≥ $1,400 and runs `python -m live fade-live-capital` (mark reset, ladder back at 10%);
 refills ≤ $3,000 for the run. With prod keys but `dry_run` ≠ "0" the account is EXITS-ONLY (reconciles, buys back,
