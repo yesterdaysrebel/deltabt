@@ -1,0 +1,16 @@
+
+=== Check 1: list from 2025, tested on 2026 ===
+list (50 coins of 138 picked in the build period): AINUSD, AIOUSD, ALTUSD, API3USD, ARUSD, BBUSD, BCHUSD, BERAUSD, BIOUSD, BMTUSD, CROSSUSD, EIGENUSD, ETHFIUSD, FARTCOINUSD, GLMUSD, GRIFFAINUSD, HIVEUSD, HUSD, HYPEUSD, JTOUSD, LAYERUSD, LDOUSD, MELANIAUSD, MEMEUSD, MOVEUSD, NEIROUSD, ONDOUSD, PENGUUSD, PIUSD, PNUTUSD, POLUSD, RAREUSD, REDUSD, RSRUSD, SOLVUSD, SOPHUSD, STBLUSD, SUNUSD, SWARMSUSD, TRUMPUSD, TSTUSD, UNIUSD, VANAUSD, VVVUSD, WCTUSD, WIFUSD, XAIUSD, XANUSD, ZKUSD, ZORAUSD
+  build period, list coins: 534 picks, mean QUICK +0.066R
+  test QUICK : list  281 picks (30.0/mo) mean +0.005R win 75% | others  649 mean +0.023R | diff z -0.66 | $1,500 at 5% fixed: +11 $/mo
+  test rule A: list  281 picks (30.0/mo) mean +0.029R win 54% | others  649 mean +0.024R | diff z +0.11 | $1,500 at 5% fixed: +66 $/mo
+  list coins in the test period (picks, mean QUICK R): HUSD 29 -0.09, VVVUSD 22 -0.03, AINUSD 21 +0.02, AIOUSD 17 -0.04, HYPEUSD 10 -0.05, XANUSD 10 +0.17, BERAUSD 8 +0.04, BIOUSD 8 -0.02, CROSSUSD 8 -0.12, JTOUSD 8 +0.13, TSTUSD 8 +0.03, SWARMSUSD 8 +0.15, ZORAUSD 7 -0.01, GRIFFAINUSD 7 +0.19, SOLVUSD 7 +0.02, UNIUSD 7 -0.07, XAIUSD 7 +0.01, BMTUSD 6 +0.20, RAREUSD 6 +0.19, ONDOUSD 6 -0.03, ZKUSD 6 -0.01, STBLUSD 5 +0.10, PIUSD 5 -0.10, TRUMPUSD 4 +0.19, ARUSD 4 -0.20, MEMEUSD 4 +0.10, ETHFIUSD 4 -0.39, NEIROUSD 3 -0.21, API3USD 3 -0.22, ALTUSD 3 +0.19, BCHUSD 3 +0.04, BBUSD 2 +0.19, VANAUSD 2 +0.20, WCTUSD 2 +0.19, FARTCOINUSD 2 -0.42, RSRUSD 2 +0.19, LAYERUSD 2 +0.19, MELANIAUSD 2 +0.19, REDUSD 2 +0.08, PENGUUSD 2 +0.19, WIFUSD 2 -0.03, EIGENUSD 1 -0.71, HIVEUSD 1 +0.19, LDOUSD 1 +0.19, POLUSD 1 -0.47, MOVEUSD 1 +0.19, SOPHUSD 1 -1.01, SUNUSD 1 +0.19
+  RULE: FAIL
+
+=== Check 2: list from Jan-May 2026, tested on Jun-Oct 2026 ===
+list (12 coins of 122 picked in the build period): BERAUSD, BIOUSD, BLURUSD, EDENUSD, JTOUSD, MUSD, PARTIUSD, RIVERUSD, SAHARAUSD, SWARMSUSD, TOWNSUSD, XANUSD
+  build period, list coins: 82 picks, mean QUICK +0.123R
+  test QUICK : list   20 picks ( 4.1/mo) mean +0.105R win 85% | others  451 mean +0.034R | diff z +1.46 | $1,500 at 5% fixed: +32 $/mo
+  test rule A: list   20 picks ( 4.1/mo) mean +0.201R win 50% | others  451 mean +0.006R | diff z +0.93 | $1,500 at 5% fixed: +62 $/mo
+  list coins in the test period (picks, mean QUICK R): XANUSD 5 +0.19, EDENUSD 4 +0.19, PARTIUSD 3 -0.03, RIVERUSD 2 +0.19, BIOUSD 1 -0.23, BERAUSD 1 +0.19, MUSD 1 +0.06, JTOUSD 1 -0.34, BLURUSD 1 +0.19, SAHARAUSD 1 +0.19
+  RULE: FAIL
