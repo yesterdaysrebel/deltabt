@@ -79,17 +79,19 @@ def ladder_risk(balance: float, high_water: float) -> float:
     return risk
 
 
-def lever_plan(risk: float, dist: float, mm_pct: float) -> tuple[float, int]:
+def lever_plan(risk: float, dist: float, mm_pct: float, liq_dist: float | None = None) -> tuple[float, int]:
     """(notional as a share of the balance, leverage) for a short risking `risk` of the balance with its stop `dist`
     away: the notional `risk / dist`, capped at NOTIONAL_CAP and at MARGIN_CAP x the leverage, where the leverage is
     the least (1..MAX_LEV) that carries it and liquidation (1/L - maintenance) stays >= LIQ_BUFFER x dist.
-    (0, 0) if even 1x would put liquidation inside that buffer."""
+    (0, 0) if even 1x would put liquidation inside that buffer. `liq_dist` is the stop distance from the worst
+    allowed fill (defaults to `dist`) and sets the buffer; `dist` sets the size."""
     if not dist > 0:
         return 0.0, 0
     mm = mm_pct / 100.0
-    if 1.0 - mm < LIQ_BUFFER * dist:
+    ld = dist if liq_dist is None else max(dist, liq_dist)
+    if 1.0 - mm < LIQ_BUFFER * ld:
         return 0.0, 0
-    top = max(L for L in range(1, MAX_LEV + 1) if 1.0 / L - mm >= LIQ_BUFFER * dist)
+    top = max(L for L in range(1, MAX_LEV + 1) if 1.0 / L - mm >= LIQ_BUFFER * ld)
     want = min(risk / dist, NOTIONAL_CAP)
     lev = min(max(1, math.ceil(want / MARGIN_CAP - 1e-9)), top)
     return min(want, MARGIN_CAP * lev), lev

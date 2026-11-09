@@ -86,16 +86,21 @@ and leverage can vary based on position size")
 - **Isolated margin ≤ 30% of the balance**: the leverage is the least of 1x, 2x, 3x that carries the notional, but
   only leverages whose liquidation (1/L − maintenance) is at least **2× the stop distance** away are allowed; if the
   allowed leverage cannot carry it, the notional is cut to 30% × that leverage.
-- So the worst gap through the stop can liquidate at most about 30% of the balance (one position's margin), as
-  at 1x/30% before; normal stops trigger long before liquidation.
-- Typical result: stops under ~23.75% trade at 2x (up to the full step), wider stops at 1x (30% notional).
-- **The probe must show isolated margin** (the position's margin ≈ notional ÷ 2 at the probe's 2x and a
-  liquidation price about 50% above the entry). If Delta reports cross margin, this amendment is not switched on.
-- Every real entry records Delta's margin fields (`detail.venue_position`).
-
+- The worst gap through the stop can liquidate at most about 30% of the balance **per position** (its isolated
+  margin); with two positions open on a bad day, about 60% — the same bound as 1x/30% before. At 2x the full 30%
+  is lost at about a +47.5% gap instead of about +97.5%, so losing all of it is more likely than at 1x.
+- Liquidation distance is measured from the worst fill the entry allows (1% under the bid); a product without a
+  maintenance margin is treated as 2.5%.
+- **Isolated margin is enforced, not assumed:** after every fill the bot reads Delta's position and requires no
+  auto top-up, isolated mode, margin within 15% of notional ÷ leverage and a liquidation price about 1/L above
+  the entry; otherwise it buys the position back and HALTs. The probe (at 2x) fails on the same check, and a
+  leverage that does not read back. If Delta cannot show isolated margin, this amendment is not switched on.
+- A leverage Delta refuses for a coin skips that coin; a network error retries on the next pass.
 Evidence (descriptive; leverage is a sizing choice, not an edge): on the seven periods of the target grid
-(daily open, no funding) the run-3 account ends Delta 2026 at $21,702 (plan $9,335), Delta 2025 at $2,281
-($2,897), the Binance years at or above the plan; refills $6,853 over the seven periods (plan $4,402), within the
-$3,000 budget in each. In `scripts/fade_live_sim.py` the risk actually taken averages 5.8–6.7% (was 4.5–5.0%),
-2x on ~40% of trades; 32/32 checks pass, all 2,570 ladder-step and size decisions match the written rule, and
-loosening the margin cap, the liquidation buffer or the notional cap is each detected.
+(daily open, no funding) the run-3 account with leverage ends Delta 2026 at about $21–23k (plan $9,335) and the
+Binance years at or above the plan, Delta 2025 about level; refills over the seven periods about $6.9k (plan
+$4.4k), within the $3,000 budget in each. In `scripts/fade_live_sim.py` (bot entry, funding) 2025 ends $2,103
+after 3 refills (plan: $2,031, 2 refills) and 2026 $15,000 (plan $6,593); 2x on ~35–40% of trades; risk taken
+averages ~6%. 32/32 checks pass, with daily restarts and 3% failed reads identical; every ladder step, size and
+leverage decision matches the written rule; loosening the margin cap, the liquidation buffer or the notional cap
+is each detected.

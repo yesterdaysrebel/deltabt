@@ -692,7 +692,7 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
             continue
         if r["status"] == "FAILED":
             out.append(f"REAL {r['symbol']}: the order failed ({r.get('skip_reason')})")
-        if r.get("exit_reason") in ("UNPROTECTED", "LIQUIDATION", "UNKNOWN_EXIT", "MANUAL_CLOSE"):
+        if r.get("exit_reason") in ("UNPROTECTED", "MARGIN", "LIQUIDATION", "UNKNOWN_EXIT", "MANUAL_CLOSE"):
             out.append(f"REAL {r['symbol']}: closed by {r['exit_reason']}, not its stop or the 24 h exit")
         pe, e, s = r.get("paper_entry"), r.get("entry_price"), r.get("stop_price")
         if pe and e and s and s > pe and (pe - e) / (s - pe) > LIVE_SLIP_FLAG_R:

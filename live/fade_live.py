@@ -60,11 +60,14 @@ TP_FRACTION: float | None = None
 #: A wallet holding more than this x DELTABOT_EQUITY is not the sub-account.
 WRONG_ACCOUNT_RATIO = 1.25
 #: Position size and leverage come from live.fade.lever_plan (amendment 1, 2026-11-09): notional <= 60% of the
-#: balance, isolated margin <= 30%, 1x-3x, liquidation >= 2x the stop distance away. The probe runs at 1x.
+#: balance, isolated margin <= 30%, 1x-3x, liquidation >= 2x the stop distance away (measured from the worst
+#: allowed fill). The probe runs at PROBE_LEVERAGE and must show isolated margin (margin_problem).
 PROBE_LEVERAGE = 2                                   # the probe proves the leveraged shape: isolated margin
 #: Position fields recorded on every real entry (and printed by the probe): what proves isolated margin.
 MARGIN_FIELDS = ("margin", "margin_mode", "liquidation_price", "bankruptcy_price", "entry_price", "size",
-                 "isolated_margin", "position_margin")
+                 "isolated_margin", "position_margin", "auto_topup")
+#: Delta's maintenance margin when the product does not state one (never assume less).
+MIN_MM_PCT = 2.5
 #: Stops further than this are not traded (the universe every test was run on).
 MAX_DIST = 0.325
 #: The worst price an entry or a 24 h exit may fill at, as a fraction beyond the touch.
@@ -212,7 +215,10 @@ def contracts_for(balance: float, risk_pct: float, ref: float, stop: float, cv: 
     from live.fade import lever_plan
     if not (balance > 0 and stop > ref > 0 and cv > 0):
         return 0, 0
-    share, lev = lever_plan(risk_pct, (stop - ref) / ref, maintenance_pct)
+    # liquidation is measured from the worst fill the IOC allows (SLIP under the bid): a little more conservative
+    worst = ref * (1 - SLIP)
+    share, lev = lever_plan(risk_pct, (stop - ref) / ref, max(maintenance_pct or 0, MIN_MM_PCT),
+                            liq_dist=(stop - worst) / worst)
     return int(math.floor(share * balance / (ref * cv) + 1e-9)), lev   # 249.99999 is 250 contracts
 
 
@@ -250,6 +256,29 @@ def fee(row: dict | None) -> float:
         return float((row or {}).get("paid_commission") or (row or {}).get("commission") or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def margin_problem(pos: dict, entry: float, contracts: int, cv: float, lev: int) -> str | None:
+    """Why a fresh short is NOT on isolated margin as planned, or None. Isolated at `lev` means: no auto top-up,
+    margin about notional / lev (within 15%), and a liquidation price between 1/lev - 10% and 1/lev above the entry
+    (maintenance makes it a little closer than 1/lev). A missing field is a problem: the bound must be shown."""
+    if str(pos.get("auto_topup")).lower() in ("true", "1"):
+        return "auto top-up is on (wallet money would feed the position)"
+    mode = str(pos.get("margin_mode") or "").lower()
+    if mode and mode != "isolated":
+        return f"margin mode is {mode}"
+    try:
+        margin = float(pos.get("margin"))
+        liq = float(pos.get("liquidation_price"))
+    except (TypeError, ValueError):
+        return f"margin or liquidation price not reported ({ {k: pos.get(k) for k in MARGIN_FIELDS} })"
+    notional = entry * contracts * cv
+    if not (0.85 * notional / lev <= margin <= 1.15 * notional / lev):
+        return f"margin {margin:g} is not about {notional / lev:g} (notional / {lev}x)"
+    up = liq / entry - 1
+    if not (1.0 / lev - 0.10 <= up <= 1.0 / lev + 0.005):
+        return f"liquidation {liq:g} is {up:.1%} above the entry, not about {1.0 / lev:.0%}"
+    return None
 
 
 def combine_fills(rows: list[dict]) -> dict | None:
@@ -614,6 +643,8 @@ class LiveFade:
                     await con.execute("UPDATE fade_live_positions SET flat_since = NULL WHERE id = $1", r["id"])
                 if not await asyncio.to_thread(self.stop_covers, r["product_id"]):
                     await self._close(con, r, now, "UNPROTECTED", "no stop covering it resting at Delta")
+                elif r["entry_price"] and "venue_position" not in (r["detail"] or ""):
+                    await self._check_margin(con, r["id"], now)  # the check after the fill did not complete
                 continue
             await self._closed_at_venue(con, r, now)
 
@@ -759,8 +790,12 @@ class LiveFade:
         if n < 1:
             await self._skip(con, day, p, f"below one contract at {risk:.0%} risk")
             return
-        await asyncio.to_thread(self.client.set_order_leverage, prod["id"], lev)
-        got = await asyncio.to_thread(self.client.get_order_leverage, prod["id"])
+        try:
+            await asyncio.to_thread(self.client.set_order_leverage, prod["id"], lev)
+            got = await asyncio.to_thread(self.client.get_order_leverage, prod["id"])
+        except VenueRejected as exc:                      # Delta refuses this leverage on this coin: skip it, go on
+            await self._skip(con, day, p, f"leverage {lev}x could not be set: {exc}"[:300])
+            return                                       # (a blip raises past here: retried on the next pass)
         if int(round(got)) != lev:
             await self._skip(con, day, p, f"leverage reads {got:g}x, not {lev}x")
             return
@@ -800,6 +835,22 @@ class LiveFade:
             return
         await self._opened(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id), o, now)
 
+    async def _check_margin(self, con, row_id: int, now: float) -> bool:
+        """Isolated margin is what bounds a gap through the stop to this position's margin: check it once per
+        position (here after the fill; again from _reconcile if that read failed). Not as planned -> bought back,
+        HALT. Returns False if it closed the position."""
+        r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
+        pos = await asyncio.to_thread(self.client.get_position, r["product_id"]) or {}
+        await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb "
+                          "WHERE id = $1", row_id, json.dumps({"venue_position": {
+                              k: pos.get(k) for k in MARGIN_FIELDS if k in pos}}, default=str))
+        bad = margin_problem(pos, r["entry_price"], r["contracts"], r["contract_value"], int(r["leverage"] or 1))
+        if bad:
+            fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
+            await self._close(con, fresh, now, "MARGIN", f"not isolated margin as planned: {bad}")
+            return False
+        return True
+
     async def _opened(self, con, r, o: dict, now: float) -> None:
         n, px = filled(o), fill_price(o)
         await con.execute("UPDATE fade_live_positions SET status = 'OPEN', contracts = $2, entry_price = $3, "
@@ -809,13 +860,7 @@ class LiveFade:
             fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
             await self._close(con, fresh, now, "UNPROTECTED", f"no stop resting {self.protect_wait:.0f}s after the fill")
             return
-        try:                                             # isolated margin and liquidation, as Delta reports them
-            pos = await asyncio.to_thread(self.client.get_position, r["product_id"]) or {}
-            await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb "
-                              "WHERE id = $1", r["id"], json.dumps({"venue_position": {
-                                  k: pos.get(k) for k in MARGIN_FIELDS if k in pos}}, default=str))
-        except Exception:                                # noqa: BLE001 -- a record, never a reason to undo the trade
-            log.exception("fade live %s: position margin not recorded", r["symbol"])
+        await self._check_margin(con, r["id"], now)
         # A missing take-profit is not a danger (the stop and the 24 h exit still hold): say so, keep going.
         if r["target_price"] is not None and not await asyncio.to_thread(self.target_resting, r["product_id"]):
             await event(con, "TAKE_PROFIT_MISSING", r["symbol"], {"target": r["target_price"]})
@@ -895,7 +940,11 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     p = acct.product(symbol)
     print(f"2. {symbol}: product {p['id']}, tick {p['tick']}, contract {p['cv']}, maintenance {p['mm']}%")
     client.set_order_leverage(p["id"], PROBE_LEVERAGE)
-    print(f"3. leverage set, reads back {client.get_order_leverage(p['id'])}x")
+    got = client.get_order_leverage(p["id"])
+    print(f"3. leverage set to {PROBE_LEVERAGE}x, reads back {got}x")
+    if int(round(got)) != PROBE_LEVERAGE:
+        print("refusing: the leverage did not take")
+        return 1
     t = client.get_ticker(symbol)
     bid = float(t["quotes"]["best_bid"])
     stop = to_tick(bid * 1.25, p["tick"], up=True)
@@ -913,9 +962,9 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
     try:
         if filled(o):
             pos = client.get_position(p["id"]) or {}
-            print(f"5a. position at Delta: {({k: pos.get(k) for k in MARGIN_FIELDS if k in pos}) or pos}")
-            print("    PASS needs isolated margin: margin about entry x size x contract / 2, and a liquidation price "
-                  "about 50% above the entry")
+            print(f"5a. position at Delta: {pos}")
+            bad = margin_problem(pos, fill_price(o) or bid, filled(o), p["cv"], PROBE_LEVERAGE)
+            print(f"5b. isolated margin at {PROBE_LEVERAGE}x: {'YES' if not bad else 'NO -- ' + bad}")
             ok = acct.wait_protected(p["id"])
             legs = [{k: r.get(k) for k in ("stop_order_type", "size", "stop_price", "limit_price", "order_type")}
                     for r in client.get_pending_orders(p["id"])]
@@ -925,7 +974,7 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
             if target is not None:
                 tp = acct.target_resting(p["id"])
                 print(f"5b. take-profit resting at Delta ({target}): {'YES' if tp else 'NO'}")
-            rc = 0 if ok and tp else 1
+            rc = 0 if ok and tp and not bad else 1
     finally:
         row, left = acct.buy_back(symbol, client_order_id("fade-live-probe", cid, "exit"))
         n = acct.cancel_leftovers(p["id"])

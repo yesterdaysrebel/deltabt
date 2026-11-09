@@ -115,7 +115,7 @@ class FakeDelta:
 
     FEE = 0.01
 
-    def __init__(self, balance=1500.0, attach_stop=True, fill=None, stop_size=None):
+    def __init__(self, balance=1500.0, attach_stop=True, fill=None, stop_size=None, margin="isolated"):
         self.bal = balance
         self.attach_stop = attach_stop
         self.fill = fill                              # contracts an entry fills (None = all)
@@ -133,6 +133,7 @@ class FakeDelta:
         self.by_cid: dict[str, dict] = {}
         self.fail: dict[str, int] = {}               # method -> how many more calls raise
         self.no_balance = False
+        self.margin = margin                          # "isolated" | "cross" | "topup" | "silent"
         self._id = 100
 
     def _sym(self, pid):
@@ -151,7 +152,16 @@ class FakeDelta:
         self._maybe_fail("get_balance")
         return [] if self.no_balance else [{"asset_symbol": "USD", "balance": str(round(self.bal, 6))}]
     def get_position(self, pid):
-        return {"product_id": pid, "size": self.pos[pid]} if self.pos.get(pid) else None
+        if not self.pos.get(pid):
+            return None
+        row = {"product_id": pid, "size": self.pos[pid]}
+        if self.margin == "silent":
+            return row
+        lev, e, n = self.lev.get(pid, 1), self.entry.get(pid, 1.0), abs(self.pos[pid])
+        cv = float(self.products[self._sym(pid)]["contract_value"])
+        row.update(margin=str(e * n * cv / lev), liquidation_price=str(e * (1 + 1 / lev - 0.025)),
+                   auto_topup=self.margin == "topup", margin_mode="cross" if self.margin == "cross" else "isolated")
+        return row
     def get_positions(self):
         self._maybe_fail("get_positions")
         return [{"product_id": pid, "product_symbol": self._sym(pid) if pid in (1, 2) else "ZUSD", "size": n}
@@ -972,6 +982,53 @@ async def test_entry_refusals_and_skips():
             assert not fake.sent and {r["skip_reason"] for r in (await _rows(con)).values()} == {"kill switch engaged"}
         finally:
             await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_position_not_on_isolated_margin_is_bought_back_and_halts():
+    for mode, why in (("cross", "margin mode is cross"), ("topup", "auto top-up"), ("silent", "not reported")):
+        con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+        fake = FakeDelta(margin=mode)
+        try:
+            await _acct(fake).step(con, D0 + 120)
+            x = (await _rows(con))["XUSD"]
+            assert (x["status"], x["exit_reason"]) == ("CLOSED", "MARGIN") and fake.pos[1] == 0, mode
+            st = await _state(con)
+            assert st["status"] == "HALTED" and why in st["reason"], (mode, st["reason"])
+        finally:
+            await con.close()
+
+
+def test_margin_problem_reads_isolated_margin():
+    ok = {"margin": "375", "liquidation_price": "1.475", "auto_topup": False, "margin_mode": "isolated"}
+    assert L.margin_problem(ok, 1.0, 750, 1.0, 2) is None
+    assert "not about" in L.margin_problem(dict(ok, margin="750"), 1.0, 750, 1.0, 2)       # 1x margin at "2x"
+    assert "above the entry" in L.margin_problem(dict(ok, liquidation_price="1.95"), 1.0, 750, 1.0, 2)
+    assert "above the entry" in L.margin_problem(dict(ok, liquidation_price="25"), 1.0, 750, 1.0, 2)  # cross-like
+    assert "auto top-up" in L.margin_problem(dict(ok, auto_topup="true"), 1.0, 750, 1.0, 2)
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_leverage_that_cannot_be_set_skips_that_coin_only():
+    con = await _db()
+    fake = FakeDelta()
+    real = fake.set_order_leverage
+
+    def refuse(pid, lev):
+        if pid == 1:
+            import live.client as C
+            raise C.VenueRejected(400, "/v2/products/1/orders/leverage", {"error": {"code": "max_leverage_1"}})
+        return real(pid, lev)
+    fake.set_order_leverage = refuse
+    try:
+        await _acct(fake).step(con, D0 + 120)
+        rows = await _rows(con)
+        assert rows["XUSD"]["status"] == "SKIPPED" and rows["XUSD"]["skip_reason"].startswith("leverage 2x could not")
+        assert rows["YUSD"]["status"] == "OPEN" and (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
 
 
 @requires_pg
