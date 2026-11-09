@@ -1,0 +1,22 @@
+                                               Binance 2021 |             Binance 2022 |             Binance 2023 |             Binance 2024 |          Binance 2025-26 |               Delta 2025 |               Delta 2026
+plain ladder (R/unit, end, drop)   -0.029 $    771  60% | +0.023 $  2,318  50% | -0.045 $    445  70% | -0.003 $  1,171  63% | +0.040 $  3,872  66% | -0.015 $    907  68% | +0.095 $ 10,223  56%
+
+R1 loss-streak pause: dev pooled R/unit by setting: (3, 1) -0.011, (3, 2) -0.008, (4, 1) -0.010, (4, 2) -0.012, (5, 1) -0.018, (5, 2) -0.014
+  chosen {'N': 3, 'D': 2}: beats the ladder in 3/3 dev years -> PROMOTED
+  held-out (R/unit, end, drop)     +0.008 $  1,458  59% | +0.030 $  2,534  59% | -0.012 $  1,018  60% | +0.062 $  3,958  58%
+  held-out sets where it beats the ladder on all three: 2/4 -> FAIL
+
+R2 win-streak size-up: dev pooled R/unit by setting: (3,) -0.015, (4,) -0.015, (5,) -0.016
+  chosen {'W': 4}: beats the ladder in 3/3 dev years -> PROMOTED
+  held-out (R/unit, end, drop)     -0.003 $  1,136  65% | +0.032 $  2,736  70% | -0.015 $    886  68% | +0.094 $ 10,339  58%
+  held-out sets where it beats the ladder on all three: 0/4 -> FAIL
+
+R3 big-loss pause: dev pooled R/unit by setting: (1.0,) -0.016, (1.2,) -0.017
+  chosen {'X': 1.0}: beats the ladder in 2/3 dev years -> PROMOTED
+  held-out (R/unit, end, drop)     +0.007 $  1,437  55% | +0.031 $  2,355  66% | -0.032 $    721  67% | +0.067 $  4,249  53%
+  held-out sets where it beats the ladder on all three: 1/4 -> FAIL
+
+R4 per-coin cooldown: dev pooled R/unit by setting: (3,) -0.004, (7,) -0.003, (14,) -0.003
+  chosen {'C': 7}: beats the ladder in 3/3 dev years -> PROMOTED
+  held-out (R/unit, end, drop)     +0.027 $  2,371  53% | +0.037 $  3,616  65% | -0.018 $    890  67% | +0.077 $  6,182  52%
+  held-out sets where it beats the ladder on all three: 1/4 -> FAIL
