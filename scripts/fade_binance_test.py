@@ -33,6 +33,14 @@ DAY = 86400
 TS = lambda s: int(pd.Timestamp(s, tz="UTC").value // 10**9)   # noqa: E731
 DAILY_FROM, PICK_FROM, PICK_TO = "2020-12", TS("2021-01-15"), TS("2025-01-01")
 MONTHS = pd.period_range("2020-12", "2024-12", freq="M").strftime("%Y-%m").tolist()
+YEARS = ["2021", "2022", "2023", "2024"]
+if "--control" in sys.argv:
+    # POSITIVE CONTROL (not part of the pre-registered test): the same harness on the years already measured on
+    # Delta (2025 ~0R, 2026 positive). If Binance shows the same pattern, the harness is trusted.
+    OUT = Path("out/binance_control")
+    PICK_FROM, PICK_TO = TS("2025-01-15"), TS("2026-10-28")
+    MONTHS = pd.period_range("2024-12", "2026-10", freq="M").strftime("%Y-%m").tolist()
+    YEARS = ["2025", "2026"]
 EXCLUDE = re.compile(r"_|BTCDOM|DEFI|FOOTBALL|BLUEBIRD")
 MIN_TURNOVER, K_STOP, MAX_DIST, FEE, QUICK_TP = 250_000.0, 2.0, 0.325, 0.0005, 0.2
 COLS = ["open_time", "open", "high", "low", "close", "volume", "close_time", "quote_volume", "count",
@@ -223,7 +231,7 @@ def account(tr: pd.DataFrame, col: str, mode: str) -> dict:
 def cmd_judge() -> None:
     tr = pd.read_parquet(OUT / "trades.parquet").sort_values("time")
     tr = tr[tr.dist <= MAX_DIST]
-    years = ["2021", "2022", "2023", "2024"]
+    years = YEARS
     print(f"{len(tr)} trades, {tr.symbol.nunique()} coins; per year: "
           + ", ".join(f"{y} {int((tr.year == y).sum())}" for y in years))
     for col in ("A", "QUICK"):
@@ -237,7 +245,7 @@ def cmd_judge() -> None:
         v = tr[col]
         z = v.mean() / (v.std() / np.sqrt(len(v)))
         print(f"  pooled {v.mean():+.3f}R, z {z:+.2f}; years > 0: {pos}/4")
-        print(f"  RULE {'1' if col == 'A' else '2'} ({col} has an edge): {'PASS' if pos >= 3 and z >= 2 else 'FAIL'}")
+        print(f"  RULE {'1' if col == 'A' else '2'} ({col} has an edge): {'PASS' if pos >= 3 and z >= 2 and len(years) == 4 else 'FAIL'}")
 
     print("\n=== accounts: $1,500 at the start of each year, rule A ===")
     modes = ["flat 3%", "flat 5%", "flat 10%", "ladder 10/5/3", "rolling 90d", "20 trades won >= 65%"]
