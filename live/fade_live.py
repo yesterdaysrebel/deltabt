@@ -42,6 +42,7 @@ import json
 import logging
 import math
 import os
+import sys
 import time
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 
@@ -1024,7 +1025,7 @@ async def resume(database_url: str) -> int:
         await con.close()
 
 
-async def record_capital(con, acct: LiveFade, now: float) -> tuple[int, str]:
+async def record_capital(con, acct: LiveFade, now: float, reset: bool = False) -> tuple[int, str]:
     """The owner's record of a deposit or withdrawal (`python -m live fade-live-capital`), run once the
     account is flat. The change is the wallet now less the last accepted balance less what the bot's trades
     did since. STOPPED + a refill to >= REFILL_MIN_USD within REFILL_BUDGET_USD: the run starts again with
@@ -1047,8 +1048,11 @@ async def record_capital(con, acct: LiveFade, now: float) -> tuple[int, str]:
     if exp is None or math.isnan(exp):
         return 1, "a close is still being read (or had no pnl) since the last balance: try again in 5 minutes"
     change = capital_gap(float(st["balance"]), bal, exp)
-    added = float(st["added_usd"] or 0) + max(change, 0.0)
-    hw = high_water_after(st["status"], bal, st["high_water"], change)
+    # The budget is NET money from the owner's pocket: deposits less withdrawals (owner 2026-11-09: profits are
+    # withdrawn monthly, so a later top-up is paid from them first).
+    added = float(st["added_usd"] or 0) + change
+    # reset (the owner's month start: "account might reset to 1500$ every month"): the ladder restarts at 10%.
+    hw = bal if reset else high_water_after(st["status"], bal, st["high_water"], change)
     if st["status"] == "STOPPED":
         if bal < REFILL_MIN_USD:
             return 1, f"wallet ${bal:.2f} is under the ${REFILL_MIN_USD:.0f} a refill must reach: top up first"
@@ -1060,18 +1064,23 @@ async def record_capital(con, acct: LiveFade, now: float) -> tuple[int, str]:
     else:
         status = "RUNNING" if st["status"] == "HALTED" and (st["reason"] or "").startswith("wallet moved") \
             else st["status"]
+        if change > 0 and added > REFILL_BUDGET_USD + 0.01:
+            await event(con, "REFILL_REFUSED", None, {"balance": bal, "change": change, "added_before": st["added_usd"]})
+            return 1, (f"net money in would reach ${added:,.2f}, over the ${REFILL_BUDGET_USD:,.0f} budget: "
+                       "take it back out (docs/fade_live_ladder_prereg.md)")
         reason = f"capital change ${change:+,.2f} recorded by the owner" if status != st["status"] else st["reason"]
     await con.execute(
         "UPDATE fade_live_state SET status = $1, reason = $2, at = now(), balance = $3, balance_at = $4, "
         "high_water = $5, added_usd = $6 WHERE id = 1", status, reason, bal, _ts(now), hw, added)
     await event(con, "CAPITAL", None, {"change": round(change, 2), "balance": bal, "high_water": hw,
                                        "added_usd": round(added, 2), "was": st["status"], "now": status})
-    return 0, (f"recorded ${change:+,.2f}: balance ${bal:,.2f}, high-water mark ${hw:,.2f}, refills so far "
-               f"${added:,.2f} of ${REFILL_BUDGET_USD:,.0f}; state {status}")
+    return 0, (f"recorded ${change:+,.2f}{' (month reset)' if reset else ''}: balance ${bal:,.2f}, high-water mark "
+               f"${hw:,.2f}, net money in ${added:,.2f} of ${REFILL_BUDGET_USD:,.0f}; state {status}")
 
 
 async def capital(database_url: str, env: dict | None = None) -> int:
-    """`python -m live fade-live-capital`: record a refill, deposit or withdrawal (see record_capital)."""
+    """`python -m live fade-live-capital [--reset]`: record a refill, deposit or withdrawal (see record_capital).
+    --reset at the owner's monthly withdrawal / top-up: the ladder restarts at 10% from the new balance."""
     import asyncpg
 
     from app.persistence.db_auth import connect_kwargs
@@ -1081,7 +1090,7 @@ async def capital(database_url: str, env: dict | None = None) -> int:
                     start_usd=_num_env(src, "DELTABOT_EQUITY", 1500.0))
     con = await asyncpg.connect(**connect_kwargs(database_url))
     try:
-        rc, msg = await record_capital(con, acct, time.time())
+        rc, msg = await record_capital(con, acct, time.time(), reset="--reset" in sys.argv)
         print(msg)
         return rc
     finally:

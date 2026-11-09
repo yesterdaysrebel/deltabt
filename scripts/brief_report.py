@@ -715,7 +715,7 @@ def live_lines(lv: dict) -> list[str]:
     out = ["", f"## REAL trades on Delta — account {str(st.get('status', '?')).lower()}"
                + (f", balance ${bal:,.2f}" if bal is not None else "")
                + (f", {100 * (1 - bal / hw):.0f}% under its high of ${hw:,.2f}" if hw and bal is not None else "")
-               + (f", refills ${st['added_usd']:,.2f} of $3,000" if st.get("added_usd") else "")]
+               + (f", net money in ${st['added_usd']:+,.2f} of $3,000" if st.get("added_usd") else "")]
     rows = _rows(lv)
     open_ = [r for r in rows if r["status"] in ("OPEN", "SENDING")][::-1]
     done = [r for r in rows if r["status"] == "CLOSED"][::-1]

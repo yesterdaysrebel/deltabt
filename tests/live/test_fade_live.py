@@ -494,6 +494,42 @@ async def test_a_deposit_no_trade_explains_halts_on_the_second_look_and_the_owne
 
 @requires_pg
 @pytest.mark.asyncio
+async def test_the_monthly_reset_restarts_the_ladder_and_the_budget_counts_net_money_in():
+    con = await _db(picks=None)
+    fake = FakeDelta(balance=1500)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 60)
+        # a good month: $2,400, mark $2,600; the owner withdraws $900 back to $1,500 at the month start
+        fake.bal = 2400.0
+        await con.execute("UPDATE fade_live_state SET balance = 2400, high_water = 2600")
+        fake.bal = 1500.0
+        rc, msg = await L.record_capital(con, acct, D0 + 600, reset=True)
+        st = await _state(con)
+        assert rc == 0 and "month reset" in msg and st["high_water"] == 1500 and st["added_usd"] == -900
+        # a bad month: $1,200 with the mark at $1,600; topped up $300 back to $1,500 -> 10% again, not 5%
+        await con.execute("UPDATE fade_live_state SET balance = 1200, high_water = 1600")
+        fake.bal = 1500.0
+        rc, _ = await L.record_capital(con, acct, D0 + 700, reset=True)
+        st = await _state(con)
+        from live.fade import ladder_risk
+        assert rc == 0 and st["high_water"] == 1500 and ladder_risk(st["balance"], st["high_water"]) == 0.10
+        assert st["added_usd"] == -600                   # $300 in, paid from the $900 taken out
+        # without --reset a top-up keeps the dollar drawdown (unchanged behaviour)
+        await con.execute("UPDATE fade_live_state SET balance = 1200, high_water = 1600")
+        rc, _ = await L.record_capital(con, acct, D0 + 800)
+        assert (await _state(con))["high_water"] == 1900
+        # the budget is net money in: $3,000 more than taken out is refused
+        await con.execute("UPDATE fade_live_state SET balance = 1500, added_usd = 2900")
+        fake.bal = 1700.0
+        rc, msg = await L.record_capital(con, acct, D0 + 900, reset=True)
+        assert rc == 1 and "over the $3,000 budget" in msg
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
 async def test_a_withdrawal_halts_and_does_not_fake_a_drawdown_once_recorded():
     con = await _db(picks=None)
     fake = FakeDelta(balance=1500)
@@ -506,7 +542,7 @@ async def test_a_withdrawal_halts_and_does_not_fake_a_drawdown_once_recorded():
         assert (await _state(con))["status"] == "HALTED"
         rc, _ = await L.record_capital(con, acct, D0 + 900)
         st = await _state(con)
-        assert rc == 0 and st["balance"] == 1100 and st["high_water"] == 1100 and st["added_usd"] == 0
+        assert rc == 0 and st["balance"] == 1100 and st["high_water"] == 1100 and st["added_usd"] == -400   # net money in
         from live.fade import ladder_risk
         assert ladder_risk(st["balance"], st["high_water"]) == 0.10
     finally:

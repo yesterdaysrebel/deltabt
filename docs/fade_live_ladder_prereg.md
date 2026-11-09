@@ -104,3 +104,15 @@ after 3 refills (plan: $2,031, 2 refills) and 2026 $15,000 (plan $6,593); 2x on 
 averages ~6%. 32/32 checks pass, with daily restarts and 3% failed reads identical; every ladder step, size and
 leverage decision matches the written rule; loosening the margin cap, the liquidation buffer or the notional cap
 is each detected.
+
+## Amendment 2 — monthly withdrawals (2026-11-09, before any order; owner: "I will not let the account just gather
+money I will withdraw profits as well, so account might reset to 1500$ every month")
+- At a month start the owner withdraws profit or tops up a loss (back to about $1,500), then runs
+  `python -m live fade-live-capital --reset` with the account flat: the change is recorded and the high-water
+  mark is set to the new balance, so the ladder restarts at 10% (as in the monthly-reset test).
+- The $3,000 budget is **net money from the owner's pocket**: deposits less withdrawals over the run. A top-up
+  or refill that would take it past $3,000 is refused.
+- Without `--reset`, a deposit or withdrawal keeps the ladder's dollar drawdown (unchanged).
+- Expectation with monthly resets (`target grid` trades, ladder + amendment 1, 24 h hold, 92 months 2021–26):
+  about +$155 a month on average, 43 of 92 months up, median month −$41, worst −$1,639, best +$2,982;
+  Delta 2026 +$738 a month, Binance 2023 −$230 a month.
