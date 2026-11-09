@@ -1,0 +1,18 @@
+POSITIVE CONTROL (all top-2 picks, mean net R per trade vs judge_2025.txt):
+  2025: +0.0088R (judge +0.009R) OK
+  2026: +0.0756R (judge +0.076R) OK
+
+ACCOUNT: $1,500, top 2, stops <= 32.5%, 1x with the 45% position cap, compounding by day
+  sizing         |  2025 end    low  worst |  2026 end    low  worst
+  flat 3%        |     1,446    864    46% |     5,228  1,496    45%
+  flat 5%        |     1,189    550    66% |    10,639  1,487    64%
+  flat 10%       |       886    277    85% |    17,899  1,248    83%
+  ladder 10/5/3  |     1,210    723    61% |    19,895  1,331    56%
+
+LADDER 10/5/3, month-end balance:
+  2025: Jan $1,469  Feb $1,679  Mar $1,552  Apr $1,274  May $1,205  Jun $1,282  Jul $1,091  Aug $909  Sep $752  Oct $857  Nov $1,071  Dec $1,210
+  2026: Jan $1,716  Feb $4,050  Mar $4,782  Apr $11,112  May $14,242  Jun $12,572  Jul $11,997  Aug $9,670  Sep $14,706  Oct $19,895
+
+NEGATIVE CONTROL (same trades, 1,000 random day orders): share of orders where the ladder ...
+  2025: end > flat 10% 87%, end > flat 5% 42%, drop < flat 10% 100%, drop < flat 5% 66%
+  2026: end > flat 10% 5%, end > flat 5% 47%, drop < flat 10% 99%, drop < flat 5% 10%

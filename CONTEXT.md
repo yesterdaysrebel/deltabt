@@ -138,7 +138,39 @@ flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; J
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
 
-**FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
+**VERDICT 2026-11-09 — THE FADE HAS NO PROVEN EDGE; DO NOT SCALE REAL MONEY ON IT.** Pre-registered Binance test
+(`docs/fade_binance_prereg.md`, `scripts/fade_binance_test.py`, `out/gainer_fade/binance_judge.txt`; 2021-2024, 2,609
+trades, 309 coins incl. delisted, before funding): rule A pooled −0.002R (z −0.20), QUICK +0.001R (z +0.08), each > 0
+in only 2 of 4 years; the ladder kept over flat in 2/4 years; rolling-90d and win-rate step-ups 0/4 — all FAIL. On Delta
+with funding + the bot's real entry (`scripts/fade_costed.py`): A 2025 −0.013R, 2026 +0.087R; QUICK 2025 +0.003R, 2026
++0.037R. Cost model verified on the real account's 4 trades (funding matches Delta to ~$0.0001; fee is 0.0531%/side incl.
+GST vs 0.05% modelled). An independent review agent found no code bug (`scripts/fade_ladder_account.py` reproduced to the
+dollar) but: Jan-Jul 2026 is the tuning period, and the ladder's lead over flat sizing is day-order luck (shuffle control).
+Also tested and failed today: 1:1 target, 75%-deployed tight stop, 0.3x target, top 1/3/4 picks, fixed coin list, size
+after a loss, monthly stops, 15% ladder, leverage > 1x. The Quick branch `feat/fade-live-quick` is NOT merged.
+Harness checks: an independent review of `scripts/fade_binance_test.py` found no bug (picks and 7 trades rebuilt from raw
+files; a generous daily-only rerun also gives ~0R); the positive control (`--control`, same code on Binance 2025-2026,
+`out/gainer_fade/binance_control.txt`) reproduces Delta's direction (A +0.031R / +0.065R, QUICK +0.012R / +0.020R). Six
+Binance years for rule A, before funding: −0.018, +0.036, −0.035, +0.009, +0.031, +0.065R — positive in the last two only.
+
+**FADE REAL-MONEY RUN 3 — RULE A LADDER, $1,500 (owner 2026-11-09: "Let's run rule a ladder in paper and in
+real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/fade-ladder`).** Risk 10/5/3 by
+drawdown from the high-water mark (steps at 20%/35%), each position ≤ 30% of the balance at 1x (so the "10%"
+step really risks ~4.5–5% on average), MARKET stop, no take-profit. Under $1,000 at an entry check it STOPS until
+the owner refills to ≥ $1,400 and runs `python -m live fade-live-capital` (mark reset, ladder back at 10%);
+refills ≤ $3,000 for the run. With prod keys but `dry_run` ≠ "0" the account is EXITS-ONLY (reconciles, buys back,
+never sells), so deploys/restarts never strand a position; the wallet band is checked only when a run begins.
+Halts also on 10 failed passes in a row and on a wallet move no trade explains (deposit/withdrawal → record it
+with `fade-live-capital`). Paper twin: account `LADDER` ($1,500, refills at once, `fade_paper_capital`).
+Validation: `scripts/fade_live_sim.py` (26/26 checks, `out/gainer_fade/live_sim.txt`) runs the real module through
+every day of Delta 2025/2026 + a budget-exhausting stress year against a rules-text reference: day-end balances
+within 0.021%, identical trades/steps/refills, same with daily restarts + 3% failed reads. Two independent reviews
+found 3 demonstrated bugs + smaller ones, all fixed with tests (the fault sim itself found a mid-exit blip that
+would have halted trading). Sizing in `live.tf`: 1500 / 0.10 / dry_run "1" (exits-only) until the market-stop
+probe passes; a second PR sets "0". Review 2026-12-10 on pooled per-trade R, not balance. Quick (version 2,
+`feat/fade-live-quick`) was never run.
+
+**(VERSION 1, SUPERSEDED 2026-11-09) FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
 two-year evidence is ~break-even → "approved on tiny run, I have 176$"; rule A, 3% risk, stop the run below
 $140, own sub-account).** Rules fixed first in `docs/fade_live_prereg.md`; code `live/fade_live.py`, called from
 the fade runner's loop. Same picks as paper A: sells each with a reduce-only-safe order shape — IOC limit 1%

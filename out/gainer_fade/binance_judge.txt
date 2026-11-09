@@ -1,0 +1,33 @@
+2609 trades, 309 coins; per year: 2021 571, 2022 640, 2023 701, 2024 697
+
+=== A: mean net R per trade ===
+  2021: -0.018R ± 0.024  win 58%  stopped 17%  n 571
+  2022: +0.036R ± 0.021  win 61%  stopped 11%  n 640
+  2023: -0.035R ± 0.023  win 55%  stopped 17%  n 701
+  2024: +0.009R ± 0.022  win 54%  stopped 14%  n 697
+  pooled -0.002R, z -0.20; years > 0: 2/4
+  RULE 1 (A has an edge): FAIL
+
+=== QUICK: mean net R per trade ===
+  2021: +0.010R ± 0.016  win 78%  stopped 10%  n 571
+  2022: +0.030R ± 0.014  win 77%  stopped 7%  n 640
+  2023: -0.026R ± 0.016  win 73%  stopped 11%  n 701
+  2024: -0.007R ± 0.014  win 72%  stopped 9%  n 697
+  pooled +0.001R, z +0.08; years > 0: 2/4
+  RULE 2 (QUICK has an edge): FAIL
+
+=== accounts: $1,500 at the start of each year, rule A ===
+  sizing                 2021: end / low / drop | 2022: end / low / drop | 2023: end / low / drop | 2024: end / low / drop
+  flat 3%                $     996 $   812  47% | $   2,675 $ 1,471  30% | $     628 $   628  58% | $   1,624 $   761  50%
+  flat 5%                $     680 $   507  67% | $   3,390 $ 1,449  46% | $     281 $   281  81% | $   1,487 $   461  70%
+  flat 10%               $     181 $   121  92% | $   3,777 $ 1,376  64% | $      63 $    63  96% | $     811 $   167  89%
+  ladder 10/5/3          $     771 $   629  60% | $   2,318 $ 1,376  50% | $     445 $   445  70% | $   1,171 $   560  63%
+  rolling 90d            $     423 $   346  78% | $   2,007 $ 1,376  56% | $     322 $   322  79% | $   1,360 $   428  71%
+  20 trades won >= 65%   $     411 $   293  81% | $   3,638 $ 1,376  64% | $     220 $   220  85% | $   1,337 $   419  72%
+  RULE 3 (ladder kept over flat): 2/4 years -> FAIL
+  RULE 4 (rolling 90d replaces the ladder): 0/4 years -> FAIL
+  RULE 4 (20 trades won >= 65% replaces the ladder): 0/4 years -> FAIL
+
+=== accounts: QUICK, for comparison ===
+  flat 3%                $   1,703 drop  26% | $   2,568 drop  18% | $     827 drop  50% | $   1,222 drop  34%
+  flat 5%                $   1,775 drop  41% | $   3,446 drop  28% | $     512 drop  71% | $   1,004 drop  53%

@@ -192,6 +192,11 @@ async def collect_fade(con, now=None) -> dict:
     now = now or _dt.datetime.now(_dt.timezone.utc)
     out = {"accounts": {}}
     try:
+        # LADDER starts at $1,500 and may be refilled (live/fade.py); the old accounts start at $250.
+        added = {}
+        if await con.fetchval("SELECT to_regclass('fade_paper_capital') IS NOT NULL"):
+            added = {r["account"]: float(r["a"]) for r in await con.fetch(
+                "SELECT account, sum(amount) a FROM fade_paper_capital GROUP BY account")}
         for r in await con.fetch(
                 "SELECT account, count(*) FILTER (WHERE status = 'CLOSED') n, "
                 "count(*) FILTER (WHERE status = 'CLOSED' AND pnl > 0) wins, "
@@ -204,7 +209,9 @@ async def collect_fade(con, now=None) -> dict:
                 "FROM fade_positions GROUP BY account ORDER BY account"):
             out["accounts"][r["account"]] = {
                 "closed": int(r["n"]), "wins": int(r["wins"]), "pnl": round(float(r["pnl"]), 2),
-                "r": round(float(r["r"]), 2), "equity": round(250.0 + float(r["pnl"]), 2),
+                "r": round(float(r["r"]), 2),
+                "equity": round(FADE_START.get(r["account"], 250.0) + float(r["pnl"]) + added.get(r["account"], 0.0), 2),
+                "added": round(added.get(r["account"], 0.0), 2),
                 "avg_win_r": None if r["avg_win"] is None else round(float(r["avg_win"]), 2),
                 "avg_loss_r": None if r["avg_loss"] is None else round(float(r["avg_loss"]), 2),
                 "open": int(r["open"]), "skipped": int(r["skipped"])}
@@ -302,6 +309,7 @@ async def collect_options(con) -> dict | None:
 
 
 #: The real account's journal columns (live/fade_live.py); newest LIVE_JOURNAL_ROWS rows.
+FADE_START = {"LADDER": 1500.0}                     # live/fade.py ACCOUNT_START (not imported: no live/ here)
 LIVE_JOURNAL_FIELDS = ("day", "symbol", "status", "skip_reason", "contracts", "paper_entry", "entry_price",
                        "stop_price", "opened", "closed", "exit_price", "exit_reason", "pnl", "r")
 LIVE_JOURNAL_ROWS = 80
@@ -314,7 +322,11 @@ async def collect_live(con, now=None) -> dict | None:
     try:
         if not await con.fetchval("SELECT to_regclass('fade_live_positions') IS NOT NULL"):
             return None
-        st = await con.fetchrow("SELECT status, reason, at, balance, balance_at FROM fade_live_state WHERE id = 1")
+        hw_cols = await con.fetchval("SELECT count(*) FROM information_schema.columns WHERE table_name = "
+                                     "'fade_live_state' AND column_name IN ('high_water', 'added_usd')") == 2
+        st = await con.fetchrow("SELECT status, reason, at, balance, balance_at, "
+                                + ("high_water, added_usd" if hw_cols else "NULL high_water, 0 added_usd")
+                                + " FROM fade_live_state WHERE id = 1")
         agg = await con.fetchrow(
             "SELECT count(*) FILTER (WHERE status = 'CLOSED') n, count(*) FILTER (WHERE status = 'CLOSED' AND pnl > 0) "
             "wins, COALESCE(sum(pnl) FILTER (WHERE status = 'CLOSED'), 0) pnl, "
@@ -332,7 +344,8 @@ async def collect_live(con, now=None) -> dict | None:
         return {
             "state": None if st is None else {
                 "status": st["status"], "reason": st["reason"], "at": st["at"].isoformat(),
-                "balance": rn(st["balance"]),
+                "balance": rn(st["balance"]), "high_water": rn(st["high_water"]),
+                "added_usd": rn(st["added_usd"]),
                 "balance_at": st["balance_at"].isoformat() if st["balance_at"] else None},
             "closed": int(agg["n"]), "wins": int(agg["wins"]), "pnl": round(float(agg["pnl"]), 2),
             "r": round(float(agg["r"]), 2),

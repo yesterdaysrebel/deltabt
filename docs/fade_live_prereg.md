@@ -1,5 +1,8 @@
 # The gainer-fade REAL-MONEY run (fixed 2026-11-02, before any order)
 
+> **SUPERSEDED 2026-11-09 by `docs/fade_live_quick_prereg.md`** (rule QUICK, $1,200, 5% risk, floor $960).
+> Kept as the record of version 1; its sections still apply where version 2 does not change them.
+
 Owner, 2026-11-02: "worth starting fade in live right now?" → told the evidence (two-year backtest about
 break-even: 2025 +0.006R vs random +0.002R, 2026 +0.078R; five paper days prove nothing) → "approved on
 tiny run, I have 176$ in account on delta". Choices, same day: **rule A (24 h hold)**, **3% risk per

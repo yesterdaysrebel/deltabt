@@ -623,7 +623,7 @@ SKIP_LABEL = {"daily_cap": "daily cap", "open_position": "already in a trade",
               "record_only": "record-only coin"}
 
 
-FADE_NAMES = {"A": "A — 24 h hold", "QUICK": "Quick — 4% target"}
+FADE_NAMES = {"A": "A — 24 h hold", "QUICK": "Quick — 4% target", "LADDER": "Ladder — real rules, $1,500"}
 
 
 def fade_problems(f: dict, now: dt.datetime) -> list[str]:
@@ -678,7 +678,8 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
     if st.get("status") == "HALTED":
         out.append(f"the REAL account is HALTED, no new trades until you look: {st.get('reason')}")
     elif st.get("status") == "STOPPED":
-        out.append(f"the REAL-money run has STOPPED (pre-set floor): {st.get('reason')}")
+        out.append(f"the REAL account is under $1,000 and STOPPED until you refill it and run fade-live-capital: "
+                   f"{st.get('reason')}")
     elif st.get("status") == "OFF":
         out.append(f"the REAL account is OFF: {st.get('reason')}")
     bat = parse_time(st.get("balance_at"))
@@ -699,7 +700,8 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
     for r in _rows(lv):
         if r["status"] == "OPEN" and r.get("day") and now.timestamp() > r["day"] + 86400 + 15 * 60:
             out.append(f"REAL {r['symbol']}: still open more than 15 minutes past its 24 h exit")
-    errs = [e for e in lv.get("events") or [] if e.get("kind") in ("ERROR", "EXIT_INCOMPLETE", "REJECTED")]
+    errs = [e for e in lv.get("events") or []
+            if e.get("kind") in ("ERROR", "EXIT_INCOMPLETE", "REJECTED", "TAKE_PROFIT_MISSING", "REFILL_REFUSED")]
     if errs:
         out.append(f"the REAL account logged {plural(len(errs), 'error')} in 36 hours (last: "
                    f"{errs[-1]['kind']} {errs[-1].get('symbol') or ''} {errs[-1]['detail'][:120]})")
@@ -709,8 +711,11 @@ def live_problems(lv: dict | None, now: dt.datetime) -> list[str]:
 def live_lines(lv: dict) -> list[str]:
     """The real-money journal: every real trade beside the paper fill on the same pick."""
     st = lv.get("state") or {}
+    hw, bal = st.get("high_water"), st.get("balance")
     out = ["", f"## REAL trades on Delta — account {str(st.get('status', '?')).lower()}"
-               + (f", balance ${st['balance']:,.2f}" if st.get("balance") is not None else "")]
+               + (f", balance ${bal:,.2f}" if bal is not None else "")
+               + (f", {100 * (1 - bal / hw):.0f}% under its high of ${hw:,.2f}" if hw and bal is not None else "")
+               + (f", refills ${st['added_usd']:,.2f} of $3,000" if st.get("added_usd") else "")]
     rows = _rows(lv)
     open_ = [r for r in rows if r["status"] in ("OPEN", "SENDING")][::-1]
     done = [r for r in rows if r["status"] == "CLOSED"][::-1]
@@ -739,8 +744,10 @@ def live_lines(lv: dict) -> list[str]:
         out.append("Not traded: " + "; ".join(
             f"{dt.datetime.fromtimestamp(r['day'], dt.timezone.utc):%d %b} {r['symbol']} ({r.get('skip_reason')})"
             for r in skipped) + ".")
-    out.append("Rule A for real: same picks as paper, 3% risk, stop resting at Delta, bought back after 24 h; "
-               "the run stops itself under $140. \"vs paper\" is the real sale against paper's, in R (+ is better).")
+    out.append("Rule A ladder for real (run 3; rows before it are rule A at 3% on $176): same picks as paper, risk 10% "
+               "(5% from 20% under the high, 3% from 35% under), each position at most 30% of the balance at 1x, a "
+               "market stop resting at Delta, bought back after 24 h. Under $1,000 it stops until refilled to "
+               "$1,500 (refills at most $3,000). \"vs paper\" is the real sale against paper's, in R (+ is better).")
     return out
 
 
@@ -750,7 +757,7 @@ def accounts_lines(f: dict, o: dict | None, lv: dict | None = None) -> list[str]
     if lv and not lv.get("error"):
         n, w = lv.get("closed", 0), lv.get("wins", 0)
         bal = (lv.get("state") or {}).get("balance")
-        rows.append(["REAL Delta (rule A, 3%)", "—" if bal is None else f"${bal:,.2f}", str(n), str(w), str(n - w),
+        rows.append(["REAL Delta (rule A ladder)", "—" if bal is None else f"${bal:,.2f}", str(n), str(w), str(n - w),
                      f"{100 * w / n:.0f}%" if n else "—", f"{lv.get('r', 0):+.2f}", money(lv.get("pnl"))])
     for acct, a in sorted((f.get("accounts") or {}).items()):
         n, w = a.get("closed", 0), a.get("wins", 0)
@@ -763,7 +770,7 @@ def accounts_lines(f: dict, o: dict | None, lv: dict | None = None) -> list[str]
                      f"{100 * w / n:.0f}%" if n else "—", "—", money(o.get("pnl", 0))])
     if not rows:
         return ["No account has traded yet."]
-    return table(["account (paper ones $250)" if lv else "account ($250 each)", "equity", "closed", "won", "lost",
+    return table(["account (paper A/Quick $250, Ladder $1,500)", "equity", "closed", "won", "lost",
                   "win rate", "total R", "P&L $"], rows, right=set(range(1, 8)))
 
 
