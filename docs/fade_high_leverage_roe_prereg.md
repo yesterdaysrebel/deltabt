@@ -27,3 +27,9 @@ Also reported for every setting: win rate, liquidations, total $, months up, wor
 
 ## Consequence
 Pass → a rules amendment can be written for the real account (owner's yes). Fail → not used.
+
+## Addendum A — smaller leverage (written before it ran; owner: "how do the result look with smaller leverage?")
+Same trades, margin, targets, fees and judgement, with **L ∈ {1, 2, 3}** and a third stop variant (c) **rule A's
+stop** (2 × ATR14%, the real bot's), filled at max(stop, that minute's close), never worse than liquidation. The
+best of these settings on Delta 2026 is chosen and judged on the six other periods by the same three conditions.
+Result of the first run (5–20x): FAIL (`out/gainer_fade/high_lev_roe.txt`).
