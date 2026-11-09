@@ -44,7 +44,74 @@ RISK_PCT = 0.02
 MAX_LEVERAGE = 5.0
 TAKER = 0.0005
 START_EQUITY = 250.0
-ACCOUNTS = {"A": None, "QUICK": QUICK_TP}            # account -> take-profit fraction of the stop
+ACCOUNTS = {"A": None, "QUICK": QUICK_TP, "LADDER": None}   # account -> take-profit fraction of the stop
+#: LADDER (owner 2026-11-09, docs/fade_live_ladder_prereg.md): the real account's rules on paper -- rule A's
+#: exits, its own $1,500, sized by the drawdown ladder from its own high-water mark, each position <= 30% of
+#: its balance (1x). Under $1,000 at a day's entry it is refilled to $1,500 (high-water mark reset), at most
+#: $3,000 of refills in all; after that it takes no more trades. Paper refills at once; the real one waits
+#: for the owner.
+ACCOUNT_START = {"A": START_EQUITY, "QUICK": START_EQUITY, "LADDER": 1500.0}
+LADDER = ((0.0, 0.10), (0.20, 0.05), (0.35, 0.03))  # (drawdown from the high-water mark, risk per trade)
+LADDER_POSITION_CAP = 0.30
+LADDER_FLOOR = 1000.0
+LADDER_REFILL_TO = 1500.0
+LADDER_REFILL_BUDGET = 3000.0
+#: A day's entry waits (at most this long after 00:00) for the previous day's paper positions to close, so
+#: every account sizes off its settled balance -- as the real account, whose exits run before its entries.
+SETTLE_WAIT = 600
+
+
+def ladder_risk(balance: float, high_water: float) -> float:
+    """Risk per trade for `balance` given the best balance so far: 10%, 5% from 20% below it, 3% from 35% below."""
+    under = (high_water - balance) / high_water if high_water > 0 else 0.0
+    risk = LADDER[0][1]
+    for threshold, r in LADDER:
+        if under >= threshold - 1e-12:                # exactly 20% under is the 5% step, float or not
+            risk = r
+    return risk
+
+
+def size_ladder(equity: float, high_water: float, entry: float, stop: float, cv: float) -> tuple[int, float]:
+    """(contracts, ladder step) for the LADDER account: the ladder's risk, notional <= 30% of equity at 1x (so the
+    risk actually taken is min(step, 0.30 x stop distance): about 6% at the 10% step for a typical 20% stop)."""
+    risk = ladder_risk(equity, high_water)
+    if not (equity > 0 and stop > entry > 0 and cv > 0):
+        return 0, risk
+    by_risk = risk * equity / ((stop - entry) * cv)
+    by_cap = LADDER_POSITION_CAP * equity / (entry * cv)
+    return int(math.floor(min(by_risk, by_cap) + 1e-9)), risk
+
+
+def ladder_book(closed: list[tuple[int, float]], added: list[tuple[int, float]],
+                start: float = 1500.0) -> tuple[float, float, float]:
+    """(balance, high-water mark, refills so far) of the LADDER account, replayed day by day: a refill on
+    day d lands at d's entry check and resets the mark; then the pnl of positions entered on d; the mark is
+    the best closed balance since the last refill. `closed` is (position day, pnl), `added` (day, amount)."""
+    by_day: dict[int, list[float]] = {}
+    for d, pnl in closed:
+        by_day.setdefault(int(d), [0.0, 0.0])[0] += float(pnl)
+    for d, amt in added:
+        by_day.setdefault(int(d), [0.0, 0.0])[1] += float(amt)
+    eq = hw = float(start)
+    total = 0.0
+    for d in sorted(by_day):
+        pnl, amt = by_day[d]
+        if amt:
+            eq += amt
+            total += amt
+            hw = eq
+        eq += pnl
+        hw = max(hw, eq)
+    return eq, hw, total
+
+
+def ladder_refill(balance: float, added_so_far: float) -> float | None:
+    """The refill due at an entry check: 0 at or over the floor; the top-up to LADDER_REFILL_TO under it;
+    None if that would pass the budget (the account is done)."""
+    if balance >= LADDER_FLOOR:
+        return 0.0
+    amt = LADDER_REFILL_TO - balance
+    return amt if added_so_far + amt <= LADDER_REFILL_BUDGET + 1e-9 else None
 ENTRY_AFTER = 90                                     # s past midnight: the 00:00 minute has closed
 GIVE_UP_ENTRY = 3 * HOUR                             # a day not entered by then is recorded as missed
 FIRST_TRADE_WINDOW = 15 * MINUTE                     # enter at the first traded minute within this
@@ -208,6 +275,12 @@ CREATE TABLE IF NOT EXISTS fade_heartbeat (
     at       TIMESTAMPTZ NOT NULL,
     detail   JSONB
 );
+CREATE TABLE IF NOT EXISTS fade_paper_capital (     -- paper refills (the LADDER account)
+    account  TEXT NOT NULL,
+    day      TIMESTAMPTZ NOT NULL,
+    amount   DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (account, day)
+);
 """
 
 
@@ -246,12 +319,12 @@ class FadeRunner:
                     self.live, why = await asyncio.to_thread(fade_live.from_env)
                 except Exception as exc:                 # noqa: BLE001 -- paper must still run
                     self.live, why = None, f"could not start: {type(exc).__name__}: {exc}"[:300]
-                if self.live is None:
+                if self.live is None or not self.live.entries:
                     await fade_live.record_off(con, why)
                     log.info("fade live account off: %s", why)
         self.ready = True
         log.info("fade paper runner started; accounts %s%s", list(ACCOUNTS),
-                 " + LIVE (real money)" if self.live else "")
+                 "" if self.live is None else " + LIVE (real money)" if self.live.entries else " + LIVE exits only")
         return True
 
     async def stop(self) -> None:
@@ -283,14 +356,17 @@ class FadeRunner:
         now = time.time() if now is None else now
         day = int(now) // DAY * DAY
         async with self._pool.acquire() as con:
+            await self._monitor(con, now)                 # first: yesterday's positions close before today's sizing
             done = await con.fetchval("SELECT status FROM fade_days WHERE day = $1", _ts(day))
             if done is None and now >= day + ENTRY_AFTER:
                 if now >= day + GIVE_UP_ENTRY:
                     await con.execute("INSERT INTO fade_days (day, status, detail) VALUES ($1,'MISSED',$2) "
                                       "ON CONFLICT DO NOTHING", _ts(day), json.dumps({"at": now}))
+                elif now < day + SETTLE_WAIT and await con.fetchval(
+                        "SELECT count(*) FROM fade_positions WHERE status = 'OPEN' AND day < $1", _ts(day)):
+                    pass                                 # yesterday's paper positions are not closed yet
                 else:
                     await self._enter(con, day)
-            await self._monitor(con, now)
             if self.live is not None:                     # the real account: same picks, real orders
                 await self.live.step(con, now)
             from live import fade_learning                # records and labels; never trades or grades
@@ -305,7 +381,29 @@ class FadeRunner:
     async def _equity(self, con, account: str) -> float:
         s = await con.fetchval("SELECT COALESCE(sum(pnl), 0) FROM fade_positions WHERE account = $1 "
                                "AND status = 'CLOSED'", account)
-        return START_EQUITY + float(s)
+        a = await con.fetchval("SELECT COALESCE(sum(amount), 0) FROM fade_paper_capital WHERE account = $1", account)
+        return ACCOUNT_START.get(account, START_EQUITY) + float(s) + float(a)
+
+    async def _ladder(self, con, day: int) -> tuple[float, float] | None:
+        """The LADDER account at `day`'s entry check: (balance, high-water mark) after any refill due, or
+        None once the refill budget is spent."""
+        closed = [(int(r["d"]), float(r["pnl"])) for r in await con.fetch(
+            "SELECT extract(epoch from day)::bigint d, pnl FROM fade_positions WHERE account = 'LADDER' "
+            "AND status = 'CLOSED'")]
+        added = [(int(r["d"]), float(r["amount"])) for r in await con.fetch(
+            "SELECT extract(epoch from day)::bigint d, amount FROM fade_paper_capital WHERE account = 'LADDER'")]
+        eq, hw, total = ladder_book(closed, added, ACCOUNT_START["LADDER"])
+        if any(d == day for d, _ in added):
+            return eq, hw                                # today's check already ran
+        due = ladder_refill(eq, total)
+        if due is None:
+            return None
+        if due:
+            await con.execute("INSERT INTO fade_paper_capital (account, day, amount) VALUES ('LADDER', $1, $2) "
+                              "ON CONFLICT DO NOTHING", _ts(day), due)
+            log.warning("fade paper LADDER refilled $%.2f (balance $%.2f under $%.0f)", due, eq, LADDER_FLOOR)
+            eq = hw = eq + due
+        return eq, hw
 
     def _universe(self) -> dict[str, float]:
         rows = self.client.tickers("perpetual_futures")
@@ -365,9 +463,18 @@ class FadeRunner:
             stop = entry * (1 + dist)
             for account, tp in ACCOUNTS.items():
                 eq = await self._equity(con, account)
-                n = size(eq, entry, stop, cv[p.symbol])
+                why = None
+                if account == "LADDER":
+                    book = await self._ladder(con, day)
+                    if book is None:
+                        n, risk, why = 0, 0.0, f"refill budget ${LADDER_REFILL_BUDGET:,.0f} spent: the account is done"
+                    else:
+                        eq, hw = book
+                        n, risk = size_ladder(eq, hw, entry, stop, cv[p.symbol])
+                else:
+                    n, risk = size(eq, entry, stop, cv[p.symbol]), RISK_PCT
                 target = entry * (1 - tp * dist) if tp else None
-                status, why = ("OPEN", None) if n >= 1 else ("SKIPPED", "below one contract at 2% risk")
+                status, why = ("OPEN", None) if n >= 1 else ("SKIPPED", why or f"below one contract at {risk:.0%} risk")
                 await con.execute(
                     """INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp,
                        entry_time, entry_price, stop_price, target_price, contracts, contract_value, equity_before,

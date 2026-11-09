@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from live import fade as F
+from tests.live.conftest import requires_pg
 
 DAY = F.DAY
 D0 = 1_790_000_000 // DAY * DAY
@@ -226,3 +227,114 @@ def test_entry_is_the_first_traded_minute_within_15_minutes():
     assert F.first_trade(C([]), "X", D0, D0 + 20 * 60) is None, "no trade at all in 15 minutes: skipped"
     late = C([{"time": D0 + 16 * 60, "close": "2"}])
     assert F.first_trade(late, "X", D0, D0 + 20 * 60) is None
+
+
+# ============================================================ the LADDER account (owner 2026-11-09)
+
+def test_ladder_sizing_uses_the_step_and_a_30pct_cap():
+    from live.fade import size_ladder
+    assert size_ladder(1500, 1500, 1.0, 1.2, 1.0) == (450, 0.10)       # $150 risk -> 750; 30% cap -> 450
+    assert size_ladder(1500, 1500, 1.0, 1.3, 1.0) == (450, 0.10)       # 500 by risk; cap 450
+    assert size_ladder(1500, 2000, 1.0, 1.3, 1.0) == (250, 0.05)       # 25% under the mark: 5%
+    assert size_ladder(1250, 2000, 1.0, 1.3, 1.0) == (125, 0.03)       # 37.5% under: 3%
+    assert size_ladder(0, 2000, 1.0, 1.3, 1.0) == (0, 0.03)
+
+
+def test_ladder_book_replays_refills_and_the_mark():
+    from live.fade import ladder_book
+    D = 86400
+    assert ladder_book([], []) == (1500, 1500, 0)
+    # +500 then -700: the mark is the best closed balance ($2,000)
+    assert ladder_book([(0, 500), (D, -700)], []) == (1300, 2000, 0)
+    # two trades the same day add up before the mark is taken
+    assert ladder_book([(0, 600), (0, -500)], []) == (1600, 1600, 0)
+    # a refill on day 2 lands before that day's trades and resets the mark
+    eq, hw, added = ladder_book([(0, 500), (D, -1100), (2 * D, -100)], [(2 * D, 600)])
+    assert (eq, hw, added) == (1400, 1500, 600)
+
+
+def test_ladder_refill_tops_up_under_1000_within_the_budget():
+    from live.fade import ladder_refill
+    assert ladder_refill(1000.0, 0) == 0 and ladder_refill(1800.0, 2900) == 0
+    assert ladder_refill(990.0, 0) == 510 and ladder_refill(990.0, 2490) == 510
+    assert ladder_refill(990.0, 2491) is None                           # $3,001 would pass the budget
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_paper_ladder_refills_once_a_day_and_stops_when_the_budget_is_spent():
+    import asyncpg
+
+    from live import fade as F
+    from tests.live.conftest import TEST_DSN
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("DROP TABLE IF EXISTS fade_positions, fade_days, fade_heartbeat, fade_paper_capital")
+        await con.execute(F.SCHEMA)
+        r = F.FadeRunner("unused")
+        D0 = 1793232000
+        ts = lambda t: F._ts(t)
+        await con.execute(
+            "INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+            "entry_price, stop_price, contracts, contract_value, equity_before, status, pnl) VALUES "
+            "('LADDER', $1, 'X', 1, 0.3, 1e6, 0.1, $1, 1, 1.2, 1, 1, 1500, 'CLOSED', -520)", ts(D0 - 86400))
+        assert await r._ladder(con, D0) == (1500, 1500)                    # $980 -> refilled $520
+        assert await r._ladder(con, D0) == (1500, 1500)                    # the second pick: no second refill
+        assert await con.fetchval("SELECT sum(amount) FROM fade_paper_capital") == 520
+        assert await r._equity(con, "LADDER") == 1500
+        await con.execute("UPDATE fade_paper_capital SET amount = 2900")    # as if $2,900 already went in
+        await con.execute(
+            "INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+            "entry_price, stop_price, contracts, contract_value, equity_before, status, pnl) VALUES "
+            "('LADDER', $1, 'Y', 1, 0.3, 1e6, 0.1, $1, 1, 1.2, 1, 1, 1500, 'CLOSED', -3000)", ts(D0))
+        assert await r._ladder(con, D0 + 86400) is None                    # under $1,000, budget spent
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_entries_wait_for_yesterdays_paper_positions_to_close_but_not_past_ten_minutes():
+    import asyncpg
+
+    from live import fade as F
+    from tests.live.conftest import TEST_DSN
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("DROP TABLE IF EXISTS fade_positions, fade_days, fade_heartbeat, fade_paper_capital")
+        await con.execute(F.SCHEMA)
+        D0 = 1793232000
+        await con.execute(
+            "INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+            "entry_price, stop_price, contracts, contract_value, equity_before, status, last_checked) VALUES "
+            "('A', $1, 'X', 1, 0.3, 1e6, 0.1, $1, 1, 1.2, 1, 1, 250, 'OPEN', $1)", F._ts(D0 - 86400))
+
+        class Pool:
+            def acquire(self):
+                class Ctx:
+                    async def __aenter__(s): return con
+                    async def __aexit__(s, *a): return False
+                return Ctx()
+        r = F.FadeRunner("unused")
+        r._pool = Pool()
+        calls = []
+
+        async def enter(c, day): calls.append(day)
+
+        async def monitor(c, now): pass                 # nothing closes it
+
+        async def nothing(*a, **k): pass
+        r._enter, r._monitor = enter, monitor
+        import live.fade_learning as FL
+        import live.options_paper as OP
+        orig = (FL.step, OP.step)
+        FL.step = OP.step = nothing
+        try:
+            await r.tick(D0 + 120)
+            assert calls == [], "yesterday's position is still open: wait"
+            await r.tick(D0 + F.SETTLE_WAIT + 1)
+            assert calls == [D0], "after ten minutes, enter anyway (live waits on these picks)"
+        finally:
+            FL.step, OP.step = orig
+    finally:
+        await con.close()

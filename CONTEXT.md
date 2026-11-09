@@ -153,14 +153,22 @@ files; a generous daily-only rerun also gives ~0R); the positive control (`--con
 `out/gainer_fade/binance_control.txt`) reproduces Delta's direction (A +0.031R / +0.065R, QUICK +0.012R / +0.020R). Six
 Binance years for rule A, before funding: −0.018, +0.036, −0.035, +0.009, +0.031, +0.065R — positive in the last two only.
 
-**FADE REAL-MONEY RUN, VERSION 2 — RULE QUICK, $1,200, 5% risk, floor $960 (owner 2026-11-09: "approved, we will
-deploy fade quick in real"; rules `docs/fade_live_quick_prereg.md`, branch `feat/fade-live-quick`).** The entry's
-bracket gets a take-profit leg at 0.2× the stop distance (mark-triggered, like the stop); a `TAKE_PROFIT` close is
-normal, a missing target leg is logged (`TAKE_PROFIT_MISSING`) and the position kept; `MAX_RISK_PCT` 0.05,
-`FLOOR_USD` 960; start band $960–$1,500. Sizing set to equity 1200 / risk 0.05 / **dry_run "1"** until the two-leg
-probe passes, then a second PR sets "0" and `fade-live-resume` clears the version-1 HALT (topping the wallet up
-past $220 makes the running v1 bot HALT at its next entry check — intended; exits still run). Deploy only after
-any v1 position's 24 h exit: an OFF account runs no exits. Version 1 (below) record: 4 trades 11-03..11-08, −$1.08.
+**FADE REAL-MONEY RUN 3 — RULE A LADDER, $1,500 (owner 2026-11-09: "Let's run rule a ladder in paper and in
+real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/fade-ladder`).** Risk 10/5/3 by
+drawdown from the high-water mark (steps at 20%/35%), each position ≤ 30% of the balance at 1x (so the "10%"
+step really risks ~4.5–5% on average), MARKET stop, no take-profit. Under $1,000 at an entry check it STOPS until
+the owner refills to ≥ $1,400 and runs `python -m live fade-live-capital` (mark reset, ladder back at 10%);
+refills ≤ $3,000 for the run. With prod keys but `dry_run` ≠ "0" the account is EXITS-ONLY (reconciles, buys back,
+never sells), so deploys/restarts never strand a position; the wallet band is checked only when a run begins.
+Halts also on 10 failed passes in a row and on a wallet move no trade explains (deposit/withdrawal → record it
+with `fade-live-capital`). Paper twin: account `LADDER` ($1,500, refills at once, `fade_paper_capital`).
+Validation: `scripts/fade_live_sim.py` (26/26 checks, `out/gainer_fade/live_sim.txt`) runs the real module through
+every day of Delta 2025/2026 + a budget-exhausting stress year against a rules-text reference: day-end balances
+within 0.021%, identical trades/steps/refills, same with daily restarts + 3% failed reads. Two independent reviews
+found 3 demonstrated bugs + smaller ones, all fixed with tests (the fault sim itself found a mid-exit blip that
+would have halted trading). Sizing in `live.tf`: 1500 / 0.10 / dry_run "1" (exits-only) until the market-stop
+probe passes; a second PR sets "0". Review 2026-12-10 on pooled per-trade R, not balance. Quick (version 2,
+`feat/fade-live-quick`) was never run.
 
 **(VERSION 1, SUPERSEDED 2026-11-09) FADE REAL-MONEY RUN — SWITCHED ON BY THE SECOND PR (dry_run "0", equity 176, risk 0.03); live from the deploy that follows it (owner 2026-11-02: "worth starting fade in live right now?" → told the
 two-year evidence is ~break-even → "approved on tiny run, I have 176$"; rule A, 3% risk, stop the run below

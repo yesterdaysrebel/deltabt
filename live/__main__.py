@@ -396,6 +396,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "fade-live-resume":
         from live.fade_live import resume
         sys.exit(asyncio.run(resume(os.environ["DATABASE_URL"])))
+    if len(sys.argv) > 1 and sys.argv[1] == "fade-live-capital":
+        # After a refill, deposit or withdrawal on the real account's sub-account (docs/fade_live_ladder_prereg.md).
+        from live.fade_live import capital
+        sys.exit(asyncio.run(capital(os.environ["DATABASE_URL"])))
     if len(sys.argv) > 1 and sys.argv[1] in LEARNING_COMMANDS:
         # Labelling and grading read public candles and the database only;
         # they need no venue, no keys and no universe. Imported here and
