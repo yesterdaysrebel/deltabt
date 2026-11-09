@@ -27,3 +27,10 @@ Every target on every set: win rate, target/stop hit rates, mean R; and the run-
 ## Consequence
 A pass → the target may replace the 24 h hold in the run-3 rules (a new prereg amendment, owner's yes).
 No pass → rule A keeps the 24 h hold.
+
+## Result (2026-11-09, `out/gainer_fade/target_grid.txt`)
+Step 1 chose 0.1x (beat the hold in 2/3 dev years). Step 2: above the hold in 1/4 held-out sets, pooled −0.022R,
+z −1.64 → **FAIL**: the 24 h hold stays in the real run. Descriptive: 0.1x was positive in 7/7 sets (+0.017R,
+z 4.55; hold +0.019R, z 1.90, positive in 5/7) and needed no refill on the run-3 account in any set.
+
+No forward paper test (owner: "I am done with paper as well, I think it's time we get real").
