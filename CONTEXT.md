@@ -174,6 +174,17 @@ S (stop <= 20%) +0.016R (z +1.00); both −0.004R — all FAIL; live rule unchan
 all is +0.018R vs −0.002R (2021-24) and +0.022R vs +0.046R (2025-26): no consistent gain, and an unlimited tail.
 Our paper stops: AINUSD 10-31 closed above its stop (stop helped), INITUSD 11-10 back under it (hurt).
 
+**FUNDING-COLLECTION PAPER ACCOUNT (owner 2026-11-11 "approved"; PR #161).** `live/funding_paper.py`, run from the
+fade runner's loop as a BACKGROUND task with its own Delta client (never delays the real account). Every third UTC
+day ((day // 86400) % 3 == 0; first 2026-11-12) at 00:20: coins with 30-day mean turnover >= $250k and >= 35 days
+of history (the runner's 40-day `_day_cache`; the backtest asked 60), 3-day mean daily Delta funding, LONG the lowest
+fifth, SHORT the highest fifth, half the marked equity each side, whole contracts at the real best ask/bid + 0.0531%
+fee; coins in both books kept untouched. Funding settled at Delta's interval from FUNDING history; equity marked at
+each rebalance. $1,500 paper. Tables `funding_positions`, `funding_periods`; report section "Funding collection
+(paper)" (db_probe.collect_funding); attention if MISSED or none for > 4 days. NO ORDER PATH. Backtest it comes from
+(PR #160, scripts/compare_ladder_funding.py): $1,500 -> $4,910 2025-02..2026-10, worst drop 23%, best of several
+variants. Dry run on live data 2026-11-11: 69 liquid coins, 13 a side, median spread 0.105%, INITUSD −8.8%/day.
+
 **RUN 3 FIRST STOP + HALT (2026-11-11).** ARIAUSD (entry 0.21834, stop 0.2722 = 24.7%, 2×ATR 12.3%) rose to mark
 0.2809; the exchange market stop fired 09:47:45 UTC, 241 bought back at 0.26884 (mark led last), −$122.33, −0.94R;
 wallet $1,761.76 → $1,639.71 (high-water $1,761.98, ladder still 10%). The bot could not RECORD it: `last_close`
