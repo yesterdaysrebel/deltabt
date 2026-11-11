@@ -481,12 +481,37 @@ resource "aws_ssm_document" "deploy" {
         allowedPattern = "^[A-Za-z0-9._-]{1,128}$"
       }
     }
+    # PRUNE (2026-11-11): every deploy pulls a ~1 GB image and nothing removed the old ones; 18 of them filled
+    # the 20 GB root disk to 87% and fired the disk alarm. After a SUCCESSFUL deploy (a failed deploy.sh exits
+    # the script before the prune) this keeps the current and previous tags (the same parameters deploy.sh
+    # uses) and whatever the bot is running, and removes the rest. A rollback re-pulls from ECR anyway
+    # (run_live.sh `docker pull`), so nothing it needs can be lost; the prune never fails the deploy.
+    # ONE step on purpose: with two, get-command-invocation needs a plugin name and _roll.yml's wait loop (which
+    # passes none) would never see Success. No Go templates: SSM reads double braces as its own parameters.
+    # It lives HERE, not in deploy.sh / run_live.sh: those ship in user_data and any edit replaces the host.
     mainSteps = [{
       action = "aws:runShellScript"
       name   = "deploy"
       inputs = {
         timeoutSeconds = "2400"
-        runCommand     = ["/opt/deltabt/deploy.sh '{{ ImageTag }}'"]
+        runCommand = [
+          "/opt/deltabt/deploy.sh '{{ ImageTag }}' || exit $?",
+          <<-SH
+          set -u
+          set -a; . /opt/deltabt/env; set +a
+          p() { aws ssm get-parameter --region "$AWS_REGION" --name "$1" --query Parameter.Value --output text 2>/dev/null || echo none; }
+          CUR="$(p "$SSM_IMAGE_TAG_PARAM")"
+          PREV="$(p "$SSM_IMAGE_TAG_PREVIOUS_PARAM")"
+          RUN="$(docker inspect deltabot 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["Config"]["Image"])' 2>/dev/null || true)"
+          for t in $(docker images "$ECR_REPOSITORY_URL" | awk 'NR > 1 {print $2}'); do
+            if [ "$t" = "$CUR" ] || [ "$t" = "$PREV" ] || [ "$ECR_REPOSITORY_URL:$t" = "$RUN" ] || [ "$t" = "<none>" ]; then continue; fi
+            docker rmi "$ECR_REPOSITORY_URL:$t" >/dev/null 2>&1 && echo "[prune] removed $t"
+          done
+          docker image prune -f >/dev/null 2>&1 || true
+          echo "[prune] kept current=$CUR previous=$PREV; root disk $(df -h / | awk 'NR == 2 {print $5}') used"
+          exit 0
+          SH
+        ]
       }
     }]
   })
