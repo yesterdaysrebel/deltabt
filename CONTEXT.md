@@ -160,11 +160,18 @@ replace a skipped pick with the next gainer (ranks 3-10) whose stop fits — FAI
 (`docs/fade_next_pick_prereg.md`, `scripts/fade_next_pick.py`, `out/gainer_fade/next_pick.txt`): Binance 2021-24
 substitutes 203 trades, −0.040R pooled (z −1.35), > 0 in 2/4 years; control 2025-26 −0.008R (300). Live rule
 unchanged: skip, no substitute. On Binance 9% of top-2 picks were skipped in 2021-24, 23% in 2025-26.
-**Paper NO_DATA bug (fixed in #153, not yet deployed):** Delta serves no candle in a window until its first
+**Paper NO_DATA bug (fixed in #153, deployed 2026-11-11 ~09:58 UTC):** Delta serves no candle in a window until its first
 traded minute; `_monitor` fetched from `last_checked`, so a quiet 23:45-23:55 left the day-end close with no bar
 and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 — real made +0.64R there). Now
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
+
+**RUN 3 FIRST STOP + HALT (2026-11-11).** ARIAUSD (entry 0.21834, stop 0.2722 = 24.7%, 2×ATR 12.3%) rose to mark
+0.2809; the exchange market stop fired 09:47:45 UTC, 241 bought back at 0.26884 (mark led last), −$122.33, −0.94R;
+wallet $1,761.76 → $1,639.71 (high-water $1,761.98, ladder still 10%). The bot could not RECORD it: `last_close`
+compared epoch seconds with the DB's datetime → TypeError every pass → HALTED after 10 (first exchange-side close
+of run 3; the fake venue stamped no times). Fixed in #155 (deployed 10:24 UTC), the close recorded as STOP_LOSS,
+`fade-live-resume` run 10:25 UTC → RUNNING. The coin kept rising (0.30 by 10:20): the stop saved ~$77.
 
 **FADE REAL-MONEY RUN 3 — RULE A LADDER, $1,500 (owner 2026-11-09: "Let's run rule a ladder in paper and in
 real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/fade-ladder`).** Risk 10/5/3 by
