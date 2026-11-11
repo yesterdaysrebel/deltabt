@@ -44,8 +44,8 @@ def call(path: str, body: dict | None, k: str, timeout: int = 900) -> dict:
         return json.load(r)
 
 
-def message(pack: Path) -> str:
-    parts = [(pack / "PROMPT.md").read_text(), NOTE]
+def message(pack: Path, prompt: str = "PROMPT.md") -> str:
+    parts = [(pack / prompt).read_text(), NOTE]
     for sub in ("data", "rules", "expectations"):
         for f in sorted((pack / sub).iterdir()):
             parts.append(f"\n===== FILE {sub}/{f.name}\n{f.read_text()}")
@@ -57,11 +57,13 @@ def main() -> None:
     ap.add_argument("pack")
     ap.add_argument("--budget", type=float, default=2.5)
     ap.add_argument("--models", default=",".join(MODELS))
+    ap.add_argument("--prompt", default="PROMPT.md", help="the question file inside the pack")
+    ap.add_argument("--tag", default="", help="suffix for the output files, e.g. 'improve'")
     a = ap.parse_args()
     pack = Path(a.pack)
     (pack / "reviews").mkdir(exist_ok=True)
     k = key()
-    msg = message(pack)
+    msg = message(pack, a.prompt)
     tokens_in = len(msg) / 2.8                                     # CSV digits tokenise densely: err high
     prices = {m["id"]: m.get("pricing", {}) for m in call("/models", None, k, 60)["data"]}
     models = [m.strip() for m in a.models.split(",") if m.strip()]
@@ -91,7 +93,7 @@ def main() -> None:
         u = r.get("usage") or {}
         cost = float(u.get("cost") or est[m])
         spent += cost
-        name = m.replace("/", "__") + ".md"
+        name = m.replace("/", "__") + (f".{a.tag}" if a.tag else "") + ".md"
         (pack / "reviews" / name).write_text(
             f"<!-- {m} via OpenRouter; {u.get('prompt_tokens')} in / {u.get('completion_tokens')} out tokens; "
             f"cost ${cost:.4f}; {time.time() - t0:.0f}s -->\n\n{text}\n")
