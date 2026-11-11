@@ -392,3 +392,38 @@ async def test_a_quiet_day_end_closes_at_the_last_trade_not_no_data():
         assert int(row["exit_time"].timestamp()) == d + DAY
     finally:
         await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_yesterdays_row_closes_while_todays_row_on_the_same_coin_is_current():
+    """Regression (2026-11-11): INITUSD open on two days; today's row is walked to the last closed minute, so a
+    skip keyed on the NEWEST last_checked never fetched and yesterday's row fell to NO_DATA."""
+    import asyncpg
+
+    from tests.live.conftest import TEST_DSN
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("DROP TABLE IF EXISTS fade_positions, fade_days, fade_heartbeat, fade_paper_capital")
+        await con.execute(F.SCHEMA)
+        d = 1794268800                                                      # yesterday 00:00 UTC
+        traded = {d + 60 * m: 2.0 - m / 2000 for m in range(0, 23 * 60 + 41)}  # quiet from 23:41
+        traded.update({d + DAY + 60 * m: 1.7 for m in range(0, 10 * 60)})   # today trades
+        now = d + DAY + 2 * F.HOUR
+        hi = now // F.MINUTE * F.MINUTE - F.MINUTE
+        ins = ("INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+               "entry_price, stop_price, contracts, contract_value, equity_before, status, last_checked) VALUES "
+               "('A', $1, 'X', 1, 0.4, 1e6, 0.08, $1, $2, $3, 10, 1, 250, 'OPEN', $4)")
+        await con.execute(ins, F._ts(d), 2.0, 2.32, F._ts(d + DAY - 5 * 60))           # yesterday, at 23:55
+        await con.execute(ins, F._ts(d + DAY), 1.7, 2.0, F._ts(hi))                     # today, current
+        r = F.FadeRunner("unused")
+        r.catalog = {}
+        r.client = _DeltaLikeClient(traded, d, now)
+        await r._monitor(con, now)
+        row = await con.fetchrow("SELECT status, exit_reason, exit_price FROM fade_positions WHERE day = $1", F._ts(d))
+        assert (row["status"], row["exit_reason"]) == ("CLOSED", "TIME")
+        assert row["exit_price"] == pytest.approx(2.0 - 1420 / 2000)
+        today = await con.fetchrow("SELECT status FROM fade_positions WHERE day = $1", F._ts(d + DAY))
+        assert today["status"] == "OPEN"
+    finally:
+        await con.close()
