@@ -166,6 +166,14 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**IDEA SEARCH — entry timing / condition / hold / pump shape — FAIL (owner 2026-11-11 "I would challenge on no
+edge").** Pre-registered (`docs/fade_idea_search_prereg.md`, `scripts/fade_idea_paths.py` + `fade_idea_search.py`,
+`out/gainer_fade/idea_search_{dev,holdout}.txt`; 1m simulator matches fade_binance_test to 0.00000R). ~40 variants on
+Binance 2021-23: "enter later only if the coin is already UP" was positive in all 3 years, "only if already DOWN"
+negative; holding 48/72 h, skipping a day and the largest pumps worse. Frozen: +2 h if up >= 0.25 stop (dev +0.182R,
+z 4.05) and +1 h if up >= 0.10 stop (dev +0.124R, z 3.71). HOLD-OUT 2024-26: +0.045R z 0.73 (2025 −0.068) and −0.003R
+z −0.06 — both FAIL (bar z >= 2.24). The dev pattern was selection on ~40 tries. Live rule unchanged.
+
 **%R / STOP-DISTANCE FILTERS — FAIL; STOPS THAT "COME BACK" (owner 2026-11-11).** Pre-registered
 (`docs/fade_wpr_stop_filter_prereg.md`, `scripts/fade_wpr_filter.py`, `out/gainer_fade/wpr_stop_filter.txt`; harness
 reproduces rule A's judged −0.002R). Binance 2021-24, taken trades: W (daily %R(14) of D−1 >= −20) −0.025R (z −1.64);

@@ -1,0 +1,5 @@
+simulator check vs fade_binance_test: 3608 trades, max |diff| 0.00000 R
+HOLDOUT: Binance 2024-2026, 1696 rule A picks; net R per trade, by year: 2024 2025 2026
+  A baseline (00:00, 24 h)                     n 1696 (100%)  mean +0.031  z +1.61  win  54%  | +0.009 +0.031 +0.065
+  enter +2 h if UP >= 0.25 stop                n  239 ( 14%)  mean +0.045  z +0.73  win  55%  | +0.084 -0.068 +0.094
+  enter +1 h if UP >= 0.10 stop                n  382 ( 23%)  mean -0.003  z -0.06  win  54%  | +0.015 +0.014 -0.038
