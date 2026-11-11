@@ -1,0 +1,38 @@
+Delta's picks 2025-26: 1022 trades; Delta funding known at entry for 1022
+  rule A before funding +0.046R | funding received during the trade -0.013R | after funding +0.033R (z +1.53)
+    2025: before +0.005  funding -0.015  after -0.010R  (n 560)
+    2026: before +0.096  funding -0.011  after +0.085R  (n 462)
+
+1. DELTA FUNDING ON D-1, per day (positive = shorts paid) (net R after funding; 2025 | 2026 | both)
+  < -0.20%/day (shorts pay a lot)    -0.079 (n 205) | +0.132 (n 126) | +0.001  z +0.03
+  -0.20% to -0.05%                   -0.011 (n  90) | +0.159 (n  56) | +0.054  z +1.21
+  -0.05% to 0                        +0.015 (n  41) | +0.098 (n  30) | +0.050  z +0.68
+  0 to +0.05%                        +0.030 (n  78) | -0.033 (n  72) | +0.000  z +0.00
+  +0.05% to +0.20%                   -0.001 (n 101) | +0.107 (n  70) | +0.043  z +0.82
+  > +0.20%/day (shorts paid a lot)   +0.201 (n  45) | +0.051 (n 108) | +0.095  z +1.45
+
+2. RANK (net R after funding; 2025 | 2026 | both)
+  rank 1 (biggest gainer)            -0.031 (n 285) | +0.123 (n 224) | +0.037  z +1.07
+  rank 2                             +0.013 (n 275) | +0.049 (n 238) | +0.030  z +1.12
+
+3. SIZE OF THE PUMP (D-1 change; thirds) (net R after funding; 2025 | 2026 | both)
+  smallest third                     -0.012 (n 246) | +0.069 (n  95) | +0.011  z +0.35
+  middle third                       -0.079 (n 178) | +0.090 (n 162) | +0.001  z +0.05
+  largest third                      +0.086 (n 136) | +0.087 (n 205) | +0.087  z +1.81
+
+4. ATR% (thirds) (net R after funding; 2025 | 2026 | both)
+  calmest third                      -0.034 (n 153) | +0.083 (n 188) | +0.031  z +0.73
+  middle third                       -0.018 (n 198) | +0.175 (n 142) | +0.063  z +1.60
+  wildest third                      +0.016 (n 209) | -0.010 (n 132) | +0.006  z +0.21
+
+5. D-1 TURNOVER ON DELTA (thirds) (net R after funding; 2025 | 2026 | both)
+  lowest third                       -0.062 (n 203) | +0.122 (n 138) | +0.013  z +0.36
+  middle third                       -0.008 (n 195) | +0.084 (n 145) | +0.031  z +1.02
+  highest third                      +0.055 (n 162) | +0.057 (n 179) | +0.056  z +1.22
+
+6. SIMPLE RULES (net R after funding)
+  all picks                                  kept 100%  -0.010 | +0.085 | +0.033R  z +1.53
+  skip if D-1 funding < 0 (shorts paying)    kept  46%  +0.050 | +0.043 | +0.046R  z +1.43
+  skip if D-1 funding < -0.05%/day           kept  53%  +0.045 | +0.049 | +0.047R  z +1.58
+  skip if D-1 funding < -0.20%/day           kept  68%  +0.031 | +0.067 | +0.048R  z +1.91
+  only if D-1 funding > 0                    kept  46%  +0.050 | +0.043 | +0.046R  z +1.43

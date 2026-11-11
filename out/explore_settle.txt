@@ -1,0 +1,50 @@
+5173 events, 5172 with a full price path; 138 coins; 80% are LONGS (negative funding); spread median 0.139%
+funding received by our side: mean +0.447%, median +0.323%, wrong-sign at the stamp 2.3%
+
+A. WHEN TO ENTER AND EXIT (all events >= 0.25%)
+  in  1 min before, out   1 min after: n  5172 days 575  price -0.211%  funding +0.447%  NET -0.084%  t(days) -7.40  win  43%  worst   -6.3% | 2024 +0.438 2025 -0.014 2026 -0.173
+  in  1 min before, out   5 min after: n  5172 days 575  price -0.265%  funding +0.447%  NET -0.138%  t(days) -7.31  win  43%  worst  -13.2% | 2024 +0.124 2025 -0.049 2026 -0.253
+  in  1 min before, out  15 min after: n  5172 days 575  price -0.259%  funding +0.447%  NET -0.132%  t(days) -5.56  win  45%  worst  -26.3% | 2024 +0.419 2025 -0.059 2026 -0.226
+  in  1 min before, out  60 min after: n  5172 days 575  price -0.297%  funding +0.447%  NET -0.170%  t(days) -4.34  win  46%  worst  -80.6% | 2024 +0.965 2025 -0.025 2026 -0.357
+  in  1 min before, out 120 min after: n  5172 days 575  price -0.296%  funding +0.447%  NET -0.168%  t(days) -2.98  win  46%  worst  -82.0% | 2024 +1.022 2025 -0.071 2026 -0.295
+  in  5 min before, out   1 min after: n  5172 days 575  price -0.214%  funding +0.447%  NET -0.087%  t(days) -5.86  win  44%  worst   -9.6% | 2024 +0.581 2025 -0.021 2026 -0.172
+  in  5 min before, out   5 min after: n  5172 days 575  price -0.268%  funding +0.447%  NET -0.141%  t(days) -6.32  win  44%  worst  -14.7% | 2024 +0.266 2025 -0.056 2026 -0.251
+  in  5 min before, out  15 min after: n  5172 days 575  price -0.262%  funding +0.447%  NET -0.135%  t(days) -5.33  win  45%  worst  -30.0% | 2024 +0.561 2025 -0.066 2026 -0.224
+  in  5 min before, out  60 min after: n  5172 days 575  price -0.299%  funding +0.447%  NET -0.172%  t(days) -4.32  win  46%  worst  -80.8% | 2024 +1.107 2025 -0.032 2026 -0.354
+  in  5 min before, out 120 min after: n  5172 days 575  price -0.298%  funding +0.447%  NET -0.171%  t(days) -3.00  win  46%  worst  -82.0% | 2024 +1.164 2025 -0.077 2026 -0.293
+  in 15 min before, out   1 min after: n  5172 days 575  price -0.210%  funding +0.447%  NET -0.083%  t(days) -4.13  win  45%  worst  -20.4% | 2024 +0.396 2025 -0.006 2026 -0.183
+  in 15 min before, out   5 min after: n  5172 days 575  price -0.264%  funding +0.447%  NET -0.137%  t(days) -5.45  win  44%  worst  -22.8% | 2024 +0.082 2025 -0.040 2026 -0.262
+  in 15 min before, out  15 min after: n  5172 days 575  price -0.257%  funding +0.447%  NET -0.130%  t(days) -4.41  win  45%  worst  -35.0% | 2024 +0.377 2025 -0.050 2026 -0.233
+  in 15 min before, out  60 min after: n  5172 days 575  price -0.294%  funding +0.447%  NET -0.167%  t(days) -4.03  win  46%  worst  -81.9% | 2024 +0.920 2025 -0.016 2026 -0.361
+  in 15 min before, out 120 min after: n  5172 days 575  price -0.294%  funding +0.447%  NET -0.167%  t(days) -2.89  win  46%  worst  -81.8% | 2024 +0.978 2025 -0.062 2026 -0.304
+  in 60 min before, out   1 min after: n  5172 days 575  price -0.213%  funding +0.447%  NET -0.086%  t(days) -1.73  win  46%  worst  -36.5% | 2024 -0.099 2025 -0.000 2026 -0.196
+  in 60 min before, out   5 min after: n  5172 days 575  price -0.267%  funding +0.447%  NET -0.140%  t(days) -2.90  win  46%  worst  -45.2% | 2024 -0.414 2025 -0.033 2026 -0.277
+  in 60 min before, out  15 min after: n  5172 days 575  price -0.255%  funding +0.447%  NET -0.128%  t(days) -2.54  win  46%  worst  -51.4% | 2024 -0.119 2025 -0.041 2026 -0.240
+  in 60 min before, out  60 min after: n  5172 days 575  price -0.288%  funding +0.447%  NET -0.161%  t(days) -2.87  win  47%  worst  -83.0% | 2024 +0.415 2025 -0.003 2026 -0.364
+  in 60 min before, out 120 min after: n  5172 days 575  price -0.289%  funding +0.447%  NET -0.162%  t(days) -2.28  win  46%  worst  -83.2% | 2024 +0.475 2025 -0.052 2026 -0.305
+
+B. BY SIZE OF THE RATE (in 5 before, out 5 after)
+  0.25-0.35%: n  2237 days 495  price -0.092%  funding +0.267%  NET -0.146%  t(days) -5.07  win  40%  worst  -11.0% | 2024 +0.266 2025 -0.081 2026 -0.245
+  0.35-0.50%: n  1204 days 387  price -0.264%  funding +0.359%  NET -0.239%  t(days) -5.55  win  43%  worst  -10.2% | 2025 -0.157 2026 -0.338
+  0.50-0.75%: n   814 days 321  price -0.357%  funding +0.521%  NET -0.157%  t(days) -2.89  win  45%  worst  -10.5% | 2025 -0.117 2026 -0.194
+  0.75-1.00%: n   446 days 201  price -0.474%  funding +0.737%  NET -0.027%  t(days) -2.42  win  54%  worst  -10.1% | 2025 +0.165 2026 -0.256
+  1.00-9.00%: n   471 days 183  price -0.772%  funding +1.127%  NET +0.047%  t(days) -1.98  win  56%  worst  -14.7% | 2025 +0.217 2026 -0.161
+
+C. BY SIDE (in 5 before, out 5 after)
+  LONG (negative funding):  n  4146 days 546  price -0.327%  funding +0.472%  NET -0.190%  t(days) -7.05  win  41%  worst  -14.7% | 2024 +0.266 2025 -0.100 2026 -0.296
+  SHORT (positive funding): n  1026 days 241  price -0.031%  funding +0.346%  NET +0.054%  t(days) +0.27  win  55%  worst  -10.1% | 2025 +0.088 2026 -0.010
+
+D. STRESS (in 5 before, out 5 after, >= 0.50%)
+  spreads x1: n  1731 days 407  price -0.500%  funding +0.742%  NET -0.068%  t(days) -2.81  win  50%  worst  -14.7% | 2025 +0.056 2026 -0.201
+  spreads x3: n  1731 days 407  price -0.500%  funding +0.742%  NET -0.372%  t(days) -8.89  win  40%  worst  -14.8% | 2025 -0.278 2026 -0.472
+  spreads x5: n  1731 days 407  price -0.500%  funding +0.742%  NET -0.676%  t(days) -13.90  win  32%  worst  -14.9% | 2025 -0.613 2026 -0.743
+
+E. WHAT PRICE DOES AROUND THE STAMP, on our side, % (no funding, no cost), events >= 0.50%
+  minute  -60 to  -15: mean -0.031%  median -0.089%
+  minute  -15 to   -5: mean +0.005%  median -0.016%
+  minute   -5 to   -1: mean -0.027%  median -0.000%
+  minute   -1 to   +1: mean -0.386%  median -0.206%
+  minute   +1 to   +5: mean -0.087%  median -0.048%
+  minute   +5 to  +15: mean +0.040%  median +0.008%
+  minute  +15 to  +60: mean -0.082%  median -0.033%
+  minute  +60 to +120: mean -0.156%  median -0.126%

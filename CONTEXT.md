@@ -166,6 +166,18 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**DELTA-NATIVE READINGS ON DELTA'S OWN PICKS (owner 2026-11-11 "how to improve edge then?").**
+`scripts/fade_delta_picks.py`, `out/gainer_fade/delta_picks.txt`: 1,022 picks 2025-26, Binance 1m prices, Delta's
+real funding. Rule A +0.046R before funding, funding −0.013R (shorts on gainers mostly PAY), +0.033R after (2025
+−0.010, 2026 +0.085). Readings consistent in BOTH years (exploratory, small): skip when D−1 Delta funding < 0
+(+0.050 / +0.043, keeps 46%); largest third of pumps (+0.086 / +0.087, z 1.8); highest third of D−1 Delta turnover
+(+0.055 / +0.057). None significant; candidates for the forward record, not rules.
+**FUNDING-SETTLEMENT CAPTURE — FAILS (owner "focus on futures").** `scripts/explore_settle_data.py` +
+`explore_settle.py`, `out/explore_settle.txt`: 5,173 Delta settlements with |rate| >= 0.25% an hour before (2024-26;
+80% negative funding = longs paid). Holding the paid side across the stamp: funding +0.45% but price moves −0.21% in
+the settlement minute itself and spreads cost ~0.14%: net −0.08% to −0.17% for every entry/exit tested (t −2 to −7);
+longs −0.19%, shorts +0.05% (t 0.3). The market prices the payment in at the stamp.
+
 **RULE A SKIP FILTER — DO NOT DEPLOY (owner 2026-11-11 "how to improve its edge", "run tests / backtests with the
 rule").** `scripts/fade_filter_tests.py`, `out/gainer_fade/filter_tests.txt`. Filter: skip a pick if BTC rose
 > +0.87% on D−1 or the coin's D−1 Binance taker-buy share > 0.5095. On BINANCE's picks it is strong: kept −
