@@ -109,6 +109,11 @@ def test_capital_rules():
 
 # ============================================================ a fake Delta
 
+def _iso(t: float) -> str:
+    """Delta's order timestamps: ISO-8601 with microseconds and a Z (2026-11-11T09:47:45.761831Z)."""
+    return dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 class FakeDelta:
     """Just enough of live.client.LiveClient, answering in Delta's shapes, with a wallet that moves by fees
     and realised P&L the way Delta's `balance` does."""
@@ -215,17 +220,21 @@ class FakeDelta:
         self.by_cid[p["client_order_id"]] = row
         return row
 
-    def fire_stop(self, sym, price, kind="stop_loss_order"):
-        """A bracket leg fires at Delta: the position closes at `price` and the wallet takes the result."""
+    def fire_stop(self, sym, price, kind="stop_loss_order", at=None):
+        """A bracket leg fires at Delta: the position closes at `price` and the wallet takes the result.
+        `at` (epoch s) stamps the order the way Delta does (ISO-8601 with a Z)."""
         pid = self.products[sym]["id"]
         n = -self.pos.get(pid, 0)
         self.pos[pid] = 0
         self.pending = [o for o in self.pending if o["product_id"] != pid]
         self._close(pid, n, price, 0.02)
         self._id += 1
-        self.history.insert(0, dict(id=self._id, product_id=pid, side="buy", size=n, unfilled_size=0,
-                                    average_fill_price=str(price), paid_commission="0.02", reduce_only=True,
-                                    stop_order_type=kind, state="closed"))
+        row = dict(id=self._id, product_id=pid, side="buy", size=n, unfilled_size=0,
+                   average_fill_price=str(price), paid_commission="0.02", reduce_only=True,
+                   stop_order_type=kind, state="closed")
+        if at is not None:
+            row["created_at"] = row["updated_at"] = _iso(at)
+        self.history.insert(0, row)
 
 
 # ============================================================ the account's day (PostgreSQL)
@@ -318,7 +327,7 @@ async def test_a_stop_that_fires_at_delta_is_recorded_and_its_loss_is_not_a_capi
     acct = _acct(fake)
     try:
         await acct.step(con, D0 + 120)
-        fake.fire_stop("XUSD", 1.25)                                             # gapped past the 1.2 stop
+        fake.fire_stop("XUSD", 1.25, at=D0 + 300)                                # gapped past the 1.2 stop
         for k in range(1, 4):
             await acct.step(con, D0 + 120 + k * 400)                            # three snapshots
         x = (await _rows(con))["XUSD"]
@@ -328,6 +337,33 @@ async def test_a_stop_that_fires_at_delta_is_recorded_and_its_loss_is_not_a_capi
         assert st["status"] == "RUNNING" and st["balance"] == pytest.approx(fake.bal)
         n = (await _rows(con))["XUSD"]["contracts"]
         assert n == 750 and fake.bal == pytest.approx(1500 - 0.01 - 0.01 - 0.25 * n - 0.02)
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_stamped_stop_is_recorded_and_an_older_buy_on_the_coin_is_not():
+    """Regression, ARIAUSD 2026-11-11: Delta stamps orders in ISO text, the DB's entry_time is a datetime; the
+    comparison raised TypeError every pass and HALTED the account. An older reduce-only buy on the coin (from
+    before this entry, not in `others`) must still be passed over by its time."""
+    con = await _db()
+    fake = FakeDelta()
+    acct = _acct(fake)
+    try:
+        fake.history.insert(0, dict(id=7, product_id=1, side="buy", size=3, unfilled_size=0, reduce_only=True,
+                                    average_fill_price="0.90", paid_commission="0.01", state="closed",
+                                    stop_order_type="stop_loss_order", created_at=_iso(D0 - DAY),
+                                    updated_at=_iso(D0 - DAY)))
+        await acct.step(con, D0 + 120)
+        fake.fire_stop("XUSD", 1.25, at=D0 + 3600)
+        fake.history.append(fake.history.pop(0))       # newest LAST: the older buy is met first and must be skipped
+        await acct.step(con, D0 + 3700)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"], x["exit_price"]) == ("CLOSED", "STOP_LOSS", 1.25)
+        st = await _state(con)
+        assert st["status"] == "RUNNING"
+        assert not await con.fetchval("SELECT count(*) FROM fade_live_events WHERE kind = 'ERROR'")
     finally:
         await con.close()
 

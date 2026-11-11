@@ -419,13 +419,17 @@ class LiveFade:
         """The newest filled reduce-only BUY on this product that closed THIS position: never another position's
         buy-back on the same coin (`others`, their exit ids), and never an order stamped before `opened`."""
         from live.ledger import parse_venue_time
+        # parse_venue_time gives epoch seconds; `opened` is the DB's entry_time (a datetime). Compared raw they
+        # raised TypeError on every pass once a stop fired at Delta -- run 3's first stop, ARIAUSD 2026-11-11,
+        # halted the account after 10 passes (the fake venue stamped no times, so the tests never got here).
+        since = opened.timestamp() if isinstance(opened, dt.datetime) else opened
         for o in self.client.order_history(product_id, 20):
             if not (o.get("reduce_only") and filled(o) and str(o.get("side")).lower() == "buy"):
                 continue
             if o.get("client_order_id") and o["client_order_id"] in others:
                 continue
             at = parse_venue_time(o.get("updated_at") or o.get("created_at"))
-            if opened is not None and at is not None and at < opened:
+            if since is not None and at is not None and at < since:
                 continue
             return o
         return None
