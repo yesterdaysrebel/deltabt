@@ -73,3 +73,14 @@ def test_the_report_shows_the_account_and_flags_a_missed_sale_or_a_stuck_leg():
     late = now + dt.timedelta(hours=14)
     assert "not settled" in B.options_problems(_opts(), late)[0]
     assert B.options_problems(None, now) == [] and "Not started" in "\n".join(B.options_lines(None))
+
+
+def test_a_strangle_is_both_legs_or_nothing():
+    legs = [dict(underlying="BTC", kind="P", symbol="P-BTC", bid=10.0, bid_size=5),
+            dict(underlying="BTC", kind="C", symbol="C-BTC", bid=12.0, bid_size=5),
+            dict(underlying="ETH", kind="P", symbol="P-ETH", bid=3.0, bid_size=5),
+            dict(underlying="ETH", kind="C", symbol="C-ETH", bid=None, bid_size=0)]      # no bid
+    out = {(r["underlying"], r["kind"]): r["skip"] for r in O.apply_skips(legs)}
+    assert out == {("BTC", "P"): None, ("BTC", "C"): None, ("ETH", "P"): "OTHER_LEG", ("ETH", "C"): "NO_BID"}
+    nostrike = [dict(underlying="BTC", kind="P", symbol=None), dict(underlying="BTC", kind="C", symbol="C", bid=1, bid_size=1)]
+    assert [r["skip"] for r in O.apply_skips(nostrike)] == ["NO_STRIKE", "OTHER_LEG"]

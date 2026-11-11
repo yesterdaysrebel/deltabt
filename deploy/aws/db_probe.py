@@ -263,15 +263,21 @@ async def collect_options(con) -> dict | None:
     try:
         if not await con.fetchval("SELECT to_regclass('option_legs') IS NOT NULL"):
             return None
+        # A STRANGLE is both legs (2026-11-11 reviews): before the OTHER_LEG rule an unsellable leg left a
+        # one-legged "strangle"; those are counted apart (`half`), never in the strangle statistics.
         s = await con.fetch(
             "SELECT expiry, underlying, sum(pnl) pnl, sum(notional) notional FROM option_legs "
             "WHERE status <> 'SKIPPED' GROUP BY expiry, underlying "
-            "HAVING bool_and(status = 'SETTLED') ORDER BY expiry, underlying")
+            "HAVING bool_and(status = 'SETTLED') AND count(*) = 2 ORDER BY expiry, underlying")
+        half = await con.fetchrow(
+            "SELECT count(*) n, COALESCE(sum(pnl), 0) pnl FROM (SELECT sum(pnl) pnl FROM option_legs "
+            "WHERE status <> 'SKIPPED' GROUP BY expiry, underlying "
+            "HAVING bool_and(status = 'SETTLED') AND count(*) = 1) t")
         fills = await con.fetchrow(
             "SELECT count(*) n, avg(best_bid / NULLIF(mark, 0)) bid_mark, "
             "avg((best_ask - best_bid) / NULLIF(mark, 0)) spread, min(bid_size) min_bid_size "
             "FROM option_legs WHERE status <> 'SKIPPED'")
-        pnl = sum(float(r["pnl"]) for r in s)
+        pnl = sum(float(r["pnl"]) for r in s) + float(half["pnl"])     # the account's money counts both
         # The journal: newest OPTION_JOURNAL_ROWS strangles, oldest first. A strangle is OPEN while
         # any leg is, SKIPPED when no leg sold; `paid` is what settlement took back.
         j = await con.fetch(
@@ -288,6 +294,7 @@ async def collect_options(con) -> dict | None:
         n_all = int(await con.fetchval("SELECT count(DISTINCT (expiry, underlying)) FROM option_legs"))
         return {
             "strangles": len(s), "wins": sum(1 for r in s if float(r["pnl"]) > 0),
+            "half_strangles": int(half["n"]), "half_pnl": round(float(half["pnl"]), 2),
             "pnl": round(pnl, 2), "equity": round(250.0 + pnl, 2),
             "mean_bps": round(1e4 * sum(float(r["pnl"]) / float(r["notional"]) for r in s) / len(s), 1) if s else None,
             "worst": round(min(float(r["pnl"]) for r in s), 2) if s else None,
@@ -346,7 +353,8 @@ async def collect_funding(con) -> dict | None:
 
 
 #: The real account's journal columns (live/fade_live.py); newest LIVE_JOURNAL_ROWS rows.
-FADE_START = {"LADDER": 1500.0}                     # live/fade.py ACCOUNT_START (not imported: no live/ here)
+FADE_START = {"LADDER": 1500.0, "LADDER_V0": 1500.0}  # live/fade.py ACCOUNT_START (not imported: no live/ here);
+#                                                    LADDER_V0 = the record before it applied the real skips
 LIVE_JOURNAL_FIELDS = ("day", "symbol", "status", "skip_reason", "contracts", "paper_entry", "entry_price",
                        "stop_price", "opened", "closed", "exit_price", "exit_reason", "pnl", "r")
 LIVE_JOURNAL_ROWS = 80

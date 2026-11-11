@@ -625,7 +625,8 @@ SKIP_LABEL = {"daily_cap": "daily cap", "open_position": "already in a trade",
               "record_only": "record-only coin"}
 
 
-FADE_NAMES = {"A": "A — 24 h hold", "QUICK": "Quick — 4% target", "LADDER": "Ladder — real rules, $1,500"}
+FADE_NAMES = {"A": "A — 24 h hold", "QUICK": "Quick — 4% target", "LADDER": "Ladder — real rules, $1,500",
+              "LADDER_V0": "Ladder v0 — before the real skips (to 2026-11-11)"}
 
 
 def fade_problems(f: dict, now: dt.datetime) -> list[str]:
@@ -868,6 +869,10 @@ def options_lines(o: dict | None) -> list[str]:
     if o.get("legs_sold"):
         fill = (f"sold at {100 * o['bid_over_mark']:.0f}% of mark on average (backtest assumed 90%)"
                 if o.get("bid_over_mark") is not None else "no mark recorded")
+        if o.get("half_strangles"):
+            out.append(f"Before 2026-11-12 an unsellable leg left {o['half_strangles']} one-legged sales "
+                       f"({money(o.get('half_pnl'))}); they are in the money, not in the strangle count. "
+                       "Now both legs or neither.")
         out.append(f"Fills: {o['legs_sold']} legs {fill}"
                    + (f"; {o['skipped']} legs skipped (no strike or no bid)" if o.get("skipped") else "") + ".")
     out.append("One contract a leg (0.001 BTC, 0.01 ETH) at the real best bid. Losses are uncapped: the "

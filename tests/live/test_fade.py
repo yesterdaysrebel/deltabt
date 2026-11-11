@@ -427,3 +427,31 @@ async def test_yesterdays_row_closes_while_todays_row_on_the_same_coin_is_curren
         assert today["status"] == "OPEN"
     finally:
         await con.close()
+
+
+def test_the_ladder_twin_uses_the_real_accounts_stop_limit():
+    from live import fade_live
+    assert F.LADDER_MAX_DIST == fade_live.MAX_DIST
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_paper_ladder_skips_what_the_real_account_skips():
+    """Reviews 2026-11-11: paper LADDER took INITUSD twice with stops 42% away; the real account skipped both."""
+    import asyncpg
+
+    from tests.live.conftest import TEST_DSN
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("DROP TABLE IF EXISTS fade_positions, fade_days, fade_heartbeat, fade_paper_capital")
+        await con.execute(F.SCHEMA)
+        assert await F.ladder_skip(con, "XUSD", 0.30) is None
+        assert await F.ladder_skip(con, "XUSD", 0.417) == "stop 42% away is past the 32.5% limit"
+        await con.execute(
+            "INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+            "entry_price, stop_price, contracts, contract_value, equity_before, status) VALUES "
+            "('LADDER', $1, 'XUSD', 1, 0.3, 1e6, 0.1, $1, 1, 1.2, 10, 1, 1500, 'OPEN')", F._ts(1793232000))
+        assert await F.ladder_skip(con, "XUSD", 0.20) == "the coin is still open from yesterday"
+        assert await F.ladder_skip(con, "YUSD", 0.20) is None
+    finally:
+        await con.close()
