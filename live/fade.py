@@ -98,6 +98,25 @@ def lever_plan(risk: float, dist: float, mm_pct: float, liq_dist: float | None =
     return min(want, MARGIN_CAP * lev), lev
 
 
+#: The real account's skip limit (live/fade_live.MAX_DIST; not imported here: fade_live imports this module).
+LADDER_MAX_DIST = 0.325
+
+
+async def ladder_skip(con, symbol: str, dist: float) -> str | None:
+    """Why paper LADDER must skip a pick that the REAL account would skip (docs/fade_live_ladder_prereg.md rule 2),
+    or None. Found 2026-11-11 by all four reviews of the review pack: LADDER took INITUSD twice (stops 42% away)
+    that the real account skipped. The spread check (> 1% of the bid) is NOT replicated: paper has no quote then.
+    The texts match live/fade_live.py's, so the two journals read the same."""
+    if dist > LADDER_MAX_DIST:
+        return f"stop {dist:.0%} away is past the {LADDER_MAX_DIST:.1%} limit"
+    if lever_plan(0.10, dist, PAPER_MM_PCT)[1] == 0:
+        return "liquidation cannot sit 2x the stop away even at 1x"
+    if await con.fetchval("SELECT count(*) FROM fade_positions WHERE account = 'LADDER' AND status = 'OPEN' "
+                          "AND symbol = $1", symbol):
+        return "the coin is still open from yesterday"
+    return None
+
+
 def size_ladder(equity: float, high_water: float, entry: float, stop: float, cv: float,
                 mm_pct: float = PAPER_MM_PCT) -> tuple[int, float]:
     """(contracts, ladder step) for the LADDER account, sized by lever_plan (the real account's rule)."""
@@ -495,8 +514,11 @@ class FadeRunner:
                 why = None
                 if account == "LADDER":
                     book = await self._ladder(con, day)
+                    why = await ladder_skip(con, p.symbol, dist)       # the real account's skips (rule 2)
                     if book is None:
                         n, risk, why = 0, 0.0, f"refill budget ${LADDER_REFILL_BUDGET:,.0f} spent: the account is done"
+                    elif why is not None:
+                        n, risk = 0, ladder_risk(*book)
                     else:
                         eq, hw = book
                         n, risk = size_ladder(eq, hw, entry, stop, cv[p.symbol])

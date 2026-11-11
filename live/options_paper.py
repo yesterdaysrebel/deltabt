@@ -71,6 +71,19 @@ def leg_pnl(premium_per_unit: float, settle_per_unit: float, spot: float, cv: fl
                 pnl=prem - paid - fee_in - fee_out)
 
 
+def apply_skips(legs: list[dict]) -> list[dict]:
+    """Set each leg's `skip`: NO_STRIKE, NO_BID, or OTHER_LEG when the other leg of its underlying cannot be
+    sold. The product is a STRANGLE or nothing (docs/option_selling_prereg.md); before 2026-11-12 an unsellable
+    leg left the other sold alone (the four reviews of 2026-11-11: 11 of 28 ETH legs had no bid)."""
+    for r in legs:
+        r["skip"] = ("NO_STRIKE" if r.get("symbol") is None else
+                     "NO_BID" if not r.get("bid") or (r.get("bid_size") or 0) < CONTRACTS else None)
+    for r in legs:
+        if r["skip"] is None and any(o["skip"] for o in legs if o["underlying"] == r["underlying"]):
+            r["skip"] = "OTHER_LEG"
+    return legs
+
+
 def _f(x):
     try:
         return None if x is None or x == "" else float(x)
@@ -102,7 +115,7 @@ CREATE TABLE IF NOT EXISTS option_legs (
     premium        DOUBLE PRECISION,          -- USD received at the best bid
     fee_in         DOUBLE PRECISION,
     status         TEXT NOT NULL,             -- OPEN | SETTLED | SKIPPED
-    skip_reason    TEXT,                      -- NO_STRIKE | NO_BID
+    skip_reason    TEXT,                      -- NO_STRIKE | NO_BID | OTHER_LEG (the other leg could not be sold)
     settled_at     TIMESTAMPTZ,
     settle_value   DOUBLE PRECISION,          -- Delta's settlement_price (payout per unit)
     fee_out        DOUBLE PRECISION,
@@ -180,10 +193,10 @@ async def sell(runner, con, now: float) -> None:
                                delta=_f((t.get("greeks") or {}).get("delta")))
                     break
             legs.append(row)
+    apply_skips(legs)
     async with con.transaction():
         for r in legs:
-            skip = ("NO_STRIKE" if r.get("symbol") is None else
-                    "NO_BID" if not r.get("bid") or (r.get("bid_size") or 0) < CONTRACTS else None)
+            skip = r["skip"]
             p = leg_pnl(r["bid"], 0.0, r["spot"], r["cv"]) if skip is None else {}
             await con.execute(
                 "INSERT INTO option_legs (expiry, underlying, kind, symbol, strike, spot, entry_time, mark, "
