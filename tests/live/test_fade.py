@@ -338,3 +338,57 @@ async def test_entries_wait_for_yesterdays_paper_positions_to_close_but_not_past
             FL.step, OP.step = orig
     finally:
         await con.close()
+
+
+class _DeltaLikeClient:
+    """Delta's REST quirk (measured 2026-11-11 on PIEVERSEUSD/INITUSD): a window serves no candle until
+    its first TRADED minute; after that it serves every minute, quiet ones forward-filled."""
+
+    def __init__(self, traded: dict[int, float], first: int, last: int):
+        self.traded, self.first, self.last = traded, first, last
+
+    def candles(self, sym, res, a, b, drop_forming=True):
+        if sym.startswith("FUNDING:"):
+            return []
+        out, px = [], None
+        for t in range(max(a, self.first), min(b, self.last) + 1, 60):
+            if t in self.traded:
+                px = self.traded[t]
+            if px is not None:
+                out.append(dict(time=t, open=px, high=px, low=px, close=px, volume=1 if t in self.traded else 0))
+        return out
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_quiet_day_end_closes_at_the_last_trade_not_no_data():
+    """Regression (paper A/LADDER PIEVERSEUSD 11-10 booked NO_DATA at the entry while the real account
+    made +0.64R): last_checked sat on a quiet 23:55, and a window starting there returns nothing."""
+    import asyncpg
+
+    from tests.live.conftest import TEST_DSN
+    con = await asyncpg.connect(TEST_DSN)
+    try:
+        await con.execute("DROP TABLE IF EXISTS fade_positions, fade_days, fade_heartbeat, fade_paper_capital")
+        await con.execute(F.SCHEMA)
+        d = 1794268800                                                      # 2026-11-10 00:00 UTC
+        traded = {d + 60 * m: 2.0 - m / 2000 for m in range(0, 23 * 60 + 41)}  # trades to 23:40, close 1.53
+        traded[d + DAY + 5 * 60] = 1.7                                      # next trade 00:05 the day after
+        await con.execute(
+            "INSERT INTO fade_positions (account, day, symbol, rank, prev_change, prev_turnover, atrp, entry_time, "
+            "entry_price, stop_price, contracts, contract_value, equity_before, status, last_checked) VALUES "
+            "('A', $1, 'X', 1, 0.4, 1e6, 0.08, $1, 2.0, 2.32, 10, 1, 250, 'OPEN', $2)",
+            F._ts(d), F._ts(d + DAY - 5 * 60))                              # walked to the quiet 23:55
+        r = F.FadeRunner("unused")
+        r.catalog = {}
+        now = d + DAY + 2 * F.HOUR
+        r.client = _DeltaLikeClient(traded, d, now)
+        assert r.client.candles("X", "1m", d + DAY - 5 * 60, now)[0]["time"] == d + DAY + 5 * 60, \
+            "the fake must reproduce the quirk (negative control)"
+        await r._monitor(con, now)
+        row = await con.fetchrow("SELECT status, exit_reason, exit_price, exit_time FROM fade_positions")
+        assert (row["status"], row["exit_reason"]) == ("CLOSED", "TIME")
+        assert row["exit_price"] == pytest.approx(2.0 - 1420 / 2000)
+        assert int(row["exit_time"].timestamp()) == d + DAY
+    finally:
+        await con.close()

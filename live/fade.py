@@ -541,10 +541,16 @@ class FadeRunner:
             return
         bars_by_sym = {}
         for sym in {r["symbol"] for r in rows}:
-            lo = min(int(r["last_checked"].timestamp()) for r in rows if r["symbol"] == sym)
+            # From the ENTRY, not last_checked: Delta serves no candle in a window until its first TRADED
+            # minute inside that window, so a window starting on a quiet late minute (23:55) returns nothing
+            # until the next day's first trade -- the day-end close then found no bar and booked NO_DATA at
+            # the entry (PIEVERSEUSD/INITUSD/CAPUSD, 11-05..11-10). walk() skips bars <= last_checked, so
+            # re-reading the day changes nothing else; a paper position lives <= 25 h (< the 4000-bar page).
+            lo = min(int(r["entry_time"].timestamp()) for r in rows if r["symbol"] == sym)
+            done_to = max(int(r["last_checked"].timestamp()) for r in rows if r["symbol"] == sym)
             hi = int(now) // MINUTE * MINUTE - MINUTE              # last CLOSED minute
-            if hi <= lo:
-                continue
+            if hi <= done_to:
+                continue                                           # no newly closed minute
             got = await asyncio.to_thread(self.client.candles, sym, "1m", lo, hi, drop_forming=True)
             bars_by_sym[sym] = pd.DataFrame(got, columns=["time", "open", "high", "low", "close", "volume"]).astype(
                 {"time": "int64", "high": float, "low": float, "close": float}) if got else None
@@ -556,7 +562,7 @@ class FadeRunner:
             bars = bars_by_sym.get(p.symbol)
             done = walk(p, bars, day_complete=now >= p.end + 2 * MINUTE) if bars is not None and len(bars) else False
             if not done and now >= p.end + 2 * MINUTE:
-                # The day is over. `bars` start AT last_checked, so the last traded minute is in it
+                # The day is over. `bars` start at the entry, so the last traded minute is in it
                 # even when walk() had nothing new to read: close there (a thin coin's last minutes
                 # may have no candle at all).
                 prior = bars[bars.time < p.end] if bars is not None and len(bars) else None
