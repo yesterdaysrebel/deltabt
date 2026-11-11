@@ -153,6 +153,19 @@ files; a generous daily-only rerun also gives ~0R); the positive control (`--con
 `out/gainer_fade/binance_control.txt`) reproduces Delta's direction (A +0.031R / +0.065R, QUICK +0.012R / +0.020R). Six
 Binance years for rule A, before funding: −0.018, +0.036, −0.035, +0.009, +0.031, +0.065R — positive in the last two only.
 
+**SKIPS (owner 2026-11-11 "how to address the skips?").** Run 3 skips a pick whose stop is > 32.5% away (every
+backtest measured only those <= 32.5%; 1x liquidation alone would allow ~48%). Paper picks 10-29..11-11: 11 of 28
+skipped, 0 of the first 10, 11 of the last 18; the 4 graded far-stop paper trades averaged −0.38R. **Option 2 —
+replace a skipped pick with the next gainer (ranks 3-10) whose stop fits — FAILS** its pre-registration
+(`docs/fade_next_pick_prereg.md`, `scripts/fade_next_pick.py`, `out/gainer_fade/next_pick.txt`): Binance 2021-24
+substitutes 203 trades, −0.040R pooled (z −1.35), > 0 in 2/4 years; control 2025-26 −0.008R (300). Live rule
+unchanged: skip, no substitute. On Binance 9% of top-2 picks were skipped in 2021-24, 23% in 2025-26.
+**Paper NO_DATA bug (fixed in #153, not yet deployed):** Delta serves no candle in a window until its first
+traded minute; `_monitor` fetched from `last_checked`, so a quiet 23:45-23:55 left the day-end close with no bar
+and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 — real made +0.64R there). Now
+fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
+so the fixed monitor re-walks them.
+
 **FADE REAL-MONEY RUN 3 — RULE A LADDER, $1,500 (owner 2026-11-09: "Let's run rule a ladder in paper and in
 real", "approved on 1-6"; rules `docs/fade_live_ladder_prereg.md`, branch `feat/fade-ladder`).** Risk 10/5/3 by
 drawdown from the high-water mark (steps at 20%/35%); AMENDMENT 1 (leverage, `feat/fade-leverage`): notional ≤ 60%
