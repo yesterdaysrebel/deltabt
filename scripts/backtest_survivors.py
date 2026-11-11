@@ -133,7 +133,9 @@ def portfolio(C, F, cost, score, liquid, h, frac, sign=+1):
         k = max(int(len(a) * frac), 3)
         o = a.sort_values()
         Ls, Ss = (list(o.index[-k:]), list(o.index[:k])) if sign > 0 else (list(o.index[:k]), list(o.index[-k:]))
-        fu = F.loc[t:t2 - pd.Timedelta(days=1)].sum()                # funding over the holding days
+        # candles are stamped at their open, so C.loc[t] is the price at t+1 00:00 (the entry) and the funding
+        # earned is what settles after it: days t+1..t2 (scripts/funding_ideas.py, 2026-11-11 timing fix)
+        fu = F.loc[t + pd.Timedelta(days=1):t2].sum()
         px = 0.5 * (f[Ls].mean() - f[Ss].mean())
         fund = 0.5 * (-fu[Ls].mean() + fu[Ss].mean())               # longs pay positive funding, shorts receive it
         new = set(Ls) | set(Ss) if prev is None else (set(Ls) - prev[0]) | (set(Ss) - prev[1])

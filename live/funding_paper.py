@@ -9,7 +9,8 @@ out/compare_ladder_funding.txt: $1,500 -> $4,910 over 2025-02 .. 2026-10, worst 
 best of several variants on that data, so this paper record is its first clean evidence.
 
 What the backtest only assumed is MEASURED here:
-  fills    each position opens and closes at the real best ask (long) / bid (short) from /v2/tickers,
+  fills    the side that crosses the spread, from /v2/tickers: a long opens at the best ask and closes at the bid,
+           a short opens at the best bid and closes at the ask;
            plus Delta's taker fee as measured on the real account (0.0531% a side incl. GST).
   funding  every settlement while a position is open, from Delta's FUNDING history at its own interval.
   size     whole contracts (a coin too dear for one contract at its share is skipped).

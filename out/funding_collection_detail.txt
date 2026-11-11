@@ -1,8 +1,6 @@
-Traceback (most recent call last):
-  File "/src/out/_fc.py", line 30, in <module>
-    eqs = d.eq; dd = 1 - eqs / eqs.cummax()
-                               ^^^^^^^^^^
-AttributeError: 'function' object has no attribute 'cummax'
+SUPERSEDED 2026-11-11: this run booked funding one day early. Timing-fixed: $1,500 -> $4,058-4,094, t 2.12,
+worst drop 25% (out/funding_ideas.txt, out/compare_ladder_funding.txt). Figures below are the OLD ones.
+
 FUNDING COLLECTION, every 3 days, fifths, 1x gross: 207 periods 2025-02-13 .. 2026-10-24; ~48 liquid coins, 9 long + 9 short; turnover 31% a period
   per period: price -0.222%  funding +0.946%  cost 0.081%  NET +0.643%
   WIN RATE (periods net > 0): 56%   funding positive in 100% of periods; price positive in 47%

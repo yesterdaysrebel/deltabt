@@ -920,7 +920,7 @@ def funding_lines(f: dict | None) -> list[str]:
     if last.get("status") == "SKIPPED":
         out.append(f"Last rebalance {last['period']} SKIPPED: {last.get('why') or 'too few coins'}; the book was kept.")
     out.append("Paper only, real best bid/ask and Delta's fee; funding from Delta's history. Backtest 2025-26: "
-               "$1,500 → $4,910, worst drop 23%, 13 of 20 months green (chosen as the best of several variants).")
+               "$1,500 → $4,094, worst drop 25%, 13 of 20 months green (chosen as the best of several variants).")
     return out
 
 
