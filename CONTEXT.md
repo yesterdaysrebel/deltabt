@@ -166,6 +166,15 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**RULE A SKIP FILTER — DO NOT DEPLOY (owner 2026-11-11 "how to improve its edge", "run tests / backtests with the
+rule").** `scripts/fade_filter_tests.py`, `out/gainer_fade/filter_tests.txt`. Filter: skip a pick if BTC rose
+> +0.87% on D−1 or the coin's D−1 Binance taker-buy share > 0.5095. On BINANCE's picks it is strong: kept −
+skipped +0.107R over 2021-26, positive in all six years; walk-forward cut-offs (earlier picks only) kept +0.071R vs
+skipped −0.024R (z 3.97); smooth across cut-offs; account from $1,500 better in every year (e.g. 2023 ladder $426 →
+$8,923). On DELTA'S OWN picks 2025-26 (1,022 trades on the same coins' Binance 1m prices): REVERSED — kept +0.008R,
+skipped +0.101R (z −2.09; 2025 −0.110, 2026 −0.071); a random subset beats the kept set 98% of the time. Delta's
+top gainers are a different set (Delta-only rankings, its own volumes). Live rule unchanged.
+
 **FAST CHECKS ON DELTA ITSELF (owner 2026-11-11 "I don't have couple of weeks, we need to prove working strategy
 soon").** `scripts/explore_delta_costed.py`, `explore_basis.py`, `explore_delta_basis.py`; outputs `out/explore_*.txt`,
 live spread snapshot `out/delta_spreads_2026-11-11.json`. (1) SPREADS ARE NOT THE BLOCKER: 250 Delta perps at 11:48
