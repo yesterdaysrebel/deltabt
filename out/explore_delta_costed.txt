@@ -1,0 +1,25 @@
+201 Binance perps Delta lists with a live quote; their spread: median 0.094%, 90th pct 0.249%, worst 0.56%
+
+QUIET COINS (low 30-day volume only): Delta-listed coins, ~64 liquid a week, a fifth each side; mean cost 0.069%/wk
+  gross                                          n 295  +1.545%/wk  t +2.25  Sharpe +0.95  maxDD  46%  worst  -20.9%  x24.7  6/6 | +4.01 +0.95 +0.48 +0.70 +0.33 +3.59
+  NET of Delta fee + each coin's live spread     n 295  +1.476%/wk  t +2.15  Sharpe +0.90  maxDD  48%  worst  -21.0%  x20.1  6/6 | +3.94 +0.89 +0.42 +0.65 +0.26 +3.47
+  net with spreads 3x wider                      n 295  +1.418%/wk  t +2.07  Sharpe +0.87  maxDD  49%  worst  -21.1%  x17.0  6/6 | +3.88 +0.84 +0.38 +0.61 +0.20 +3.36
+  net with spreads 10x wider                     n 295  +1.214%/wk  t +1.77  Sharpe +0.74  maxDD  53%  worst  -21.4%  x9.4  5/6 | +3.68 +0.68 +0.24 +0.48 -0.02 +2.97
+  net, only 5 coins a side                       n 295  +3.657%/wk  t +1.48  Sharpe +0.62  maxDD  67%  worst  -30.6%  x91.8  5/6 | +6.03 +1.22 +0.26 -0.36 +0.83 +16.96
+  net, only 8 coins a side                       n 295  +2.544%/wk  t +1.61  Sharpe +0.68  maxDD  63%  worst  -39.4%  x41.1  6/6 | +3.65 +0.79 +0.49 +0.45 +0.60 +11.16
+  net, thirds                                    n 295  +0.932%/wk  t +2.07  Sharpe +0.87  maxDD  34%  worst  -14.1%  x7.8  5/6 | +2.38 +0.27 -0.18 +0.96 +0.28 +2.38
+  net, floor $1M                                 n 295  +1.141%/wk  t +2.80  Sharpe +1.18  maxDD  41%  worst  -16.4%  x14.5  6/6 | +3.94 +0.92 +0.43 +0.77 +0.49 +0.65
+  on DELTA'S OWN PRICES (2025-26): gross -0.317%/wk vs Binance prices same weeks +1.721%/wk; correlation 0.62
+  NET on Delta's own prices                      n  97  -0.405%/wk  t -0.65  Sharpe -0.48  maxDD  52%  worst  -24.5%  x0.6  1/2 |   n/a   n/a   n/a   n/a -0.90 +0.38
+
+FIVE-PART SCORE (volume, volatility, spike, 30-day momentum, 7-day reversal): Delta-listed coins, ~64 liquid a week, a fifth each side; mean cost 0.280%/wk
+  gross                                          n 295  +1.499%/wk  t +2.14  Sharpe +0.90  maxDD  66%  worst  -45.9%  x17.9  5/6 | +1.37 +0.82 +0.21 -0.38 +1.72 +6.18
+  NET of Delta fee + each coin's live spread     n 295  +1.220%/wk  t +1.74  Sharpe +0.73  maxDD  70%  worst  -46.2%  x7.9  4/6 | +1.05 +0.53 -0.07 -0.63 +1.45 +5.89
+  net with spreads 3x wider                      n 295  +1.003%/wk  t +1.43  Sharpe +0.60  maxDD  76%  worst  -46.5%  x4.2  4/6 | +0.81 +0.32 -0.28 -0.82 +1.23 +5.65
+  net with spreads 10x wider                     n 295  +0.244%/wk  t +0.35  Sharpe +0.15  maxDD  92%  worst  -47.5%  x0.4  2/6 | -0.03 -0.40 -1.00 -1.48 +0.45 +4.79
+  net, only 5 coins a side                       n 295  +1.048%/wk  t +1.37  Sharpe +0.57  maxDD  92%  worst  -60.9%  x1.5  5/6 | +1.50 +0.35 +0.49 -2.23 +2.24 +4.79
+  net, only 8 coins a side                       n 295  +1.834%/wk  t +1.28  Sharpe +0.54  maxDD  84%  worst  -39.9%  x5.4  4/6 | +1.36 +0.58 -0.01 -2.12 +1.45 +11.63
+  net, thirds                                    n 295  +0.796%/wk  t +1.74  Sharpe +0.73  maxDD  48%  worst  -31.5%  x5.0  4/6 | -0.14 +0.55 -0.26 +0.27 +0.81 +4.03
+  net, floor $1M                                 n 295  +0.547%/wk  t +1.27  Sharpe +0.53  maxDD  71%  worst  -46.2%  x2.2  4/6 | +1.05 +0.53 -0.09 -0.63 +1.35 +1.32
+  on DELTA'S OWN PRICES (2025-26): gross +1.746%/wk vs Binance prices same weeks +3.646%/wk; correlation 0.55
+  NET on Delta's own prices                      n  97  +1.460%/wk  t +1.75  Sharpe +1.28  maxDD  31%  worst  -20.1%  x3.0  2/2 |   n/a   n/a   n/a   n/a +0.54 +2.72

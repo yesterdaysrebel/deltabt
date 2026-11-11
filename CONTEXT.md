@@ -166,6 +166,17 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**FAST CHECKS ON DELTA ITSELF (owner 2026-11-11 "I don't have couple of weeks, we need to prove working strategy
+soon").** `scripts/explore_delta_costed.py`, `explore_basis.py`, `explore_delta_basis.py`; outputs `out/explore_*.txt`,
+live spread snapshot `out/delta_spreads_2026-11-11.json`. (1) SPREADS ARE NOT THE BLOCKER: 250 Delta perps at 11:48
+UTC, median spread 0.03-0.04% for coins over $250k/day, 0.12% under $50k/day, worst 0.56%. (2) On the coins Delta
+HAD LISTED AT THE TIME (~115, 2025-26; Binance and Delta weekly returns correlate 0.998): quiet-coins +0.04%/wk
+(t 0.07) — NOT there; the earlier "+1.54% on Delta-listed coins" counted coins before Delta listed them. Five-part
+score +1.05%/wk (t 1.3; 2025 +0.44, 2026 +1.78) — unproven. (3) BASIS/FUNDING: high-funding coins out-run
+negative-funding coins by +3.1%/wk in PRICE (t 2.5) but REAL Delta funding takes −3.4%/wk (t −15): net ~0. The
+carry side (short high funding, long negative funding) nets +0.2 to +3.4%/wk across variants, positive in both years
+in most, but t <= 1.5 and drawdowns 60-80%: unproven. Nothing found today can be PROVEN on 88-97 weeks of Delta data.
+
 **FROM PUBLISHED RESEARCH (owner 2026-11-11 "read external sources, run tests in different ways").**
 `scripts/explore_lit.py`, `explore_composite.py`; `out/explore_lit.txt` (sources in its header),
 `out/explore_composite.txt`. Open exploration, Binance perps 2021-26. REPLICATES: (1) reversal lives in low-volume
