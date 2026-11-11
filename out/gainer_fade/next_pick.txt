@@ -1,0 +1,27 @@
+# scripts/fade_next_pick.py -- docs/fade_next_pick_prereg.md (run 2026-11-11)
+
+Binance 2021-2024 (JUDGED)
+days 1442; top-2 picks 2868, skipped (stop > 32.5%) 259 (9.0%)
+substitutes taken 203 (1m data for 203); slots still empty at rank 10: 72; substitute rank median 3, counts {3: 127, 4: 43, 5: 15, 6: 6, 7: 4, 8: 2, 9: 2, 10: 4}
+
+substitute trades, net R per trade before funding:
+  year       n   A mean      z   win    QUICK
+  2021      85   -0.109  -2.31   44%   -0.054
+  2022      56   +0.006  +0.12   50%   +0.016
+  2023      27   +0.113  +1.24   63%   +0.056
+  2024      35   -0.061  -0.85   49%   +0.033
+  pooled   203   -0.040  -1.35   49%   -0.005
+
+RULE (pre-registered): pooled z >= 2.0 and > 0 in >= 3/4 years -> z -1.35, 2/4 years > 0 -> FAIL
+
+Binance 2025-2026 (CONTROL, reported only)
+days 651; top-2 picks 1302, skipped (stop > 32.5%) 303 (23.3%)
+substitutes taken 300 (1m data for 300); slots still empty at rank 10: 3; substitute rank median 3, counts {3: 181, 4: 65, 5: 24, 6: 10, 7: 10, 8: 7, 9: 1, 10: 2}
+
+substitute trades, net R per trade before funding:
+  year       n   A mean      z   win    QUICK
+  2025     149   -0.020  -0.43   56%   +0.021
+  2026     151   +0.003  +0.05   50%   +0.014
+  pooled   300   -0.008  -0.22   53%   +0.017
+
+control years, NOT a verdict: pooled z >= 2.0 and > 0 in >= 2/2 years -> z -0.22, 1/2 years > 0 -> FAIL
