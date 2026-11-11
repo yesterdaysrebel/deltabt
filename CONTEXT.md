@@ -166,6 +166,21 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**FROM PUBLISHED RESEARCH (owner 2026-11-11 "read external sources, run tests in different ways").**
+`scripts/explore_lit.py`, `explore_composite.py`; `out/explore_lit.txt` (sources in its header),
+`out/explore_composite.txt`. Open exploration, Binance perps 2021-26. REPLICATES: (1) reversal lives in low-volume
+coins (Bianchi et al. 2022): 7-day reversal inside the least-traded third +1.40%/wk (t 3.9, 6/6), ~0 in the middle
+third; (2) weekly regression with seven characteristics together: log volume −0.30%/wk per SD (t −3.9, 6/6), 30-day
+volatility −0.58 (t −5.0, 6/6), 1-day volume spike −0.48 (t −5.1), 30-day return +0.38, 7-day return −0.26;
+(3) turn-of-the-candle in BTC (t 6.7) but gone since 2024 and sub-basis-point; (4) BTC 21:00-23:00 UTC +0.05%,
+under costs. COMPOSITE of the five (equal weights, nothing fitted), long top fifth / short bottom fifth weekly:
++1.48%/wk gross (t 3.8, Sharpe 1.6, 6/6 years, max drawdown 32%, worst week −27%); walk-forward weights (earlier
+weeks only) +1.03%/wk (t 3.4, 6/6); Delta-listed coins only +1.54%/wk (t 2.2, 2024 negative). COST IS THE WHOLE
+QUESTION: turnover 53%/wk -> fees alone leave +1.31%/wk, but a 1% round-trip spread leaves +0.26% (t 0.7). The
+low-volume sort alone turns over 16%/wk and keeps ~+0.9%/wk at a 1% spread. Still a LEAD: which five was chosen on
+the full sample; not seen on Delta's own data; spreads on Delta's thin coins unmeasured. Basis (premium index) data
+fetched by `scripts/explore_basis_data.py`, test pending.
+
 **WIDE EXPLORATION, ANY FAMILY — ONE LEAD (owner 2026-11-11 "not just fade ones, try any family, unpopular ones,
 invent some").** `scripts/explore_wide.py`, `out/explore_wide.txt`: ~20 cross-sectional rankings (low vol, lottery,
 skew, beta, reversal, residual reversal, momentum, near-high, illiquidity, volume surge, close location, price

@@ -1,0 +1,59 @@
+SOURCES (read 2026-11-11) for scripts/explore_lit.py -- open exploration, not a pre-registered test
+  Bianchi, Babiak & Dickerson, "Trading volume and liquidity provision in cryptocurrency markets", J. Banking & Finance 142 (2022)
+  Zaremba et al. / USQ, size, reversal and illiquidity premium in 1,160 coins; MSCI "Could factors have explained ..."; CKTZ crypto factors
+  Lee & Wang, "Variance decomposition and cryptocurrency return prediction", JFQA 60 (2025)
+  Padysak & Vojtko (Quantpedia), BTC at its 10-day maximum / minimum; BTC 22:00-24:00 UTC seasonality
+  Shanaev, Vasenin & Stepanov, "Turn-of-the-candle effect in bitcoin returns", Heliyon (2023)
+
+A. REVERSAL BY VOLUME GROUP: within a volume third, long the past losers, short the past winners (fifths)
+  1-day reversal, hold 1 d, low-volume third             n  2069  mean  +0.234%  t +4.15  |  +0.57  +0.26  +0.12  +0.08  -0.04  +0.52  <
+  1-day reversal, hold 1 d, mid-volume third             n  2069  mean  +0.133%  t +2.04  |  +0.10  +0.20  +0.13  +0.09  +0.06  +0.22
+  1-day reversal, hold 1 d, high-volume third            n  2069  mean  +0.128%  t +1.70  |  -0.01  +0.15  +0.07  +0.10  +0.30  +0.15
+  1-day reversal, hold 7 d, low-volume third             n   295  mean  +0.463%  t +1.53  |  +0.72  +0.78  +0.30  -0.31  +0.04  +1.51
+  1-day reversal, hold 7 d, mid-volume third             n   295  mean  -0.188%  t -0.52  |  -1.41  +0.08  +0.36  +0.03  -0.43  +0.11
+  1-day reversal, hold 7 d, high-volume third            n   295  mean  +0.289%  t +0.66  |  +0.36  +0.65  +1.28  +0.05  -0.08  -0.71
+  7-day reversal, hold 7 d, low-volume third             n   295  mean  +1.402%  t +3.91  |  +3.14  +1.52  +1.30  +0.62  +0.87  +1.21  <<
+  7-day reversal, hold 7 d, mid-volume third             n   295  mean  +0.211%  t +0.54  |  -0.09  +0.19  +1.07  +0.33  -1.29  +1.19
+  7-day reversal, hold 7 d, high-volume third            n   295  mean  +0.728%  t +1.86  |  +0.69  +0.95  +1.00  +0.89  -0.06  +0.93
+
+B. WEEKLY REGRESSION OF NEXT WEEK'S RETURN ON CHARACTERISTICS (each standardised across coins; coefficient
+   = % a week per one standard deviation; all entered together, so each is net of the others)
+  log 30-day volume                                      n   295  mean  -0.299%  t -3.91  |  -0.57  -0.35  -0.10  -0.09  -0.20  -0.59  <<
+  30-day volatility                                      n   295  mean  -0.575%  t -5.04  |  -0.86  -0.14  -0.32  -0.59  -0.86  -0.78  <<
+  beta to BTC                                            n   295  mean  +0.191%  t +1.75  |  +0.37  +0.03  +0.57  +0.18  +0.04  -0.06
+  past 7-day return                                      n   295  mean  -0.264%  t -2.33  |  -0.05  -0.33  -0.57  -0.34  -0.04  -0.23
+  past 30-day return                                     n   295  mean  +0.384%  t +2.89  |  +1.09  -0.14  +0.14  +0.42  +0.56  +0.33  <
+  log price                                              n   295  mean  +0.142%  t +1.77  |  +0.05  +0.20  +0.15  -0.12  +0.18  +0.44
+  1-day volume / 30-day                                  n   295  mean  -0.481%  t -5.10  |  -0.82  -0.24  -0.23  +0.01  -0.71  -1.06  <
+
+C. BTC AND THE ALT INDEX AT A NEW HIGH / LOW: next day's return, % per day
+  BTC closed at a 10-day HIGH -> next day                n   407  mean  +0.312%  t +2.21  |  +0.47  -0.27  +0.46  +0.35  -0.00  +0.11
+  BTC closed at a 10-day LOW  -> next day                n   329  mean  +0.190%  t +0.95  |  +1.30  -0.64  -0.04  +0.33  +0.20  -0.02
+  BTC closed at a 20-day HIGH -> next day                n   299  mean  +0.316%  t +1.84  |  +0.34  -0.14  +0.52  +0.41  +0.11  +0.11
+  BTC closed at a 20-day LOW  -> next day                n   211  mean  +0.143%  t +0.50  |  +1.40  -0.74  -0.01  +0.08  +0.48  -0.41
+  BTC closed at a 50-day HIGH -> next day                n   188  mean  +0.133%  t +0.62  |  -1.29  -0.14  +0.50  +0.60  +0.04  +0.20
+  BTC closed at a 50-day LOW  -> next day                n   114  mean  +0.050%  t +0.11  |  +1.66  -0.63  +0.24  +0.31  -0.06  -1.24
+  BTC all days                                           n  2159  mean  +0.110%  t +1.71  |  +0.22  -0.22  +0.28  +0.26  +0.01  -0.01
+  alt index closed at a 10-day HIGH -> next day          n   454  mean  +0.343%  t +1.99  |  +0.64  -0.14  +0.08  +0.76  -0.06  +0.35
+  alt index closed at a 10-day LOW  -> next day          n   329  mean  +0.095%  t +0.30  |  +2.48  -0.47  -0.28  -0.38  -0.08  +0.00
+  alt index closed at a 20-day HIGH -> next day          n   332  mean  +0.606%  t +2.95  |  +0.78  -0.52  +0.29  +0.97  +1.03  +0.62  <
+  alt index closed at a 20-day LOW  -> next day          n   206  mean  +0.085%  t +0.19  |  +3.33  -0.26  -0.76  -0.51  +0.04  -0.15
+  alt index closed at a 50-day HIGH -> next day          n   222  mean  +0.655%  t +2.55  |  +1.09  -0.27  +0.08  +1.00  +0.67  +0.42  <
+  alt index closed at a 50-day LOW  -> next day          n   127  mean  +0.301%  t +0.48  |  +5.63  +0.30  -0.78  -0.25  -0.27  -0.74
+  alt index all days                                     n  2100  mean  +0.068%  t +0.70  |  +0.57  -0.32  +0.26  +0.12  -0.21  +0.01
+
+D. BTC SESSIONS, % per session (a taker round trip costs ~0.10-0.16%)
+  BTC 22:00-24:00 UTC                                    n  2098  mean  +0.008%  t +0.44  |  -0.02  -0.01  +0.07  +0.03  +0.01  -0.04
+  BTC 21:00-23:00 UTC                                    n  2098  mean  +0.051%  t +2.85  |  +0.09  -0.04  +0.06  +0.11  +0.08  -0.00
+  BTC 00:00-08:00 UTC                                    n  2098  mean  -0.004%  t -0.12  |  -0.02  -0.05  +0.02  +0.06  -0.01  -0.03
+  BTC 08:00-16:00 UTC                                    n  2098  mean  +0.039%  t +1.00  |  +0.05  -0.03  +0.09  +0.09  -0.02  +0.05
+  BTC 16:00-24:00 UTC                                    n  2098  mean  +0.035%  t +0.95  |  +0.08  -0.15  +0.17  +0.09  +0.03  -0.02
+  BTC 13:00-21:00 UTC                                    n  2098  mean  -0.003%  t -0.08  |  -0.00  -0.07  +0.08  +0.02  -0.06  +0.02
+  BTC 22:00-24:00 on weekdays                            n  1498  mean  +0.005%  t +0.24  |  -0.06  +0.03  +0.08  +0.03  -0.00  -0.06
+  BTC 22:00-24:00 on weekends                            n   600  mean  +0.015%  t +0.42  |  +0.07  -0.13  +0.05  +0.04  +0.04  +0.02
+
+E. TURN OF THE CANDLE (Shanaev et al. 2023): BTC mean 1-minute return, basis points
+  minutes :00 :15 :30 :45                                n  2098  mean  +0.180bp  t +6.65  |  +0.73  +0.18  +0.12  -0.01  +0.10  -0.07
+  minute :00 of each hour                                n  2098  mean  +0.218bp  t +3.99  |  +0.84  +0.18  +0.14  +0.03  +0.23  -0.15  <
+  minutes :01 :16 :31 :46                                n  2098  mean  -0.107bp  t -5.24  |  -0.09  -0.22  -0.08  -0.06  -0.11  -0.07  <<
+  all other minutes                                      n  2098  mean  +0.001bp  t +0.18  |  -0.04  -0.01  +0.02  +0.03  +0.00  +0.01
