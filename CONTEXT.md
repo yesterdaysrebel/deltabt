@@ -166,6 +166,20 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**WIDE EXPLORATION, ANY FAMILY — ONE LEAD (owner 2026-11-11 "not just fade ones, try any family, unpopular ones,
+invent some").** `scripts/explore_wide.py`, `out/explore_wide.txt`: ~20 cross-sectional rankings (low vol, lottery,
+skew, beta, reversal, residual reversal, momentum, near-high, illiquidity, volume surge, close location, price
+level, age, range, wicks, streaks) at 1- and 7-day holds, plus calendar / market-wide ideas and BTC hour-of-day, on
+all Binance perps 2021-26 (median 194 liquid coins). ONE flag: LONG the least-traded fifth, SHORT the most-traded
+fifth (30-day volume, floor $5M/day), weekly: +1.30%/wk gross (t 3.24), positive all six years, both legs, floors
+$1M-$20M, one day late, without BTC/ETH; capped at ±25%/wk it is +1.06% (t 5.27); turnover 23%/8% a week. On coins
+Delta lists, ranked by BINANCE volume: +1.54%/wk (t 2.25, 6/6; capped +0.70%, t 2.69). On Delta's OWN volumes and
+universe (2025-26, 88 weeks, survivors only): NOT seen (+0.2%/wk, t 0.2; 2025 negative). A lead, not a result: open
+sweep, no hold-out, thin long leg (spread is the real cost), needs ~12-40 positions a side. Also noted, too small
+after fees: 1-day residual reversal (+0.09%/day, 6/6 years, costs 0.30%); new listings lag the market on days 2-7
+(−0.57%/day, t −2.2); alts beat BTC the day after BTC fell > 3% (+0.54%, t 2.4). Nothing in: low vol, lottery,
+beta, momentum, near-high, calendar, trend-following, BTC hours.
+
 **OPEN EXPLORATION — ONE LEAD, NOT A RESULT (owner 2026-11-11 "look for unpopular ideas", "run them in different
 ways instead of hard by the book").** `scripts/fade_explore_open.py`, `out/gainer_fade/explore_open.txt`: no
 pre-registration, all six Binance years at once. LEAD: take rule A only when BTC was NOT strong on D−1 (change <=
