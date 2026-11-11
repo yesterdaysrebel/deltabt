@@ -1,0 +1,39 @@
+Traceback (most recent call last):
+  File "/src/out/_fc.py", line 30, in <module>
+    eqs = d.eq; dd = 1 - eqs / eqs.cummax()
+                               ^^^^^^^^^^
+AttributeError: 'function' object has no attribute 'cummax'
+FUNDING COLLECTION, every 3 days, fifths, 1x gross: 207 periods 2025-02-13 .. 2026-10-24; ~48 liquid coins, 9 long + 9 short; turnover 31% a period
+  per period: price -0.222%  funding +0.946%  cost 0.081%  NET +0.643%
+  WIN RATE (periods net > 0): 56%   funding positive in 100% of periods; price positive in 47%
+  average winning period +3.05%, average losing period -2.43%, best +13.1%, worst -9.2%
+  $1,500 -> $4,910; worst drop 23% (bottom 2025-05-08); longest losing run 6 periods
+
+YEAR BY YEAR
+  2025: 108 periods (Feb-Dec)  win 56%  mean +0.380%  $1,500 -> $2,153 (+44%)  worst period -8.2%
+  2026: 99 periods (Jan-Oct)  win 57%  mean +0.930%  $2,153 -> $4,910 (+128%)  worst period -9.2%
+
+MONTH BY MONTH (compounded net %; win = share of 3-day periods positive)
+  2025-02    -8.3%   win  17% ( 6 periods)   $1,375
+  2025-03    +3.1%   win  50% (10 periods)   $1,418
+  2025-04   -13.4%   win  40% (10 periods)   $1,228
+  2025-05   +17.6%   win  70% (10 periods)   $1,444
+  2025-06    +1.7%   win  70% (10 periods)   $1,469
+  2025-07    +5.5%   win  64% (11 periods)   $1,550
+  2025-08   +15.7%   win  80% (10 periods)   $1,793
+  2025-09    +5.4%   win  50% (10 periods)   $1,889
+  2025-10    -1.1%   win  50% (10 periods)   $1,868
+  2025-11    -8.8%   win  30% (10 periods)   $1,704
+  2025-12   +26.4%   win  73% (11 periods)   $2,153
+  2026-01    -2.6%   win  60% (10 periods)   $2,097
+  2026-02   +15.8%   win  56% ( 9 periods)   $2,429
+  2026-03    -0.8%   win  45% (11 periods)   $2,409
+  2026-04   +23.4%   win  70% (10 periods)   $2,973
+  2026-05   +10.7%   win  70% (10 periods)   $3,290
+  2026-06   +18.8%   win  60% (10 periods)   $3,910
+  2026-07   +34.1%   win  60% (10 periods)   $5,244
+  2026-08    -8.4%   win  45% (11 periods)   $4,802
+  2026-09   +12.8%   win  60% (10 periods)   $5,417
+  2026-10    -9.4%   win  38% ( 8 periods)   $4,910
+
+  green months 13 of 21; best +34.1%, worst -13.4%; average month +6.6%

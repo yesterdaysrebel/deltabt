@@ -1,0 +1,4 @@
+simulator check vs fade_binance_test: max |diff| 0.00000 R; sets: losers 2373, weekly 3301, volsurge 3962; btc days 2098
+HOLDOUT: Binance 2024-2026; net R per trade (family 7: per day); by year 2024 2025 2026
+   0 rule A (00:00 short, 24 h)                       n 1696  mean +0.031  z +1.61  win  54%  | +0.009 +0.031 +0.065
+   1 all-account long/short: highest third            n  633  mean +0.033  z +1.17  win  57%  | +0.020 +0.018 +0.079  -> FAIL

@@ -166,6 +166,120 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**LADDER vs FUNDING COLLECTION, same window 2025-02-13 .. 2026-10-27 (owner "compare them with ladder").**
+`scripts/compare_ladder_funding.py`, `out/compare_ladder_funding.txt`, each from $1,500. Rule A ladder (as the real
+account runs): $5,315 (+254%) but 2025 −38% ($1,500 → $928) then 2026 +472%; worst drop 67%; win 57% of 983 trades;
+worst month −21%, best +120%. Ladder + skip negative funding: $2,899 (+93%), 2025 +66%, 2026 +17%, drop 42%.
+Funding collection: $4,910 (+227%), 2025 +44%, 2026 +128%, drop 23%, 13 of 20 months green, worst month −13%.
+Monthly correlation ladder vs funding +0.26; both red in 2 of 20 months; half in each: $6,267, 14/20 green, worst
+drop 20% (month-end).
+
+**ONE BACKTEST OF EVERY SURVIVOR (owner 2026-11-11 "run backtest on all of these").** `scripts/backtest_survivors.py`,
+`out/backtest_survivors.txt`. Delta prices, Delta funding, fee + live spread, no-look-ahead cut-offs, $1,500 accounts,
+2025-26 (survivor-only coin list). RULE A on Delta picks after funding: +0.045R (t 1.8; 2025 0.000, 2026 +0.085);
+$1,500 → $5,627 at 5% (worst drop 68%), $7,399 on the ladder (62%). Variants positive BOTH years: skip negative
+funding +0.057R (drop 36%), largest third +0.059, most-traded third +0.052, funding>=0 and (big or liquid) +0.072R
+(drop 42%) — all t < 1.7. Binance filter −0.001R. DELTA PORTFOLIOS: five-part score −0.79%/wk and 7-day low-volume
+reversal −1.36%/wk (both NEGATIVE on Delta); quiet coins +0.36%/wk (2025 negative). FUNDING COLLECTION is the only
+portfolio positive in both years on every version: every 3 days, fifths +0.64%/period (t 2.48, $1,500 → $4,910,
+worst drop 23%); daily thirds +0.12%/day (t 1.93, drop 30%). Binance reference 2021-26 (1x gross, costs): quiet coins
++0.61%/wk (t 3.0, 6/6), 7-day low-volume reversal +0.85%/wk (t 2.1, 6/6), five-part +0.27%/wk (t 1.7).
+
+**HOLD LONGER THAN 24 H — WORSE (owner 2026-11-11 "maybe 48h?").** `scripts/fade_hold_length.py`,
+`out/gainer_fade/hold_length.txt`. Binance 2021-26 (3,608 trades): 24 h +0.011R, 36 h +0.001, 48 h −0.003, 72 h
+−0.003 (stopped 19% → 31%). Delta's picks 2025-26 after Delta funding: 24 h +0.033R, 36 h +0.031, 48 h +0.023,
+72 h +0.018 — each day held adds stops and funding paid. 24 h stays.
+
+**AFTER THE STOP: BUY IT, OR SHORT IT AGAIN — BOTH NOTHING (owner 2026-11-11, after ARIAUSD).**
+`scripts/fade_stop_reverse.py` / `fade_stop_reshort.py`, `out/gainer_fade/stop_{reverse,reshort}.txt`. Binance 681
+stopped rule A trades 2021-26 + Delta's 156 stopped picks 2025-26. BUY at the stop (16 exit/stop variants): −0.10R to
++0.02R, best t 0.4, adds +0.004R per rule A trade; on Delta's picks +0.03R (t 0.3; 2025 −0.13). SHORT AGAIN (22
+variants: at the stop, after 1 h / 4 h, once back under the old stop, 0.5 ATR off the high, next day): −0.07R to
++0.04R, best t 1.05, positive 2021-24 but negative 2025-26; on Delta's picks −0.10R to 0.00R. After a stop the price
+is a coin flip either way.
+
+**DELTA-NATIVE READINGS ON DELTA'S OWN PICKS (owner 2026-11-11 "how to improve edge then?").**
+`scripts/fade_delta_picks.py`, `out/gainer_fade/delta_picks.txt`: 1,022 picks 2025-26, Binance 1m prices, Delta's
+real funding. Rule A +0.046R before funding, funding −0.013R (shorts on gainers mostly PAY), +0.033R after (2025
+−0.010, 2026 +0.085). Readings consistent in BOTH years (exploratory, small): skip when D−1 Delta funding < 0
+(+0.050 / +0.043, keeps 46%); largest third of pumps (+0.086 / +0.087, z 1.8); highest third of D−1 Delta turnover
+(+0.055 / +0.057). None significant; candidates for the forward record, not rules.
+**FUNDING-SETTLEMENT CAPTURE — FAILS (owner "focus on futures").** `scripts/explore_settle_data.py` +
+`explore_settle.py`, `out/explore_settle.txt`: 5,173 Delta settlements with |rate| >= 0.25% an hour before (2024-26;
+80% negative funding = longs paid). Holding the paid side across the stamp: funding +0.45% but price moves −0.21% in
+the settlement minute itself and spreads cost ~0.14%: net −0.08% to −0.17% for every entry/exit tested (t −2 to −7);
+longs −0.19%, shorts +0.05% (t 0.3). The market prices the payment in at the stamp.
+
+**RULE A SKIP FILTER — DO NOT DEPLOY (owner 2026-11-11 "how to improve its edge", "run tests / backtests with the
+rule").** `scripts/fade_filter_tests.py`, `out/gainer_fade/filter_tests.txt`. Filter: skip a pick if BTC rose
+> +0.87% on D−1 or the coin's D−1 Binance taker-buy share > 0.5095. On BINANCE's picks it is strong: kept −
+skipped +0.107R over 2021-26, positive in all six years; walk-forward cut-offs (earlier picks only) kept +0.071R vs
+skipped −0.024R (z 3.97); smooth across cut-offs; account from $1,500 better in every year (e.g. 2023 ladder $426 →
+$8,923). On DELTA'S OWN picks 2025-26 (1,022 trades on the same coins' Binance 1m prices): REVERSED — kept +0.008R,
+skipped +0.101R (z −2.09; 2025 −0.110, 2026 −0.071); a random subset beats the kept set 98% of the time. Delta's
+top gainers are a different set (Delta-only rankings, its own volumes). Live rule unchanged.
+
+**FAST CHECKS ON DELTA ITSELF (owner 2026-11-11 "I don't have couple of weeks, we need to prove working strategy
+soon").** `scripts/explore_delta_costed.py`, `explore_basis.py`, `explore_delta_basis.py`; outputs `out/explore_*.txt`,
+live spread snapshot `out/delta_spreads_2026-11-11.json`. (1) SPREADS ARE NOT THE BLOCKER: 250 Delta perps at 11:48
+UTC, median spread 0.03-0.04% for coins over $250k/day, 0.12% under $50k/day, worst 0.56%. (2) On the coins Delta
+HAD LISTED AT THE TIME (~115, 2025-26; Binance and Delta weekly returns correlate 0.998): quiet-coins +0.04%/wk
+(t 0.07) — NOT there; the earlier "+1.54% on Delta-listed coins" counted coins before Delta listed them. Five-part
+score +1.05%/wk (t 1.3; 2025 +0.44, 2026 +1.78) — unproven. (3) BASIS/FUNDING: high-funding coins out-run
+negative-funding coins by +3.1%/wk in PRICE (t 2.5) but REAL Delta funding takes −3.4%/wk (t −15): net ~0. The
+carry side (short high funding, long negative funding) nets +0.2 to +3.4%/wk across variants, positive in both years
+in most, but t <= 1.5 and drawdowns 60-80%: unproven. Nothing found today can be PROVEN on 88-97 weeks of Delta data.
+
+**FROM PUBLISHED RESEARCH (owner 2026-11-11 "read external sources, run tests in different ways").**
+`scripts/explore_lit.py`, `explore_composite.py`; `out/explore_lit.txt` (sources in its header),
+`out/explore_composite.txt`. Open exploration, Binance perps 2021-26. REPLICATES: (1) reversal lives in low-volume
+coins (Bianchi et al. 2022): 7-day reversal inside the least-traded third +1.40%/wk (t 3.9, 6/6), ~0 in the middle
+third; (2) weekly regression with seven characteristics together: log volume −0.30%/wk per SD (t −3.9, 6/6), 30-day
+volatility −0.58 (t −5.0, 6/6), 1-day volume spike −0.48 (t −5.1), 30-day return +0.38, 7-day return −0.26;
+(3) turn-of-the-candle in BTC (t 6.7) but gone since 2024 and sub-basis-point; (4) BTC 21:00-23:00 UTC +0.05%,
+under costs. COMPOSITE of the five (equal weights, nothing fitted), long top fifth / short bottom fifth weekly:
++1.48%/wk gross (t 3.8, Sharpe 1.6, 6/6 years, max drawdown 32%, worst week −27%); walk-forward weights (earlier
+weeks only) +1.03%/wk (t 3.4, 6/6); Delta-listed coins only +1.54%/wk (t 2.2, 2024 negative). COST IS THE WHOLE
+QUESTION: turnover 53%/wk -> fees alone leave +1.31%/wk, but a 1% round-trip spread leaves +0.26% (t 0.7). The
+low-volume sort alone turns over 16%/wk and keeps ~+0.9%/wk at a 1% spread. Still a LEAD: which five was chosen on
+the full sample; not seen on Delta's own data; spreads on Delta's thin coins unmeasured. Basis (premium index) data
+fetched by `scripts/explore_basis_data.py`, test pending.
+
+**WIDE EXPLORATION, ANY FAMILY — ONE LEAD (owner 2026-11-11 "not just fade ones, try any family, unpopular ones,
+invent some").** `scripts/explore_wide.py`, `out/explore_wide.txt`: ~20 cross-sectional rankings (low vol, lottery,
+skew, beta, reversal, residual reversal, momentum, near-high, illiquidity, volume surge, close location, price
+level, age, range, wicks, streaks) at 1- and 7-day holds, plus calendar / market-wide ideas and BTC hour-of-day, on
+all Binance perps 2021-26 (median 194 liquid coins). ONE flag: LONG the least-traded fifth, SHORT the most-traded
+fifth (30-day volume, floor $5M/day), weekly: +1.30%/wk gross (t 3.24), positive all six years, both legs, floors
+$1M-$20M, one day late, without BTC/ETH; capped at ±25%/wk it is +1.06% (t 5.27); turnover 23%/8% a week. On coins
+Delta lists, ranked by BINANCE volume: +1.54%/wk (t 2.25, 6/6; capped +0.70%, t 2.69). On Delta's OWN volumes and
+universe (2025-26, 88 weeks, survivors only): NOT seen (+0.2%/wk, t 0.2; 2025 negative). A lead, not a result: open
+sweep, no hold-out, thin long leg (spread is the real cost), needs ~12-40 positions a side. Also noted, too small
+after fees: 1-day residual reversal (+0.09%/day, 6/6 years, costs 0.30%); new listings lag the market on days 2-7
+(−0.57%/day, t −2.2); alts beat BTC the day after BTC fell > 3% (+0.54%, t 2.4). Nothing in: low vol, lottery,
+beta, momentum, near-high, calendar, trend-following, BTC hours.
+
+**OPEN EXPLORATION — ONE LEAD, NOT A RESULT (owner 2026-11-11 "look for unpopular ideas", "run them in different
+ways instead of hard by the book").** `scripts/fade_explore_open.py`, `out/gainer_fade/explore_open.txt`: no
+pre-registration, all six Binance years at once. LEAD: take rule A only when BTC was NOT strong on D−1 (change <=
++0.87%) AND the pump was NOT buyer-driven (D−1 taker-buy share <= 0.5095); cut-offs from 2021-23. On 2024-26: kept
+49% of trades, +0.062R (z 2.36; +0.029 / +0.075 / +0.109) vs skipped +0.001R; kept − skipped +0.061R (z 1.59); a
+random half does as well 5% of the time. Suggestive, not proven. Weaker leads: gainers fall 08:00-09:00 UTC (+0.20%
+of price, 6/6 years, before fees) and 13:00-14:00; a first-hour spike that gives half back (+0.10R, 5/6). Nothing in:
+re-shorting after a stop, repeat picks, day of week. To confirm the lead the only clean data is FORWARD: tag each
+paper pick with the two readings and compare kept vs skipped (not built).
+
+**SECOND IDEA SEARCH — 13 FAMILIES — FAIL (owner 2026-11-11 "search all").** Pre-registered
+(`docs/fade_families_prereg.md`; `scripts/fade_families_data.py` + `fade_families_search.py`;
+`out/gainer_fade/families_{dev,holdout}.txt`). Binance 2021-23, ~45 variants: crowding (funding, taker-buy share,
+open interest, long/short ratios), spot vs futures, coin age, BTC hedge, long the losers (−0.025R, z −2.73), the
+pair, long the gainers, weekly gainers (−0.040R, z −3.16), BTC's D−1 move, volume-surge picks, scaling in, time-of-day
+exits. Liquidations: NOT TESTABLE (no archive). ONE qualifier under the rule: rule A only when the all-account
+long/short ratio is in its highest third (dev +0.102R, z 4.27; lowest third −0.117R). HOLD-OUT 2024-26: +0.033R,
+z 1.17 vs rule A's +0.031R — FAIL (bar z 2.70 and above rule A). Dev-only patterns, NOT confirmed: fading works less
+after BTC rose (highest third −0.087R) and when taker-buy share is high (−0.083R). The hold-out has now judged three
+candidates; further searches on it are worth little. Live rule unchanged.
+
 **IDEA SEARCH — entry timing / condition / hold / pump shape — FAIL (owner 2026-11-11 "I would challenge on no
 edge").** Pre-registered (`docs/fade_idea_search_prereg.md`, `scripts/fade_idea_paths.py` + `fade_idea_search.py`,
 `out/gainer_fade/idea_search_{dev,holdout}.txt`; 1m simulator matches fade_binance_test to 0.00000R). ~40 variants on

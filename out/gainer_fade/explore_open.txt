@@ -1,0 +1,88 @@
+/src/scripts/fade_explore_open.py:99: Pandas4Warning: Series.dt.dayofweek is deprecated and will be removed in a future version. Use Series.dt.day_of_week instead.
+  dow = pd.to_datetime(p.time, unit="s").dt.dayofweek.to_numpy()
+OPEN EXPLORATION (not a test). Binance 2021-2026, rule A's picks. '<<' = positive every year and z >= 3;
+'<' = positive in all but one year and z >= 2.5. Years: 2021 2022 2023 2024 2025 2026
+  rule A (00:00 short, 24 h)                           n 3608  mean +0.011R  z +0.98  4/6 yrs  | -0.018 +0.036 -0.035 +0.009 +0.031 +0.065
+
+1. HOUR BY HOUR: the short's gain per hour, % of price, before fees (a round trip costs ~0.10-0.16%)
+  00:00-01:00 UTC                                      n 3608  mean +0.113%  z +1.26  5/6 yrs  | -0.413 +0.440 +0.008 +0.068 +0.403 +0.197
+  01:00-02:00 UTC                                      n 3608  mean +0.033%  z +0.47  3/6 yrs  | -0.032 +0.205 -0.057 +0.040 +0.107 -0.086
+  02:00-03:00 UTC                                      n 3608  mean -0.053%  z -0.77  3/6 yrs  | -0.167 -0.158 +0.007 -0.168 +0.050 +0.196
+  03:00-04:00 UTC                                      n 3608  mean +0.049%  z +0.77  4/6 yrs  | +0.222 -0.064 +0.055 +0.090 -0.103 +0.103
+  04:00-05:00 UTC                                      n 3608  mean -0.027%  z -0.43  3/6 yrs  | -0.067 +0.035 -0.008 +0.103 +0.074 -0.421
+  05:00-06:00 UTC                                      n 3608  mean +0.057%  z +0.85  4/6 yrs  | -0.220 +0.009 +0.121 -0.012 +0.066 +0.470
+  06:00-07:00 UTC                                      n 3608  mean -0.013%  z -0.21  2/6 yrs  | -0.220 +0.267 +0.051 -0.179 -0.002 -0.001
+  07:00-08:00 UTC                                      n 3608  mean +0.039%  z +0.65  3/6 yrs  | +0.079 -0.045 -0.088 +0.001 -0.040 +0.464
+  08:00-09:00 UTC                                      n 3608  mean +0.198%  z +2.72  6/6 yrs  | +0.169 +0.066 +0.118 +0.247 +0.230 +0.433  <
+  09:00-10:00 UTC                                      n 3608  mean -0.001%  z -0.01  4/6 yrs  | -0.056 +0.036 +0.054 +0.039 +0.063 -0.207
+  10:00-11:00 UTC                                      n 3608  mean -0.089%  z -1.67  1/6 yrs  | -0.106 +0.008 -0.014 -0.004 -0.357 -0.129
+  11:00-12:00 UTC                                      n 3608  mean -0.072%  z -1.33  2/6 yrs  | +0.082 +0.039 -0.009 -0.125 -0.210 -0.276
+  12:00-13:00 UTC                                      n 3608  mean +0.058%  z +1.06  5/6 yrs  | +0.063 +0.121 +0.077 -0.044 +0.055 +0.093
+  13:00-14:00 UTC                                      n 3608  mean +0.162%  z +3.09  5/6 yrs  | -0.001 +0.081 +0.140 +0.101 +0.402 +0.317  <
+  14:00-15:00 UTC                                      n 3608  mean +0.078%  z +1.38  5/6 yrs  | +0.021 +0.047 +0.063 +0.185 -0.234 +0.437
+  15:00-16:00 UTC                                      n 3608  mean +0.039%  z +0.67  3/6 yrs  | +0.001 -0.122 -0.043 -0.054 +0.205 +0.384
+  16:00-17:00 UTC                                      n 3608  mean -0.025%  z -0.44  2/6 yrs  | +0.169 -0.047 -0.063 +0.083 -0.176 -0.164
+  17:00-18:00 UTC                                      n 3608  mean -0.044%  z -0.83  2/6 yrs  | +0.065 +0.100 -0.120 -0.019 -0.186 -0.135
+  18:00-19:00 UTC                                      n 3608  mean -0.064%  z -1.30  3/6 yrs  | +0.096 -0.003 -0.269 +0.055 -0.310 +0.086
+  19:00-20:00 UTC                                      n 3608  mean -0.000%  z -0.00  3/6 yrs  | -0.267 +0.026 -0.013 +0.212 +0.182 -0.232
+  20:00-21:00 UTC                                      n 3608  mean -0.001%  z -0.01  5/6 yrs  | +0.159 -0.537 +0.099 +0.094 +0.098 +0.139
+  21:00-22:00 UTC                                      n 3608  mean -0.071%  z -1.55  2/6 yrs  | -0.089 +0.001 +0.023 -0.096 -0.039 -0.295
+  22:00-23:00 UTC                                      n 3608  mean -0.023%  z -0.46  1/6 yrs  | -0.143 -0.001 -0.042 -0.011 +0.093 -0.033
+  23:00-24:00 UTC                                      n 3608  mean +0.040%  z +0.82  5/6 yrs  | +0.096 +0.175 +0.058 -0.095 +0.004 +0.000
+
+2. RE-SHORT AFTER A STOP (rule A trade stopped at minute s; short again later, 2xATR stop above the new entry)
+  (681 stopped trades)
+  re-short +1 min, to day end                          n  676  mean +0.001R  z +0.03  4/6 yrs  | +0.011 +0.051 +0.129 +0.109 -0.086 -0.112
+  re-short +1 h, to day end                            n  664  mean +0.020R  z +0.62  4/6 yrs  | +0.006 +0.142 +0.148 +0.107 -0.065 -0.093
+  re-short +4 h, to day end                            n  636  mean +0.021R  z +0.66  5/6 yrs  | +0.087 +0.114 +0.105 +0.040 -0.176 +0.030
+  re-short +1 h, to 48 h                               n  681  mean -0.029R  z -0.70  2/6 yrs  | -0.064 +0.150 -0.003 +0.152 -0.116 -0.138
+  re-short +1 h, to 72 h                               n  681  mean -0.043R  z -0.96  3/6 yrs  | -0.152 +0.141 +0.002 +0.159 -0.122 -0.145
+  re-short once back under the old stop, to 48 h       n  573  mean +0.039R  z +0.88  4/6 yrs  | +0.003 +0.184 +0.044 +0.304 -0.100 -0.043
+
+3. REPEAT PICKS (the coin was also a top-2 pick the day before)
+  first day in the top 2                               n 3355  mean +0.016R  z +1.36  4/6 yrs  | -0.011 +0.039 -0.019 +0.017 +0.021 +0.061
+    ... LONG instead                                   n 3355  mean -0.028R  z -1.68  1/6 yrs  | -0.009 -0.060 -0.024 -0.049 +0.001 -0.019
+  second day running                                   n  226  mean -0.043R  z -0.73  2/6 yrs  | -0.089 -0.035 -0.207 -0.087 +0.171 +0.137
+    ... LONG instead                                   n  226  mean +0.002R  z +0.03  2/6 yrs  | -0.004 -0.004 -0.065 -0.083 +0.142 +0.126
+  third day or more                                    n   27  (too few)
+    ... LONG instead                                   n   27  (too few)
+
+4. DAY OF WEEK (the day the short is held)
+  Mon                                                  n  513  mean +0.016R  z +0.53  4/6 yrs  | +0.078 -0.092 -0.036 +0.093 +0.023 +0.053
+  Tue                                                  n  512  mean +0.040R  z +1.23  4/6 yrs  | -0.030 +0.069 +0.005 +0.018 -0.009 +0.245
+  Wed                                                  n  509  mean +0.035R  z +1.16  5/6 yrs  | -0.035 +0.061 +0.025 +0.006 +0.056 +0.123
+  Thu                                                  n  521  mean +0.034R  z +1.07  4/6 yrs  | -0.127 +0.041 +0.082 -0.004 +0.092 +0.132
+  Fri                                                  n  516  mean -0.030R  z -1.05  2/6 yrs  | -0.030 +0.038 -0.120 -0.047 +0.014 -0.009
+  Sat                                                  n  517  mean +0.011R  z +0.38  3/6 yrs  | -0.006 +0.048 -0.027 +0.001 -0.017 +0.082
+  Sun                                                  n  520  mean -0.026R  z -0.86  4/6 yrs  | +0.025 +0.089 -0.172 +0.002 +0.061 -0.176
+  Sat+Sun                                              n 1037  mean -0.008R  z -0.38  4/6 yrs  | +0.010 +0.069 -0.100 +0.001 +0.022 -0.046
+  Mon-Fri                                              n 2571  mean +0.019R  z +1.38  4/6 yrs  | -0.030 +0.022 -0.009 +0.012 +0.035 +0.110
+
+5. REGIME (cut-offs from all years -- exploratory)
+  short: BTC NOT in its top third yesterday            n 2405  mean +0.034R  z +2.47  5/6 yrs  | +0.040 +0.072 -0.009 +0.011 +0.039 +0.069
+  short: taker-buy share NOT in its top third          n 2405  mean +0.037R  z +2.75  5/6 yrs  | -0.018 +0.093 +0.038 +0.013 +0.056 +0.091  <
+  short: neither of the two                            n 1616  mean +0.065R  z +4.00  6/6 yrs  | +0.041 +0.138 +0.060 +0.027 +0.071 +0.093  <<
+  short: neither, and most accounts long               n  635  mean +0.099R  z +4.06  6/6 yrs  | +0.289 +0.203 +0.114 +0.034 +0.064 +0.083  <<
+  LONG: BTC in its top third yesterday                 n 1203  mean +0.058R  z +1.72  4/6 yrs  | +0.131 +0.053 -0.017 -0.057 +0.125 +0.200
+  LONG: taker-buy share in its top third               n 1203  mean +0.080R  z +2.33  4/6 yrs  | -0.031 +0.018 +0.104 -0.051 +0.190 +0.217
+  LONG: both                                           n  414  mean +0.162R  z +2.20  5/6 yrs  | +0.075 +0.163 +0.077 -0.137 +0.371 +0.560
+  LONG: fewest accounts long                           n 1013  mean +0.074R  z +1.91  4/5 yrs  |    n/a +0.057 +0.024 -0.027 +0.227 +0.118
+  flip: short unless BTC top third, then long          n 3608  mean +0.042R  z +2.89  4/6 yrs  | +0.077 +0.066 -0.011 -0.014 +0.065 +0.108
+
+6. FIRST HOUR SHAPE (at 01:00, vs the 00:00 open, in stop distances) -> short from 01:00 to day end
+  spiked >= 0.25 then gave half back                   n  382  mean +0.102R  z +2.38  5/6 yrs  | -0.008 +0.030 +0.251 +0.127 +0.123 +0.065
+  spiked >= 0.25 and still at the high                 n  153  mean +0.106R  z +1.47  2/4 yrs  | +0.159    n/a    n/a -0.073 -0.303 +0.395
+  flat first hour (|move| < 0.05)                      n  941  mean +0.012R  z +0.66  4/6 yrs  | +0.046 +0.037 -0.049 -0.044 +0.056 +0.144
+  down >= 0.25 in the first hour                       n  359  mean -0.026R  z -0.60  2/6 yrs  | -0.047 -0.141 -0.115 -0.010 +0.027 +0.043
+
+CLEAN CHECK OF THE REGIME LEAD (2026-11-11; cut-offs from 2021-23 only: BTC D-1 change > +0.87% = strong;
+D-1 taker-buy share > 0.5095 = buyer-driven; KEPT = neither)
+  2021-23 (where the patterns were seen): all -0.006R (n 1912)
+    KEPT    n 860 (45%)  +0.075R  z +4.09  win 63%  | 2021 +0.045  2022 +0.125  2023 +0.067
+    SKIPPED n 1052       -0.073R  z -3.97           | 2021 -0.088  2022 -0.014  2023 -0.126
+  2024-26 (not used to find them): all +0.031R (n 1696)
+    KEPT    n 823 (49%)  +0.062R  z +2.36  win 57%  | 2024 +0.029  2025 +0.075  2026 +0.109
+    SKIPPED n 873        +0.001R  z +0.05           | 2024 -0.012  2025 -0.009  2026 +0.030
+    kept minus skipped +0.061R, z +1.59; random subsets of the same size at least this good and positive
+    every year: 5.0%; each condition alone: BTC not strong +0.037R (z 1.57), not buyer-driven +0.045R (z 2.08)
+  STATUS: a LEAD, not a result -- found by open exploration, the hold-out had already been used three times.

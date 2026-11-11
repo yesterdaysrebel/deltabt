@@ -1,0 +1,29 @@
+EQUAL-WEIGHT SCORE (nothing fitted): long the top fifth, short the bottom fifth, weekly, gross
+  low volume                                         n 295  +1.298%/wk  t +3.24  Sharpe +1.36  maxDD  27%  worst  -20.5%  turn  16% | +2.49 +1.19 +0.53 +0.21 +0.79 +3.14  <<
+  low volatility                                     n 295  -0.197%/wk  t -0.53  Sharpe -0.22  maxDD  75%  worst  -31.2%  turn  22% | -0.97 +0.64 -0.54 +0.04 +0.21 -0.80
+  no volume spike                                    n 295  +0.701%/wk  t +1.92  Sharpe +0.81  maxDD  55%  worst  -34.7%  turn  63% | +0.70 +0.45 +0.54 -0.69 +0.33 +3.41
+  low volume + low volatility                        n 295  +0.812%/wk  t +2.05  Sharpe +0.86  maxDD  35%  worst  -20.5%  turn  21% | +0.42 +1.35 +0.37 +0.41 +0.34 +2.21
+  low volume + no spike                              n 295  +1.395%/wk  t +3.56  Sharpe +1.49  maxDD  39%  worst  -33.6%  turn  39% | +1.48 +1.39 +1.06 +0.24 +0.92 +3.77  <<
+  volume + volatility + spike                        n 295  +1.226%/wk  t +3.17  Sharpe +1.33  maxDD  26%  worst  -21.0%  turn  35% | +1.40 +1.60 +0.81 +0.07 +0.84 +3.04  <<
+  all five (+ 30-day momentum, 7-day reversal)       n 295  +1.478%/wk  t +3.83  Sharpe +1.61  maxDD  32%  worst  -26.8%  turn  53% | +1.15 +1.30 +0.81 +0.51 +1.18 +4.46  <<
+
+ALL FIVE, DIFFERENT WAYS
+  coin moves capped at +-25%                         n 295  +1.643%/wk  t +8.90  Sharpe +3.74  maxDD  12%  worst   -6.6%  turn  53% | +2.72 +1.16 +1.15 +1.11 +1.45 +2.63  <<
+  entered one day late                               n 295  +1.505%/wk  t +3.10  Sharpe +1.30  maxDD  30%  worst  -24.8%  turn  53% | +1.18 +0.97 +0.79 +0.89 +1.05 +4.75  <<
+  thirds                                             n 295  +0.915%/wk  t +3.43  Sharpe +1.44  maxDD  23%  worst  -21.0%  turn  40% | +0.53 +0.71 +0.52 +0.39 +0.89 +2.76  <<
+  tenths                                             n 295  +1.907%/wk  t +4.33  Sharpe +1.82  maxDD  43%  worst  -26.4%  turn  66% | +3.12 +1.28 +1.33 +0.55 +2.23 +3.43  <<
+  floor $1M                                          n 295  +1.027%/wk  t +3.53  Sharpe +1.48  maxDD  32%  worst  -26.8%  turn  51% | +1.15 +1.23 +0.88 +0.65 +1.04 +1.29  <<
+  floor $20M                                         n 295  +1.333%/wk  t +3.48  Sharpe +1.46  maxDD  32%  worst  -26.8%  turn  56% | +1.26 +0.68 +0.75 +0.96 +2.18 +2.37  <<
+  floor $50M                                         n 295  +0.900%/wk  t +1.67  Sharpe +0.70  maxDD  60%  worst  -31.0%  turn  58% | -0.11 +0.91 +0.99 -0.44 +2.78 +1.19
+  net of fees at 53% weekly turnover                 n 295  +1.309%/wk  t +3.39  Sharpe +1.42  maxDD  33%  worst  -26.9% | +0.98 +1.13 +0.64 +0.34 +1.01 +4.29  <<
+  net of fees AND a 1% round-trip spread             n 295  +0.255%/wk  t +0.66  Sharpe +0.28  maxDD  73%  worst  -28.0% | -0.07 +0.07 -0.41 -0.72 -0.04 +3.24
+
+WALK-FORWARD WEIGHTS (each week's weights = the average regression coefficients of EARLIER weeks only)
+  all five, walk-forward                             n 269  +1.032%/wk  t +3.35  Sharpe +1.47  maxDD  27%  worst  -21.5%  turn  48% | +1.92 +0.56 +0.65 +0.39 +1.26 +2.23  <<
+  all five, walk-forward, capped +-25%               n 269  +1.398%/wk  t +7.27  Sharpe +3.20  maxDD  13%  worst   -6.6%  turn  48% | +2.06 +0.74 +0.99 +0.97 +1.61 +2.71  <<
+
+ONLY COINS DELTA LISTS TODAY (199; ranked on Binance data)
+  all five, equal weight                             n 286  +1.544%/wk  t +2.15  Sharpe +0.92  maxDD  66%  worst  -45.9%  turn  54% | +1.37 +0.83 +0.21 -0.38 +1.71 +6.33
+  all five, equal weight, capped +-25%               n 286  +1.335%/wk  t +5.41  Sharpe +2.31  maxDD  20%  worst  -10.5%  turn  54% | +2.35 +0.83 +0.66 +0.75 +1.49 +2.16  <<
+  all five, thirds                                   n 286  +0.985%/wk  t +2.07  Sharpe +0.88  maxDD  39%  worst  -31.3%  turn  42% | +0.11 +0.56 -0.05 +0.48 +0.97 +4.29
+  all five, walk-forward                             n 260  +1.396%/wk  t +2.91  Sharpe +1.30  maxDD  60%  worst  -40.3%  turn  47% | +2.34 +0.58 +0.63 -0.47 +2.49 +3.78  <
