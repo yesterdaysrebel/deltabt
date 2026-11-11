@@ -166,6 +166,17 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**ONE BACKTEST OF EVERY SURVIVOR (owner 2026-11-11 "run backtest on all of these").** `scripts/backtest_survivors.py`,
+`out/backtest_survivors.txt`. Delta prices, Delta funding, fee + live spread, no-look-ahead cut-offs, $1,500 accounts,
+2025-26 (survivor-only coin list). RULE A on Delta picks after funding: +0.045R (t 1.8; 2025 0.000, 2026 +0.085);
+$1,500 → $5,627 at 5% (worst drop 68%), $7,399 on the ladder (62%). Variants positive BOTH years: skip negative
+funding +0.057R (drop 36%), largest third +0.059, most-traded third +0.052, funding>=0 and (big or liquid) +0.072R
+(drop 42%) — all t < 1.7. Binance filter −0.001R. DELTA PORTFOLIOS: five-part score −0.79%/wk and 7-day low-volume
+reversal −1.36%/wk (both NEGATIVE on Delta); quiet coins +0.36%/wk (2025 negative). FUNDING COLLECTION is the only
+portfolio positive in both years on every version: every 3 days, fifths +0.64%/period (t 2.48, $1,500 → $4,910,
+worst drop 23%); daily thirds +0.12%/day (t 1.93, drop 30%). Binance reference 2021-26 (1x gross, costs): quiet coins
++0.61%/wk (t 3.0, 6/6), 7-day low-volume reversal +0.85%/wk (t 2.1, 6/6), five-part +0.27%/wk (t 1.7).
+
 **HOLD LONGER THAN 24 H — WORSE (owner 2026-11-11 "maybe 48h?").** `scripts/fade_hold_length.py`,
 `out/gainer_fade/hold_length.txt`. Binance 2021-26 (3,608 trades): 24 h +0.011R, 36 h +0.001, 48 h −0.003, 72 h
 −0.003 (stopped 19% → 31%). Delta's picks 2025-26 after Delta funding: 24 h +0.033R, 36 h +0.031, 48 h +0.023,
