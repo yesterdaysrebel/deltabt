@@ -86,3 +86,4 @@ core.*
 # them belong in commit messages and docs; the per-trade record does not belong
 # on a public remote.
 out/manual/
+out/binance_paths/
