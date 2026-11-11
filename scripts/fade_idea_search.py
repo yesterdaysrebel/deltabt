@@ -91,7 +91,10 @@ def variants(p, hi, cl):
 
 
 #: Filled in after `dev`, BEFORE `holdout` is ever run (docs/fade_idea_search_prereg.md).
-CANDIDATES: list[str] = []
+CANDIDATES: list[str] = [                                          # frozen 2026-11-11 from the dev run
+    "enter +2 h if UP >= 0.25 stop",                                 # dev z +4.05, n 216, +0.153/+0.115/+0.277
+    "enter +1 h if UP >= 0.10 stop",                                 # dev z +3.71, n 394, +0.027/+0.114/+0.245
+]
 
 
 def main() -> None:

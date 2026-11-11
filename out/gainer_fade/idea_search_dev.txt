@@ -1,0 +1,38 @@
+simulator check vs fade_binance_test: 3608 trades, max |diff| 0.00000 R
+DEV: Binance 2021-2023, 1912 rule A picks; net R per trade, by year: 2021 2022 2023
+  A baseline (00:00, 24 h)                     n 1912 (100%)  mean -0.006  z -0.49  win  58%  | -0.018 +0.036 -0.035
+  enter +1 h, to day end                       n 1912 (100%)  mean +0.002  z +0.17  win  58%  | -0.009 +0.018 -0.003
+  enter +2 h, to day end                       n 1912 (100%)  mean +0.000  z +0.03  win  58%  | +0.007 -0.000 -0.004
+  enter +4 h, to day end                       n 1912 (100%)  mean +0.005  z +0.41  win  57%  | -0.005 +0.019 +0.000
+  enter +8 h, to day end                       n 1912 (100%)  mean +0.008  z +0.72  win  57%  | +0.012 +0.015 -0.003
+  enter +12 h, to day end                      n 1912 (100%)  mean +0.000  z +0.04  win  56%  | +0.010 +0.007 -0.013
+  enter +1 h if already DOWN >= 0.10 stop      n  551 ( 29%)  mean -0.055  z -2.22  win  55%  | -0.058 -0.053 -0.055
+  enter +1 h if already DOWN >= 0.25 stop      n  145 (  8%)  mean -0.099  z -1.73  win  54%  | -0.047 -0.141 -0.115
+  enter +1 h if UP >= 0.10 stop                n  394 ( 21%)  mean +0.124  z +3.71  win  64%  | +0.027 +0.114 +0.245
+  enter +1 h if UP >= 0.25 stop                n  159 (  8%)  mean +0.194  z +3.19  win  68%  | +0.050 +0.162 +0.437
+  enter +1 h if UP >= 0.50 stop                n   50 (  3%)  mean +0.264  z +1.89  win  68%  | -0.003    n/a +0.711
+  enter +2 h if already DOWN >= 0.10 stop      n  653 ( 34%)  mean -0.042  z -2.05  win  56%  | -0.047 -0.019 -0.062
+  enter +2 h if already DOWN >= 0.25 stop      n  216 ( 11%)  mean -0.063  z -1.63  win  58%  | -0.040 -0.020 -0.116
+  enter +2 h if UP >= 0.10 stop                n  445 ( 23%)  mean +0.105  z +3.29  win  64%  | +0.090 +0.039 +0.159
+  enter +2 h if UP >= 0.25 stop                n  216 ( 11%)  mean +0.193  z +4.05  win  69%  | +0.153 +0.115 +0.277
+  enter +2 h if UP >= 0.50 stop                n   70 (  4%)  mean +0.207  z +2.35  win  69%  | +0.224 +0.051 +0.268
+  enter +4 h if already DOWN >= 0.10 stop      n  732 ( 38%)  mean -0.002  z -0.12  win  56%  | -0.051 +0.020 +0.017
+  enter +4 h if already DOWN >= 0.25 stop      n  307 ( 16%)  mean -0.029  z -0.91  win  55%  | -0.075 -0.058 +0.043
+  enter +4 h if UP >= 0.10 stop                n  486 ( 25%)  mean +0.045  z +1.53  win  63%  | +0.070 +0.036 +0.027
+  enter +4 h if UP >= 0.25 stop                n  260 ( 14%)  mean +0.086  z +2.05  win  63%  | +0.138 +0.112 +0.018
+  enter +4 h if UP >= 0.50 stop                n   99 (  5%)  mean +0.162  z +2.04  win  68%  | +0.265 +0.124 +0.083
+  enter +8 h if already DOWN >= 0.10 stop      n  834 ( 44%)  mean -0.006  z -0.44  win  56%  | -0.026 +0.012 -0.008
+  enter +8 h if already DOWN >= 0.25 stop      n  438 ( 23%)  mean -0.017  z -0.84  win  53%  | -0.038 -0.005 -0.011
+  enter +8 h if UP >= 0.10 stop                n  546 ( 29%)  mean +0.034  z +1.32  win  61%  | +0.066 -0.007 +0.031
+  enter +8 h if UP >= 0.25 stop                n  332 ( 17%)  mean +0.088  z +2.64  win  62%  | +0.106 +0.056 +0.089
+  enter +8 h if UP >= 0.50 stop                n  163 (  9%)  mean +0.079  z +1.41  win  61%  | +0.107 +0.083 +0.048
+  hold 48 h                                    n 1912 (100%)  mean -0.023  z -1.43  win  55%  | -0.071 +0.058 -0.057
+  hold 72 h                                    n 1912 (100%)  mean -0.030  z -1.65  win  53%  | -0.109 +0.082 -0.067
+  skip a day: enter D+1 00:00, 24 h            n 1912 (100%)  mean -0.039  z -3.42  win  53%  | -0.071 +0.004 -0.053
+  D+1 00:00 if D closed UP                     n  749 ( 39%)  mean -0.052  z -2.48  win  54%  | -0.063 +0.036 -0.117
+  D+1 00:00 if D closed DOWN                   n 1163 ( 61%)  mean -0.031  z -2.34  win  52%  | -0.077 -0.014 -0.009
+  pump size: smallest third                    n  638 ( 33%)  mean +0.016  z +0.89  win  57%  | -0.022 +0.077 -0.041
+  pump size: middle third                      n  637 ( 33%)  mean +0.024  z +1.16  win  61%  | +0.015 +0.049 +0.010
+  pump size: largest third                     n  637 ( 33%)  mean -0.060  z -2.13  win  55%  | -0.039 -0.075 -0.079
+  rank 1 only                                  n  960 ( 50%)  mean -0.023  z -1.15  win  56%  | -0.043 +0.025 -0.052
+  rank 2 only                                  n  952 ( 50%)  mean +0.010  z +0.61  win  59%  | +0.007 +0.046 -0.019
