@@ -550,7 +550,8 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
     if isinstance(db.get("fade"), dict):
         fade = db["fade"]
         live = db.get("live") if live_is_on(db.get("live")) else None
-        problems += live_problems(live, now) + fade_problems(fade, now) + options_problems(db.get("options"), now)
+        problems += (live_problems(live, now) + fade_problems(fade, now) + options_problems(db.get("options"), now)
+                     + funding_problems(db.get("funding"), now))
         # Owner, 2026-10-29: "make report simple ... a table just like we had before with trade
         # journal" -- the attention list, one account table, then every trade. The real-money account
         # (owner 2026-11-02) comes first once it exists.
@@ -566,6 +567,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
             out += live_lines(live)
         out += fade_lines(fade)
         out += options_lines(db.get("options"))
+        out += funding_lines(db.get("funding"))
         out += ["", "---", ("*REAL MONEY: the Delta account trades with real orders; every other account is "
                             "paper. " if live else "*Paper only: no order is ever sent. ")
                 + "Times are IST. R and P&L are after fees" + (" (real account: before funding)." if live
@@ -578,7 +580,7 @@ def build(sec: dict, db: dict, now: dt.datetime, *, stack: str,
                  "closed": sum(a.get("closed", 0) for a in accts.values()),
                  "total_r": round(sum(a.get("r", 0) for a in accts.values()), 2),
                  "total_pnl": round(sum(a.get("pnl", 0) for a in accts.values()), 2),
-                 "fade": accts, "options": db.get("options"),
+                 "fade": accts, "options": db.get("options"), "funding": db.get("funding"),
                  "live": None if not live else {k: live.get(k) for k in ("state", "closed", "wins", "pnl", "r")},
                  "health_line": "healthy" if healthy else "not healthy", "day_of": "fade"}
         return "\n".join(out) + "\n", facts, problems
@@ -870,6 +872,50 @@ def options_lines(o: dict | None) -> list[str]:
                    + (f"; {o['skipped']} legs skipped (no strike or no bid)" if o.get("skipped") else "") + ".")
     out.append("One contract a leg (0.001 BTC, 0.01 ETH) at the real best bid. Losses are uncapped: the "
                "worst 2026 backtest strangle lost 15.8% of its size.")
+    return out
+
+
+def funding_problems(f: dict | None, now: dt.datetime) -> list[str]:
+    """What needs the owner on the funding-collection paper account (live/funding_paper.py)."""
+    if not f:
+        return []
+    if f.get("error"):
+        return [f"the funding-collection figures could not be read ({f['error']})"]
+    last = f.get("last") or {}
+    if last.get("status") == "MISSED":
+        return [f"the funding-collection rebalance of {last['period']} was MISSED (none by 8:30 AM IST)"]
+    if last.get("period"):
+        age = (now - dt.datetime.fromisoformat(last["period"]).replace(tzinfo=dt.timezone.utc)).total_seconds()
+        if age > 4 * 86400:
+            return [f"no funding-collection rebalance since {last['period']} (one is due every 3 days)"]
+    return []
+
+
+def funding_lines(f: dict | None) -> list[str]:
+    """The funding-collection paper account: equity at each rebalance and where the money came from."""
+    out = ["", "## Funding collection (paper) — every 3 days at 5:50 AM IST: short the highest-funding fifth, "
+           "long the most negative", ""]
+    if not f:
+        return out + ["Not started yet (first rebalance on the next day divisible by three, 5:50 AM IST)."]
+    if f.get("error"):
+        return out + [f"Figures unavailable ({f['error']})."]
+    start = 1500.0
+    out.append(f"Equity at the last rebalance **${f['equity']:,.2f}** ({100 * (f['equity'] / start - 1):+.1f}% from $1,500) "
+               f"over {plural(f['periods'], 'rebalance')}; holding {f['longs']} longs and {f['shorts']} shorts.")
+    if f.get("closed"):
+        out.append(f"Closed positions: {f['closed']} ({f['wins']} won); P&L {money(f['pnl'])} = price {money(f['price'])} "
+                   f"+ funding {money(f['funding'])} − fees ${f['fees']:,.2f}.")
+    rows = f.get("rows") or []
+    if rows:
+        out += [""] + table(["rebalance (UTC)", "equity $", "change"],
+                            [[r["period"], f"{r['equity']:,.2f}",
+                              "—" if r["change"] is None else f"{100 * r['change']:+.1f}%"] for r in rows[::-1]],
+                            right={1, 2})
+    last = f.get("last") or {}
+    if last.get("status") == "SKIPPED":
+        out.append(f"Last rebalance {last['period']} SKIPPED: {last.get('why') or 'too few coins'}; the book was kept.")
+    out.append("Paper only, real best bid/ask and Delta's fee; funding from Delta's history. Backtest 2025-26: "
+               "$1,500 → $4,910, worst drop 23%, 13 of 20 months green (chosen as the best of several variants).")
     return out
 
 

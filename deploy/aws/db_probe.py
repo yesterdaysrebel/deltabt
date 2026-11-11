@@ -308,6 +308,43 @@ async def collect_options(con) -> dict | None:
         return {"error": f"{type(exc).__name__}: {exc}"[:200]}
 
 
+FUNDING_START = 1500.0                               # live/funding_paper.START_EQUITY (not imported: no live/ here)
+
+
+async def collect_funding(con) -> dict | None:
+    """The funding-collection paper account (live/funding_paper.py, owner 2026-11-11), or None before its
+    tables exist. Equity is marked at each rebalance; realised P&L counts closed positions only."""
+    try:
+        if not await con.fetchval("SELECT to_regclass('funding_periods') IS NOT NULL"):
+            return None
+        per = await con.fetch("SELECT period, status, equity, detail FROM funding_periods ORDER BY period")
+        closed = await con.fetchrow(
+            "SELECT count(*) n, count(*) FILTER (WHERE pnl > 0) wins, COALESCE(sum(pnl), 0) pnl, "
+            "COALESCE(sum(funding), 0) funding, COALESCE(sum(gross), 0) gross, COALESCE(sum(fees), 0) fees "
+            "FROM funding_positions WHERE status = 'CLOSED'")
+        opn = await con.fetchrow("SELECT count(*) FILTER (WHERE side > 0) longs, count(*) FILTER (WHERE side < 0) shorts "
+                                 "FROM funding_positions WHERE status = 'OPEN'")
+        eq = [(r["period"], float(r["equity"])) for r in per if r["status"] == "ENTERED" and r["equity"] is not None]
+        rows = []
+        for i, (t, e) in enumerate(eq[-12:]):
+            j = len(eq) - len(eq[-12:]) + i
+            prev = eq[j - 1][1] if j > 0 else None
+            rows.append({"period": t.strftime("%Y-%m-%d"), "equity": round(e, 2),
+                         "change": None if prev is None else round(e / prev - 1, 4)})
+        last = per[-1] if per else None
+        detail = json.loads(last["detail"]) if last and isinstance(last["detail"], str) else (last["detail"] if last else None)
+        return {
+            "periods": len(eq), "equity": round(eq[-1][1], 2) if eq else FUNDING_START,
+            "closed": int(closed["n"]), "wins": int(closed["wins"]), "pnl": round(float(closed["pnl"]), 2),
+            "funding": round(float(closed["funding"]), 2), "price": round(float(closed["gross"]), 2),
+            "fees": round(float(closed["fees"]), 2), "longs": int(opn["longs"]), "shorts": int(opn["shorts"]),
+            "rows": rows,
+            "last": None if not last else {"period": last["period"].strftime("%Y-%m-%d"), "status": last["status"],
+                                           "coins": (detail or {}).get("coins"), "why": (detail or {}).get("why")}}
+    except Exception as exc:                    # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"[:200]}
+
+
 #: The real account's journal columns (live/fade_live.py); newest LIVE_JOURNAL_ROWS rows.
 FADE_START = {"LADDER": 1500.0}                     # live/fade.py ACCOUNT_START (not imported: no live/ here)
 LIVE_JOURNAL_FIELDS = ("day", "symbol", "status", "skip_reason", "contracts", "paper_entry", "entry_price",
@@ -368,7 +405,7 @@ async def collect(con) -> dict:
     """
     if (os.environ.get("DELTABOT_UNIVERSE") or "").strip().lower() == "fade":
         return {"fade": await collect_fade(con), "options": await collect_options(con),
-                "live": await collect_live(con)}
+                "live": await collect_live(con), "funding": await collect_funding(con)}
     out = {t: await con.fetchval(f"select count(*) from {t}") for t in COUNTS}
 
     # WHOSE NUMBERS ARE THESE?
