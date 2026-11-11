@@ -166,6 +166,14 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**LADDER vs FUNDING COLLECTION, same window 2025-02-13 .. 2026-10-27 (owner "compare them with ladder").**
+`scripts/compare_ladder_funding.py`, `out/compare_ladder_funding.txt`, each from $1,500. Rule A ladder (as the real
+account runs): $5,315 (+254%) but 2025 −38% ($1,500 → $928) then 2026 +472%; worst drop 67%; win 57% of 983 trades;
+worst month −21%, best +120%. Ladder + skip negative funding: $2,899 (+93%), 2025 +66%, 2026 +17%, drop 42%.
+Funding collection: $4,910 (+227%), 2025 +44%, 2026 +128%, drop 23%, 13 of 20 months green, worst month −13%.
+Monthly correlation ladder vs funding +0.26; both red in 2 of 20 months; half in each: $6,267, 14/20 green, worst
+drop 20% (month-end).
+
 **ONE BACKTEST OF EVERY SURVIVOR (owner 2026-11-11 "run backtest on all of these").** `scripts/backtest_survivors.py`,
 `out/backtest_survivors.txt`. Delta prices, Delta funding, fee + live spread, no-look-ahead cut-offs, $1,500 accounts,
 2025-26 (survivor-only coin list). RULE A on Delta picks after funding: +0.045R (t 1.8; 2025 0.000, 2026 +0.085);
