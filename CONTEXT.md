@@ -170,9 +170,19 @@ so the fixed monitor re-walks them.
 `scripts/compare_ladder_funding.py`, `out/compare_ladder_funding.txt`, each from $1,500. Rule A ladder (as the real
 account runs): $5,315 (+254%) but 2025 −38% ($1,500 → $928) then 2026 +472%; worst drop 67%; win 57% of 983 trades;
 worst month −21%, best +120%. Ladder + skip negative funding: $2,899 (+93%), 2025 +66%, 2026 +17%, drop 42%.
-Funding collection: $4,910 (+227%), 2025 +44%, 2026 +128%, drop 23%, 13 of 20 months green, worst month −13%.
-Monthly correlation ladder vs funding +0.26; both red in 2 of 20 months; half in each: $6,267, 14/20 green, worst
-drop 20% (month-end).
+Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +32%, 2026 +107%, drop 25%, 13 of 20
+months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
+each: $5,740, 14/20 green, worst drop 22% (month-end).
+
+**FUNDING BACKTEST TIMING FIX + REVIEWERS' IDEAS 1/3/5 — ALL FAIL (2026-11-11).** `scripts/funding_ideas.py`,
+`out/funding_ideas.txt`. Delta daily candles are stamped at their open, so `C.loc[t]` is the price at t+1 00:00 (the
+entry), but `backtest_survivors.portfolio()` booked funding for days t..t2-1 — one day early, and that day also sat in
+the score's 3-day window. Fixed to t+1..t2. Every 3 days, fifths: +0.639% → +0.551%/period, t 2.48 → 2.12 (2025
+t 1.02, 2026 t 1.88), $4,868 → $4,058. Rule A's funding (`f_day`, `f_prev`) was already timed right. Ideas vs the
+fixed baseline (pass = better in 2025 AND 2026 and paired t ≥ 2): squeeze filter 25/35/50% all worse both years;
+median score worse; inverse-vol weights +0.03% 2025 / −0.18% 2026; keep-while-in-35% −0.16/−0.53 (t −2.7: funding
+rank goes stale fast, rotation is the edge); + skip-if-edge<2×cost still worse. Older exploratory scripts
+(explore_delta_basis.py etc.) may carry the same one-day shift — re-check before quoting them.
 
 **ONE BACKTEST OF EVERY SURVIVOR (owner 2026-11-11 "run backtest on all of these").** `scripts/backtest_survivors.py`,
 `out/backtest_survivors.txt`. Delta prices, Delta funding, fee + live spread, no-look-ahead cut-offs, $1,500 accounts,
@@ -181,8 +191,8 @@ $1,500 → $5,627 at 5% (worst drop 68%), $7,399 on the ladder (62%). Variants p
 funding +0.057R (drop 36%), largest third +0.059, most-traded third +0.052, funding>=0 and (big or liquid) +0.072R
 (drop 42%) — all t < 1.7. Binance filter −0.001R. DELTA PORTFOLIOS: five-part score −0.79%/wk and 7-day low-volume
 reversal −1.36%/wk (both NEGATIVE on Delta); quiet coins +0.36%/wk (2025 negative). FUNDING COLLECTION is the only
-portfolio positive in both years on every version: every 3 days, fifths +0.64%/period (t 2.48, $1,500 → $4,910,
-worst drop 23%); daily thirds +0.12%/day (t 1.93, drop 30%). Binance reference 2021-26 (1x gross, costs): quiet coins
+portfolio positive in both years on every version: every 3 days, fifths +0.555%/period (t 2.13, $1,500 → $4,094,
+worst drop 25%; timing-fixed); daily thirds +0.085%/day (t 1.40, drop 32%). Binance reference 2021-26 (1x gross, costs): quiet coins
 +0.61%/wk (t 3.0, 6/6), 7-day low-volume reversal +0.85%/wk (t 2.1, 6/6), five-part +0.27%/wk (t 1.7).
 
 **HOLD LONGER THAN 24 H — WORSE (owner 2026-11-11 "maybe 48h?").** `scripts/fade_hold_length.py`,
@@ -304,8 +314,8 @@ fifth, SHORT the highest fifth, half the marked equity each side, whole contract
 fee; coins in both books kept untouched. Funding settled at Delta's interval from FUNDING history; equity marked at
 each rebalance. $1,500 paper. Tables `funding_positions`, `funding_periods`; report section "Funding collection
 (paper)" (db_probe.collect_funding); attention if MISSED or none for > 4 days. NO ORDER PATH. Backtest it comes from
-(PR #160, scripts/compare_ladder_funding.py): $1,500 -> $4,910 2025-02..2026-10, worst drop 23%, best of several
-variants. Dry run on live data 2026-11-11: 69 liquid coins, 13 a side, median spread 0.105%, INITUSD −8.8%/day.
+(PR #160, scripts/compare_ladder_funding.py; timing-fixed 2026-11-11): $1,500 -> $4,094 2025-02..2026-10, worst drop
+25%, best of several variants. Dry run on live data 2026-11-11: 69 liquid coins, 13 a side, median spread 0.105%, INITUSD −8.8%/day.
 
 **RUN 3 FIRST STOP + HALT (2026-11-11).** ARIAUSD (entry 0.21834, stop 0.2722 = 24.7%, 2×ATR 12.3%) rose to mark
 0.2809; the exchange market stop fired 09:47:45 UTC, 241 bought back at 0.26884 (mark led last), −$122.33, −0.94R;

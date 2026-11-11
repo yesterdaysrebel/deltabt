@@ -1,3 +1,7 @@
+/usr/local/lib/python3.12/site-packages/pandas/core/internals/blocks.py:354: RuntimeWarning: divide by zero encountered in log
+  result = func(self.values, **kwargs)
+/usr/local/lib/python3.12/site-packages/pandas/core/internals/blocks.py:354: RuntimeWarning: divide by zero encountered in log
+  result = func(self.values, **kwargs)
 ======================================================================================================================================================
 A. RULE A FAMILY -- Delta's own picks 2025-26, net R per trade AFTER Delta funding; account at 5% risk (bot's sizing)
    1022 picks; 872 after the first 150 (needed for the no-look-ahead cut-offs)
@@ -11,13 +15,13 @@ A. RULE A FAMILY -- Delta's own picks 2025-26, net R per trade AFTER Delta fundi
 
 ======================================================================================================================================================
 B. WEEKLY / DAILY PORTFOLIOS ON DELTA 2025-26 -- Delta prices, Delta funding, fee + live spread; 1x gross; per-period net %
-  five-part score, weekly, fifths                      n   88  -0.793%  t -1.17  0/2 yrs | 2025 -1.234 2026 -0.310 | $     613  worst drop  72%
-  five-part score, weekly, thirds                      n   88  -0.817%  t -1.85  0/2 yrs | 2025 -1.195 2026 -0.402 | $     674  worst drop  61%
-  quiet coins (low 30-day turnover), weekly            n   88  +0.364%  t +0.77  1/2 yrs | 2025 -0.268 2026 +1.056 | $   1,890  worst drop  36%
-  7-day reversal inside the least-traded half, weekly  n   78  -1.363%  t -1.84  0/2 yrs | 2025 -1.339 2026 -1.383 | $     431  worst drop  69%
-  funding collection, daily, thirds                    n  621  +0.116%  t +1.93  2/2 yrs | 2025 +0.086 2026 +0.150 | $   2,880  worst drop  30%
-  funding collection, every 3 days, fifths             n  207  +0.643%  t +2.48  2/2 yrs | 2025 +0.380 2026 +0.930 | $   4,910  worst drop  23%
-  funding collection, daily, fifths                    n  621  +0.111%  t +1.21  2/2 yrs | 2025 +0.071 2026 +0.154 | $   2,534  worst drop  50%
+  five-part score, weekly, fifths                      n   88  -0.764%  t -1.13  0/2 yrs | 2025 -1.189 2026 -0.298 | $     630  worst drop  71%
+  five-part score, weekly, thirds                      n   88  -0.795%  t -1.81  0/2 yrs | 2025 -1.165 2026 -0.389 | $     688  worst drop  60%
+  quiet coins (low 30-day turnover), weekly            n   88  +0.364%  t +0.77  1/2 yrs | 2025 -0.270 2026 +1.059 | $   1,892  worst drop  36%
+  7-day reversal inside the least-traded half, weekly  n   78  -1.346%  t -1.81  0/2 yrs | 2025 -1.340 2026 -1.352 | $     436  worst drop  69%
+  funding collection, daily, thirds                    n  621  +0.085%  t +1.40  2/2 yrs | 2025 +0.055 2026 +0.118 | $   2,368  worst drop  32%
+  funding collection, every 3 days, fifths             n  207  +0.555%  t +2.13  2/2 yrs | 2025 +0.302 2026 +0.831 | $   4,094  worst drop  25%
+  funding collection, daily, fifths                    n  621  +0.057%  t +0.62  2/2 yrs | 2025 +0.022 2026 +0.096 | $   1,816  worst drop  52%
 
 ======================================================================================================================================================
 C. FOR REFERENCE: THE SAME PORTFOLIOS ON THE FULL BINANCE LIST 2021-26 (Binance prices, no funding, 0.13% a side)

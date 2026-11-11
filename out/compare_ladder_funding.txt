@@ -3,35 +3,35 @@ SAME WINDOW 2025-02-13 .. 2026-10-27, each from $1,500
                                               end $  return worst drop               win rate  green months   best/worst month   longest losing run
   Rule A ladder (real account)             $  5,315   +254%        67%      57% of 983 trades    11 of 20    +120.1% /  -21.1%             8 trades
   Rule A ladder + skip negative funding    $  2,899    +93%        42%      55% of 448 trades    11 of 20     +39.3% /  -24.3%             6 trades
-  Funding collection (3-day)               $  4,910   +227%        23%     56% of 207 periods    13 of 20     +34.1% /  -13.4%   6 periods (18 days)
+  Funding collection (3-day)               $  4,094   +173%        25%     55% of 207 periods    13 of 20     +33.0% /  -13.9%   6 periods (18 days)
 
 YEAR BY YEAR (account at year end; return in the year)
   Rule A ladder (real account)             2025: $1,500 -> $928 (-38%)   2026: $928 -> $5,315 (+472%)
   Rule A ladder + skip negative funding    2025: $1,500 -> $2,484 (+66%)   2026: $2,484 -> $2,899 (+17%)
-  Funding collection (3-day)               2025: $1,500 -> $2,153 (+44%)   2026: $2,153 -> $4,910 (+128%)
+  Funding collection (3-day)               2025: $1,500 -> $1,979 (+32%)   2026: $1,979 -> $4,094 (+107%)
 
 MONTH BY MONTH (% return in the month)
   month        Rule A ladder (real account)  Rule A ladder + skip negative       Funding collection (3-day)
-  2025-03                            -11.7%                          +10.6%                           +3.1%
-  2025-04                            -21.1%                          -22.0%                          -13.4%
-  2025-05                             -0.3%                           +3.7%                          +17.6%
-  2025-06                             +2.2%                          +19.4%                           +1.7%
-  2025-07                            -14.4%                          -12.1%                           +5.5%
-  2025-08                            -18.1%                          +30.6%                          +15.7%
-  2025-09                            -20.9%                          -24.3%                           +5.4%
-  2025-10                            +17.0%                          +29.8%                           -1.1%
-  2025-11                            +23.5%                          +39.3%                           -8.8%
-  2025-12                            +10.3%                          -12.5%                          +26.4%
-  2026-01                             +3.7%                          -21.3%                           -2.6%
-  2026-02                            +39.3%                          +12.6%                          +15.8%
-  2026-03                             +9.5%                           -4.2%                           -0.8%
-  2026-04                           +120.1%                          +17.4%                          +23.4%
-  2026-05                            +27.0%                           +7.9%                          +10.7%
-  2026-06                             -8.5%                           -7.6%                          +18.8%
-  2026-07                             -6.8%                           -7.6%                          +34.1%
-  2026-08                            -18.6%                          -11.2%                           -8.4%
-  2026-09                            +45.6%                          +22.5%                          +12.8%
-  2026-10                            +28.2%                          +16.9%                           -9.4%
+  2025-03                            -11.7%                          +10.6%                           +2.3%
+  2025-04                            -21.1%                          -22.0%                          -13.9%
+  2025-05                             -0.3%                           +3.7%                          +16.7%
+  2025-06                             +2.2%                          +19.4%                           +1.5%
+  2025-07                            -14.4%                          -12.1%                           +4.7%
+  2025-08                            -18.1%                          +30.6%                          +15.2%
+  2025-09                            -20.9%                          -24.3%                           +4.7%
+  2025-10                            +17.0%                          +29.8%                           -2.9%
+  2025-11                            +23.5%                          +39.3%                           -9.8%
+  2025-12                            +10.3%                          -12.5%                          +25.2%
+  2026-01                             +3.7%                          -21.3%                           -2.9%
+  2026-02                            +39.3%                          +12.6%                          +14.2%
+  2026-03                             +9.5%                           -4.2%                           -1.9%
+  2026-04                           +120.1%                          +17.4%                          +22.1%
+  2026-05                            +27.0%                           +7.9%                           +9.6%
+  2026-06                             -8.5%                           -7.6%                          +17.2%
+  2026-07                             -6.8%                           -7.6%                          +33.0%
+  2026-08                            -18.6%                          -11.2%                           -9.5%
+  2026-09                            +45.6%                          +22.5%                          +12.0%
+  2026-10                            +28.2%                          +16.9%                          -10.1%
 
-  months where BOTH the ladder and funding collection lost: 2 of 20; correlation of their monthly returns +0.26
-  HALF IN EACH (ladder + funding, rebalanced monthly): $6,267; green months 14 of 20; worst month -17.3%; worst drop 20% (month-end)
+  months where BOTH the ladder and funding collection lost: 2 of 20; correlation of their monthly returns +0.25
+  HALF IN EACH (ladder + funding, rebalanced monthly): $5,740; green months 14 of 20; worst month -17.5%; worst drop 22% (month-end)
