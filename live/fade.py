@@ -14,6 +14,7 @@ every row: the entry price is the CLOSE of the first traded minute from 00:00 UT
 a coin with no trade by then is skipped), not the daily open; and only coins Delta lists as tradable now are eligible.
 
 The same loop also runs the option-selling paper account (live/options_paper.py, owner 2026-10-28).
+And the funding-collection paper account (live/funding_paper.py, owner 2026-11-11), off the loop.
 
 The paper accounts never send an order; their positions live in the `fade_positions` table only.
 The REAL-MONEY account (live/fade_live.py, owner 2026-11-02, docs/fade_live_prereg.md) trades the
@@ -333,11 +334,12 @@ class FadeRunner:
         self.client = self.client or DeltaClient(per_second=2.0)
         self.catalog = self.catalog or ProductCatalog()
         self._pool = await asyncpg.create_pool(min_size=1, max_size=3, **connect_kwargs(self.database_url))
-        from live import fade_learning, fade_live, options_paper
+        from live import fade_learning, fade_live, funding_paper, options_paper
         async with self._pool.acquire() as con:
             await con.execute(SCHEMA)
             await fade_learning.ensure_schema(con)
             await options_paper.ensure_schema(con)
+            await funding_paper.ensure_schema(con)
             await fade_live.ensure_schema(con)
             if self.live is None:
                 try:
@@ -398,6 +400,8 @@ class FadeRunner:
             await fade_learning.step(self, con, now)
             from live import options_paper                # the option-selling paper account; never trades
             await options_paper.step(self, con, now)
+            from live import funding_paper                # the funding-collection paper account; never trades
+            await funding_paper.step(self, con, now)      # starts a background task; returns at once
             await con.execute(
                 "INSERT INTO fade_heartbeat (id, at, detail) VALUES (1, now(), $1) "
                 "ON CONFLICT (id) DO UPDATE SET at = now(), detail = EXCLUDED.detail",
