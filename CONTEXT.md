@@ -166,6 +166,16 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**OPEN EXPLORATION — ONE LEAD, NOT A RESULT (owner 2026-11-11 "look for unpopular ideas", "run them in different
+ways instead of hard by the book").** `scripts/fade_explore_open.py`, `out/gainer_fade/explore_open.txt`: no
+pre-registration, all six Binance years at once. LEAD: take rule A only when BTC was NOT strong on D−1 (change <=
++0.87%) AND the pump was NOT buyer-driven (D−1 taker-buy share <= 0.5095); cut-offs from 2021-23. On 2024-26: kept
+49% of trades, +0.062R (z 2.36; +0.029 / +0.075 / +0.109) vs skipped +0.001R; kept − skipped +0.061R (z 1.59); a
+random half does as well 5% of the time. Suggestive, not proven. Weaker leads: gainers fall 08:00-09:00 UTC (+0.20%
+of price, 6/6 years, before fees) and 13:00-14:00; a first-hour spike that gives half back (+0.10R, 5/6). Nothing in:
+re-shorting after a stop, repeat picks, day of week. To confirm the lead the only clean data is FORWARD: tag each
+paper pick with the two readings and compare kept vs skipped (not built).
+
 **SECOND IDEA SEARCH — 13 FAMILIES — FAIL (owner 2026-11-11 "search all").** Pre-registered
 (`docs/fade_families_prereg.md`; `scripts/fade_families_data.py` + `fade_families_search.py`;
 `out/gainer_fade/families_{dev,holdout}.txt`). Binance 2021-23, ~45 variants: crowding (funding, taker-buy share,
