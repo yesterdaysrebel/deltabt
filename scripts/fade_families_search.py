@@ -177,7 +177,9 @@ def variants(A: Book, sets, btc, years):
 
 
 #: Filled in after `dev`, BEFORE `holdout` is ever run (docs/fade_families_prereg.md).
-CANDIDATES: list[tuple[int, str]] = []
+CANDIDATES: list[tuple[int, str]] = [                              # frozen 2026-11-11 from the dev run
+    (1, "all-account long/short: highest third"),                    # dev z +4.27, n 448, 2022 +0.111, 2023 +0.071
+]
 
 
 def main() -> None:
