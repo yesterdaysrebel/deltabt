@@ -547,10 +547,13 @@ class FadeRunner:
             # the entry (PIEVERSEUSD/INITUSD/CAPUSD, 11-05..11-10). walk() skips bars <= last_checked, so
             # re-reading the day changes nothing else; a paper position lives <= 25 h (< the 4000-bar page).
             lo = min(int(r["entry_time"].timestamp()) for r in rows if r["symbol"] == sym)
-            done_to = max(int(r["last_checked"].timestamp()) for r in rows if r["symbol"] == sym)
+            # The LEAST advanced row decides: a coin picked two days running has yesterday's row waiting on its
+            # day-end close while today's is always current -- max() skipped the fetch and yesterday's row
+            # fell to NO_DATA an hour later (INITUSD 11-05 re-walked beside 11-11's rows, 2026-11-11).
+            done_to = min(int(r["last_checked"].timestamp()) for r in rows if r["symbol"] == sym)
             hi = int(now) // MINUTE * MINUTE - MINUTE              # last CLOSED minute
             if hi <= done_to:
-                continue                                           # no newly closed minute
+                continue                                           # no row has a newly closed minute
             got = await asyncio.to_thread(self.client.candles, sym, "1m", lo, hi, drop_forming=True)
             bars_by_sym[sym] = pd.DataFrame(got, columns=["time", "open", "high", "low", "close", "volume"]).astype(
                 {"time": "int64", "high": float, "low": float, "close": float}) if got else None
