@@ -1,0 +1,15 @@
+BINANCE rule A picks 2021-26 (before funding): net R per trade by exit time
+  exit at 24 h (stopped 19%)     n 3608  mean +0.011R  z +0.98  win  56% | -0.018 +0.036 -0.035 +0.009 +0.031 +0.065  4/6
+  exit at 36 h (stopped 23%)     n 3608  mean +0.001R  z +0.07  win  54% | -0.065 +0.051 -0.053 -0.004 +0.029 +0.069  3/6
+  exit at 48 h (stopped 27%)     n 3608  mean -0.003R  z -0.22  win  54% | -0.071 +0.058 -0.057 -0.011 +0.023 +0.062  3/6
+  exit at 72 h (stopped 31%)     n 3608  mean -0.003R  z -0.21  win  52% | -0.109 +0.082 -0.067 -0.006 +0.050 +0.050  3/6
+
+DELTA'S OWN PICKS 2025-26, with Delta's real funding
+  exit at 24 h, before funding   n 1022  mean +0.046R  z +2.14  win  57% | +0.005 +0.096  2/2
+  exit at 24 h, AFTER funding    n 1022  mean +0.033R  z +1.53  win  56% | -0.010 +0.085  1/2
+  exit at 36 h, before funding   n 1022  mean +0.047R  z +1.94  win  57% | -0.008 +0.114  1/2
+  exit at 36 h, AFTER funding    n 1022  mean +0.031R  z +1.29  win  56% | -0.027 +0.101  1/2
+  exit at 48 h, before funding   n 1022  mean +0.041R  z +1.59  win  57% | -0.011 +0.104  1/2
+  exit at 48 h, AFTER funding    n 1022  mean +0.023R  z +0.89  win  56% | -0.033 +0.091  1/2
+  exit at 72 h, before funding   n 1022  mean +0.040R  z +1.46  win  54% | -0.013 +0.105  1/2
+  exit at 72 h, AFTER funding    n 1022  mean +0.018R  z +0.66  win  53% | -0.042 +0.091  1/2

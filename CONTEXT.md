@@ -166,6 +166,11 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**HOLD LONGER THAN 24 H — WORSE (owner 2026-11-11 "maybe 48h?").** `scripts/fade_hold_length.py`,
+`out/gainer_fade/hold_length.txt`. Binance 2021-26 (3,608 trades): 24 h +0.011R, 36 h +0.001, 48 h −0.003, 72 h
+−0.003 (stopped 19% → 31%). Delta's picks 2025-26 after Delta funding: 24 h +0.033R, 36 h +0.031, 48 h +0.023,
+72 h +0.018 — each day held adds stops and funding paid. 24 h stays.
+
 **AFTER THE STOP: BUY IT, OR SHORT IT AGAIN — BOTH NOTHING (owner 2026-11-11, after ARIAUSD).**
 `scripts/fade_stop_reverse.py` / `fade_stop_reshort.py`, `out/gainer_fade/stop_{reverse,reshort}.txt`. Binance 681
 stopped rule A trades 2021-26 + Delta's 156 stopped picks 2025-26. BUY at the stop (16 exit/stop variants): −0.10R to
