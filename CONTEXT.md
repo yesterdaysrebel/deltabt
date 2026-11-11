@@ -166,6 +166,17 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**SECOND IDEA SEARCH — 13 FAMILIES — FAIL (owner 2026-11-11 "search all").** Pre-registered
+(`docs/fade_families_prereg.md`; `scripts/fade_families_data.py` + `fade_families_search.py`;
+`out/gainer_fade/families_{dev,holdout}.txt`). Binance 2021-23, ~45 variants: crowding (funding, taker-buy share,
+open interest, long/short ratios), spot vs futures, coin age, BTC hedge, long the losers (−0.025R, z −2.73), the
+pair, long the gainers, weekly gainers (−0.040R, z −3.16), BTC's D−1 move, volume-surge picks, scaling in, time-of-day
+exits. Liquidations: NOT TESTABLE (no archive). ONE qualifier under the rule: rule A only when the all-account
+long/short ratio is in its highest third (dev +0.102R, z 4.27; lowest third −0.117R). HOLD-OUT 2024-26: +0.033R,
+z 1.17 vs rule A's +0.031R — FAIL (bar z 2.70 and above rule A). Dev-only patterns, NOT confirmed: fading works less
+after BTC rose (highest third −0.087R) and when taker-buy share is high (−0.083R). The hold-out has now judged three
+candidates; further searches on it are worth little. Live rule unchanged.
+
 **IDEA SEARCH — entry timing / condition / hold / pump shape — FAIL (owner 2026-11-11 "I would challenge on no
 edge").** Pre-registered (`docs/fade_idea_search_prereg.md`, `scripts/fade_idea_paths.py` + `fade_idea_search.py`,
 `out/gainer_fade/idea_search_{dev,holdout}.txt`; 1m simulator matches fade_binance_test to 0.00000R). ~40 variants on
