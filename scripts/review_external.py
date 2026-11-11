@@ -21,7 +21,9 @@ from pathlib import Path
 API = "https://openrouter.ai/api/v1"
 MODELS = ["openai/gpt-6.1-sol", "google/gemini-4-argon", "x-ai/grok-4.7", "moonshotai/kimi-k3.1-pro",
           "qwen/qwen3.8-max-0902", "mistralai/mistral-large-4-0", "deepseek/deepseek-v4.1-flash"]
-MAX_OUT = 12000
+MAX_OUT = 24000                                      # answer + reasoning together
+REASONING_CAP = 8000                                 # 2026-11-11: four models spent a 12k cap on reasoning and
+#                                                      returned nothing; one ignored max_tokens (54k). Cap both.
 NOTE = ("\n\nYou cannot open files or run code: the whole pack is inline below, each file under a `===== FILE` "
         "header. Do the arithmetic by hand and show it. Answer in Markdown.\n")
 
@@ -64,7 +66,7 @@ def main() -> None:
     (pack / "reviews").mkdir(exist_ok=True)
     k = key()
     msg = message(pack, a.prompt)
-    tokens_in = len(msg) / 2.8                                     # CSV digits tokenise densely: err high
+    tokens_in = len(msg) / 1.6                                     # measured 2026-11-11: 92k chars -> 39-57k tokens
     prices = {m["id"]: m.get("pricing", {}) for m in call("/models", None, k, 60)["data"]}
     models = [m.strip() for m in a.models.split(",") if m.strip()]
     est = {}
@@ -85,6 +87,7 @@ def main() -> None:
         t0 = time.time()
         try:
             r = call("/chat/completions", {"model": m, "max_tokens": MAX_OUT, "usage": {"include": True},
+                                           "reasoning": {"max_tokens": REASONING_CAP, "exclude": True},
                                            "messages": [{"role": "user", "content": msg}]}, k)
         except Exception as exc:                                   # noqa: BLE001 -- one model failing is not fatal
             print(f"  {m}: FAILED {type(exc).__name__}: {str(exc)[:200]}")
@@ -93,6 +96,9 @@ def main() -> None:
         u = r.get("usage") or {}
         cost = float(u.get("cost") or est[m])
         spent += cost
+        if not text.strip():
+            print(f"  {m}: EMPTY answer ({u.get('completion_tokens')} out tokens, ${cost:.4f}): not saved", flush=True)
+            continue
         name = m.replace("/", "__") + (f".{a.tag}" if a.tag else "") + ".md"
         (pack / "reviews" / name).write_text(
             f"<!-- {m} via OpenRouter; {u.get('prompt_tokens')} in / {u.get('completion_tokens')} out tokens; "
