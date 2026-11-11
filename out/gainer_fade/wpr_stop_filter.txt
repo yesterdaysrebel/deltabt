@@ -1,0 +1,31 @@
+# scripts/fade_wpr_filter.py -- docs/fade_wpr_stop_filter_prereg.md (run 2026-11-11)
+
+Binance 2021-2024 (JUDGED): 2609 rule A trades, %R known for 2609
+
+STOPPED TRADES (rule A): did D's last close come back?
+  year   trades  stopped back<stop back<entry R stopped R no stop |  all: A all: no stop
+  2021      571   96 17%       58%        12%    -1.043    -1.052 |  -0.018       -0.020
+  2022      640   70 11%       70%        16%    -1.073    -0.999 |  +0.036       +0.044
+  2023      701  121 17%       67%        23%    -1.040    -0.751 |  -0.035       +0.015
+  2024      697   97 14%       67%        20%    -1.019    -0.872 |  +0.009       +0.030
+  pooled   2609  384 15%       65%        18%    -1.041    -0.902 |  -0.002       +0.018
+
+FILTERS: net R per TAKEN trade (rule A), vs all trades
+  all trades         2021 -0.018 (n 571) 2022 +0.036 (n 640) 2023 -0.035 (n 701) 2024 +0.009 (n 697) | pooled -0.002 z -0.20
+  W  %R(14) >= -20   2021 -0.026 (n 409) 2022 +0.013 (n 313) 2023 -0.090 (n 383) 2024 +0.003 (n 466) | pooled -0.025 z -1.64, kept 60%, >0 2/4, beats all 0/4 -> FAIL
+  S  stop <= 20%     2021 +0.023 (n 201) 2022 +0.035 (n 384) 2023 -0.023 (n 500) 2024 +0.043 (n 390) | pooled +0.016 z +1.00, kept 57%, >0 3/4, beats all 3/4 -> FAIL
+  WS both            2021 +0.021 (n 167) 2022 +0.016 (n 223) 2023 -0.064 (n 292) 2024 +0.026 (n 286) | pooled -0.004 z -0.19, kept 37%, >0 3/4, beats all 2/4 -> FAIL
+
+Binance 2025-2026 (CONTROL, reported only): 999 rule A trades, %R known for 999
+
+STOPPED TRADES (rule A): did D's last close come back?
+  year   trades  stopped back<stop back<entry R stopped R no stop |  all: A all: no stop
+  2025      550  130 24%       57%        22%    -1.038    -1.209 |  +0.031       -0.009
+  2026      449  167 37%       60%        31%    -1.046    -1.056 |  +0.065       +0.061
+  pooled    999  297 30%       59%        27%    -1.042    -1.123 |  +0.046       +0.022
+
+FILTERS: net R per TAKEN trade (rule A), vs all trades
+  all trades         2025 +0.031 (n 550) 2026 +0.065 (n 449) | pooled +0.046 z +1.60
+  W  %R(14) >= -20   2025 +0.049 (n 298) 2026 +0.067 (n 290) | pooled +0.058 z +1.44, kept 59%, >0 2/2, beats all 2/2 -> FAIL (control: not a verdict)
+  S  stop <= 20%     2025 +0.027 (n 218) 2026 +0.025 (n 227) | pooled +0.026 z +0.53, kept 45%, >0 2/2, beats all 0/2 -> FAIL (control: not a verdict)
+  WS both            2025 +0.004 (n 137) 2026 -0.019 (n 155) | pooled -0.008 z -0.13, kept 29%, >0 1/2, beats all 0/2 -> FAIL (control: not a verdict)

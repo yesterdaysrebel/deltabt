@@ -166,6 +166,14 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**%R / STOP-DISTANCE FILTERS — FAIL; STOPS THAT "COME BACK" (owner 2026-11-11).** Pre-registered
+(`docs/fade_wpr_stop_filter_prereg.md`, `scripts/fade_wpr_filter.py`, `out/gainer_fade/wpr_stop_filter.txt`; harness
+reproduces rule A's judged −0.002R). Binance 2021-24, taken trades: W (daily %R(14) of D−1 >= −20) −0.025R (z −1.64);
+S (stop <= 20%) +0.016R (z +1.00); both −0.004R — all FAIL; live rule unchanged. Stopped trades: 15% of trades
+(2021-24), 30% (2025-26); 65% / 59% of them closed D back under the stop, 18% / 27% under the entry; yet no stop at
+all is +0.018R vs −0.002R (2021-24) and +0.022R vs +0.046R (2025-26): no consistent gain, and an unlimited tail.
+Our paper stops: AINUSD 10-31 closed above its stop (stop helped), INITUSD 11-10 back under it (hurt).
+
 **RUN 3 FIRST STOP + HALT (2026-11-11).** ARIAUSD (entry 0.21834, stop 0.2722 = 24.7%, 2×ATR 12.3%) rose to mark
 0.2809; the exchange market stop fired 09:47:45 UTC, 241 bought back at 0.26884 (mark led last), −$122.33, −0.94R;
 wallet $1,761.76 → $1,639.71 (high-water $1,761.98, ladder still 10%). The bot could not RECORD it: `last_close`
