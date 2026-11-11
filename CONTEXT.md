@@ -166,6 +166,14 @@ and booked NO_DATA at the entry (INITUSD 11-05, CAPUSD 11-06, PIEVERSEUSD 11-10 
 fetched from the entry. The three old rows (A, LADDER) are still wrong in the DB: re-open them after the deploy
 so the fixed monitor re-walks them.
 
+**AFTER THE STOP: BUY IT, OR SHORT IT AGAIN — BOTH NOTHING (owner 2026-11-11, after ARIAUSD).**
+`scripts/fade_stop_reverse.py` / `fade_stop_reshort.py`, `out/gainer_fade/stop_{reverse,reshort}.txt`. Binance 681
+stopped rule A trades 2021-26 + Delta's 156 stopped picks 2025-26. BUY at the stop (16 exit/stop variants): −0.10R to
++0.02R, best t 0.4, adds +0.004R per rule A trade; on Delta's picks +0.03R (t 0.3; 2025 −0.13). SHORT AGAIN (22
+variants: at the stop, after 1 h / 4 h, once back under the old stop, 0.5 ATR off the high, next day): −0.07R to
++0.04R, best t 1.05, positive 2021-24 but negative 2025-26; on Delta's picks −0.10R to 0.00R. After a stop the price
+is a coin flip either way.
+
 **DELTA-NATIVE READINGS ON DELTA'S OWN PICKS (owner 2026-11-11 "how to improve edge then?").**
 `scripts/fade_delta_picks.py`, `out/gainer_fade/delta_picks.txt`: 1,022 picks 2025-26, Binance 1m prices, Delta's
 real funding. Rule A +0.046R before funding, funding −0.013R (shorts on gainers mostly PAY), +0.033R after (2025
