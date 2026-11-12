@@ -236,5 +236,17 @@ def lev_main() -> None:
               + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
 
 
+def lev30() -> None:
+    """Owner 2026-11-12: "how about 20% at 30% captial" (read as 20x leverage, 30% of capital as margin)."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    print("30% of the balance as margin per day, half closed at +0.2R, rest to the 2x-ATR stop or 24 h, from $1,640")
+    for lev in (1, 2, 3, 5, 10, 20):
+        s, dd, below, n, nl, nh, ns = leveraged(d, opens, ps, lev, margin_total=0.30)
+        dead = s[s < 1]
+        print(f"  {lev:>2d}x: -> ${s.iloc[-1]:>9,.0f}  worst drop {100 * dd:3.0f}%  liquidated {nl} of {n} ({100 * nl / n:.0f}%)  "
+              f"stopped {ns}  floor {'never' if below is None else below.date()}" + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
+
+
 if __name__ == "__main__":
-    lev_main() if "--lev" in sys.argv else main()
+    lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()

@@ -174,6 +174,10 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**SAME AT 30% MARGIN (2026-11-12, owner "20% at 30% capital", read as 20x).** `fade_profit_ladder.py --lev30`,
+`out/fade_profit_ladder_lev30.txt`: 20x 78% liquidated, $0 2025-03-23; 10x $0 2025-05-30; 5x $67; 3x $2,236 (drop 84%);
+2x $2,769 (68%); 1x $2,524, drop 41%, never under $1,000 (the only cell that is).
+
 **HALF AT +0.2R + 50% OF CAPITAL AS MARGIN + FULL LEVERAGE — RUIN (2026-11-12).** `fade_profit_ladder.py --lev`,
 `out/fade_profit_ladder_lev.txt`. Same 1,022 Delta picks: full leverage liquidates 81% of trades, $0 by 2025-02-15;
 10x: 46% liquidated, $0 2025-03-23; 5x: 12%, $0 2026-01-22; 3x: $428 (drop 99%); 2x: $1,795 (87%); 1x: $2,790 (60%,
