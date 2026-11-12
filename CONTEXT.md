@@ -174,6 +174,11 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**LADDER AND QUICK UNCHANGED AT 50% MARGIN, 1-5x (2026-11-12, owner "5% with 50% capital ... as they are today", read as
+5x).** `fade_profit_ladder.py --today`, `out/fade_profit_ladder_today.txt`. Rule A: 5x $0 (2025-09-07, 12% liquidated),
+3x $61, 2x $1,043, 1x $2,784 (drop 74%). QUICK: 5x $0 (2026-03-11), 3x $366, 2x $1,333, 1x $2,083 (drop 56%). All
+cells go under $1,000.
+
 **SAME AT 30% MARGIN (2026-11-12, owner "20% at 30% capital", read as 20x).** `fade_profit_ladder.py --lev30`,
 `out/fade_profit_ladder_lev30.txt`: 20x 78% liquidated, $0 2025-03-23; 10x $0 2025-05-30; 5x $67; 3x $2,236 (drop 84%);
 2x $2,769 (68%); 1x $2,524, drop 41%, never under $1,000 (the only cell that is).

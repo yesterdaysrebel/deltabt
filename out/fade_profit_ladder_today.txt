@@ -1,0 +1,12 @@
+
+LADDER / rule A as today (stop 2x ATR, 24 h): 50% of the balance as margin per day, from $1,640
+  1x: -> $    2,784  worst drop  74%  2025 end $  1,169  liquidated 0 (0%)  stopped 159 (16%)  floor 2025-08-22
+  2x: -> $    1,043  worst drop  95%  2025 end $    541  liquidated 0 (0%)  stopped 159 (16%)  floor 2025-05-12
+  3x: -> $       61  worst drop 100%  2025 end $    121  liquidated 2 (0%)  stopped 157 (15%)  floor 2025-04-12
+  5x: -> $        0  worst drop 100%  2025 end $      0  liquidated 123 (12%)  stopped 71 (7%)  floor 2025-01-17  $0 on 2025-09-07
+
+QUICK as today (all closed at +0.2R): 50% of the balance as margin per day, from $1,640
+  1x: -> $    2,083  worst drop  56%  2025 end $  1,492  liquidated 0 (0%)  stopped 84 (8%)  target 732 (72%)  floor 2026-01-30
+  2x: -> $    1,333  worst drop  90%  2025 end $    963  liquidated 0 (0%)  stopped 84 (8%)  target 732 (72%)  floor 2025-05-11
+  3x: -> $      366  worst drop  99%  2025 end $    407  liquidated 2 (0%)  stopped 82 (8%)  target 732 (72%)  floor 2025-04-12
+  5x: -> $        0  worst drop 100%  2025 end $     12  liquidated 81 (8%)  stopped 29 (3%)  target 722 (71%)  floor 2025-03-23  $0 on 2026-03-11

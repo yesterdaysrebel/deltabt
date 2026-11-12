@@ -105,7 +105,7 @@ def trailing(d, opens, ps, act, trail):
     return np.array(out)
 
 
-def leveraged(d, opens, ps, lev, margin_total=0.50, start=START):
+def leveraged(d, opens, ps, lev, margin_total=0.50, start=START, take=0.5):
     """Owner 2026-11-12: "full leverage and 50% capital deployed with close half at +0.2R". Each day's picks share
     `margin_total` of the balance as margin; notional = L x margin (L = `lev` capped at the coin's Delta max, or the
     max for "full"); half closed at +0.2R (0.2 x the 2x-ATR distance), the rest to the 2x-ATR stop or 24 h. Liquidation
@@ -146,10 +146,12 @@ def leveraged(d, opens, ps, lev, margin_total=0.50, start=START):
                         got += left * L * margin * (-(xp / e - 1) - FEE - FEE * xp / e - EXTRA)
                     left = 0.0
                     break
-                if left == 1.0 and lo[m] <= tp * (1 - THR):
+                if take > 0 and left == 1.0 and lo[m] <= tp * (1 - THR):
                     n_half += 1
-                    got += 0.5 * L * margin * (-(tp / e - 1) - FEE - FEE * tp / e - EXTRA)
-                    left = 0.5
+                    got += take * L * margin * (-(tp / e - 1) - FEE - FEE * tp / e - EXTRA)
+                    left = 1.0 - take
+                    if left <= 0:
+                        break
             if left > 0:
                 xp = cl[-1]
                 got += left * L * margin * (-(xp / e - 1) - FEE - FEE * xp / e - EXTRA)
@@ -248,5 +250,22 @@ def lev30() -> None:
               f"stopped {ns}  floor {'never' if below is None else below.date()}" + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
 
 
+def as_today() -> None:
+    """Owner 2026-11-12: "5% with 50% captial with ladder and quick as they are today" (read as 5x, 50% margin):
+    rule A unchanged (no partial) and QUICK unchanged (all closed at +0.2R), across leverage."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    for take, nm in ((0.0, "LADDER / rule A as today (stop 2x ATR, 24 h)"), (1.0, "QUICK as today (all closed at +0.2R)")):
+        print(f"\n{nm}: 50% of the balance as margin per day, from $1,640")
+        for lev in (1, 2, 3, 5):
+            s, dd, below, n, nl, nh, ns = leveraged(d, opens, ps, lev, margin_total=0.50, take=take)
+            dead = s[s < 1]
+            ye = s.groupby(s.index.year).last()
+            print(f"  {lev}x: -> ${s.iloc[-1]:>9,.0f}  worst drop {100 * dd:3.0f}%  2025 end ${ye.get(2025, np.nan):>7,.0f}  "
+                  f"liquidated {nl} ({100 * nl / n:.0f}%)  stopped {ns} ({100 * ns / n:.0f}%)"
+                  + (f"  target {nh} ({100 * nh / n:.0f}%)" if take else "")
+                  + f"  floor {'never' if below is None else below.date()}" + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
+
+
 if __name__ == "__main__":
-    lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()
+    as_today() if "--today" in sys.argv else lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()
