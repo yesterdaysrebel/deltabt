@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**2:1 / 3:1 VIA ENTRY TIMING (watchlist + trigger + structure stop) — FAIL (2026-11-12, owner "ok with taking less
+trades ... atleast 1:2").** `scripts/fade_rr_entries.py`, `out/fade_rr_entries.txt`. Rule A picks as a watchlist;
+short only on a 15m trigger (breakdown of the first 1/2/4 h low; failed push +3/5/10% back below the open; lower
+high), stop just above the day's high (1-15%), target 2x/3x, 24 h, realistic fills. 14 rows: 12 negative (breakdowns
+−0.06..−0.12R, t −2.5..−5.2). Best: failed push +10% (43 trades a year, stop 12.7%): +0.022/+0.026R, t 0.4, 3/6
+years — noise. Lower high 3:1 −0.019R, 4/6 years. Waiting for weakness enters late: the day's fade is mostly done.
+
 **REWARD:RISK 1:1 / 2:1 / 3:1 — ALL NEGATIVE (2026-11-12, owner "we risk more than we make").**
 `scripts/fade_reward_risk.py`, `out/fade_reward_risk.txt`. 3,608 Binance picks, realistic fills, stops 2x/1x ATR and
 fixed 5/10%, targets 1/2/3x the stop, out at 24/48/72 h (48 rows): every row's mean R is negative over 2021-26; none
