@@ -33,7 +33,8 @@ def month(sym: str, ym: str) -> pd.DataFrame | None:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    for sym in COINS + (HOLDOUT if "--holdout" in sys.argv else []):
+    extra = sys.argv[sys.argv.index("--coins") + 1].split(",") if "--coins" in sys.argv else []
+    for sym in COINS + (HOLDOUT if "--holdout" in sys.argv else []) + extra:
         f = OUT / f"{sym}_1h.parquet"
         if f.exists():
             continue

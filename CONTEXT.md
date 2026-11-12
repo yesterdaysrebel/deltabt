@@ -174,6 +174,15 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**R:R >= 2 SEARCH, SIX FAMILIES ON 20 LARGE COINS — NONE PASSES (2026-11-12, owner "more ideas with better R&R, less risk,
+good win rate and good returns").** `scripts/rr_search.py`, `out/rr_search.txt`. Picked on 2021-23, judged on 2024-26
+(pass: mean > 0, t >= 2, every test year > 0). Dead everywhere: trend pullback (−0.014..−0.040R), dip-buying below the
+lower band (−0.12..−0.23R, t to −30), Asia-range breakout (−0.07R), NR7 (−0.08R). Trend-following lives but fades:
+4h breakout in BTC's direction 4R +0.162R t 4.34 all years (TEST +0.055 t 1.07, 2025 −0.009); DAILY 20-day breakout,
+2x ATR, 4R +0.177R t 4.00, win 39% (TEST +0.101 t 1.65, 2025 −0.054) — account 0.5% risk, max 5 open: $1,640 -> $2,729,
+worst drop 13%, but 2024 +10%, 2025 −0%, 2026 +1%. Fresh coins (ICP HBAR VET ALGO SAND MANA AXS EGLD THETA XTZ,
+downloaded) stay unused: nothing passed the bar.
+
 **TREND BREAKOUTS ON LARGE COINS, R:R 4-5 (2026-11-12, owner "option 2") — FIRST OUT-OF-SAMPLE PASS, BUT FADING AND
 DEEP DRAWDOWNS.** `scripts/trend_data.py` (Binance 1h 2021-01..2026-10, out/trend, not committed), `scripts/trend_rr.py`
 (main / --robust / --holdout / --money), `out/trend_rr*.txt`. 18 cells on BTC ETH SOL BNB XRP DOGE ADA AVAX LINK LTC

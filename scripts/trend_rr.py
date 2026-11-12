@@ -114,7 +114,7 @@ def f1(df, N, k, rr):
             jj = bidx[int(bar_of_1h[i])]
             return bc[jj] < ex_dn[jj] if side > 0 else bc[jj] > ex_up[jj]
         xi, xp, how = walk(h, side, i0, entry, stop, target, 30 * 24, trail if rr is None else None)
-        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how))
+        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how, t[min(xi, len(t) - 1)]))
         free_at = xi + 1
     return out
 
@@ -149,7 +149,7 @@ def f2(df, rr):
         def trail(k, side=side):
             return c[k] < ll48[k] if side > 0 else c[k] > hh48[k]
         xi, xp, how = walk(h, side, i0, entry, stop, target, 10 * 24, trail if rr is None else None)
-        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how))
+        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how, t[min(xi, len(t) - 1)]))
         free_at = xi + 1
     return out
 
@@ -191,13 +191,13 @@ def f3(df, rr):
             jj = bidx[int(bar_of_1h[i])]
             return bc[jj] < m[jj] if side > 0 else bc[jj] > m[jj]
         xi, xp, how = walk(h, side, i0, entry, stop, target, 20 * 24, trail if rr is None else None)
-        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how))
+        out.append((t[i0], side, result(side, entry, xp, dist, xi - i0), how, t[min(xi, len(t) - 1)]))
         free_at = xi + 1
     return out
 
 
 def summarise(rows):
-    d = pd.DataFrame(rows, columns=["time", "side", "r", "how", "coin"])
+    d = pd.DataFrame(rows, columns=["time", "side", "r", "how", "exit", "coin"])
     d["year"] = pd.to_datetime(d.time, unit="s").dt.year
     return d
 
