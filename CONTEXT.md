@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**"SENSE THE FLIP" EXITS — ALL FAIL (2026-11-12, owner "instead of hard SL, cut with some logic if we sense the
+position is going to flip").** `scripts/fade_flip_exits.py`, `out/fade_flip_exits.txt`. 3,608 Binance picks; signals
+on 15m closes, exit next minute + 0.05%: new 1/2/4 h high above entry, 15m close above the 4 h mean by 0.25/0.5 ATR,
+three rising 1 h lows, BTC +1% with the coin above entry, adverse at 1 h. On top of the 2x-ATR stop: all 8 worse
+(−0.002..−0.015R, z −0.5..−2.0); instead of it (3x-ATR disaster stop): all 8 worse. Why: 90% of trades trade above
+entry within 4 h and 87% of WINNERS do; 48% of winners rise 0.25 ATR against us first. Only a >= 1 ATR rise separates
+(24% end winners) and the 2x stop is already near it.
+
 **1:3 (TARGET = STOP / 3), ATR STOP, MAX SAFE LEVERAGE, 30% MARGIN PER PICK — WIN RATE BELOW BREAK-EVEN EVERYWHERE
 (2026-11-12, owner "if win rate is more we make money right").** `scripts/fade_tight_stops.py --r13`,
 `out/fade_ratio13.txt`. Stop = c x ATR14% (c 0.05..2), leverage up to 20x with liquidation >= 2x the stop. Realistic

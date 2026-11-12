@@ -1,0 +1,22 @@
+RULE A, Binance 2021-26, n 3608. Baseline 2x-ATR stop, 24 h: +0.011R, win 56%, worst -2.16R | 2021 -0.018 2022 +0.036 2023 -0.035 2024 +0.009 2025 +0.031 2026 +0.065
+  3x-ATR disaster stop only (no 2x stop)       +0.014R  win  58%  worst -3.12R  diff +0.003R z +0.61  better 2/6 | -0.025 +0.034 -0.013 +0.027 +0.029 +0.043  fail
+
+(a) FLIP EXIT ON TOP OF THE 2x-ATR STOP
+  newhigh 1h                                   +0.001R  win  29%  worst -1.69R  diff -0.010R z -1.25  better 1/6 | -0.028 +0.022 -0.032 -0.015 +0.027 +0.052  fail
+  newhigh 2h                                   -0.001R  win  31%  worst -1.69R  diff -0.012R z -1.55  better 0/6 | -0.026 +0.023 -0.036 -0.015 +0.023 +0.043  fail
+  newhigh 4h                                   +0.001R  win  33%  worst -2.16R  diff -0.010R z -1.40  better 0/6 | -0.029 +0.023 -0.041 -0.011 +0.029 +0.055  fail
+  above_ma 4h +0.25ATR                         -0.003R  win  40%  worst -1.69R  diff -0.014R z -1.58  better 1/6 | -0.031 +0.033 -0.034 -0.008 +0.015 +0.015  fail
+  above_ma 4h +0.5ATR                          -0.002R  win  47%  worst -2.16R  diff -0.013R z -1.72  better 1/6 | -0.021 +0.046 -0.036 -0.012 +0.003 +0.021  fail
+  higher_lows 3x1h                             -0.003R  win  30%  worst -1.69R  diff -0.015R z -1.96  better 1/6 | -0.035 +0.030 -0.024 -0.021 -0.003 +0.048  fail
+  btc_up 1%                                    +0.005R  win  44%  worst -1.82R  diff -0.006R z -1.37  better 1/6 | -0.037 +0.032 -0.017 -0.003 +0.012 +0.058  fail
+  adverse at 1h +0.5ATR                        +0.010R  win  54%  worst -2.16R  diff -0.002R z -0.49  better 2/6 | -0.033 +0.034 -0.042 +0.013 +0.053 +0.052  fail
+
+(b) FLIP EXIT INSTEAD OF THE 2x-ATR STOP (3x-ATR disaster stop kept)
+  newhigh 1h                                   +0.003R  win  29%  worst -1.77R  diff -0.008R z -0.99  better 1/6 | -0.030 +0.024 -0.031 -0.003 +0.027 +0.046  fail
+  newhigh 2h                                   +0.002R  win  32%  worst -3.12R  diff -0.009R z -1.15  better 1/6 | -0.027 +0.023 -0.027 -0.000 +0.020 +0.032  fail
+  newhigh 4h                                   +0.003R  win  34%  worst -3.12R  diff -0.008R z -0.96  better 1/6 | -0.029 +0.023 -0.032 +0.006 +0.021 +0.046  fail
+  above_ma 4h +0.25ATR                         -0.003R  win  40%  worst -1.77R  diff -0.014R z -1.57  better 1/6 | -0.034 +0.032 -0.034 -0.008 +0.018 +0.015  fail
+  above_ma 4h +0.5ATR                          -0.001R  win  47%  worst -2.16R  diff -0.012R z -1.54  better 2/6 | -0.025 +0.045 -0.034 -0.012 +0.010 +0.021  fail
+  higher_lows 3x1h                             -0.003R  win  30%  worst -1.89R  diff -0.014R z -1.83  better 1/6 | -0.041 +0.028 -0.013 -0.017 -0.005 +0.039  fail
+  btc_up 1%                                    +0.007R  win  46%  worst -2.66R  diff -0.004R z -0.70  better 3/6 | -0.050 +0.040 -0.003 +0.016 +0.003 +0.037  fail
+  adverse at 1h +0.5ATR                        +0.008R  win  55%  worst -3.12R  diff -0.004R z -0.64  better 3/6 | -0.035 +0.028 -0.034 +0.024 +0.047 +0.024  fail
