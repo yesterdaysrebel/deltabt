@@ -88,3 +88,7 @@ core.*
 out/manual/
 out/binance_paths/
 out/review_pack/
+
+# research caches (2026-11-12): Delta 1m candles for the QUICK replay, Binance 1h candles for the trend research
+out/fade_quick_full/*_*.json
+out/trend/

@@ -1,0 +1,7 @@
+30% of the balance as margin per day, half closed at +0.2R, rest to the 2x-ATR stop or 24 h, from $1,640
+   1x: -> $    2,524  worst drop  41%  liquidated 0 of 1022 (0%)  stopped 159  floor never
+   2x: -> $    2,769  worst drop  68%  liquidated 0 of 1022 (0%)  stopped 159  floor 2025-09-05
+   3x: -> $    2,236  worst drop  84%  liquidated 2 of 1022 (0%)  stopped 157  floor 2025-05-12
+   5x: -> $       67  worst drop 100%  liquidated 123 of 1022 (12%)  stopped 71  floor 2025-04-14
+  10x: -> $        0  worst drop 100%  liquidated 470 of 1022 (46%)  stopped 1  floor 2025-01-17  $0 on 2025-05-30
+  20x: -> $        0  worst drop 100%  liquidated 801 of 1022 (78%)  stopped 0  floor 2025-01-17  $0 on 2025-03-23

@@ -95,6 +95,48 @@ def account(d: pd.DataFrame, mode: str):
     return pd.Series(path), below, n_liq
 
 
+def account_15(d: pd.DataFrame, ladder: bool):
+    """Owner 2026-11-12: "for ladder how about we use 5% leverage and 15% risk per trade" (read as 5x). Notional = risk /
+    stop (risk 15%, or 15/7.5/4.5% at < 20% / 20-35% / > 35% under the high-water mark), leverage 5x, so margin =
+    notional / 5; liquidation at 17.5% above entry loses that margin."""
+    eq = hw = START
+    path, below, n_liq, dead = {}, None, 0, None
+    for t, g in d.groupby("date"):
+        under = 1 - eq / hw if hw > 0 else 1
+        risk = (0.15 if under < 0.20 else 0.075 if under < 0.35 else 0.045) if ladder else 0.15
+        pnl = 0.0
+        for x in g.itertuples():
+            notional = risk / x.dist
+            if x.liquidated:
+                n_liq += 1
+                pnl -= eq * notional / LEV
+            else:
+                pnl += eq * notional * x.dist * x.r
+        eq = max(eq + pnl, 0.0)
+        hw = max(hw, eq)
+        path[t] = eq
+        if below is None and eq < FLOOR:
+            below = t
+        if dead is None and eq < 1:
+            dead = t
+    return pd.Series(path), below, n_liq, dead
+
+
+def main15() -> None:
+    d = trades()
+    print(f"Delta rule A picks {d.date.min().date()} .. {d.date.max().date()}: {len(d)} trades; 5x liquidation at 17.5%: "
+          f"{d.liquidated.sum()} trades ({100 * d.liquidated.mean():.0f}%) reach it before their exit")
+    for ladder, nm in ((False, "15% fixed, 5x"), (True, "ladder 15/7.5/4.5%, 5x")):
+        s, below, nl, dead = account_15(d, ladder)
+        ye = s.groupby(s.index.year).last()
+        m = s.groupby(s.index.to_period("M")).last()
+        mret = m / m.shift(1).fillna(START) - 1
+        print(f"  {nm:24s} -> ${s.iloc[-1]:>8,.0f}  2025 end ${ye.get(2025):>7,.0f}  worst drop {100 * (1 - s / s.cummax()).max():3.0f}%  "
+              f"worst month {100 * mret.min():+.0f}%  liquidations {nl}  under $1,000 {below.date() if below is not None else 'never'}"
+              + (f"  $0 on {dead.date()}" if dead is not None else ""))
+        print("    by month: " + " ".join(f"{str(k)[2:]} {100 * v:+.0f}%" for k, v in mret.items()))
+
+
 def main() -> None:
     d = trades()
     print(f"Delta rule A picks {d.date.min().date()} .. {d.date.max().date()}: {len(d)} trades, mean {d.r.mean():+.3f}R; "
@@ -135,4 +177,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main15() if "--r15" in sys.argv else main()

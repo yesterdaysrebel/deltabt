@@ -174,6 +174,44 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**LADDER AT 5x AND 15% RISK (2026-11-12, owner).** `fade_ladder_5x.py --r15`, `out/fade_ladder_5x_r15.txt`. Delta picks,
+$1,640: fixed 15% -> $181 (drop 99%, worst month −83%, under $1,000 on 2025-01-21, 135 liquidations); ladder
+15/7.5/4.5% -> $1,904 (drop 77%, 2025 end $631). 3.4x full Kelly (4.4%).
+
+**OPTIMAL RISK PER TRADE BY EXIT STYLE (2026-11-12, owner "ready to take more risk, get me optimal R&R, position size").**
+`scripts/fade_optimal_size.py`, `out/fade_optimal_size.txt`. Delta picks 2025-01..2026-10, real-bot fills, risk 2-15%
+(liquidation >= 2x the stop, <= 3x, 25% margin a pick). Kelly (mean/var of R): rule A 4.4% (2025 negative, 2026 11%),
+QUICK 7.5%, half-at-0.2R 7.0%. Growth peaks: A at 4% $2,479 (drop 69%), QUICK at 8% $2,477 (61%), HALF at 8% $2,774
+(79%); beyond ~8% every style earns LESS. QUICK at 4% $2,171, drop 36%, never under $1,000 (5%: $2,243, 44%).
+Today's 10% ladder on rule A is past full Kelly (4.4%).
+
+**LADDER AND QUICK UNCHANGED AT 50% MARGIN, 1-5x (2026-11-12, owner "5% with 50% capital ... as they are today", read as
+5x).** `fade_profit_ladder.py --today`, `out/fade_profit_ladder_today.txt`. Rule A: 5x $0 (2025-09-07, 12% liquidated),
+3x $61, 2x $1,043, 1x $2,784 (drop 74%). QUICK: 5x $0 (2026-03-11), 3x $366, 2x $1,333, 1x $2,083 (drop 56%). All
+cells go under $1,000.
+
+**SAME AT 30% MARGIN (2026-11-12, owner "20% at 30% capital", read as 20x).** `fade_profit_ladder.py --lev30`,
+`out/fade_profit_ladder_lev30.txt`: 20x 78% liquidated, $0 2025-03-23; 10x $0 2025-05-30; 5x $67; 3x $2,236 (drop 84%);
+2x $2,769 (68%); 1x $2,524, drop 41%, never under $1,000 (the only cell that is).
+
+**HALF AT +0.2R + 50% OF CAPITAL AS MARGIN + FULL LEVERAGE — RUIN (2026-11-12).** `fade_profit_ladder.py --lev`,
+`out/fade_profit_ladder_lev.txt`. Same 1,022 Delta picks: full leverage liquidates 81% of trades, $0 by 2025-02-15;
+10x: 46% liquidated, $0 2025-03-23; 5x: 12%, $0 2026-01-22; 3x: $428 (drop 99%); 2x: $1,795 (87%); 1x: $2,790 (60%,
+under $1,000 2025-09-17). 1x at 50% margin ~ 10% risk on a 20% stop: already as large as the ladder.
+
+**PROFIT-SIDE LADDERS AND TRAILING STOPS ON THE LADDER'S PICKS (2026-11-12, owner "why not add ladder to profits as well?",
+"or trailing SL?").** `scripts/fade_profit_ladder.py`, `out/fade_profit_ladder.txt`. Same 1,022 Delta picks, real-bot
+fills; today +0.021R, ladder $1,640 -> $2,610 (drop 66%). Raising risk when ahead (+12.5/15%, 3->7.5%, 5->10%): $2,050-
+2,289, none better, none avoids the 2025 floor. Scale-out: 1/2 at 0.2R +0.015R but ladder $2,875 drop 57% (smoother,
+not more per trade; 3%: $2,345 drop 42%); other plans $1,677-2,632. Trailing (0.25-1R behind, from 0-1R): −0.001..+0.011R,
+ladder $1,152-1,433 (all below today). Win rate rises to 60-69%, average win falls. Nothing avoids the 2025 floor.
+
+**1:2 ON THE LADDER'S OWN PICKS, OUTCOME COUNTS (2026-11-12).** `scripts/fade_rr12.py`, `out/fade_rr12.txt`. Delta picks
+2025-01..2026-10, 1,022 trades, real-bot fills. Today (2x ATR, no target): stop 16%, 24 h in profit 55% (+0.47R), 24 h
+at a loss 30% (−0.23R); +0.021R; ladder $1,640 -> $2,610, floor hit 2025-04-12. 1:2 with the same stop: target hit 1%,
++0.016R, ladder −2%. 1:2 at 1x ATR: stops 36%, targets 8%, −0.050R, −90%. 1:2 at 0.5x ATR: stops 58%, targets 21%,
+−0.160R, −99%.
+
 **DECISION 2026-11-12 (owner): "we will stick to quick and ladder".** The exit / leverage / R:R / new-family research
 of 2026-11-12 (entries below) is closed; no strategy change. Real account stays rule A ladder 10/5/3 (run 3); QUICK
 stays as it is. Open option the owner has not taken: real account to QUICK at 3% fixed (fade_sizing_options).
