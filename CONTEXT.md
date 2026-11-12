@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**$300-400 TARGET VIA LEVERAGE ("more contracts, target reaches quickly") — RUIN (2026-11-12).** $1,640 wallet, 25%
+margin, leverage 5/10/20x, stop = widest keeping liquidation 2x away ((1/L - mm)/2: 8.75/3.75/1.25%), target = the move
+that earns $100-400 (4.9-19.5% at 5x, 1.2-4.9% at 20x). Six years (`fade_tight_stops.py --usd`,
+`out/fade_dollar_target.txt`): all 24 cells -> $0, ideal fills too. Paper's 30 picks on Delta (`fade_quick_full_replay.py
+--usd`, `out/fade_dollar_target_replay.txt`): 20x loses $1,819-2,477 in two weeks (stopped 16-22 of 30); 5x/10x mixed
+(−$929..+$777). Leverage shrinks the allowed stop faster than the target move.
+
 **TIGHT FIXED STOPS + SAFE LEVERAGE (liquidation >= 2x the stop), 25% PER PICK — PAPER PICKS LOOK OK, SIX YEARS
 RUIN (2026-11-12, owner "we can use tight SL? avoid liquidations").** Paper QUICK's 30 picks on Delta 1m + MARK
 (`fade_quick_full_replay.py --tight`, `out/fade_quick_tight_replay.txt`, entry at the 00:00 open): stop 1% $858,

@@ -110,5 +110,39 @@ def safe25() -> None:
                       f"years up {up}/6 | mean per trade by year (% of balance): {yr}")
 
 
+def dollar_target() -> None:
+    """Owner 2026-11-12: "more leverage will allow more contracts and target will reach quickly, like scalping maybe
+    300-400$ target profit", "cut losses and no liquidations". On a ~$1,640 wallet with 25% ($410) as margin: target =
+    a fixed share of the balance ($100/$200/$300/$400 = 6/12/18/24%), leverage L (capped at the coin's max), stop = the
+    WIDEST that keeps liquidation 2x away: (1/L - maintenance) / 2. Compounds, so the $ target grows with the wallet."""
+    p0, hi0, lo0, cl = X.load()
+    im0, mm0, _ = Q.margins(p0)
+    wallet = 1640.0
+    for setname, e, thr, ex in (("IDEAL fills", 0, 0.0, 0.0), ("REALISTIC fills", 3, 0.001, 0.001)):
+        if e:
+            p = p0.copy()
+            p["open"] = cl[:, e - 1]
+            hi, lo = hi0.copy(), lo0.copy()
+            hi[:, :e], lo[:, :e] = -np.inf, np.inf
+        else:
+            p, hi, lo = p0, hi0, lo0
+        ok = np.isfinite(p.open.to_numpy()) & (p.open.to_numpy() > 0)
+        p, hi, lo, c, im, mm = p[ok].reset_index(drop=True), hi[ok], lo[ok], cl[ok], im0[ok], mm0[ok]
+        print(f"\n{setname}: $ target per trade on a $1,640 wallet, 25% margin, widest safe stop, from $1,500 (six years)")
+        for lev in (5, 10, 20):
+            Lc = np.minimum(float(lev), 1 / im)
+            stop = (1 / Lc - mm) / 2
+            for usd in (100, 200, 300, 400):
+                tgt = (usd / wallet) / (0.25 * Lc)                          # price move that earns $usd
+                rb, k, L = run(p, hi, lo, c, im, mm, lev, stop, tgt / stop, thr, ex, margin=0.25)
+                s, dd = Q.account(p, rb)
+                sh = [100 * (k == i).mean() for i in range(4)]
+                ye = s.groupby(s.index.year).last()
+                up = int((ye.to_numpy() > np.r_[1500.0, ye.to_numpy()[:-1]]).sum())
+                print(f"  {lev:2d}x  target ${usd} = {100 * np.median(tgt):4.1f}% move, stop {100 * np.median(stop):4.2f}% "
+                      f"(-${wallet * 0.25 * lev * np.median(stop):.0f}) -> ${s.iloc[-1]:>8,.0f}  drop {100 * dd:3.0f}%  "
+                      f"liq/stop/target/24h {sh[0]:.1f}/{sh[1]:.0f}/{sh[2]:.0f}/{sh[3]:.0f}%  years up {up}/6")
+
+
 if __name__ == "__main__":
-    safe25() if "--safe25" in sys.argv else main()
+    dollar_target() if "--usd" in sys.argv else safe25() if "--safe25" in sys.argv else main()

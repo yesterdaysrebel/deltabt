@@ -112,7 +112,7 @@ def main() -> None:
         print(f"  END ${bal:,.2f} ({100 * (bal / START - 1):+.1f}%), worst drop {100 * worst:.0f}%")
 
 
-if __name__ == "__main__" and "--tight" not in sys.argv:
+if __name__ == "__main__" and "--tight" not in sys.argv and "--usd" not in sys.argv:
     main()
 
 
@@ -177,3 +177,34 @@ def replay_k(pick: dict, lev: float, mm: float, tk: float):
 
 if __name__ == "__main__" and "--tight" in sys.argv:
     tight()
+
+
+def usd() -> None:
+    """The $ target idea (owner 2026-11-12) on paper QUICK's picks with Delta 1m + MARK candles: wallet $1,640, 25%
+    margin, leverage L, stop = the widest keeping liquidation 2x away, target = the move that earns $X. No compounding."""
+    picks = [p for p in json.load(open(sys.argv[1])) if p.get("entry_price")]
+    tab = json.load(open("out/delta_margin/perp_margins_2026-11-12.json"))
+    wallet = 1640.0
+    print("$ TARGET on paper QUICK's picks, $1,640 wallet, 25% margin per pick, widest safe stop (no compounding)")
+    for lev in (5, 10, 20):
+        for target in (100, 200, 300, 400):
+            total, hits = 0.0, {"STOP": 0, "TARGET": 0, "TIME": 0, "LIQUIDATED": 0}
+            for p in picks:
+                im, mm = (x / 100 for x in tab.get(p["symbol"], [5.0, 2.5]))
+                L = min(lev, 1 / im)
+                stop = (1 / L - mm) / 2
+                notional = 0.25 * wallet * L
+                q = dict(p, stop_price=p["entry_price"] * (1 + stop))
+                res = replay_k(q, L, mm, (target / notional) / stop)
+                if res is None:
+                    continue
+                how, xp = res
+                hits[how] += 1
+                ret = -(xp / p["entry_price"] - 1) - FEE - FEE * xp / p["entry_price"]
+                total += -0.25 * wallet if how == "LIQUIDATED" else max(notional * ret, -0.25 * wallet)
+            print(f"  {lev:2d}x target ${target}: total ${total:+9.2f} over {sum(hits.values())} picks | "
+                  f"target {hits['TARGET']}, stop {hits['STOP']}, 24 h {hits['TIME']}, liquidated {hits['LIQUIDATED']}")
+
+
+if __name__ == "__main__" and "--usd" in sys.argv:
+    usd()

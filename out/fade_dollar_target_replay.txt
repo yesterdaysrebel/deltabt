@@ -1,0 +1,13 @@
+$ TARGET on paper QUICK's picks, $1,640 wallet, 25% margin per pick, widest safe stop (no compounding)
+   5x target $100: total $  +265.33 over 30 picks | target 21, stop 7, 24 h 1, liquidated 1
+   5x target $200: total $  +777.38 over 30 picks | target 14, stop 9, 24 h 6, liquidated 1
+   5x target $300: total $  -128.38 over 30 picks | target 7, stop 12, 24 h 10, liquidated 1
+   5x target $400: total $   +16.90 over 30 picks | target 4, stop 12, 24 h 13, liquidated 1
+  10x target $100: total $  -928.59 over 30 picks | target 17, stop 11, 24 h 0, liquidated 2
+  10x target $200: total $  -341.60 over 30 picks | target 14, stop 14, 24 h 0, liquidated 2
+  10x target $300: total $  +605.15 over 30 picks | target 13, stop 15, 24 h 0, liquidated 2
+  10x target $400: total $  -209.13 over 30 picks | target 8, stop 18, 24 h 2, liquidated 2
+  20x target $100: total $ -1819.07 over 30 picks | target 12, stop 16, 24 h 0, liquidated 2
+  20x target $200: total $ -2477.43 over 30 picks | target 6, stop 22, 24 h 0, liquidated 2
+  20x target $300: total $ -1877.11 over 30 picks | target 6, stop 22, 24 h 0, liquidated 2
+  20x target $400: total $ -2212.60 over 30 picks | target 4, stop 22, 24 h 1, liquidated 3
