@@ -174,6 +174,16 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**QUICK AT FULL LEVERAGE + COMBINED STOPS — DEAD; THE ONE BIG CELL IS A FIRST-MINUTES ARTIFACT (2026-11-12).**
+`scripts/fade_quick_leverage.py` (`--robust`), `out/fade_quick_leverage*.txt`. Same 3,608 Binance picks; half the
+balance as margin per pick; per-coin max leverage from Delta's /v2/products (`out/delta_margin/`): 20x for 92% of
+picks, liquidation 2.5% away vs a median 19.5% stop. 72 exit combos (stop 2x/1x ATR/none x target QUICK/2%/5%/none x
+stuck 4h-3% on/off) x 1/2/3/5/10x/full: at 5x and above every cell ends at $0; at 3x 0 of 24 end above $1,500.
+Standout: 2% target, 2x-ATR stop, 1x: $1,500 -> $66,820 (5/6 years) — entering at the 00:03 close instead of the
+00:00 open: $573; + target must trade 0.2% through: $29; + 0.1% spread: $5. Same for targets 1-4% at 1x/2x. The
+edge is the first minutes' wick below the open, which the real bot (enters ~00:03 at the bid) cannot get. Lesson:
+any small-target result must be re-run from the real entry minute with trade-through fills.
+
 **OWNER'S EXIT + SIZE IDEAS — ALL FAIL (2026-11-12, "more leverage", "close it if coin moves certain % in favour",
 "cut the position if the price is stuck ... in a band").** `scripts/fade_owner_exits.py`, `out/fade_owner_exits.txt`.
 Binance rule A picks 2021-26 (3,608), paired vs the 24 h exit (+0.011R). Pass = better in >= 5/6 years and paired
