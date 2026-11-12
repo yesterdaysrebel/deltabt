@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**LADDER AT A CONSTANT 5x (2026-11-12, owner).** `scripts/fade_ladder_5x.py`, `out/fade_ladder_5x.txt`. Delta rule A
+picks 2025-01-15..2026-10-27 (1,022 trades, +0.033R after funding), ladder risk 10/5/3%, from $1,500. 5x liquidates at
+17.5% above entry: 13% of trades get there before exiting (89% of those would have lost anyway). NOW (live sizing,
+1-3x, 60% notional cap): $4,471, 2025 −40% then 2026 +400%, drop 67%, below the $1,000 floor 2025-04-12. 5x, same risk
+(cap 150% notional): $2,330, drop 63%, 135 liquidations. 5x with 30% margin every pick (150% notional): $0 by
+2025-09. Constant 5x is worse than the live sizing in both versions.
+
 **$300-400 TARGET VIA LEVERAGE ("more contracts, target reaches quickly") — RUIN (2026-11-12).** $1,640 wallet, 25%
 margin, leverage 5/10/20x, stop = widest keeping liquidation 2x away ((1/L - mm)/2: 8.75/3.75/1.25%), target = the move
 that earns $100-400 (4.9-19.5% at 5x, 1.2-4.9% at 20x). Six years (`fade_tight_stops.py --usd`,
