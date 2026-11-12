@@ -174,6 +174,17 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**FLEXIBLE RISK + SAFE FULL LEVERAGE + TARGET % SWEEP — NOTHING POSITIVE (2026-11-12, owner "you would avoid
+liquidations right? ... flexible risk per trade ... full leverage and 50% capital", "test diffrent target %").**
+`scripts/fade_flex_risk.py` (`--targets`), `out/fade_flex_risk.txt`, `out/fade_flex_targets.txt`. Realistic fills
+(00:03 entry, 0.1% trade-through, 0.1% spread, 0.05% fee); leverage = the most whose liquidation sits >= 2x the stop
+away (as lever_plan), 50% of capital as margin -> 0 liquidations with the 2x-ATR stop (a few 1m gaps past
+liquidation with 2-4% stops). Rule A itself is −0.006R over 2021-26 under these fills (2025 +0.011, 2026 +0.058).
+Risk rules fixed 2/5/10%, ladder, up-after-win, up-after-loss, half-Kelly from the last 200 trades: every cell below
+$1,500 (best $817, adaptive, 2x-ATR, no target). Targets 1/2/3/5/8/10/15/20/30% x stops 2x/1x ATR and fixed
+4/8/12%: 50 cells, mean R negative over 6 years in all 50; best 2% target on 2x ATR (−0.006R, 86% win, $911 at 2%).
+Sizing cannot turn a ~0 or negative trade positive; the win rate climbs to 92% while R per trade stays negative.
+
 **TIGHT 2%/4% STOPS AT FULL LEVERAGE — EVERY CELL GOES TO ~$0 (2026-11-12, owner "full leverage and big position
 and stop at 2%, 4%").** `scripts/fade_tight_stops.py`, `out/fade_tight_stops.txt`. Same picks; half the balance as
 margin per pick; targets 0.2/0.5/1/2x the stop; 2x/5x/10x/full. Realistic fills (00:03 entry, 0.1% through, 0.1%
