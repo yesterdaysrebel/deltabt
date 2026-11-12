@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**PROFIT-SIDE LADDERS AND TRAILING STOPS ON THE LADDER'S PICKS (2026-11-12, owner "why not add ladder to profits as well?",
+"or trailing SL?").** `scripts/fade_profit_ladder.py`, `out/fade_profit_ladder.txt`. Same 1,022 Delta picks, real-bot
+fills; today +0.021R, ladder $1,640 -> $2,610 (drop 66%). Raising risk when ahead (+12.5/15%, 3->7.5%, 5->10%): $2,050-
+2,289, none better, none avoids the 2025 floor. Scale-out: 1/2 at 0.2R +0.015R but ladder $2,875 drop 57% (smoother,
+not more per trade; 3%: $2,345 drop 42%); other plans $1,677-2,632. Trailing (0.25-1R behind, from 0-1R): −0.001..+0.011R,
+ladder $1,152-1,433 (all below today). Win rate rises to 60-69%, average win falls. Nothing avoids the 2025 floor.
+
 **1:2 ON THE LADDER'S OWN PICKS, OUTCOME COUNTS (2026-11-12).** `scripts/fade_rr12.py`, `out/fade_rr12.txt`. Delta picks
 2025-01..2026-10, 1,022 trades, real-bot fills. Today (2x ATR, no target): stop 16%, 24 h in profit 55% (+0.47R), 24 h
 at a loss 30% (−0.23R); +0.021R; ladder $1,640 -> $2,610, floor hit 2025-04-12. 1:2 with the same stop: target hit 1%,
