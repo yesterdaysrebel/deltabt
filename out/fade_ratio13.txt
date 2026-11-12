@@ -1,0 +1,18 @@
+
+IDEAL fills: stop = c x ATR, target = stop / 3, 30% margin per pick, liquidation >= 2x the stop, from $1,500
+  c 0.05: stop  0.49% target  0.16% (median), 20x -> $        0  drop 100%  win  56% vs break-even  90%  liq/stop/target/24h 4.0/36/60/0%  years up 0/6
+  c 0.10: stop  0.97% target  0.32% (median), 20x -> $        0  drop 100%  win  72% vs break-even  83%  liq/stop/target/24h 3.8/24/73/0%  years up 0/6
+  c 0.15: stop  1.46% target  0.49% (median), 18x -> $        0  drop 100%  win  77% vs break-even  80%  liq/stop/target/24h 2.6/20/77/0%  years up 0/6
+  c 0.25: stop  2.43% target  0.81% (median), 13x -> $        0  drop 100%  win  78% vs break-even  78%  liq/stop/target/24h 1.5/20/78/0%  years up 1/6
+  c 0.50: stop  4.86% target  1.62% (median),  8x -> $        1  drop 100%  win  78% vs break-even  77%  liq/stop/target/24h 0.5/21/78/0%  years up 2/6
+  c 1.00: stop  9.73% target  3.24% (median),  4x -> $      337  drop 100%  win  75% vs break-even  76%  liq/stop/target/24h 0.2/19/74/7%  years up 2/6
+  c 2.00: stop 19.45% target  6.48% (median),  2x -> $      488  drop  99%  win  67% vs break-even  75%  liq/stop/target/24h 0.1/13/56/31%  years up 2/6
+
+REALISTIC fills: stop = c x ATR, target = stop / 3, 30% margin per pick, liquidation >= 2x the stop, from $1,500
+  c 0.05: stop  0.49% target  0.16% (median), 20x -> $        0  drop 100%  win  15% vs break-even 106%  liq/stop/target/24h 3.0/40/56/0%  years up 0/6
+  c 0.10: stop  0.97% target  0.32% (median), 20x -> $        0  drop 100%  win  62% vs break-even  90%  liq/stop/target/24h 3.3/31/65/0%  years up 0/6
+  c 0.15: stop  1.46% target  0.49% (median), 18x -> $        0  drop 100%  win  68% vs break-even  85%  liq/stop/target/24h 2.6/29/68/0%  years up 0/6
+  c 0.25: stop  2.43% target  0.81% (median), 13x -> $        0  drop 100%  win  71% vs break-even  81%  liq/stop/target/24h 1.3/28/71/0%  years up 0/6
+  c 0.50: stop  4.86% target  1.62% (median),  8x -> $        0  drop 100%  win  74% vs break-even  78%  liq/stop/target/24h 0.4/25/74/1%  years up 0/6
+  c 1.00: stop  9.73% target  3.24% (median),  4x -> $        0  drop 100%  win  72% vs break-even  77%  liq/stop/target/24h 0.3/22/70/8%  years up 0/6
+  c 2.00: stop 19.45% target  6.48% (median),  2x -> $        0  drop 100%  win  65% vs break-even  76%  liq/stop/target/24h 0.1/14/54/32%  years up 0/6

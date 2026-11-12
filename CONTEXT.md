@@ -174,6 +174,12 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**1:3 (TARGET = STOP / 3), ATR STOP, MAX SAFE LEVERAGE, 30% MARGIN PER PICK — WIN RATE BELOW BREAK-EVEN EVERYWHERE
+(2026-11-12, owner "if win rate is more we make money right").** `scripts/fade_tight_stops.py --r13`,
+`out/fade_ratio13.txt`. Stop = c x ATR14% (c 0.05..2), leverage up to 20x with liquidation >= 2x the stop. Realistic
+fills: every cell -> $0; win 62-74% vs break-even 78-90% (costs ~0.2% a round trip eat a 0.3-0.8% target). Ideal
+fills: best c 0.5 (stop 4.9%, target 1.6%, 8x) win 78% vs 77% break-even, still $1. A 1:3 needs > 75% wins plus costs.
+
 **LADDER AT A CONSTANT 5x (2026-11-12, owner).** `scripts/fade_ladder_5x.py`, `out/fade_ladder_5x.txt`. Delta rule A
 picks 2025-01-15..2026-10-27 (1,022 trades, +0.033R after funding), ladder risk 10/5/3%, from $1,500. 5x liquidates at
 17.5% above entry: 13% of trades get there before exiting (89% of those would have lost anyway). NOW (live sizing,

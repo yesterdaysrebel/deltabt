@@ -144,5 +144,40 @@ def dollar_target() -> None:
                       f"liq/stop/target/24h {sh[0]:.1f}/{sh[1]:.0f}/{sh[2]:.0f}/{sh[3]:.0f}%  years up {up}/6")
 
 
+def ratio13() -> None:
+    """Owner 2026-11-12: "full lverage with 30% capital on each quick trade ... atr based SL and target but ration is 1:3
+    so target at 0.4% is reached quickly; if win rate is more we make money right". Stop = c x ATR14% (c small enough
+    for high leverage), target = stop / 3, leverage = the most (up to the coin's max) keeping liquidation >= 2x the stop
+    away, 30% of the balance as margin per pick. Break-even win rate printed next to the real one."""
+    p0, hi0, lo0, cl = X.load()
+    im0, mm0, _ = Q.margins(p0)
+    for setname, e, thr, ex in (("IDEAL fills", 0, 0.0, 0.0), ("REALISTIC fills", 3, 0.001, 0.001)):
+        if e:
+            p = p0.copy()
+            p["open"] = cl[:, e - 1]
+            hi, lo = hi0.copy(), lo0.copy()
+            hi[:, :e], lo[:, :e] = -np.inf, np.inf
+        else:
+            p, hi, lo = p0, hi0, lo0
+        ok = np.isfinite(p.open.to_numpy()) & (p.open.to_numpy() > 0)
+        p, hi, lo, c, im, mm = p[ok].reset_index(drop=True), hi[ok], lo[ok], cl[ok], im0[ok], mm0[ok]
+        atr = p.dist.to_numpy() / 2
+        cost = 2 * FEE + ex
+        print(f"\n{setname}: stop = c x ATR, target = stop / 3, 30% margin per pick, liquidation >= 2x the stop, from $1,500")
+        for cc in (0.05, 0.1, 0.15, 0.25, 0.5, 1.0, 2.0):
+            stop = cc * atr
+            rb, k, L = run(p, hi, lo, c, im, mm, 1, stop, 1 / 3, thr, ex, margin=0.30, safe=True)
+            s, dd = Q.account(p, rb)
+            st, tg = np.median(stop), np.median(stop) / 3
+            be = (st + cost) / (st + tg)                                # win rate needed to break even after costs
+            win = (rb > 0).mean()
+            ye = s.groupby(s.index.year).last()
+            up = int((ye.to_numpy() > np.r_[1500.0, ye.to_numpy()[:-1]]).sum())
+            print(f"  c {cc:4.2f}: stop {100 * st:5.2f}% target {100 * tg:5.2f}% (median), {int(np.median(L)):2d}x -> "
+                  f"${s.iloc[-1]:>9,.0f}  drop {100 * dd:3.0f}%  win {100 * win:3.0f}% vs break-even {100 * be:3.0f}%  "
+                  f"liq/stop/target/24h {100 * (k == 0).mean():.1f}/{100 * (k == 1).mean():.0f}/{100 * (k == 2).mean():.0f}/"
+                  f"{100 * (k == 3).mean():.0f}%  years up {up}/6")
+
+
 if __name__ == "__main__":
-    dollar_target() if "--usd" in sys.argv else safe25() if "--safe25" in sys.argv else main()
+    ratio13() if "--r13" in sys.argv else dollar_target() if "--usd" in sys.argv else safe25() if "--safe25" in sys.argv else main()
