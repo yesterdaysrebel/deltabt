@@ -124,6 +124,9 @@ def main() -> None:
     d["quick"] = quick_r(d)
     d["r_real"], d["quick_real"] = realistic(d)
     d = d[np.isfinite(d.r_real) & np.isfinite(d.quick_real)].reset_index(drop=True)
+    if "--top1" in sys.argv:                                             # owner 2026-11-12: "2 trades per day ... or 1"
+        d = d.sort_values(["date", "prev_change"], ascending=[True, False]).groupby("date").head(1).reset_index(drop=True)
+        print("TOP PICK ONLY (the day's biggest gainer that passes the 32.5% stop limit)")
     yrs = d.date.dt.year
     print(f"Delta rule A picks {d.date.min().date()} .. {d.date.max().date()}: {len(d)} trades")
     for col, nm in (("r", "RULE A (24 h)"), ("quick", "QUICK (0.2x target)"), ("r_real", "RULE A, real fills"), ("quick_real", "QUICK, real fills")):

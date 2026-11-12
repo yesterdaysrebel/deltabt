@@ -67,7 +67,7 @@ def trades() -> pd.DataFrame:
         rf = r + (f_day * held / x.dist if np.isfinite(f_day) else 0.0)
         mae = np.max(hi[:end + 1]) / x.bopen - 1
         liq_at = np.nonzero(hi[:end + 1] >= x.bopen * (1 + LIQ))[0]
-        rows.append(dict(date=day, symbol=x.symbol, dist=x.dist, r=rf, mae=mae, liquidated=len(liq_at) > 0))
+        rows.append(dict(date=day, symbol=x.symbol, dist=x.dist, r=rf, mae=mae, liquidated=len(liq_at) > 0, prev_change=x.prev_change))
     return pd.DataFrame(rows).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 

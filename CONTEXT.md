@@ -174,6 +174,10 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**ONE PICK A DAY INSTEAD OF TWO — WORSE (2026-11-12, owner "2 trades per day with quick? or 1").** `fade_sizing_options.py
+--top1`, `out/fade_sizing_options_top1.txt`: 599 trades. QUICK real fills −0.003R (two picks: +0.009R); QUICK 3% fixed
+$1,490 real / $2,193 ideal vs $2,045 / $3,707 with two. The second pick carries as much of the result as the first.
+
 **SIZING OPTIONS FOR THE REAL ACCOUNT, RULE A vs QUICK, DELTA PICKS 2025-01..2026-10 (2026-11-12, owner "major problems
 around risk reward and position sizing").** `scripts/fade_sizing_options.py`, `out/fade_sizing_options.txt`. 1,022
 trades, live sizing (lever_plan), from $1,640. Per trade: A +0.033R ideal / +0.020R real fills (00:03 entry, 0.1% through,

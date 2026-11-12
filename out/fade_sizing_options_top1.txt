@@ -1,0 +1,40 @@
+TOP PICK ONLY (the day's biggest gainer that passes the 32.5% stop limit)
+Delta rule A picks 2025-01-15 .. 2026-10-27: 599 trades
+  RULE A (24 h)        mean +0.029R  win 58%  avg win +0.51R  avg loss -0.63R | 2025 -0.035  2026 +0.104
+  QUICK (0.2x target)  mean +0.018R  win 79%  avg win +0.19R  avg loss -0.61R | 2025 +0.012  2026 +0.025
+  RULE A, real fills   mean +0.014R  win 55%  avg win +0.52R  avg loss -0.61R | 2025 -0.040  2026 +0.078
+  QUICK, real fills    mean -0.003R  win 77%  avg win +0.18R  avg loss -0.61R | 2025 -0.014  2026 +0.009
+
+FROM $1,640: end balance, worst drop, first day under the $1,000 floor, worst month, green months, median $ win / $ loss per trade
+
+  RULE A (ideal fills)
+    2% fixed       -> $   2,158  (2025 end $  1,268)  drop  40%  floor never  worst month  -14%  green 13/22  win $   11 / loss $   -18
+    3% fixed       -> $   2,344  (2025 end $  1,090)  drop  54%  floor 2025-09-09  worst month  -21%  green 13/22  win $   15 / loss $   -26
+    5% fixed       -> $   2,503  (2025 end $    767)  drop  74%  floor 2025-08-19  worst month  -34%  green 13/22  win $   22 / loss $   -32
+    10% fixed      -> $   1,983  (2025 end $    285)  drop  93%  floor 2025-07-14  worst month  -60%  green 12/22  win $   23 / loss $   -29
+    ladder 10/5/3  -> $   1,755  (2025 end $    879)  drop  66%  floor 2025-08-19  worst month  -21%  green 11/22  win $   16 / loss $   -25
+    ladder 5/3/2   -> $   1,700  (2025 end $  1,064)  drop  53%  floor 2025-09-09  worst month  -20%  green 12/22  win $   14 / loss $   -21
+
+  QUICK (ideal fills)
+    2% fixed       -> $   2,008  (2025 end $  1,762)  drop  11%  floor never  worst month   -5%  green 13/22  win $    7 / loss $   -20
+    3% fixed       -> $   2,193  (2025 end $  1,814)  drop  17%  floor never  worst month   -8%  green 13/22  win $   11 / loss $   -31
+    5% fixed       -> $   2,576  (2025 end $  1,904)  drop  27%  floor never  worst month  -14%  green 13/22  win $   19 / loss $   -55
+    10% fixed      -> $   3,442  (2025 end $  1,956)  drop  44%  floor never  worst month  -23%  green 12/22  win $   36 / loss $  -115
+    ladder 10/5/3  -> $   1,947  (2025 end $  1,653)  drop  41%  floor never  worst month  -14%  green 12/22  win $   16 / loss $   -48
+    ladder 5/3/2   -> $   2,073  (2025 end $  1,719)  drop  27%  floor never  worst month  -12%  green 13/22  win $   17 / loss $   -48
+
+  RULE A (REAL fills)
+    2% fixed       -> $   1,802  (2025 end $  1,224)  drop  39%  floor never  worst month  -15%  green 13/22  win $   10 / loss $   -14
+    3% fixed       -> $   1,787  (2025 end $  1,032)  drop  53%  floor 2025-09-04  worst month  -22%  green 12/22  win $   14 / loss $   -19
+    5% fixed       -> $   1,587  (2025 end $    700)  drop  73%  floor 2025-08-19  worst month  -37%  green 11/22  win $   18 / loss $   -27
+    10% fixed      -> $     901  (2025 end $    228)  drop  94%  floor 2025-07-11  worst month  -64%  green 11/22  win $   16 / loss $   -20
+    ladder 10/5/3  -> $   1,258  (2025 end $    761)  drop  67%  floor 2025-07-21  worst month  -22%  green 9/22  win $   13 / loss $   -21
+    ladder 5/3/2   -> $   1,463  (2025 end $    986)  drop  53%  floor 2025-09-01  worst month  -21%  green 11/22  win $   12 / loss $   -19
+
+  QUICK (REAL fills)
+    2% fixed       -> $   1,553  (2025 end $  1,488)  drop  23%  floor never  worst month  -10%  green 10/22  win $    6 / loss $   -17
+    3% fixed       -> $   1,490  (2025 end $  1,407)  drop  33%  floor never  worst month  -14%  green 9/22  win $    8 / loss $   -26
+    5% fixed       -> $   1,350  (2025 end $  1,245)  drop  50%  floor 2026-01-22  worst month  -23%  green 10/22  win $   12 / loss $   -40
+    10% fixed      -> $   1,097  (2025 end $    855)  drop  73%  floor 2025-07-13  worst month  -33%  green 9/22  win $   16 / loss $   -52
+    ladder 10/5/3  -> $   1,185  (2025 end $  1,118)  drop  53%  floor 2026-01-22  worst month  -17%  green 8/22  win $    6 / loss $   -30
+    ladder 5/3/2   -> $   1,271  (2025 end $  1,283)  drop  40%  floor never  worst month  -12%  green 9/22  win $    7 / loss $   -24
