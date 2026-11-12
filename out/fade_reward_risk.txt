@@ -1,0 +1,57 @@
+RULE A picks Binance 2021-26, n 3608, realistic fills. Median 2x-ATR stop 19.5%
+
+  stop 2x ATR
+  no target, out at 24 h             -0.006R t -0.54  win  55%              avg win +0.47R avg loss -0.58R  stop/target/time 19/0/81%  +yrs 3/6 | -0.032 +0.013 -0.055 -0.008 +0.011 +0.058  fail
+  target 1:1, out at 24 h            -0.009R t -0.83  win  56% (need  51%)  avg win +0.45R avg loss -0.58R  stop/target/time 19/11/71%  +yrs 2/6 | -0.024 +0.017 -0.057 -0.003 -0.005 +0.035  fail
+  target 2:1, out at 24 h            -0.007R t -0.60  win  55% (need  34%)  avg win +0.47R avg loss -0.58R  stop/target/time 19/1/79%  +yrs 3/6 | -0.028 +0.014 -0.053 -0.008 +0.009 +0.046  fail
+  target 3:1, out at 24 h            -0.006R t -0.54  win  55% (need  25%)  avg win +0.47R avg loss -0.58R  stop/target/time 19/0/81%  +yrs 3/6 | -0.032 +0.013 -0.055 -0.008 +0.013 +0.056  fail
+  no target, out at 48 h             -0.020R t -1.51  win  53%              avg win +0.60R avg loss -0.71R  stop/target/time 27/0/73%  +yrs 2/6 | -0.083 +0.039 -0.078 -0.025 -0.006 +0.055  fail
+  target 1:1, out at 48 h            -0.016R t -1.30  win  54% (need  51%)  avg win +0.56R avg loss -0.70R  stop/target/time 26/17/57%  +yrs 2/6 | -0.064 +0.038 -0.075 -0.015 -0.011 +0.053  fail
+  target 2:1, out at 48 h            -0.019R t -1.45  win  53% (need  34%)  avg win +0.60R avg loss -0.71R  stop/target/time 27/3/71%  +yrs 3/6 | -0.075 +0.039 -0.076 -0.028 +0.003 +0.044  fail
+  target 3:1, out at 48 h            -0.020R t -1.46  win  53% (need  25%)  avg win +0.60R avg loss -0.71R  stop/target/time 27/0/73%  +yrs 2/6 | -0.081 +0.039 -0.077 -0.026 -0.004 +0.055  fail
+  no target, out at 72 h             -0.021R t -1.42  win  51%              avg win +0.69R avg loss -0.78R  stop/target/time 32/0/68%  +yrs 3/6 | -0.121 +0.062 -0.089 -0.022 +0.021 +0.044  fail
+  target 1:1, out at 72 h            -0.020R t -1.51  win  54% (need  51%)  avg win +0.63R avg loss -0.77R  stop/target/time 30/22/48%  +yrs 3/6 | -0.105 +0.049 -0.086 -0.012 +0.011 +0.041  fail
+  target 2:1, out at 72 h            -0.021R t -1.44  win  52% (need  34%)  avg win +0.69R avg loss -0.78R  stop/target/time 32/4/65%  +yrs 3/6 | -0.115 +0.061 -0.089 -0.023 +0.028 +0.031  fail
+  target 3:1, out at 72 h            -0.020R t -1.36  win  51% (need  25%)  avg win +0.70R avg loss -0.78R  stop/target/time 32/1/67%  +yrs 3/6 | -0.118 +0.065 -0.089 -0.023 +0.026 +0.037  fail
+
+  stop 1x ATR
+  no target, out at 24 h             -0.039R t -2.13  win  47%              avg win +0.92R avg loss -0.88R  stop/target/time 40/0/60%  +yrs 2/6 | -0.072 +0.036 -0.144 -0.052 -0.063 +0.105  fail
+  target 1:1, out at 24 h            -0.044R t -3.02  win  52% (need  51%)  avg win +0.73R avg loss -0.87R  stop/target/time 36/30/34%  +yrs 1/6 | -0.043 +0.023 -0.136 -0.046 -0.027 -0.019  fail
+  target 2:1, out at 24 h            -0.042R t -2.48  win  47% (need  34%)  avg win +0.89R avg loss -0.88R  stop/target/time 40/8/52%  +yrs 2/6 | -0.059 +0.038 -0.142 -0.046 -0.047 +0.030  fail
+  target 3:1, out at 24 h            -0.040R t -2.22  win  47% (need  26%)  avg win +0.92R avg loss -0.88R  stop/target/time 40/3/57%  +yrs 2/6 | -0.054 +0.037 -0.145 -0.049 -0.065 +0.077  fail
+  no target, out at 48 h             -0.060R t -2.82  win  42%              avg win +1.20R avg loss -0.97R  stop/target/time 50/0/50%  +yrs 2/6 | -0.131 +0.035 -0.172 -0.064 -0.106 +0.131  fail
+  target 1:1, out at 48 h            -0.051R t -3.23  win  51% (need  51%)  avg win +0.84R avg loss -0.97R  stop/target/time 43/39/18%  +yrs 1/6 | -0.072 +0.028 -0.147 -0.056 -0.023 -0.017  fail
+  target 2:1, out at 48 h            -0.056R t -2.92  win  44% (need  34%)  avg win +1.13R avg loss -0.97R  stop/target/time 49/14/38%  +yrs 2/6 | -0.113 +0.028 -0.165 -0.051 -0.063 +0.064  fail
+  target 3:1, out at 48 h            -0.058R t -2.82  win  42% (need  26%)  avg win +1.19R avg loss -0.97R  stop/target/time 50/5/46%  +yrs 2/6 | -0.105 +0.031 -0.173 -0.058 -0.092 +0.096  fail
+  no target, out at 72 h             -0.056R t -2.39  win  39%              avg win +1.42R avg loss -1.01R  stop/target/time 55/0/45%  +yrs 2/6 | -0.158 +0.064 -0.190 -0.057 -0.061 +0.120  fail
+  target 1:1, out at 72 h            -0.049R t -3.00  win  50% (need  51%)  avg win +0.90R avg loss -1.01R  stop/target/time 45/44/11%  +yrs 1/6 | -0.071 +0.029 -0.148 -0.054 -0.012 -0.016  fail
+  target 2:1, out at 72 h            -0.058R t -2.82  win  41% (need  34%)  avg win +1.30R avg loss -1.00R  stop/target/time 53/17/29%  +yrs 2/6 | -0.142 +0.046 -0.189 -0.043 -0.029 +0.047  fail
+  target 3:1, out at 72 h            -0.057R t -2.55  win  40% (need  26%)  avg win +1.40R avg loss -1.01R  stop/target/time 55/7/38%  +yrs 2/6 | -0.127 +0.060 -0.193 -0.058 -0.053 +0.081  fail
+
+  stop fixed 5%
+  no target, out at 24 h             -0.146R t -5.37  win  33%              avg win +1.74R avg loss -1.07R  stop/target/time 63/0/37%  +yrs 1/6 | -0.186 +0.001 -0.256 -0.184 -0.138 -0.080  fail
+  target 1:1, out at 24 h            -0.130R t -7.70  win  47% (need  52%)  avg win +0.91R avg loss -1.06R  stop/target/time 49/43/7%  +yrs 0/6 | -0.121 -0.016 -0.200 -0.152 -0.121 -0.173  fail
+  target 2:1, out at 24 h            -0.164R t -7.69  win  36% (need  35%)  avg win +1.43R avg loss -1.06R  stop/target/time 60/20/20%  +yrs 0/6 | -0.137 -0.003 -0.240 -0.196 -0.183 -0.239  fail
+  target 3:1, out at 24 h            -0.161R t -6.83  win  34% (need  26%)  avg win +1.60R avg loss -1.06R  stop/target/time 62/9/29%  +yrs 0/6 | -0.146 -0.019 -0.254 -0.187 -0.182 -0.169  fail
+  no target, out at 48 h             -0.148R t -4.81  win  27%              avg win +2.36R avg loss -1.09R  stop/target/time 70/0/30%  +yrs 0/6 | -0.195 -0.007 -0.284 -0.176 -0.169 -0.010  fail
+  target 1:1, out at 48 h            -0.130R t -7.54  win  47% (need  52%)  avg win +0.94R avg loss -1.10R  stop/target/time 51/46/2%  +yrs 0/6 | -0.126 -0.012 -0.209 -0.144 -0.122 -0.173  fail
+  target 2:1, out at 48 h            -0.167R t -7.38  win  33% (need  35%)  avg win +1.69R avg loss -1.09R  stop/target/time 65/25/10%  +yrs 1/6 | -0.142 +0.005 -0.259 -0.204 -0.179 -0.230  fail
+  target 3:1, out at 48 h            -0.163R t -6.32  win  29% (need  26%)  avg win +2.06R avg loss -1.09R  stop/target/time 68/14/17%  +yrs 0/6 | -0.145 -0.019 -0.269 -0.207 -0.170 -0.149  fail
+  no target, out at 72 h             -0.143R t -4.29  win  25%              avg win +2.79R avg loss -1.10R  stop/target/time 74/0/26%  +yrs 1/6 | -0.215 +0.033 -0.287 -0.204 -0.107 -0.024  fail
+  target 1:1, out at 72 h            -0.134R t -7.69  win  47% (need  52%)  avg win +0.95R avg loss -1.11R  stop/target/time 52/47/1%  +yrs 0/6 | -0.127 -0.021 -0.210 -0.147 -0.124 -0.173  fail
+  target 2:1, out at 72 h            -0.171R t -7.42  win  32% (need  35%)  avg win +1.79R avg loss -1.10R  stop/target/time 67/27/6%  +yrs 0/6 | -0.155 -0.008 -0.259 -0.207 -0.177 -0.224  fail
+  target 3:1, out at 72 h            -0.171R t -6.41  win  27% (need  26%)  avg win +2.31R avg loss -1.10R  stop/target/time 71/17/12%  +yrs 0/6 | -0.163 -0.031 -0.256 -0.236 -0.157 -0.167  fail
+
+  stop fixed 10%
+  no target, out at 24 h             -0.037R t -2.04  win  48%              avg win +0.88R avg loss -0.87R  stop/target/time 39/0/61%  +yrs 2/6 | -0.087 +0.048 -0.116 -0.052 -0.049 +0.071  fail
+  target 1:1, out at 24 h            -0.044R t -3.07  win  52% (need  51%)  avg win +0.71R avg loss -0.86R  stop/target/time 35/29/36%  +yrs 1/6 | -0.055 +0.035 -0.106 -0.055 -0.052 -0.021  fail
+  target 2:1, out at 24 h            -0.040R t -2.42  win  48% (need  34%)  avg win +0.85R avg loss -0.86R  stop/target/time 38/8/54%  +yrs 2/6 | -0.076 +0.043 -0.118 -0.059 -0.047 +0.045  fail
+  target 3:1, out at 24 h            -0.034R t -1.93  win  48% (need  26%)  avg win +0.88R avg loss -0.86R  stop/target/time 38/3/59%  +yrs 2/6 | -0.074 +0.051 -0.117 -0.053 -0.049 +0.075  fail
+  no target, out at 48 h             -0.056R t -2.72  win  43%              avg win +1.15R avg loss -0.96R  stop/target/time 49/0/51%  +yrs 2/6 | -0.159 +0.054 -0.153 -0.061 -0.072 +0.094  fail
+  target 1:1, out at 48 h            -0.056R t -3.60  win  51% (need  51%)  avg win +0.82R avg loss -0.96R  stop/target/time 42/38/20%  +yrs 1/6 | -0.105 +0.045 -0.127 -0.067 -0.049 -0.022  fail
+  target 2:1, out at 48 h            -0.057R t -3.04  win  44% (need  34%)  avg win +1.08R avg loss -0.96R  stop/target/time 48/12/40%  +yrs 2/6 | -0.133 +0.046 -0.152 -0.068 -0.057 +0.053  fail
+  target 3:1, out at 48 h            -0.051R t -2.52  win  43% (need  26%)  avg win +1.15R avg loss -0.96R  stop/target/time 49/4/47%  +yrs 2/6 | -0.131 +0.052 -0.153 -0.065 -0.049 +0.085  fail
+  no target, out at 72 h             -0.046R t -2.03  win  40%              avg win +1.36R avg loss -0.99R  stop/target/time 54/0/46%  +yrs 2/6 | -0.181 +0.077 -0.167 -0.040 -0.020 +0.097  fail
+  target 1:1, out at 72 h            -0.054R t -3.35  win  50% (need  51%)  avg win +0.88R avg loss -0.99R  stop/target/time 45/42/13%  +yrs 1/6 | -0.105 +0.030 -0.130 -0.053 -0.031 -0.019  fail
+  target 2:1, out at 72 h            -0.055R t -2.72  win  42% (need  34%)  avg win +1.24R avg loss -0.99R  stop/target/time 52/16/32%  +yrs 2/6 | -0.150 +0.046 -0.166 -0.049 -0.018 +0.043  fail
+  target 3:1, out at 72 h            -0.043R t -1.98  win  41% (need  26%)  avg win +1.34R avg loss -0.99R  stop/target/time 53/6/41%  +yrs 2/6 | -0.155 +0.070 -0.165 -0.043 -0.005 +0.083  fail

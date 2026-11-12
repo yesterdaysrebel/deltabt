@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**REWARD:RISK 1:1 / 2:1 / 3:1 — ALL NEGATIVE (2026-11-12, owner "we risk more than we make").**
+`scripts/fade_reward_risk.py`, `out/fade_reward_risk.txt`. 3,608 Binance picks, realistic fills, stops 2x/1x ATR and
+fixed 5/10%, targets 1/2/3x the stop, out at 24/48/72 h (48 rows): every row's mean R is negative over 2021-26; none
+positive in more than 3 of 6 years. Rule A's own realised ratio (no target, 24 h): avg win +0.47R, avg loss −0.58R,
+win 55%. A 2:1/3:1 target on the 2x-ATR stop is a 39-58% move: hit by 0-4% of trades. Tighter stops (5%) are hit 50-74%
+of the time. Wins exceed the break-even rate only where the payoff is < 1:1.
+
 **"SENSE THE FLIP" EXITS — ALL FAIL (2026-11-12, owner "instead of hard SL, cut with some logic if we sense the
 position is going to flip").** `scripts/fade_flip_exits.py`, `out/fade_flip_exits.txt`. 3,608 Binance picks; signals
 on 15m closes, exit next minute + 0.05%: new 1/2/4 h high above entry, 15m close above the 4 h mean by 0.25/0.5 ATR,
