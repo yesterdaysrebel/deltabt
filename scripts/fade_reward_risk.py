@@ -93,5 +93,21 @@ def main() -> None:
                 line(f"target {rr}:1, out at {hours} h", r[ok], k[ok], yrs[ok], st, rr)
 
 
+def wide() -> None:
+    """Owner 2026-11-12: "it should be the other way risk 10 to make 40 or 50" -- reward:risk 4:1 and 5:1."""
+    p, hi, lo, cl, entry = load()
+    yrs = p.year.to_numpy()
+    atr = p.dist.to_numpy() / 2
+    stops = {"fixed 2%": np.full(len(p), 0.02), "fixed 3%": np.full(len(p), 0.03), "fixed 5%": np.full(len(p), 0.05),
+             "fixed 8%": np.full(len(p), 0.08), "0.5x ATR": 0.5 * atr, "1x ATR": atr}
+    print(f"REWARD:RISK 4:1 and 5:1, rule A picks Binance 2021-26, n {len(p)}, realistic fills")
+    for sn, st in stops.items():
+        print(f"\n  stop {sn}")
+        for rr in (4, 5):
+            for hours in (24, 48, 72):
+                r, k, ok = trade(hi, lo, cl, entry, st, rr, hours)
+                line(f"target {rr}:1, out at {hours} h", r[ok], k[ok], yrs[ok], st, rr)
+
+
 if __name__ == "__main__":
-    main()
+    wide() if "--wide" in sys.argv else main()

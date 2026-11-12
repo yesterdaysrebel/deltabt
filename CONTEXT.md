@@ -174,6 +174,11 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**REWARD:RISK 4:1 / 5:1 — ALL NEGATIVE (2026-11-12, owner "risk 10 to make 40 or 50").** `fade_reward_risk.py --wide`,
+`out/fade_reward_risk_wide.txt`. Stops 2/3/5/8% and 0.5x/1x ATR, targets 4x/5x, out at 24/48/72 h, realistic fills: 36
+rows, every one negative over 2021-26 (−0.04..−0.34R). A 2% stop is hit first on 80-84% of picks (target 10-17%);
+wide stops reach a 4-5x target on 0-10%. Pumped coins swing several % against the short before any 4-5x fall.
+
 **ONE PICK A DAY INSTEAD OF TWO — WORSE (2026-11-12, owner "2 trades per day with quick? or 1").** `fade_sizing_options.py
 --top1`, `out/fade_sizing_options_top1.txt`: 599 trades. QUICK real fills −0.003R (two picks: +0.009R); QUICK 3% fixed
 $1,490 real / $2,193 ideal vs $2,045 / $3,707 with two. The second pick carries as much of the result as the first.
