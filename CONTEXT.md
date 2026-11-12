@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**TIGHT 2%/4% STOPS AT FULL LEVERAGE — EVERY CELL GOES TO ~$0 (2026-11-12, owner "full leverage and big position
+and stop at 2%, 4%").** `scripts/fade_tight_stops.py`, `out/fade_tight_stops.txt`. Same picks; half the balance as
+margin per pick; targets 0.2/0.5/1/2x the stop; 2x/5x/10x/full. Realistic fills (00:03 entry, 0.1% through, 0.1%
+spread): all 32 cells end at $0, mean per trade negative in every one; even ideal fills: best $501 (4% stop, 0.8%
+target, 2x). A 2% stop is hit before a 2% target on 52% of picks (pumped coins are noisy), costs are ~10% of a 2%
+move, and at 20x liquidation (2.5%) sits INSIDE a 4% stop, so 29-75% of trades lose the whole margin.
+
 **QUICK AT FULL LEVERAGE + COMBINED STOPS — DEAD; THE ONE BIG CELL IS A FIRST-MINUTES ARTIFACT (2026-11-12).**
 `scripts/fade_quick_leverage.py` (`--robust`), `out/fade_quick_leverage*.txt`. Same 3,608 Binance picks; half the
 balance as margin per pick; per-coin max leverage from Delta's /v2/products (`out/delta_margin/`): 20x for 92% of
