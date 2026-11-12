@@ -174,6 +174,10 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**DECISION 2026-11-12 (owner): "we will stick to quick and ladder".** The exit / leverage / R:R / new-family research
+of 2026-11-12 (entries below) is closed; no strategy change. Real account stays rule A ladder 10/5/3 (run 3); QUICK
+stays as it is. Open option the owner has not taken: real account to QUICK at 3% fixed (fade_sizing_options).
+
 **R:R >= 2 SEARCH, SIX FAMILIES ON 20 LARGE COINS — NONE PASSES (2026-11-12, owner "more ideas with better R&R, less risk,
 good win rate and good returns").** `scripts/rr_search.py`, `out/rr_search.txt`. Picked on 2021-23, judged on 2024-26
 (pass: mean > 0, t >= 2, every test year > 0). Dead everywhere: trend pullback (−0.014..−0.040R), dip-buying below the
