@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**FILTERS FOR A TIGHT STOP + 2:1 TARGET — NONE SURVIVES OUT OF SAMPLE (2026-11-12, owner "filters where we trade less
+... keep the win rate and R:R").** `scripts/fade_rr_filters.py`, `out/fade_rr_filters.txt`. Stops 1x ATR / 5% / 8%,
+target 2x, 24 h, realistic fills; 11 pre-entry features (pump, wick, 3-day change, volume surge, 7-day breakout, ATR,
+BTC, funding, OI change, long/short accounts), thirds and the choice from 2021-23 only, one look at 2024-26. Best on
+DEV: long/short account ratio high third (+0.131R, 1x ATR) -> TEST +0.025R t 0.57, 2024 negative; its pair with BTC
+mid third (8% stop) DEV +0.192 -> TEST +0.065R t 0.82, 2024 −0.007. 27 rows, 0 pass; most DEV winners turn
+negative on TEST (pump mid third +0.017 -> −0.098R).
+
 **2:1 / 3:1 VIA ENTRY TIMING (watchlist + trigger + structure stop) — FAIL (2026-11-12, owner "ok with taking less
 trades ... atleast 1:2").** `scripts/fade_rr_entries.py`, `out/fade_rr_entries.txt`. Rule A picks as a watchlist;
 short only on a 15m trigger (breakdown of the first 1/2/4 h low; failed push +3/5/10% back below the open; lower
