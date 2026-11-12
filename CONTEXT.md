@@ -174,6 +174,17 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**TREND BREAKOUTS ON LARGE COINS, R:R 4-5 (2026-11-12, owner "option 2") — FIRST OUT-OF-SAMPLE PASS, BUT FADING AND
+DEEP DRAWDOWNS.** `scripts/trend_data.py` (Binance 1h 2021-01..2026-10, out/trend, not committed), `scripts/trend_rr.py`
+(main / --robust / --holdout / --money), `out/trend_rr*.txt`. 18 cells on BTC ETH SOL BNB XRP DOGE ADA AVAX LINK LTC
+(next-1h-open entries, stop-first in an hour, 0.05% fee + 0.02% slip a side, longs pay 0.03%/day): the pre-set rule
+(best DEV cell per family, judged 2024-26) fails all 3 families. Seen AFTER the run: 4h breakout, 2x-ATR stop, fixed
+4R/5R target positive in 5-6 of 6 years (N55/5R +0.151R t 2.84, 6/6; N20/4R +0.112R t 2.89, 5/6; both sides, most
+coins, survives double slippage). Fixed before a HOLD-OUT run on DOT TRX ATOM NEAR UNI FIL BCH ETC AAVE XLM: N55/5R
++0.072R t 1.40 (fail); N20/4R +0.087R t 2.24, 5/6 years, 9/10 coins (PASS). All 20 coins N20/4R: +0.099R t 3.63, 945
+trades a year, win 25%; $1,640 at 0.25% risk -> $6,014 but drop 42% and 2025 −8%, 2026 −2%; at 1% -> drop 89%.
+Breakouts cluster across coins, so losing streaks are long (42-63 trades). Best years 2021-24; recent two flat/negative.
+
 **REWARD:RISK 4:1 / 5:1 — ALL NEGATIVE (2026-11-12, owner "risk 10 to make 40 or 50").** `fade_reward_risk.py --wide`,
 `out/fade_reward_risk_wide.txt`. Stops 2/3/5/8% and 0.5x/1x ATR, targets 4x/5x, out at 24/48/72 h, realistic fills: 36
 rows, every one negative over 2021-26 (−0.04..−0.34R). A 2% stop is hit first on 80-84% of picks (target 10-17%);

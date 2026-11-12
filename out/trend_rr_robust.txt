@@ -1,0 +1,36 @@
+
+N20 stop 2xATR target 4R: n 2772, +0.112R t +2.89, win 26%
+  by coin: ADA +0.09(285)  AVAX +0.13(292)  BNB +0.05(277)  BTC +0.18(238)  DOGE +0.07(292)  ETH +0.11(284)  LINK +0.03(276)  LTC +0.11(251)  SOL +0.26(286)  XRP +0.09(291)
+  coins positive: 10/10 | long +0.159R (1510)  short +0.055R (1262)
+  longest losing streak 63 trades
+  $1,640 at 1% risk, 2021-26 -> $20,712, worst drop 74%
+  $1,640 at 2% risk, 2021-26 -> $87,495, worst drop 94%
+  by year: 2021 +0.153 (521)  2022 +0.152 (417)  2023 +0.242 (453)  2024 +0.115 (476)  2025 +0.061 (469)  2026 -0.057 (436)
+  double slippage: +0.096R t +2.49; by year +0.132 +0.144 +0.229 +0.101 +0.050 -0.086
+
+N20 stop 2xATR target 5R: n 2506, +0.109R t +2.41, win 23%
+  by coin: ADA +0.10(256)  AVAX +0.25(257)  BNB +0.08(254)  BTC +0.01(238)  DOGE +0.09(270)  ETH +0.11(264)  LINK -0.02(258)  LTC +0.06(230)  SOL +0.35(243)  XRP +0.04(236)
+  coins positive: 9/10 | long +0.123R (1367)  short +0.092R (1139)
+  longest losing streak 42 trades
+  $1,640 at 1% risk, 2021-26 -> $13,398, worst drop 66%
+  $1,640 at 2% risk, 2021-26 -> $33,279, worst drop 89%
+  by year: 2021 +0.223 (469)  2022 +0.043 (384)  2023 +0.167 (415)  2024 +0.100 (435)  2025 +0.069 (424)  2026 +0.024 (379)
+  double slippage: +0.081R t +1.80; by year +0.199 +0.032 +0.138 +0.081 +0.043 -0.035
+
+N55 stop 2xATR target 4R: n 2065, +0.104R t +2.30, win 25%
+  by coin: ADA +0.12(220)  AVAX +0.12(216)  BNB +0.08(222)  BTC +0.15(195)  DOGE +0.07(206)  ETH +0.24(194)  LINK -0.02(204)  LTC -0.06(194)  SOL +0.38(207)  XRP -0.04(207)
+  coins positive: 7/10 | long +0.130R (1151)  short +0.070R (914)
+  longest losing streak 53 trades
+  $1,640 at 1% risk, 2021-26 -> $9,147, worst drop 55%
+  $1,640 at 2% risk, 2021-26 -> $22,468, worst drop 80%
+  by year: 2021 +0.088 (382)  2022 +0.150 (330)  2023 +0.216 (338)  2024 -0.054 (358)  2025 +0.070 (359)  2026 +0.176 (298)
+  double slippage: +0.092R t +2.03; by year +0.080 +0.142 +0.194 -0.064 +0.059 +0.160
+
+N55 stop 2xATR target 5R: n 1874, +0.151R t +2.84, win 23%
+  by coin: ADA +0.09(187)  AVAX +0.33(186)  BNB +0.13(201)  BTC +0.25(176)  DOGE +0.19(189)  ETH +0.36(182)  LINK -0.05(194)  LTC -0.06(182)  SOL +0.29(182)  XRP +0.01(195)
+  coins positive: 8/10 | long +0.185R (1051)  short +0.107R (823)
+  longest losing streak 50 trades
+  $1,640 at 1% risk, 2021-26 -> $17,022, worst drop 59%
+  $1,640 at 2% risk, 2021-26 -> $70,125, worst drop 84%
+  by year: 2021 +0.171 (347)  2022 +0.090 (298)  2023 +0.327 (306)  2024 +0.090 (327)  2025 +0.057 (343)  2026 +0.187 (253)
+  double slippage: +0.137R t +2.58; by year +0.163 +0.078 +0.307 +0.073 +0.046 +0.170
