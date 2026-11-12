@@ -105,6 +105,64 @@ def trailing(d, opens, ps, act, trail):
     return np.array(out)
 
 
+def leveraged(d, opens, ps, lev, margin_total=0.50, start=START):
+    """Owner 2026-11-12: "full leverage and 50% capital deployed with close half at +0.2R". Each day's picks share
+    `margin_total` of the balance as margin; notional = L x margin (L = `lev` capped at the coin's Delta max, or the
+    max for "full"); half closed at +0.2R (0.2 x the 2x-ATR distance), the rest to the 2x-ATR stop or 24 h. Liquidation
+    when a 1m high reaches entry x (1 + 1/L - maintenance): the open part's margin is lost. Compounds daily."""
+    import json
+    tab = json.load(open("out/delta_margin/perp_margins_2026-11-12.json"))
+    eq, peak, worst, path, below = start, start, 0.0, {}, None
+    n_liq = n_half = n_stop = n = 0
+    for t, idx in d.groupby("date").groups.items():
+        idx = [i for i in idx if np.isfinite(opens[i])]
+        if not idx:
+            continue
+        margin = margin_total * eq / len(idx)
+        pnl = 0.0
+        for i in idx:
+            a = ps[i]
+            dist = d.dist.iat[i]
+            im, mm = (x / 100 for x in tab.get(d.symbol.iat[i], [5.0, 2.5]))
+            L = 1 / im if lev == "full" else min(float(lev), 1 / im)
+            hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+            lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+            cl = pd.Series(a[2].astype(float)).ffill().to_numpy()
+            if not (np.isfinite(cl[2]) and np.isfinite(cl[-1])):
+                continue
+            n += 1
+            e = cl[2]
+            stop, tp, liq = e * (1 + dist), e * (1 - 0.2 * dist), e * (1 + 1 / L - mm)
+            left, got = 1.0, 0.0
+            m0 = 3
+            for m in range(3, 1440):
+                if hi[m] >= min(liq, stop):
+                    if liq <= stop and hi[m] >= liq:
+                        n_liq += 1
+                        got -= left * margin
+                    else:
+                        n_stop += 1
+                        xp = max(stop, cl[m])
+                        got += left * L * margin * (-(xp / e - 1) - FEE - FEE * xp / e - EXTRA)
+                    left = 0.0
+                    break
+                if left == 1.0 and lo[m] <= tp * (1 - THR):
+                    n_half += 1
+                    got += 0.5 * L * margin * (-(tp / e - 1) - FEE - FEE * tp / e - EXTRA)
+                    left = 0.5
+            if left > 0:
+                xp = cl[-1]
+                got += left * L * margin * (-(xp / e - 1) - FEE - FEE * xp / e - EXTRA)
+            pnl += max(got, -margin)
+        eq = max(eq + pnl, 0.0)
+        peak = max(peak, eq)
+        worst = max(worst, 1 - eq / peak if peak > 0 else 1)
+        path[t] = eq
+        if below is None and eq < FLOOR:
+            below = t
+    return pd.Series(path), worst, below, n, n_liq, n_half, n_stop
+
+
 def account(d, r, rule):
     eq = hw = START
     below, path = None, {}
@@ -163,5 +221,20 @@ def main() -> None:
         show(f"trail {trail}R behind the best price, from +{act}R", d, trailing(d, opens, ps, act, trail), rules)
 
 
+def lev_main() -> None:
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    print(f"Delta rule A picks {d.date.min().date()} .. {d.date.max().date()}, real-bot fills; 50% of the balance as margin "
+          f"per day (split over the picks); half closed at +0.2R, rest to the 2x-ATR stop or 24 h; from ${START:,.0f}")
+    for lev in (1, 2, 3, 5, 10, "full"):
+        s, dd, below, n, nl, nh, ns = leveraged(d, opens, ps, lev)
+        ye = s.groupby(s.index.year).last()
+        dead = s[s < 1]
+        print(f"  {str(lev):>4s}{'x' if lev != 'full' else ''}: -> ${s.iloc[-1]:>9,.0f}  worst drop {100 * dd:3.0f}%  "
+              f"2025 end ${ye.get(2025, np.nan):>8,.0f}  | of {n}: half taken {nh} ({100 * nh / n:.0f}%), liquidated {nl} "
+              f"({100 * nl / n:.0f}%), stopped {ns} ({100 * ns / n:.0f}%)  floor {'never' if below is None else below.date()}"
+              + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
+
+
 if __name__ == "__main__":
-    main()
+    lev_main() if "--lev" in sys.argv else main()
