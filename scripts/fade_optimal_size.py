@@ -1,0 +1,81 @@
+"""The best exit style and risk per trade for the real account when the owner accepts more risk (owner 2026-11-12: "I am
+ready to take more risk get me a optimal R&R, position size").
+
+    PYTHONPATH=. python scripts/fade_optimal_size.py
+
+Trades: Delta's rule A picks 2025-01-15..2026-10-27 (1,022), real-bot fills (scripts/fade_profit_ladder.scale_out).
+Exit styles: rule A (stop 2x ATR, 24 h) ; QUICK (all at +0.2R) ; HALF (half at +0.2R, the rest runs).
+Sizing: risk r of the balance per trade, notional = r / stop distance, leverage only as high as keeps liquidation
+>= 2x the stop away ((1/L - 2.5%) >= 2 x stop, up to 3x), at most 25% of the balance as margin per pick (50% a day).
+So a wide stop may not reach the risk asked for; the table shows the risk actually taken.
+Kelly: f* = mean R / variance of R per trade (the risk that maximises long-run growth if the past repeats); half
+Kelly is the usual practical ceiling because the mean is uncertain. Shown for all trades and for 2025 / 2026.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent))
+import fade_ladder_5x as L5  # noqa: E402
+import fade_profit_ladder as PL  # noqa: E402
+import fade_rr12 as R12  # noqa: E402
+
+START, FLOOR, MM = 1640.0, 1000.0, 0.025
+
+
+def run(d, r, risk):
+    eq = hw = START
+    below, path, used = None, {}, []
+    for t, idx in d.groupby("date").groups.items():
+        pnl = 0.0
+        for i in idx:
+            if not np.isfinite(r[i]):
+                continue
+            dist = d.dist.iat[i]
+            lmax = max(1, min(3, int(1 / (2 * dist + MM)))) if 1 / 1 - MM >= 2 * dist else 0
+            if lmax == 0:
+                continue
+            notional = min(risk / dist, 0.25 * lmax)
+            used.append(notional * dist)
+            pnl += eq * notional * dist * r[i]
+        eq = max(eq + pnl, 0.0)
+        hw = max(hw, eq)
+        path[t] = eq
+        if below is None and eq < FLOOR:
+            below = t
+    return pd.Series(path), below, np.mean(used)
+
+
+def main() -> None:
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    yrs = d.date.dt.year.to_numpy()
+    styles = {"RULE A (24 h)": PL.scale_out(d, opens, ps, []),
+              "QUICK (all at +0.2R)": PL.scale_out(d, opens, ps, [(1.0, 0.2)]),
+              "HALF at +0.2R": PL.scale_out(d, opens, ps, [(0.5, 0.2)])}
+    for nm, r in styles.items():
+        ok = np.isfinite(r)
+        rr = r[ok]
+        k_all = rr.mean() / rr.var()
+        k_y = {y: r[ok & (yrs == y)].mean() / r[ok & (yrs == y)].var() for y in (2025, 2026)}
+        w, l_ = rr[rr > 0], rr[rr <= 0]
+        print(f"\n{nm}: {rr.mean():+.3f}R per trade, win {100 * (rr > 0).mean():.0f}%, avg win {w.mean():+.2f}R / avg loss "
+              f"{l_.mean():+.2f}R (realised reward:risk {w.mean() / -l_.mean():.2f}:1)")
+        print(f"  Kelly risk per trade: all {100 * k_all:.1f}%  (2025 {100 * k_y[2025]:+.1f}%, 2026 {100 * k_y[2026]:+.1f}%); "
+              f"half Kelly {100 * k_all / 2:.1f}%")
+        for risk in (0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.10, 0.12, 0.15):
+            s, below, used = run(d, r, risk)
+            m = s.groupby(s.index.to_period("M")).last()
+            mret = m / m.shift(1).fillna(START) - 1
+            ye = s.groupby(s.index.year).last()
+            print(f"    risk {100 * risk:4.0f}% (taken {100 * used:4.1f}%) -> ${s.iloc[-1]:>7,.0f}  2025 end ${ye.get(2025):>7,.0f}  "
+                  f"worst drop {100 * (1 - s / s.cummax()).max():3.0f}%  worst month {100 * mret.min():+4.0f}%  "
+                  f"green {(mret > 0).sum()}/{len(mret)}  floor {'never' if below is None else below.date()}")
+
+
+if __name__ == "__main__":
+    main()

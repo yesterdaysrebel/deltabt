@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**OPTIMAL RISK PER TRADE BY EXIT STYLE (2026-11-12, owner "ready to take more risk, get me optimal R&R, position size").**
+`scripts/fade_optimal_size.py`, `out/fade_optimal_size.txt`. Delta picks 2025-01..2026-10, real-bot fills, risk 2-15%
+(liquidation >= 2x the stop, <= 3x, 25% margin a pick). Kelly (mean/var of R): rule A 4.4% (2025 negative, 2026 11%),
+QUICK 7.5%, half-at-0.2R 7.0%. Growth peaks: A at 4% $2,479 (drop 69%), QUICK at 8% $2,477 (61%), HALF at 8% $2,774
+(79%); beyond ~8% every style earns LESS. QUICK at 4% $2,171, drop 36%, never under $1,000 (5%: $2,243, 44%).
+Today's 10% ladder on rule A is past full Kelly (4.4%).
+
 **LADDER AND QUICK UNCHANGED AT 50% MARGIN, 1-5x (2026-11-12, owner "5% with 50% capital ... as they are today", read as
 5x).** `fade_profit_ladder.py --today`, `out/fade_profit_ladder_today.txt`. Rule A: 5x $0 (2025-09-07, 12% liquidated),
 3x $61, 2x $1,043, 1x $2,784 (drop 74%). QUICK: 5x $0 (2026-03-11), 3x $366, 2x $1,333, 1x $2,083 (drop 56%). All
