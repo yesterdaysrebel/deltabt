@@ -174,6 +174,12 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**1:2 ON THE LADDER'S OWN PICKS, OUTCOME COUNTS (2026-11-12).** `scripts/fade_rr12.py`, `out/fade_rr12.txt`. Delta picks
+2025-01..2026-10, 1,022 trades, real-bot fills. Today (2x ATR, no target): stop 16%, 24 h in profit 55% (+0.47R), 24 h
+at a loss 30% (−0.23R); +0.021R; ladder $1,640 -> $2,610, floor hit 2025-04-12. 1:2 with the same stop: target hit 1%,
++0.016R, ladder −2%. 1:2 at 1x ATR: stops 36%, targets 8%, −0.050R, −90%. 1:2 at 0.5x ATR: stops 58%, targets 21%,
+−0.160R, −99%.
+
 **DECISION 2026-11-12 (owner): "we will stick to quick and ladder".** The exit / leverage / R:R / new-family research
 of 2026-11-12 (entries below) is closed; no strategy change. Real account stays rule A ladder 10/5/3 (run 3); QUICK
 stays as it is. Open option the owner has not taken: real account to QUICK at 3% fixed (fade_sizing_options).
