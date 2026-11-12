@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**SIZING OPTIONS FOR THE REAL ACCOUNT, RULE A vs QUICK, DELTA PICKS 2025-01..2026-10 (2026-11-12, owner "major problems
+around risk reward and position sizing").** `scripts/fade_sizing_options.py`, `out/fade_sizing_options.txt`. 1,022
+trades, live sizing (lever_plan), from $1,640. Per trade: A +0.033R ideal / +0.020R real fills (00:03 entry, 0.1% through,
+0.1% spread); QUICK +0.029R / +0.009R (win 76-78%, avg win +0.19R, loss −0.52R). Live ladder 10/5/3 on A: $4,889 ideal /
+$1,683 real, both under the $1,000 floor in 2025 (07-13 / 04-12). QUICK fixed 3%: $3,707 / $2,045, floor never, drop 25%
+/ 29%, green 16 / 13 of 22 months; QUICK 5%: $5,993 / $2,214, drop 39% / 45%. The real account's 7 matched trades
+(+0.003R vs paper, entry slippage in its favour) suggest real fills sit between the two columns.
+
 **FILTERS FOR A TIGHT STOP + 2:1 TARGET — NONE SURVIVES OUT OF SAMPLE (2026-11-12, owner "filters where we trade less
 ... keep the win rate and R:R").** `scripts/fade_rr_filters.py`, `out/fade_rr_filters.txt`. Stops 1x ATR / 5% / 8%,
 target 2x, 24 h, realistic fills; 11 pre-entry features (pump, wick, 3-day change, volume surge, 7-day breakout, ATR,
