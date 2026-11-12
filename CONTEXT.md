@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**QUICK AS IS, FULL LEVERAGE, 25% OF CAPITAL PER PICK — RUIN, ON PAPER'S OWN TRADES TOO (2026-11-12).**
+`scripts/fade_quick_full_replay.py` (paper QUICK's 30 picks 10-29..11-12, taken + skipped, replayed on Delta's own
+1m trade + MARK candles; `out/fade_quick_full_replay.txt`) and `scripts/fade_quick_full25.py` (3,608 Binance picks
+2021-26; `out/fade_quick_full25.txt`). Replay at Delta's max (20x mostly; liquidation 2.5% vs stops 16-55%):
+$1,500 -> $2,973 after two days, then 16 of the next 26 picks liquidated -> $87 (−94%), although paper won 19 of 23.
+Same picks at the leverage the bot allows (liquidation >= 2x the stop): $1,719 (+15%), worst drop 9% (skips 7 picks).
+Six years: full/10x/5x reach $0 in 2021 (liquidated 61/31/10% of picks); 1x ideal $1,088, realistic $59.
+
 **FLEXIBLE RISK + SAFE FULL LEVERAGE + TARGET % SWEEP — NOTHING POSITIVE (2026-11-12, owner "you would avoid
 liquidations right? ... flexible risk per trade ... full leverage and 50% capital", "test diffrent target %").**
 `scripts/fade_flex_risk.py` (`--targets`), `out/fade_flex_risk.txt`, `out/fade_flex_targets.txt`. Realistic fills

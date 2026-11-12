@@ -50,7 +50,7 @@ def first_at(mask):
     return X.first(mask)
 
 
-def run(p, hi, lo, cl, im, mm, lev, stop_k, target, stuck, through=0.0, extra=0.0):
+def run(p, hi, lo, cl, im, mm, lev, stop_k, target, stuck, through=0.0, extra=0.0, margin=0.5):
     n = len(p)
     entry, dist = p.open.to_numpy(), p.dist.to_numpy()                 # dist = 2 x ATR14%
     L = 1 / im if lev == "full" else np.minimum(float(lev), 1 / im)
@@ -72,7 +72,7 @@ def run(p, hi, lo, cl, im, mm, lev, stop_k, target, stuck, through=0.0, extra=0.
     xp = np.stack([c[1] for c in cand])[k, np.arange(n)]
     liquidated = k == 0
     ret = -(xp / entry - 1) - FEE - FEE * xp / entry - extra           # per unit notional
-    rb = np.where(liquidated, -0.5, 0.5 * L * ret)                     # share of the balance
+    rb = np.where(liquidated, -margin, np.maximum(margin * L * ret, -margin))   # share of the balance
     return rb, liquidated, L
 
 
