@@ -1,0 +1,75 @@
+
+ROBUSTNESS of the small fixed target (2x-ATR stop; $1,500 -> end, worst drop, years up of 6)
+  real bot: enters ~3 min after 00:00 at the bid; a resting buy fills only when traded THROUGH; spread costs
+  target 1.0%  1x
+    as above (open, touch fills, no spread)    -> $     10,560  drop  58%  years up 4/6  mean +0.074% of bal
+    enter at minute 3 close                    -> $         79  drop  96%  years up 1/6  mean -0.056% of bal
+    + target must trade 0.2% through           -> $          6  drop 100%  years up 0/6  mean -0.124% of bal
+    + 0.10% spread round trip                  -> $          1  drop 100%  years up 0/6  mean -0.174% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.224% of bal
+  target 1.0%  2x
+    as above (open, touch fills, no spread)    -> $     10,025  drop  91%  years up 3/6  mean +0.145% of bal
+    enter at minute 3 close                    -> $          0  drop 100%  years up 0/6  mean -0.117% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 0/6  mean -0.254% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.354% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.454% of bal
+  target 1.5%  1x
+    as above (open, touch fills, no spread)    -> $     56,674  drop  66%  years up 4/6  mean +0.129% of bal
+    enter at minute 3 close                    -> $        157  drop  93%  years up 1/6  mean -0.026% of bal
+    + target must trade 0.2% through           -> $         14  drop  99%  years up 0/6  mean -0.090% of bal
+    + 0.10% spread round trip                  -> $          2  drop 100%  years up 0/6  mean -0.140% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.190% of bal
+  target 1.5%  2x
+    as above (open, touch fills, no spread)    -> $    152,201  drop  92%  years up 4/6  mean +0.254% of bal
+    enter at minute 3 close                    -> $          1  drop 100%  years up 1/6  mean -0.058% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 0/6  mean -0.186% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.286% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.386% of bal
+  target 2.0%  1x
+    as above (open, touch fills, no spread)    -> $     66,820  drop  62%  years up 5/6  mean +0.143% of bal
+    enter at minute 3 close                    -> $        573  drop  88%  years up 3/6  mean +0.018% of bal
+    + target must trade 0.2% through           -> $         29  drop  99%  years up 2/6  mean -0.059% of bal
+    + 0.10% spread round trip                  -> $          5  drop 100%  years up 1/6  mean -0.109% of bal
+    + 0.20% spread round trip                  -> $          1  drop 100%  years up 0/6  mean -0.159% of bal
+  target 2.0%  2x
+    as above (open, touch fills, no spread)    -> $     98,377  drop  88%  years up 4/6  mean +0.282% of bal
+    enter at minute 3 close                    -> $          3  drop 100%  years up 2/6  mean +0.031% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 1/6  mean -0.124% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.224% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.324% of bal
+  target 2.5%  1x
+    as above (open, touch fills, no spread)    -> $     27,366  drop  69%  years up 4/6  mean +0.131% of bal
+    enter at minute 3 close                    -> $        234  drop  97%  years up 3/6  mean +0.006% of bal
+    + target must trade 0.2% through           -> $         23  drop  99%  years up 2/6  mean -0.056% of bal
+    + 0.10% spread round trip                  -> $          4  drop 100%  years up 1/6  mean -0.106% of bal
+    + 0.20% spread round trip                  -> $          1  drop 100%  years up 0/6  mean -0.156% of bal
+  target 2.5%  2x
+    as above (open, touch fills, no spread)    -> $      5,375  drop  97%  years up 3/6  mean +0.259% of bal
+    enter at minute 3 close                    -> $          0  drop 100%  years up 1/6  mean +0.004% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 1/6  mean -0.120% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.219% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.319% of bal
+  target 3.0%  1x
+    as above (open, touch fills, no spread)    -> $      3,230  drop  91%  years up 4/6  mean +0.086% of bal
+    enter at minute 3 close                    -> $        149  drop  98%  years up 3/6  mean +0.003% of bal
+    + target must trade 0.2% through           -> $          4  drop 100%  years up 1/6  mean -0.094% of bal
+    + 0.10% spread round trip                  -> $          1  drop 100%  years up 0/6  mean -0.144% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.194% of bal
+  target 3.0%  2x
+    as above (open, touch fills, no spread)    -> $         21  drop 100%  years up 1/6  mean +0.169% of bal
+    enter at minute 3 close                    -> $          0  drop 100%  years up 2/6  mean -0.007% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 0/6  mean -0.203% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.302% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.402% of bal
+  target 4.0%  1x
+    as above (open, touch fills, no spread)    -> $      1,337  drop  96%  years up 2/6  mean +0.081% of bal
+    enter at minute 3 close                    -> $         39  drop 100%  years up 2/6  mean -0.012% of bal
+    + target must trade 0.2% through           -> $          2  drop 100%  years up 1/6  mean -0.095% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.145% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.195% of bal
+  target 4.0%  2x
+    as above (open, touch fills, no spread)    -> $          1  drop 100%  years up 2/6  mean +0.155% of bal
+    enter at minute 3 close                    -> $          0  drop 100%  years up 1/6  mean -0.039% of bal
+    + target must trade 0.2% through           -> $          0  drop 100%  years up 0/6  mean -0.204% of bal
+    + 0.10% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.304% of bal
+    + 0.20% spread round trip                  -> $          0  drop 100%  years up 0/6  mean -0.404% of bal

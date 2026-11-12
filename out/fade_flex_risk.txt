@@ -1,0 +1,55 @@
+REALISTIC fills, 50% of capital as margin, safe leverage (liquidation >= 2x the stop away), from $1,500
+
+  stop 2x ATR (rule A), QUICK target 0.2x the stop: mean -0.012R per trade, win 75%, by year 2021 -0.017 2022 +0.009 2023 -0.045 2024 -0.014 2025 -0.002 2026 +0.010 | median leverage 2x
+    2% fixed       -> $       568  drop  71%  up 2/6  avg risk  2.0%  capped   0%  gaps 0 |     1,213     1,331       687       551       528       568
+    5% fixed       -> $        82  drop  97%  up 2/6  avg risk  5.0%  capped   0%  gaps 0 |       818       958       165        87        73        82
+    10% fixed      -> $         4  drop 100%  up 2/6  avg risk  9.0%  capped  57%  gaps 0 |       496       586        17         5         4         4
+    ladder         -> $       258  drop  88%  up 2/6  avg risk  3.1%  capped   0%  gaps 0 |       891       991       360       254       235       258
+    after-win-up   -> $        15  drop 100%  up 3/6  avg risk  8.2%  capped  40%  gaps 0 |       504       613        33        11        12        15
+    after-loss-up  -> $       139  drop  93%  up 1/6  avg risk  3.1%  capped   1%  gaps 0 |     1,270     1,272       328       252       145       139
+    adaptive       -> $       378  drop  87%  up 1/6  avg risk  2.8%  capped   9%  gaps 0 |     1,304       731       524       378       437       378
+
+  stop 2x ATR (rule A), no target (24 h): mean -0.006R per trade, win 55%, by year 2021 -0.032 2022 +0.013 2023 -0.055 2024 -0.008 2025 +0.011 2026 +0.058 | median leverage 2x
+    2% fixed       -> $       660  drop  81%  up 3/6  avg risk  2.0%  capped   0%  gaps 0 |       999     1,122       489       413       436       660
+    5% fixed       -> $        48  drop  99%  up 2/6  avg risk  5.0%  capped   0%  gaps 0 |       461       517        51        28        25        48
+    10% fixed      -> $         0  drop 100%  up 1/6  avg risk  9.0%  capped  57%  gaps 0 |       140        94         1         0         0         0
+    ladder         -> $       288  drop  94%  up 3/6  avg risk  3.0%  capped   0%  gaps 0 |       687       790       217       162       167       288
+    after-win-up   -> $        29  drop 100%  up 1/6  avg risk  6.1%  capped  17%  gaps 0 |       302       178        17        15        32        29
+    after-loss-up  -> $         5  drop 100%  up 2/6  avg risk  5.4%  capped  12%  gaps 0 |       427       616        21         5         2         5
+    adaptive       -> $       817  drop  74%  up 3/6  avg risk  2.3%  capped   4%  gaps 0 |     1,035       687       492       620       648       817
+
+  stop fixed 2%, QUICK target 0.2x the stop: mean -0.214R per trade, win 77%, by year 2021 -0.243 2022 -0.141 2023 -0.251 2024 -0.187 2025 -0.226 2026 -0.247 | median leverage 15x
+    2% fixed       -> $         0  drop 100%  up 0/6  avg risk  2.0%  capped   0%  gaps 20 |        69         9         0         0         0         0
+    5% fixed       -> $         0  drop 100%  up 0/6  avg risk  5.0%  capped   0%  gaps 20 |         1         0         0         0         0         0
+    10% fixed      -> $         0  drop 100%  up 0/6  avg risk  7.8%  capped  85%  gaps 20 |         0         0         0         0         0         0
+    ladder         -> $         0  drop 100%  up 0/6  avg risk  3.0%  capped   0%  gaps 20 |        14         1         0         0         0         0
+    after-win-up   -> $         0  drop 100%  up 0/6  avg risk  7.3%  capped  69%  gaps 20 |         0         0         0         0         0         0
+    after-loss-up  -> $         0  drop 100%  up 0/6  avg risk  3.3%  capped   2%  gaps 20 |         7         1         0         0         0         0
+    adaptive       -> $         0  drop 100%  up 0/6  avg risk  0.1%  capped   0%  gaps 20 |       347       260        82        62         5         0
+
+  stop fixed 2%, no target (24 h): mean -0.365R per trade, win 16%, by year 2021 -0.290 2022 -0.145 2023 -0.495 2024 -0.368 2025 -0.480 2026 -0.427 | median leverage 15x
+    2% fixed       -> $         0  drop 100%  up 0/6  avg risk  2.0%  capped   0%  gaps 58 |        12         0         0         0         0         0
+    5% fixed       -> $         0  drop 100%  up 0/6  avg risk  5.0%  capped   0%  gaps 58 |         0         0         0         0         0         0
+    10% fixed      -> $         0  drop 100%  up 0/6  avg risk  7.8%  capped  85%  gaps 58 |         0         0         0         0         0         0
+    ladder         -> $         0  drop 100%  up 0/6  avg risk  3.0%  capped   0%  gaps 58 |         1         0         0         0         0         0
+    after-win-up   -> $         0  drop 100%  up 0/6  avg risk  2.5%  capped   0%  gaps 58 |         4         0         0         0         0         0
+    after-loss-up  -> $         0  drop 100%  up 0/6  avg risk  7.7%  capped  81%  gaps 58 |         0         0         0         0         0         0
+    adaptive       -> $         0  drop 100%  up 0/6  avg risk  0.1%  capped   0%  gaps 58 |       110        21         4         1         0         0
+
+  stop fixed 4%, QUICK target 0.2x the stop: mean -0.103R per trade, win 80%, by year 2021 -0.156 2022 -0.041 2023 -0.126 2024 -0.110 2025 -0.078 2026 -0.107 | median leverage 9x
+    2% fixed       -> $         0  drop 100%  up 0/6  avg risk  2.0%  capped   0%  gaps 8 |       242        87         9         2         1         0
+    5% fixed       -> $         0  drop 100%  up 0/6  avg risk  5.0%  capped   0%  gaps 8 |        13         2         0         0         0         0
+    10% fixed      -> $         0  drop 100%  up 0/6  avg risk  9.1%  capped  85%  gaps 8 |         0         0         0         0         0         0
+    ladder         -> $         0  drop 100%  up 0/6  avg risk  3.0%  capped   0%  gaps 8 |        82        23         1         0         0         0
+    after-win-up   -> $         0  drop 100%  up 0/6  avg risk  8.5%  capped  45%  gaps 8 |         1         0         0         0         0         0
+    after-loss-up  -> $         0  drop 100%  up 0/6  avg risk  3.0%  capped   0%  gaps 8 |        57        16         0         0         0         0
+    adaptive       -> $        32  drop  98%  up 0/6  avg risk  0.4%  capped   3%  gaps 8 |       619       272       152       114       114        32
+
+  stop fixed 4%, no target (24 h): mean -0.198R per trade, win 28%, by year 2021 -0.255 2022 -0.004 2023 -0.337 2024 -0.222 2025 -0.180 2026 -0.166 | median leverage 9x
+    2% fixed       -> $         0  drop 100%  up 0/6  avg risk  2.0%  capped   0%  gaps 19 |        58        16         0         0         0         0
+    5% fixed       -> $         0  drop 100%  up 0/6  avg risk  5.0%  capped   0%  gaps 19 |         0         0         0         0         0         0
+    10% fixed      -> $         0  drop 100%  up 0/6  avg risk  9.1%  capped  85%  gaps 19 |         0         0         0         0         0         0
+    ladder         -> $         0  drop 100%  up 0/6  avg risk  3.0%  capped   0%  gaps 19 |         8         2         0         0         0         0
+    after-win-up   -> $         0  drop 100%  up 0/6  avg risk  3.1%  capped   0%  gaps 19 |        12         1         0         0         0         0
+    after-loss-up  -> $         0  drop 100%  up 0/6  avg risk  8.4%  capped  44%  gaps 19 |         0         0         0         0         0         0
+    adaptive       -> $         1  drop 100%  up 0/6  avg risk  0.2%  capped   0%  gaps 19 |       324        88        27        12         6         1

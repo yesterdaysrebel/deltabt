@@ -1,0 +1,9 @@
+TIGHT FIXED STOPS on paper QUICK's picks, 25% margin per pick, liquidation >= 2x the stop away, from $1,500
+  stop  1.0%  target  0.2%  leverage up to 20x  -> $   858.34  worst drop  45%  of 30: target 23, stop 6, 24 h 0, liquidated 1
+  stop  1.0%  target  1.0%  leverage up to 20x  -> $   633.58  worst drop  61%  of 30: target 14, stop 14, 24 h 0, liquidated 2
+  stop  2.0%  target  0.4%  leverage up to 15x  -> $ 1,211.44  worst drop  26%  of 30: target 24, stop 6, 24 h 0, liquidated 0
+  stop  2.0%  target  2.0%  leverage up to 15x  -> $ 1,058.58  worst drop  38%  of 30: target 15, stop 14, 24 h 0, liquidated 1
+  stop  4.0%  target  0.8%  leverage up to  9x  -> $ 1,253.76  worst drop  24%  of 30: target 26, stop 3, 24 h 0, liquidated 1
+  stop  4.0%  target  4.0%  leverage up to  9x  -> $ 1,619.60  worst drop  36%  of 30: target 19, stop 9, 24 h 0, liquidated 2
+  stop  8.0%  target  1.6%  leverage up to  5x  -> $ 1,778.74  worst drop  17%  of 30: target 27, stop 3, 24 h 0, liquidated 0
+  stop  8.0%  target  8.0%  leverage up to  5x  -> $ 1,998.71  worst drop  33%  of 30: target 17, stop 10, 24 h 2, liquidated 1

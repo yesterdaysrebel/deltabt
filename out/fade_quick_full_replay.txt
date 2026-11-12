@@ -1,0 +1,96 @@
+
+FULL leverage, 25% of capital as margin per pick, from $1,500
+  2026-10-29 EVAAUSD     20x  stop  19.1% liq   2.5%  TARGET     after  0.58 h  $  +278.11  [paper CLOSED TARGET +0.19R]
+  2026-10-29 INITUSD     20x  stop  23.1% liq   2.5%  TARGET     after  2.00 h  $  +338.48  [paper CLOSED TARGET +0.20R]
+    2026-10-29 day $  +616.59 -> balance $2,116.59
+  2026-10-30 BEATUSD     20x  stop  21.9% liq   2.5%  TARGET     after  0.30 h  $  +452.22  [paper CLOSED TARGET +0.20R]
+  2026-10-30 PARTIUSD    20x  stop  19.6% liq   2.5%  TARGET     after  0.38 h  $  +404.38  [paper CLOSED TARGET +0.20R]
+    2026-10-30 day $  +856.61 -> balance $2,973.20
+  2026-10-31 AINUSD      20x  stop  24.6% liq   2.5%  LIQUIDATED after  0.27 h  $  -743.30  [paper CLOSED STOP -1.01R]
+  2026-10-31 SOPHUSD     20x  stop  28.3% liq   2.5%  LIQUIDATED after  0.37 h  $  -743.30  [paper CLOSED TARGET +0.20R]
+    2026-10-31 day $ -1486.60 -> balance $1,486.60
+  2026-11-01 AINUSD      20x  stop  25.3% liq   2.5%  LIQUIDATED after  0.87 h  $  -371.65  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-01 EVAAUSD     20x  stop  31.1% liq   2.5%  TARGET     after  0.57 h  $  +454.39  [paper CLOSED TARGET +0.20R]
+    2026-11-01 day $   +82.74 -> balance $1,569.34
+  2026-11-02 AINUSD      20x  stop  25.7% liq   2.5%  TARGET     after  3.25 h  $  +395.06  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-02 ESPORTSUSD  20x  stop  18.0% liq   2.5%  LIQUIDATED after  0.00 h  $  -392.33  [paper CLOSED TARGET +0.19R]
+    2026-11-02 day $    +2.73 -> balance $1,572.07
+  2026-11-03 ARIAUSD     20x  stop  31.5% liq   2.5%  LIQUIDATED after  1.38 h  $  -393.02  [paper CLOSED TARGET +0.20R]
+  2026-11-03 EVAAUSD     20x  stop  39.0% liq   2.5%  LIQUIDATED after  0.35 h  $  -393.02  [paper CLOSED TIME +0.02R]
+    2026-11-03 day $  -786.03 -> balance $786.03
+  2026-11-04 AIOUSD      20x  stop  16.4% liq   2.5%  TARGET     after  0.43 h  $  +125.15  [paper CLOSED TARGET +0.19R]
+  2026-11-04 BMTUSD      20x  stop  55.2% liq   2.5%  LIQUIDATED after  0.08 h  $  -196.51  [paper CLOSED TIME -0.23R]
+    2026-11-04 day $   -71.36 -> balance $714.67
+  2026-11-05 CAPUSD      10x  stop  35.3% liq   5.0%  TARGET     after  7.25 h  $  +124.33  [paper CLOSED TARGET +0.20R]
+  2026-11-05 INITUSD     20x  stop  53.8% liq   2.5%  LIQUIDATED after  1.67 h  $  -178.67  [paper CLOSED TIME +0.08R]
+    2026-11-05 day $   -54.33 -> balance $660.34
+  2026-11-06 ARIAUSD     20x  stop  26.7% liq   2.5%  TARGET     after  0.80 h  $  +172.86  [paper CLOSED TARGET +0.20R]
+  2026-11-06 CAPUSD      10x  stop  35.5% liq   5.0%  TARGET     after 19.52 h  $  +115.52  [paper CLOSED TARGET +0.20R]
+    2026-11-06 day $  +288.38 -> balance $948.72
+  2026-11-07 AIOUSD      20x  stop  23.2% liq   2.5%  TARGET     after  8.38 h  $  +215.10  [paper CLOSED TARGET +0.20R]
+  2026-11-07 AKEUSD      20x  stop 247.5% liq   2.5%  LIQUIDATED after  0.57 h  $  -237.18  [paper SKIPPED (below one contract at 2% risk)]
+    2026-11-07 day $   -22.08 -> balance $926.64
+  2026-11-08 AINUSD      20x  stop  98.1% liq   2.5%  LIQUIDATED after  3.05 h  $  -231.66  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-08 AKEUSD      20x  stop 148.2% liq   2.5%  LIQUIDATED after  0.47 h  $  -231.66  [paper SKIPPED (below one contract at 2% risk)]
+    2026-11-08 day $  -463.32 -> balance $463.32
+  2026-11-09 AIOTUSD     20x  stop  16.9% liq   2.5%  LIQUIDATED after  0.15 h  $  -115.83  [paper CLOSED TARGET +0.19R]
+  2026-11-09 JCTUSD      10x  stop  58.2% liq   5.0%  LIQUIDATED after  1.67 h  $  -115.83  [paper SKIPPED (below one contract at 2% risk)]
+    2026-11-09 day $  -231.66 -> balance $231.66
+  2026-11-10 INITUSD     20x  stop  41.7% liq   2.5%  LIQUIDATED after  0.18 h  $   -57.92  [paper CLOSED TARGET +0.20R]
+  2026-11-10 PIEVERSEUSD  20x  stop  15.6% liq   2.5%  LIQUIDATED after  0.15 h  $   -57.92  [paper CLOSED TARGET +0.19R]
+    2026-11-10 day $  -115.83 -> balance $115.83
+  2026-11-11 ARIAUSD     20x  stop  24.6% liq   2.5%  LIQUIDATED after  1.63 h  $   -28.96  [paper CLOSED STOP -1.00R]
+  2026-11-11 INITUSD     20x  stop  42.1% liq   2.5%  LIQUIDATED after  0.40 h  $   -28.96  [paper CLOSED TARGET +0.20R]
+    2026-11-11 day $   -57.92 -> balance $57.92
+  2026-11-12 AINUSD      20x  stop 112.6% liq   2.5%  TIME       after 24.00 h  $   +44.00  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-12 ARIAUSD     20x  stop  29.8% liq   2.5%  LIQUIDATED after  0.08 h  $   -14.48  [paper CLOSED TARGET +0.20R]
+    2026-11-12 day $   +29.52 -> balance $87.44
+  END $87.44 (-94.2%), worst drop 98%
+
+SAFE leverage, 25% of capital as margin per pick, from $1,500
+  2026-10-29 EVAAUSD      2x  stop  19.1% liq  47.5%  TARGET     after  0.58 h  $   +27.81  [paper CLOSED TARGET +0.19R]
+  2026-10-29 INITUSD      2x  stop  23.1% liq  47.5%  TARGET     after  2.00 h  $   +33.85  [paper CLOSED TARGET +0.20R]
+    2026-10-29 day $   +61.66 -> balance $1,561.66
+  2026-10-30 BEATUSD      2x  stop  21.9% liq  47.5%  TARGET     after  0.30 h  $   +33.37  [paper CLOSED TARGET +0.20R]
+  2026-10-30 PARTIUSD     2x  stop  19.6% liq  47.5%  TARGET     after  0.38 h  $   +29.84  [paper CLOSED TARGET +0.20R]
+    2026-10-30 day $   +63.20 -> balance $1,624.86
+  2026-10-31 AINUSD       1x  stop  24.6% liq  97.5%  STOP       after  1.95 h  $  -100.71  [paper CLOSED STOP -1.01R]
+  2026-10-31 SOPHUSD      1x  stop  28.3% liq  97.5%  TARGET     after  2.10 h  $   +22.60  [paper CLOSED TARGET +0.20R]
+    2026-10-31 day $   -78.12 -> balance $1,546.75
+  2026-11-01 AINUSD       1x  stop  25.3% liq  97.5%  STOP       after  3.75 h  $   -98.33  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-01 EVAAUSD      1x  stop  31.1% liq  97.5%  TARGET     after  0.57 h  $   +23.64  [paper CLOSED TARGET +0.20R]
+    2026-11-01 day $   -74.69 -> balance $1,472.05
+  2026-11-02 AINUSD       1x  stop  25.7% liq  97.5%  TARGET     after  3.25 h  $   +18.53  [paper SKIPPED (below one contract at 2% risk)]
+  2026-11-02 ESPORTSUSD   2x  stop  18.0% liq  47.5%  TARGET     after  1.30 h  $   +25.78  [paper CLOSED TARGET +0.19R]
+    2026-11-02 day $   +44.31 -> balance $1,516.36
+  2026-11-03 ARIAUSD      1x  stop  31.5% liq  97.5%  TARGET     after  3.37 h  $   +23.50  [paper CLOSED TARGET +0.20R]
+  2026-11-03 EVAAUSD      1x  stop  39.0% liq  97.5%  TIME       after 24.00 h  $    +0.76  [paper CLOSED TIME +0.02R]
+    2026-11-03 day $   +24.26 -> balance $1,540.62
+  2026-11-04 AIOUSD       2x  stop  16.4% liq  47.5%  TARGET     after  0.43 h  $   +24.53  [paper CLOSED TARGET +0.19R]
+  2026-11-04 BMTUSD     skipped: no leverage keeps liquidation 2x the stop away
+    2026-11-04 day $   +24.53 -> balance $1,565.15
+  2026-11-05 CAPUSD       1x  stop  35.3% liq  95.0%  TARGET     after  7.25 h  $   +27.23  [paper CLOSED TARGET +0.20R]
+  2026-11-05 INITUSD    skipped: no leverage keeps liquidation 2x the stop away
+    2026-11-05 day $   +27.23 -> balance $1,592.38
+  2026-11-06 ARIAUSD      1x  stop  26.7% liq  97.5%  TARGET     after  0.80 h  $   +20.84  [paper CLOSED TARGET +0.20R]
+  2026-11-06 CAPUSD       1x  stop  35.5% liq  95.0%  TARGET     after 19.52 h  $   +27.86  [paper CLOSED TARGET +0.20R]
+    2026-11-06 day $   +48.70 -> balance $1,641.08
+  2026-11-07 AIOUSD       2x  stop  23.2% liq  47.5%  TARGET     after  8.38 h  $   +37.21  [paper CLOSED TARGET +0.20R]
+  2026-11-07 AKEUSD     skipped: no leverage keeps liquidation 2x the stop away
+    2026-11-07 day $   +37.21 -> balance $1,678.28
+  2026-11-08 AINUSD     skipped: no leverage keeps liquidation 2x the stop away
+  2026-11-08 AKEUSD     skipped: no leverage keeps liquidation 2x the stop away
+    2026-11-08 day $    +0.00 -> balance $1,678.28
+  2026-11-09 AIOTUSD      2x  stop  16.9% liq  47.5%  TARGET     after  0.62 h  $   +27.49  [paper CLOSED TARGET +0.19R]
+  2026-11-09 JCTUSD     skipped: no leverage keeps liquidation 2x the stop away
+    2026-11-09 day $   +27.49 -> balance $1,705.77
+  2026-11-10 INITUSD      1x  stop  41.7% liq  97.5%  TARGET     after  2.82 h  $   +35.14  [paper CLOSED TARGET +0.20R]
+  2026-11-10 PIEVERSEUSD   2x  stop  15.6% liq  47.5%  TARGET     after  1.05 h  $   +25.79  [paper CLOSED TARGET +0.19R]
+    2026-11-10 day $   +60.93 -> balance $1,766.70
+  2026-11-11 ARIAUSD      1x  stop  24.6% liq  97.5%  STOP       after  9.78 h  $  -108.99  [paper CLOSED STOP -1.00R]
+  2026-11-11 INITUSD      1x  stop  42.1% liq  97.5%  TARGET     after  1.18 h  $   +36.74  [paper CLOSED TARGET +0.20R]
+    2026-11-11 day $   -72.25 -> balance $1,694.45
+  2026-11-12 AINUSD     skipped: no leverage keeps liquidation 2x the stop away
+  2026-11-12 ARIAUSD      1x  stop  29.8% liq  97.5%  TARGET     after  2.12 h  $   +24.78  [paper CLOSED TARGET +0.20R]
+    2026-11-12 day $   +24.78 -> balance $1,719.23
+  END $1,719.23 (+14.6%), worst drop 9%

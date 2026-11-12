@@ -1,0 +1,204 @@
+n 3608 picks 2021-26; 33% found in Delta's table; max leverage: 10x 110, 20x 3328, 50x 47, 100x 122, 200x 1
+median 2x-ATR stop 19.5% away; liquidation at full leverage is 2.5% away (median)
+
+ALL CELLS: $1,500 -> end; worst drop; share of trades liquidated; win rate; year-end balances
+
+  stop 2x ATR target QUICK 0.2x stuck -
+       1  -> $        139  drop  99%  liquidated  0.0%  win  77%  mean  +0.03% of bal |     1,225     4,343       497       105        95       139
+       2  -> $          0  drop 100%  liquidated  0.1%  win  77%  mean  +0.05% of bal |       213       926         4         0         0         0
+       3  -> $          0  drop 100%  liquidated  1.0%  win  77%  mean  +0.03% of bal |         6         4         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 10.2%  win  76%  mean  -0.31% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 30.8%  win  65%  mean  -4.08% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 60.9%  win  39%  mean -16.33% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target QUICK 0.2x stuck 4h/3%
+       1  -> $        514  drop  98%  liquidated  0.0%  win  79%  mean  +0.06% of bal |     1,778     5,006     1,021       312       368       514
+       2  -> $          0  drop 100%  liquidated  0.0%  win  79%  mean  +0.11% of bal |       603     1,864        26         1         0         0
+       3  -> $          0  drop 100%  liquidated  1.0%  win  79%  mean  +0.12% of bal |        23         9         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  9.8%  win  78%  mean  -0.17% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 28.7%  win  67%  mean  -3.57% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 57.3%  win  41%  mean -15.10% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target 2%         stuck -
+       1  -> $     66,820  drop  62%  liquidated  0.0%  win  89%  mean  +0.14% of bal |     1,890     9,663    16,001    13,773    41,321    66,820
+       2  -> $     98,377  drop  88%  liquidated  0.0%  win  89%  mean  +0.28% of bal |     1,246    22,866    38,421    13,791    59,669    98,377
+       3  -> $        405  drop 100%  liquidated  0.5%  win  89%  mean  +0.39% of bal |       270     5,833     3,990       110       493       405
+       5  -> $          0  drop 100%  liquidated  4.9%  win  88%  mean  +0.44% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 17.5%  win  81%  mean  -1.35% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 43.2%  win  57%  mean -10.56% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target 2%         stuck 4h/3%
+       1  -> $     76,936  drop  57%  liquidated  0.0%  win  88%  mean  +0.15% of bal |     1,856     8,589    16,185    14,853    47,763    76,936
+       2  -> $    142,541  drop  88%  liquidated  0.0%  win  88%  mean  +0.29% of bal |     1,209    18,581    41,379    17,369    87,130   142,541
+       3  -> $        982  drop  99%  liquidated  0.5%  win  88%  mean  +0.40% of bal |       261     4,461     4,841       213     1,209       982
+       5  -> $          0  drop 100%  liquidated  4.9%  win  88%  mean  +0.46% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 16.9%  win  80%  mean  -1.24% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 41.9%  win  57%  mean -10.15% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target 5%         stuck -
+       1  -> $        417  drop  99%  liquidated  0.0%  win  72%  mean  +0.07% of bal |     1,623    12,141     2,628     1,007       599       417
+       2  -> $          0  drop 100%  liquidated  0.1%  win  72%  mean  +0.13% of bal |       381     6,602        68         2         0         0
+       3  -> $          0  drop 100%  liquidated  1.0%  win  72%  mean  +0.15% of bal |        19        87         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 10.9%  win  71%  mean  -0.13% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 34.6%  win  59%  mean  -4.24% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 66.8%  win  33%  mean -17.83% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target 5%         stuck 4h/3%
+       1  -> $      1,434  drop  97%  liquidated  0.0%  win  75%  mean  +0.09% of bal |     2,609    15,636     5,568     2,784     2,120     1,434
+       2  -> $          0  drop 100%  liquidated  0.0%  win  75%  mean  +0.18% of bal |     1,311    17,480       614        31         3         0
+       3  -> $          0  drop 100%  liquidated  0.9%  win  75%  mean  +0.22% of bal |        95       385         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 10.4%  win  74%  mean  -0.00% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 31.6%  win  63%  mean  -3.67% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 61.6%  win  37%  mean -16.22% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target none       stuck -
+       1  -> $          3  drop 100%  liquidated  0.0%  win  56%  mean  +0.07% of bal |        74       166         4         1         2         3
+       2  -> $          0  drop 100%  liquidated  0.2%  win  56%  mean  +0.13% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  1.6%  win  56%  mean  +0.15% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 17.1%  win  55%  mean  -0.61% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 48.7%  win  43%  mean  -6.39% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 80.0%  win  19%  mean -22.76% of bal |         0         0         0         0         0         0
+
+  stop 2x ATR target none       stuck 4h/3%
+       1  -> $         88  drop 100%  liquidated  0.0%  win  64%  mean  +0.14% of bal |       151       318        13         8        40        88
+       2  -> $          0  drop 100%  liquidated  0.1%  win  64%  mean  +0.27% of bal |         1         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  1.5%  win  64%  mean  +0.36% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 16.3%  win  62%  mean  -0.28% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 43.6%  win  50%  mean  -5.41% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 72.0%  win  27%  mean -20.27% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target QUICK 0.2x stuck -
+       1  -> $         84  drop  99%  liquidated  0.0%  win  70%  mean  -0.02% of bal |       538     4,075       332       127       129        84
+       2  -> $          0  drop 100%  liquidated  0.0%  win  70%  mean  -0.05% of bal |        87     2,785         8         1         0         0
+       3  -> $          0  drop 100%  liquidated  0.1%  win  70%  mean  -0.10% of bal |         6       190         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  1.2%  win  70%  mean  -0.21% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 28.4%  win  64%  mean  -3.86% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 60.9%  win  39%  mean -16.33% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target QUICK 0.2x stuck 4h/3%
+       1  -> $        221  drop  98%  liquidated  0.0%  win  72%  mean  -0.00% of bal |       685     4,144       579       264       357       221
+       2  -> $          1  drop 100%  liquidated  0.0%  win  72%  mean  -0.00% of bal |       148     3,357        32         3         3         1
+       3  -> $          0  drop 100%  liquidated  0.1%  win  72%  mean  -0.03% of bal |        13       320         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  1.2%  win  72%  mean  -0.09% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 26.4%  win  67%  mean  -3.37% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 57.3%  win  41%  mean -15.10% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target 2%         stuck -
+       1  -> $     13,331  drop  69%  liquidated  0.0%  win  84%  mean  +0.09% of bal |       840     6,393     7,171     5,738    12,702    13,331
+       2  -> $     17,422  drop  93%  liquidated  0.0%  win  84%  mean  +0.17% of bal |       324    15,077    13,152     5,388    20,696    17,422
+       3  -> $        808  drop 100%  liquidated  0.1%  win  84%  mean  +0.24% of bal |        82     8,530     2,567       319     1,630       808
+       5  -> $          0  drop 100%  liquidated  0.6%  win  84%  mean  +0.38% of bal |         1     1,230        14         0         0         0
+      10  -> $          0  drop 100%  liquidated 15.8%  win  80%  mean  -1.21% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 43.2%  win  57%  mean -10.56% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target 2%         stuck 4h/3%
+       1  -> $     15,057  drop  69%  liquidated  0.0%  win  84%  mean  +0.09% of bal |       886     6,464     8,075     6,311    14,403    15,057
+       2  -> $     23,582  drop  92%  liquidated  0.0%  win  84%  mean  +0.18% of bal |       364    16,043    17,503     6,880    28,232    23,582
+       3  -> $      1,400  drop 100%  liquidated  0.1%  win  84%  mean  +0.24% of bal |        98    10,013     4,267       503     2,858     1,400
+       5  -> $          0  drop 100%  liquidated  0.6%  win  84%  mean  +0.39% of bal |         1     2,130        44         0         0         0
+      10  -> $          0  drop 100%  liquidated 15.2%  win  80%  mean  -1.10% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 41.9%  win  57%  mean -10.16% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target 5%         stuck -
+       1  -> $         62  drop  99%  liquidated  0.0%  win  64%  mean  -0.02% of bal |       596     5,946       531       184       106        62
+       2  -> $          0  drop 100%  liquidated  0.0%  win  64%  mean  -0.05% of bal |       106     5,067        15         1         0         0
+       3  -> $          0  drop 100%  liquidated  0.1%  win  64%  mean  -0.10% of bal |         8       377         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  1.2%  win  64%  mean  -0.21% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 31.3%  win  59%  mean  -4.08% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 66.8%  win  33%  mean -17.84% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target 5%         stuck 4h/3%
+       1  -> $        183  drop  99%  liquidated  0.0%  win  68%  mean  +0.00% of bal |       885     7,095       966       363       311       183
+       2  -> $          0  drop 100%  liquidated  0.0%  win  68%  mean  +0.00% of bal |       241     8,714        68         4         1         0
+       3  -> $          0  drop 100%  liquidated  0.1%  win  68%  mean  -0.02% of bal |        27     1,146         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  1.2%  win  68%  mean  -0.09% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 28.7%  win  63%  mean  -3.51% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 61.6%  win  37%  mean -16.23% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target none       stuck -
+       1  -> $          0  drop 100%  liquidated  0.0%  win  48%  mean  -0.08% of bal |        53       249         3         0         0         0
+       2  -> $          0  drop 100%  liquidated  0.0%  win  48%  mean  -0.17% of bal |         0         1         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  0.2%  win  48%  mean  -0.29% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  2.0%  win  48%  mean  -0.56% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 44.7%  win  42%  mean  -6.25% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 80.0%  win  19%  mean -22.75% of bal |         0         0         0         0         0         0
+
+  stop 1x ATR target none       stuck 4h/3%
+       1  -> $          4  drop 100%  liquidated  0.0%  win  56%  mean  -0.03% of bal |       100       379         8         2         1         4
+       2  -> $          0  drop 100%  liquidated  0.0%  win  56%  mean  -0.06% of bal |         1         6         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  0.2%  win  56%  mean  -0.12% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  1.8%  win  56%  mean  -0.27% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 40.2%  win  50%  mean  -5.26% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 72.0%  win  27%  mean -20.26% of bal |         0         0         0         0         0         0
+
+  stop none   target QUICK 0.2x stuck -
+       1  -> $          0  drop 100%  liquidated  0.7%  win  80%  mean  +0.01% of bal |       381     2,478       615        74         2         0
+       2  -> $          0  drop 100%  liquidated  2.7%  win  79%  mean  +0.05% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  5.4%  win  79%  mean  +0.03% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 12.0%  win  76%  mean  -0.31% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 30.9%  win  65%  mean  -4.08% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 60.9%  win  39%  mean -16.33% of bal |         0         0         0         0         0         0
+
+  stop none   target QUICK 0.2x stuck 4h/3%
+       1  -> $          1  drop 100%  liquidated  0.7%  win  81%  mean  +0.04% of bal |       482     2,373     1,263       215         7         1
+       2  -> $          0  drop 100%  liquidated  2.6%  win  81%  mean  +0.12% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  5.1%  win  80%  mean  +0.15% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 11.4%  win  78%  mean  -0.15% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 28.7%  win  67%  mean  -3.57% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 57.3%  win  41%  mean -15.10% of bal |         0         0         0         0         0         0
+
+  stop none   target 2%         stuck -
+       1  -> $        346  drop  97%  liquidated  0.4%  win  90%  mean  +0.09% of bal |       462     5,028     5,477     2,502     2,102       346
+       2  -> $          0  drop 100%  liquidated  1.5%  win  90%  mean  +0.24% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  2.8%  win  90%  mean  +0.37% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  6.1%  win  88%  mean  +0.44% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 17.5%  win  81%  mean  -1.35% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 43.2%  win  57%  mean -10.56% of bal |         0         0         0         0         0         0
+
+  stop none   target 2%         stuck 4h/3%
+       1  -> $        430  drop  96%  liquidated  0.4%  win  90%  mean  +0.09% of bal |       453     4,474     6,105     2,945     2,623       430
+       2  -> $          0  drop 100%  liquidated  1.5%  win  90%  mean  +0.25% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  2.7%  win  89%  mean  +0.38% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated  6.0%  win  88%  mean  +0.47% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 16.9%  win  80%  mean  -1.24% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 41.9%  win  57%  mean -10.15% of bal |         0         0         0         0         0         0
+
+  stop none   target 5%         stuck -
+       1  -> $          1  drop 100%  liquidated  0.8%  win  75%  mean  +0.09% of bal |       630     6,975     3,783     1,085        33         1
+       2  -> $          0  drop 100%  liquidated  3.0%  win  75%  mean  +0.18% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  6.1%  win  74%  mean  +0.18% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 13.3%  win  71%  mean  -0.09% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 34.6%  win  59%  mean  -4.24% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 66.8%  win  33%  mean -17.83% of bal |         0         0         0         0         0         0
+
+  stop none   target 5%         stuck 4h/3%
+       1  -> $          4  drop 100%  liquidated  0.8%  win  79%  mean  +0.11% of bal |       885     7,180     7,725     2,650       106         4
+       2  -> $          0  drop 100%  liquidated  2.9%  win  78%  mean  +0.24% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  5.8%  win  78%  mean  +0.28% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 12.6%  win  75%  mean  +0.04% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 31.6%  win  63%  mean  -3.68% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 61.6%  win  37%  mean -16.22% of bal |         0         0         0         0         0         0
+
+  stop none   target none       stuck -
+       1  -> $          0  drop 100%  liquidated  1.4%  win  60%  mean  +0.07% of bal |         0         0         0         0         0         0
+       2  -> $          0  drop 100%  liquidated  5.1%  win  60%  mean  +0.15% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated 10.0%  win  59%  mean  +0.16% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 21.1%  win  55%  mean  -0.61% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 48.7%  win  43%  mean  -6.39% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 80.0%  win  19%  mean -22.76% of bal |         0         0         0         0         0         0
+
+  stop none   target none       stuck 4h/3%
+       1  -> $          0  drop 100%  liquidated  1.3%  win  68%  mean  +0.15% of bal |         0         0         0         0         0         0
+       2  -> $          0  drop 100%  liquidated  4.9%  win  67%  mean  +0.31% of bal |         0         0         0         0         0         0
+       3  -> $          0  drop 100%  liquidated  9.5%  win  66%  mean  +0.40% of bal |         0         0         0         0         0         0
+       5  -> $          0  drop 100%  liquidated 19.8%  win  63%  mean  -0.25% of bal |         0         0         0         0         0         0
+      10  -> $          0  drop 100%  liquidated 43.6%  win  50%  mean  -5.41% of bal |         0         0         0         0         0         0
+    full  -> $          0  drop 100%  liquidated 72.0%  win  27%  mean -20.27% of bal |         0         0         0         0         0         0
+
+SUMMARY
+     1: cells ending above $1,500: 4 of 24; ending at $0: 4; best $76,936 (['2x ATR', '2%', '4h/3%'], drop 57%); median $113
+     2: cells ending above $1,500: 4 of 24; ending at $0: 20; best $142,541 (['2x ATR', '2%', '4h/3%'], drop 88%); median $0
+     3: cells ending above $1,500: 0 of 24; ending at $0: 20; best $1,400 (['1x ATR', '2%', '4h/3%'], drop 100%); median $0
+     5: cells ending above $1,500: 0 of 24; ending at $0: 24; best $0 (['1x ATR', '2%', '4h/3%'], drop 100%); median $0
+    10: cells ending above $1,500: 0 of 24; ending at $0: 24; best $0 (['2x ATR', 'QUICK 0.2x', '-'], drop 100%); median $0
+  full: cells ending above $1,500: 0 of 24; ending at $0: 24; best $0 (['2x ATR', 'QUICK 0.2x', '-'], drop 100%); median $0

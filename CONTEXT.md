@@ -174,6 +174,150 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**DECISION 2026-11-12 (owner): "we will stick to quick and ladder".** The exit / leverage / R:R / new-family research
+of 2026-11-12 (entries below) is closed; no strategy change. Real account stays rule A ladder 10/5/3 (run 3); QUICK
+stays as it is. Open option the owner has not taken: real account to QUICK at 3% fixed (fade_sizing_options).
+
+**R:R >= 2 SEARCH, SIX FAMILIES ON 20 LARGE COINS — NONE PASSES (2026-11-12, owner "more ideas with better R&R, less risk,
+good win rate and good returns").** `scripts/rr_search.py`, `out/rr_search.txt`. Picked on 2021-23, judged on 2024-26
+(pass: mean > 0, t >= 2, every test year > 0). Dead everywhere: trend pullback (−0.014..−0.040R), dip-buying below the
+lower band (−0.12..−0.23R, t to −30), Asia-range breakout (−0.07R), NR7 (−0.08R). Trend-following lives but fades:
+4h breakout in BTC's direction 4R +0.162R t 4.34 all years (TEST +0.055 t 1.07, 2025 −0.009); DAILY 20-day breakout,
+2x ATR, 4R +0.177R t 4.00, win 39% (TEST +0.101 t 1.65, 2025 −0.054) — account 0.5% risk, max 5 open: $1,640 -> $2,729,
+worst drop 13%, but 2024 +10%, 2025 −0%, 2026 +1%. Fresh coins (ICP HBAR VET ALGO SAND MANA AXS EGLD THETA XTZ,
+downloaded) stay unused: nothing passed the bar.
+
+**TREND BREAKOUTS ON LARGE COINS, R:R 4-5 (2026-11-12, owner "option 2") — FIRST OUT-OF-SAMPLE PASS, BUT FADING AND
+DEEP DRAWDOWNS.** `scripts/trend_data.py` (Binance 1h 2021-01..2026-10, out/trend, not committed), `scripts/trend_rr.py`
+(main / --robust / --holdout / --money), `out/trend_rr*.txt`. 18 cells on BTC ETH SOL BNB XRP DOGE ADA AVAX LINK LTC
+(next-1h-open entries, stop-first in an hour, 0.05% fee + 0.02% slip a side, longs pay 0.03%/day): the pre-set rule
+(best DEV cell per family, judged 2024-26) fails all 3 families. Seen AFTER the run: 4h breakout, 2x-ATR stop, fixed
+4R/5R target positive in 5-6 of 6 years (N55/5R +0.151R t 2.84, 6/6; N20/4R +0.112R t 2.89, 5/6; both sides, most
+coins, survives double slippage). Fixed before a HOLD-OUT run on DOT TRX ATOM NEAR UNI FIL BCH ETC AAVE XLM: N55/5R
++0.072R t 1.40 (fail); N20/4R +0.087R t 2.24, 5/6 years, 9/10 coins (PASS). All 20 coins N20/4R: +0.099R t 3.63, 945
+trades a year, win 25%; $1,640 at 0.25% risk -> $6,014 but drop 42% and 2025 −8%, 2026 −2%; at 1% -> drop 89%.
+Breakouts cluster across coins, so losing streaks are long (42-63 trades). Best years 2021-24; recent two flat/negative.
+
+**REWARD:RISK 4:1 / 5:1 — ALL NEGATIVE (2026-11-12, owner "risk 10 to make 40 or 50").** `fade_reward_risk.py --wide`,
+`out/fade_reward_risk_wide.txt`. Stops 2/3/5/8% and 0.5x/1x ATR, targets 4x/5x, out at 24/48/72 h, realistic fills: 36
+rows, every one negative over 2021-26 (−0.04..−0.34R). A 2% stop is hit first on 80-84% of picks (target 10-17%);
+wide stops reach a 4-5x target on 0-10%. Pumped coins swing several % against the short before any 4-5x fall.
+
+**ONE PICK A DAY INSTEAD OF TWO — WORSE (2026-11-12, owner "2 trades per day with quick? or 1").** `fade_sizing_options.py
+--top1`, `out/fade_sizing_options_top1.txt`: 599 trades. QUICK real fills −0.003R (two picks: +0.009R); QUICK 3% fixed
+$1,490 real / $2,193 ideal vs $2,045 / $3,707 with two. The second pick carries as much of the result as the first.
+
+**SIZING OPTIONS FOR THE REAL ACCOUNT, RULE A vs QUICK, DELTA PICKS 2025-01..2026-10 (2026-11-12, owner "major problems
+around risk reward and position sizing").** `scripts/fade_sizing_options.py`, `out/fade_sizing_options.txt`. 1,022
+trades, live sizing (lever_plan), from $1,640. Per trade: A +0.033R ideal / +0.020R real fills (00:03 entry, 0.1% through,
+0.1% spread); QUICK +0.029R / +0.009R (win 76-78%, avg win +0.19R, loss −0.52R). Live ladder 10/5/3 on A: $4,889 ideal /
+$1,683 real, both under the $1,000 floor in 2025 (07-13 / 04-12). QUICK fixed 3%: $3,707 / $2,045, floor never, drop 25%
+/ 29%, green 16 / 13 of 22 months; QUICK 5%: $5,993 / $2,214, drop 39% / 45%. The real account's 7 matched trades
+(+0.003R vs paper, entry slippage in its favour) suggest real fills sit between the two columns.
+
+**FILTERS FOR A TIGHT STOP + 2:1 TARGET — NONE SURVIVES OUT OF SAMPLE (2026-11-12, owner "filters where we trade less
+... keep the win rate and R:R").** `scripts/fade_rr_filters.py`, `out/fade_rr_filters.txt`. Stops 1x ATR / 5% / 8%,
+target 2x, 24 h, realistic fills; 11 pre-entry features (pump, wick, 3-day change, volume surge, 7-day breakout, ATR,
+BTC, funding, OI change, long/short accounts), thirds and the choice from 2021-23 only, one look at 2024-26. Best on
+DEV: long/short account ratio high third (+0.131R, 1x ATR) -> TEST +0.025R t 0.57, 2024 negative; its pair with BTC
+mid third (8% stop) DEV +0.192 -> TEST +0.065R t 0.82, 2024 −0.007. 27 rows, 0 pass; most DEV winners turn
+negative on TEST (pump mid third +0.017 -> −0.098R).
+
+**2:1 / 3:1 VIA ENTRY TIMING (watchlist + trigger + structure stop) — FAIL (2026-11-12, owner "ok with taking less
+trades ... atleast 1:2").** `scripts/fade_rr_entries.py`, `out/fade_rr_entries.txt`. Rule A picks as a watchlist;
+short only on a 15m trigger (breakdown of the first 1/2/4 h low; failed push +3/5/10% back below the open; lower
+high), stop just above the day's high (1-15%), target 2x/3x, 24 h, realistic fills. 14 rows: 12 negative (breakdowns
+−0.06..−0.12R, t −2.5..−5.2). Best: failed push +10% (43 trades a year, stop 12.7%): +0.022/+0.026R, t 0.4, 3/6
+years — noise. Lower high 3:1 −0.019R, 4/6 years. Waiting for weakness enters late: the day's fade is mostly done.
+
+**REWARD:RISK 1:1 / 2:1 / 3:1 — ALL NEGATIVE (2026-11-12, owner "we risk more than we make").**
+`scripts/fade_reward_risk.py`, `out/fade_reward_risk.txt`. 3,608 Binance picks, realistic fills, stops 2x/1x ATR and
+fixed 5/10%, targets 1/2/3x the stop, out at 24/48/72 h (48 rows): every row's mean R is negative over 2021-26; none
+positive in more than 3 of 6 years. Rule A's own realised ratio (no target, 24 h): avg win +0.47R, avg loss −0.58R,
+win 55%. A 2:1/3:1 target on the 2x-ATR stop is a 39-58% move: hit by 0-4% of trades. Tighter stops (5%) are hit 50-74%
+of the time. Wins exceed the break-even rate only where the payoff is < 1:1.
+
+**"SENSE THE FLIP" EXITS — ALL FAIL (2026-11-12, owner "instead of hard SL, cut with some logic if we sense the
+position is going to flip").** `scripts/fade_flip_exits.py`, `out/fade_flip_exits.txt`. 3,608 Binance picks; signals
+on 15m closes, exit next minute + 0.05%: new 1/2/4 h high above entry, 15m close above the 4 h mean by 0.25/0.5 ATR,
+three rising 1 h lows, BTC +1% with the coin above entry, adverse at 1 h. On top of the 2x-ATR stop: all 8 worse
+(−0.002..−0.015R, z −0.5..−2.0); instead of it (3x-ATR disaster stop): all 8 worse. Why: 90% of trades trade above
+entry within 4 h and 87% of WINNERS do; 48% of winners rise 0.25 ATR against us first. Only a >= 1 ATR rise separates
+(24% end winners) and the 2x stop is already near it.
+
+**1:3 (TARGET = STOP / 3), ATR STOP, MAX SAFE LEVERAGE, 30% MARGIN PER PICK — WIN RATE BELOW BREAK-EVEN EVERYWHERE
+(2026-11-12, owner "if win rate is more we make money right").** `scripts/fade_tight_stops.py --r13`,
+`out/fade_ratio13.txt`. Stop = c x ATR14% (c 0.05..2), leverage up to 20x with liquidation >= 2x the stop. Realistic
+fills: every cell -> $0; win 62-74% vs break-even 78-90% (costs ~0.2% a round trip eat a 0.3-0.8% target). Ideal
+fills: best c 0.5 (stop 4.9%, target 1.6%, 8x) win 78% vs 77% break-even, still $1. A 1:3 needs > 75% wins plus costs.
+
+**LADDER AT A CONSTANT 5x (2026-11-12, owner).** `scripts/fade_ladder_5x.py`, `out/fade_ladder_5x.txt`. Delta rule A
+picks 2025-01-15..2026-10-27 (1,022 trades, +0.033R after funding), ladder risk 10/5/3%, from $1,500. 5x liquidates at
+17.5% above entry: 13% of trades get there before exiting (89% of those would have lost anyway). NOW (live sizing,
+1-3x, 60% notional cap): $4,471, 2025 −40% then 2026 +400%, drop 67%, below the $1,000 floor 2025-04-12. 5x, same risk
+(cap 150% notional): $2,330, drop 63%, 135 liquidations. 5x with 30% margin every pick (150% notional): $0 by
+2025-09. Constant 5x is worse than the live sizing in both versions.
+
+**$300-400 TARGET VIA LEVERAGE ("more contracts, target reaches quickly") — RUIN (2026-11-12).** $1,640 wallet, 25%
+margin, leverage 5/10/20x, stop = widest keeping liquidation 2x away ((1/L - mm)/2: 8.75/3.75/1.25%), target = the move
+that earns $100-400 (4.9-19.5% at 5x, 1.2-4.9% at 20x). Six years (`fade_tight_stops.py --usd`,
+`out/fade_dollar_target.txt`): all 24 cells -> $0, ideal fills too. Paper's 30 picks on Delta (`fade_quick_full_replay.py
+--usd`, `out/fade_dollar_target_replay.txt`): 20x loses $1,819-2,477 in two weeks (stopped 16-22 of 30); 5x/10x mixed
+(−$929..+$777). Leverage shrinks the allowed stop faster than the target move.
+
+**TIGHT FIXED STOPS + SAFE LEVERAGE (liquidation >= 2x the stop), 25% PER PICK — PAPER PICKS LOOK OK, SIX YEARS
+RUIN (2026-11-12, owner "we can use tight SL? avoid liquidations").** Paper QUICK's 30 picks on Delta 1m + MARK
+(`fade_quick_full_replay.py --tight`, `out/fade_quick_tight_replay.txt`, entry at the 00:00 open): stop 1% $858,
+2% $1,058-1,211, 4% $1,254-1,620, 8% at 5x $1,779-1,999. Six years (`fade_tight_stops.py --safe25`,
+`out/fade_tight_safe25.txt`): realistic fills -> $0 in all 8 cells (mean per trade negative in every year but one
+cell-year); ideal fills: only 8% stop / 1.6% target survives ($4,818, drop 97%). Even with the 2x buffer, 0.2-4.9%
+of picks gap past liquidation inside one minute (Binance trade highs; Delta's mark is smoother: 1-2 of 30 on paper).
+
+**QUICK AS IS, FULL LEVERAGE, 25% OF CAPITAL PER PICK — RUIN, ON PAPER'S OWN TRADES TOO (2026-11-12).**
+`scripts/fade_quick_full_replay.py` (paper QUICK's 30 picks 10-29..11-12, taken + skipped, replayed on Delta's own
+1m trade + MARK candles; `out/fade_quick_full_replay.txt`) and `scripts/fade_quick_full25.py` (3,608 Binance picks
+2021-26; `out/fade_quick_full25.txt`). Replay at Delta's max (20x mostly; liquidation 2.5% vs stops 16-55%):
+$1,500 -> $2,973 after two days, then 16 of the next 26 picks liquidated -> $87 (−94%), although paper won 19 of 23.
+Same picks at the leverage the bot allows (liquidation >= 2x the stop): $1,719 (+15%), worst drop 9% (skips 7 picks).
+Six years: full/10x/5x reach $0 in 2021 (liquidated 61/31/10% of picks); 1x ideal $1,088, realistic $59.
+
+**FLEXIBLE RISK + SAFE FULL LEVERAGE + TARGET % SWEEP — NOTHING POSITIVE (2026-11-12, owner "you would avoid
+liquidations right? ... flexible risk per trade ... full leverage and 50% capital", "test diffrent target %").**
+`scripts/fade_flex_risk.py` (`--targets`), `out/fade_flex_risk.txt`, `out/fade_flex_targets.txt`. Realistic fills
+(00:03 entry, 0.1% trade-through, 0.1% spread, 0.05% fee); leverage = the most whose liquidation sits >= 2x the stop
+away (as lever_plan), 50% of capital as margin -> 0 liquidations with the 2x-ATR stop (a few 1m gaps past
+liquidation with 2-4% stops). Rule A itself is −0.006R over 2021-26 under these fills (2025 +0.011, 2026 +0.058).
+Risk rules fixed 2/5/10%, ladder, up-after-win, up-after-loss, half-Kelly from the last 200 trades: every cell below
+$1,500 (best $817, adaptive, 2x-ATR, no target). Targets 1/2/3/5/8/10/15/20/30% x stops 2x/1x ATR and fixed
+4/8/12%: 50 cells, mean R negative over 6 years in all 50; best 2% target on 2x ATR (−0.006R, 86% win, $911 at 2%).
+Sizing cannot turn a ~0 or negative trade positive; the win rate climbs to 92% while R per trade stays negative.
+
+**TIGHT 2%/4% STOPS AT FULL LEVERAGE — EVERY CELL GOES TO ~$0 (2026-11-12, owner "full leverage and big position
+and stop at 2%, 4%").** `scripts/fade_tight_stops.py`, `out/fade_tight_stops.txt`. Same picks; half the balance as
+margin per pick; targets 0.2/0.5/1/2x the stop; 2x/5x/10x/full. Realistic fills (00:03 entry, 0.1% through, 0.1%
+spread): all 32 cells end at $0, mean per trade negative in every one; even ideal fills: best $501 (4% stop, 0.8%
+target, 2x). A 2% stop is hit before a 2% target on 52% of picks (pumped coins are noisy), costs are ~10% of a 2%
+move, and at 20x liquidation (2.5%) sits INSIDE a 4% stop, so 29-75% of trades lose the whole margin.
+
+**QUICK AT FULL LEVERAGE + COMBINED STOPS — DEAD; THE ONE BIG CELL IS A FIRST-MINUTES ARTIFACT (2026-11-12).**
+`scripts/fade_quick_leverage.py` (`--robust`), `out/fade_quick_leverage*.txt`. Same 3,608 Binance picks; half the
+balance as margin per pick; per-coin max leverage from Delta's /v2/products (`out/delta_margin/`): 20x for 92% of
+picks, liquidation 2.5% away vs a median 19.5% stop. 72 exit combos (stop 2x/1x ATR/none x target QUICK/2%/5%/none x
+stuck 4h-3% on/off) x 1/2/3/5/10x/full: at 5x and above every cell ends at $0; at 3x 0 of 24 end above $1,500.
+Standout: 2% target, 2x-ATR stop, 1x: $1,500 -> $66,820 (5/6 years) — entering at the 00:03 close instead of the
+00:00 open: $573; + target must trade 0.2% through: $29; + 0.1% spread: $5. Same for targets 1-4% at 1x/2x. The
+edge is the first minutes' wick below the open, which the real bot (enters ~00:03 at the bid) cannot get. Lesson:
+any small-target result must be re-run from the real entry minute with trade-through fills.
+
+**OWNER'S EXIT + SIZE IDEAS — ALL FAIL (2026-11-12, "more leverage", "close it if coin moves certain % in favour",
+"cut the position if the price is stuck ... in a band").** `scripts/fade_owner_exits.py`, `out/fade_owner_exits.txt`.
+Binance rule A picks 2021-26 (3,608), paired vs the 24 h exit (+0.011R). Pass = better in >= 5/6 years and paired
+z >= 2. Take profit at 2/3/5/8/10/15/20% or 0.2/0.5/1.0x the stop: best +0.006R (2%), z <= 0.6, all fail. Stuck in a
+2/3/5% band for 2/3/4/6 h, always / only in profit / only in loss (36 cells): best +0.006R z 1.48 (4 h, 3%, in
+profit, 5/6 years) — fails z, and is the best of 36. SIZE: the same trades compounded with no notional cap:
+3% risk $1,500 -> $2,146 (drop 81%), 5% -> $1,068 (95%), 10% -> $7, 15%+ -> $0; QUICK 10% -> $364 (99%). More
+leverage only magnifies a near-zero edge; at 10% the six-year path is ruin (run 3's $1,000 floor would stop it first).
+
 **FUNDING BACKTEST TIMING FIX + REVIEWERS' IDEAS 1/3/5 — ALL FAIL (2026-11-11).** `scripts/funding_ideas.py`,
 `out/funding_ideas.txt`. Delta daily candles are stamped at their open, so `C.loc[t]` is the price at t+1 00:00 (the
 entry), but `backtest_survivors.portfolio()` booked funding for days t..t2-1 — one day early, and that day also sat in

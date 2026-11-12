@@ -1,0 +1,68 @@
+RULE A picks on Binance 2021-26, n 3608; baseline (stop 2x ATR, 24 h) +0.011R, win 56% | by year 2021 -0.018 2022 +0.036 2023 -0.035 2024 +0.009 2025 +0.031 2026 +0.065
+                                                    mean       win         vs baseline             |   2021   2022   2023   2024   2025   2026
+
+1. CLOSE WHEN THE COIN MOVES p% IN OUR FAVOUR
+  take profit at -2%                             +0.017R  win  89%  diff +0.006R z +0.60  better 3/6 | +0.012 +0.031 +0.010 +0.011 +0.024 +0.018  fail
+  take profit at -3%                             +0.011R  win  82%  diff +0.000R z +0.02  better 2/6 | +0.012 +0.032 -0.002 -0.001 +0.019 +0.014  fail
+  take profit at -5%                             +0.012R  win  72%  diff +0.000R z +0.05  better 3/6 | +0.016 +0.047 -0.009 +0.006 +0.006 +0.002  fail
+  take profit at -8%                             +0.010R  win  64%  diff -0.001R z -0.20  better 3/6 | +0.013 +0.035 -0.023 +0.010 +0.012 +0.016  fail
+  take profit at -10%                            +0.005R  win  61%  diff -0.006R z -0.99  better 2/6 | -0.004 +0.034 -0.026 +0.009 +0.013 +0.007  fail
+  take profit at -15%                            +0.004R  win  58%  diff -0.007R z -1.43  better 2/6 | -0.008 +0.033 -0.034 +0.009 +0.019 +0.015  fail
+  take profit at -20%                            +0.010R  win  57%  diff -0.001R z -0.32  better 2/6 | -0.005 +0.032 -0.036 +0.014 +0.022 +0.048  fail
+  take profit at 0.2x the stop distance (= QUICK) +0.005R  win  77%  diff -0.006R z -0.68  better 2/6 | +0.010 +0.030 -0.026 -0.007 +0.012 +0.020  fail
+  take profit at 0.5x the stop distance          +0.006R  win  61%  diff -0.005R z -0.71  better 3/6 | -0.009 +0.031 -0.030 +0.005 +0.034 +0.015  fail
+  take profit at 1.0x the stop distance          +0.008R  win  57%  diff -0.003R z -0.67  better 3/6 | -0.008 +0.039 -0.037 +0.016 +0.019 +0.032  fail
+
+2. CLOSE WHEN THE PRICE IS STUCK IN A BAND FOR N HOURS
+  stuck 2 h in 2% (always)                       +0.014R  win  59%  diff +0.003R z +0.55  better 3/6 | -0.016 +0.027 -0.015 -0.003 +0.049 +0.063  fail
+  stuck 2 h in 3% (always)                       +0.009R  win  58%  diff -0.002R z -0.26  better 4/6 | -0.017 +0.022 -0.020 -0.009 +0.033 +0.070  fail
+  stuck 2 h in 5% (always)                       +0.005R  win  57%  diff -0.006R z -0.68  better 2/6 | -0.009 +0.024 -0.018 -0.001 +0.012 +0.034  fail
+  stuck 3 h in 2% (always)                       +0.014R  win  59%  diff +0.003R z +0.78  better 4/6 | -0.017 +0.030 -0.024 +0.002 +0.049 +0.066  fail
+  stuck 3 h in 3% (always)                       +0.013R  win  58%  diff +0.002R z +0.34  better 2/6 | -0.019 +0.016 -0.012 -0.004 +0.057 +0.062  fail
+  stuck 3 h in 5% (always)                       +0.006R  win  58%  diff -0.005R z -0.76  better 2/6 | -0.017 +0.018 -0.019 -0.014 +0.028 +0.059  fail
+  stuck 4 h in 2% (always)                       +0.007R  win  58%  diff -0.004R z -1.63  better 1/6 | -0.016 +0.023 -0.038 +0.005 +0.028 +0.064  fail
+  stuck 4 h in 3% (always)                       +0.017R  win  59%  diff +0.006R z +1.30  better 4/6 | -0.016 +0.028 -0.018 +0.005 +0.057 +0.066  fail
+  stuck 4 h in 5% (always)                       +0.013R  win  58%  diff +0.002R z +0.33  better 3/6 | -0.018 +0.021 -0.005 -0.011 +0.052 +0.060  fail
+  stuck 6 h in 2% (always)                       +0.010R  win  57%  diff -0.001R z -1.18  better 0/6 | -0.018 +0.031 -0.036 +0.008 +0.031 +0.064  fail
+  stuck 6 h in 3% (always)                       +0.010R  win  58%  diff -0.001R z -0.26  better 3/6 | -0.018 +0.029 -0.030 +0.002 +0.036 +0.066  fail
+  stuck 6 h in 5% (always)                       +0.014R  win  57%  diff +0.003R z +0.60  better 2/6 | -0.021 +0.026 -0.008 -0.009 +0.052 +0.064  fail
+  stuck 2 h in 2% (profit)                       +0.016R  win  66%  diff +0.004R z +0.97  better 4/6 | -0.013 +0.029 -0.025 +0.006 +0.050 +0.068  fail
+  stuck 2 h in 3% (profit)                       +0.011R  win  69%  diff +0.000R z +0.06  better 4/6 | -0.013 +0.023 -0.033 +0.005 +0.042 +0.067  fail
+  stuck 2 h in 5% (profit)                       +0.007R  win  72%  diff -0.004R z -0.54  better 2/6 | +0.002 +0.028 -0.025 +0.003 +0.017 +0.028  fail
+  stuck 3 h in 2% (profit)                       +0.012R  win  62%  diff +0.001R z +0.38  better 4/6 | -0.016 +0.028 -0.030 +0.006 +0.043 +0.065  fail
+  stuck 3 h in 3% (profit)                       +0.016R  win  66%  diff +0.005R z +1.03  better 4/6 | -0.012 +0.017 -0.017 +0.006 +0.058 +0.067  fail
+  stuck 3 h in 5% (profit)                       +0.009R  win  70%  diff -0.002R z -0.37  better 3/6 | -0.015 +0.019 -0.024 -0.003 +0.038 +0.058  fail
+  stuck 4 h in 2% (profit)                       +0.007R  win  59%  diff -0.004R z -1.88  better 1/6 | -0.015 +0.024 -0.039 +0.005 +0.027 +0.062  fail
+  stuck 4 h in 3% (profit)                       +0.017R  win  64%  diff +0.006R z +1.48  better 5/6 | -0.010 +0.028 -0.028 +0.012 +0.056 +0.066  fail
+  stuck 4 h in 5% (profit)                       +0.015R  win  67%  diff +0.003R z +0.61  better 3/6 | -0.008 +0.024 -0.022 -0.001 +0.060 +0.056  fail
+  stuck 6 h in 2% (profit)                       +0.009R  win  57%  diff -0.002R z -1.86  better 0/6 | -0.019 +0.031 -0.038 +0.006 +0.031 +0.064  fail
+  stuck 6 h in 3% (profit)                       +0.009R  win  60%  diff -0.002R z -0.89  better 3/6 | -0.018 +0.026 -0.035 +0.004 +0.034 +0.066  fail
+  stuck 6 h in 5% (profit)                       +0.014R  win  64%  diff +0.003R z +0.68  better 4/6 | -0.016 +0.024 -0.023 -0.000 +0.056 +0.067  fail
+  stuck 2 h in 2% (loss)                         +0.011R  win  45%  diff -0.000R z -0.06  better 2/6 | -0.023 +0.032 -0.015 -0.002 +0.033 +0.059  fail
+  stuck 2 h in 3% (loss)                         +0.011R  win  35%  diff -0.001R z -0.11  better 3/6 | -0.018 +0.032 -0.015 -0.011 +0.032 +0.064  fail
+  stuck 2 h in 5% (loss)                         +0.007R  win  26%  diff -0.004R z -0.60  better 1/6 | -0.020 +0.023 -0.020 -0.008 +0.025 +0.063  fail
+  stuck 3 h in 2% (loss)                         +0.013R  win  50%  diff +0.001R z +0.65  better 3/6 | -0.020 +0.033 -0.024 +0.003 +0.037 +0.066  fail
+  stuck 3 h in 3% (loss)                         +0.011R  win  41%  diff +0.000R z +0.06  better 2/6 | -0.019 +0.031 -0.019 -0.002 +0.035 +0.061  fail
+  stuck 3 h in 5% (loss)                         +0.005R  win  31%  diff -0.006R z -1.06  better 2/6 | -0.022 +0.017 -0.019 -0.019 +0.030 +0.068  fail
+  stuck 4 h in 2% (loss)                         +0.011R  win  53%  diff -0.000R z -0.09  better 4/6 | -0.019 +0.030 -0.034 +0.010 +0.032 +0.067  fail
+  stuck 4 h in 3% (loss)                         +0.013R  win  46%  diff +0.001R z +0.52  better 3/6 | -0.018 +0.030 -0.017 +0.001 +0.033 +0.065  fail
+  stuck 4 h in 5% (loss)                         +0.012R  win  36%  diff +0.000R z +0.10  better 2/6 | -0.022 +0.024 -0.007 -0.009 +0.039 +0.063  fail
+  stuck 6 h in 2% (loss)                         +0.012R  win  55%  diff +0.001R z +1.17  better 3/6 | -0.018 +0.035 -0.032 +0.011 +0.031 +0.065  fail
+  stuck 6 h in 3% (loss)                         +0.012R  win  52%  diff +0.001R z +0.74  better 4/6 | -0.019 +0.033 -0.028 +0.010 +0.033 +0.065  fail
+  stuck 6 h in 5% (loss)                         +0.015R  win  43%  diff +0.004R z +1.01  better 4/6 | -0.014 +0.035 -0.009 -0.005 +0.035 +0.065  fail
+
+3. MORE POSITION SIZE / LEVERAGE (baseline trades, compounded from $1,500, no notional cap)
+  rule A (baseline)
+    risk    3%  $1,500 -> $       2,146  worst drop  81% | year-end 2021:996 2022:1,776 2023:738 2024:798 2025:1,143 2026:2,146
+    risk    5%  $1,500 -> $       1,068  worst drop  95% | year-end 2021:680 2022:1,587 2023:315 2024:316 2025:484 2026:1,068
+    risk   10%  $1,500 -> $           7  worst drop 100% | year-end 2021:177 2022:534 2023:10 2024:5 2025:5 2026:7
+    risk   15%  $1,500 -> $           0  worst drop 100% | year-end 2021:25 2022:53 2023:0 2024:0 2025:0 2026:0
+    risk   20%  $1,500 -> $           0  worst drop 100% | year-end 2021:2 2022:1 2023:0 2024:0 2025:0 2026:0
+    risk   25%  $1,500 -> $           0  worst drop 100% | year-end 2021:0 2022:0 2023:0 2024:0 2025:0 2026:0
+  QUICK (0.2x target)
+    risk    3%  $1,500 -> $       1,927  worst drop  67% | year-end 2021:1,703 2022:2,915 2023:1,598 2024:1,301 2025:1,522 2026:1,927
+    risk    5%  $1,500 -> $       1,669  worst drop  86% | year-end 2021:1,775 2022:4,136 2023:1,422 2024:953 2025:1,180 2026:1,669
+    risk   10%  $1,500 -> $         364  worst drop  99% | year-end 2021:1,678 2022:7,021 2023:586 2024:194 2025:232 2026:364
+    risk   15%  $1,500 -> $          13  worst drop 100% | year-end 2021:1,242 2022:6,962 2023:96 2024:11 2025:10 2026:13
+    risk   20%  $1,500 -> $           0  worst drop 100% | year-end 2021:700 2022:3,751 2023:5 2024:0 2025:0 2026:0
+    risk   25%  $1,500 -> $           0  worst drop 100% | year-end 2021:289 2022:989 2023:0 2024:0 2025:0 2026:0

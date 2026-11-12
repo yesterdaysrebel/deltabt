@@ -1,0 +1,28 @@
+
+IDEAL fills: $ target per trade on a $1,640 wallet, 25% margin, widest safe stop, from $1,500 (six years)
+   5x  target $100 =  4.9% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 0.9/29/58/13%  years up 1/6
+   5x  target $200 =  9.8% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 1.0/38/29/31%  years up 1/6
+   5x  target $300 = 14.6% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 1.1/41/15/43%  years up 1/6
+   5x  target $400 = 19.5% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 1.1/42/8/50%  years up 1/6
+  10x  target $100 =  2.4% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 1.3/36/62/1%  years up 1/6
+  10x  target $200 =  4.9% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.0/54/40/4%  years up 0/6
+  10x  target $300 =  7.3% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.5/61/27/9%  years up 0/6
+  10x  target $400 =  9.8% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.7/65/18/15%  years up 0/6
+  20x  target $100 =  1.2% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 6.0/39/55/0%  years up 0/6
+  20x  target $200 =  2.4% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 7.9/55/36/0%  years up 0/6
+  20x  target $300 =  3.7% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 9.1/63/27/1%  years up 0/6
+  20x  target $400 =  4.9% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 9.8/67/22/1%  years up 0/6
+
+REALISTIC fills: $ target per trade on a $1,640 wallet, 25% margin, widest safe stop, from $1,500 (six years)
+   5x  target $100 =  4.9% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 0.8/30/55/14%  years up 0/6
+   5x  target $200 =  9.8% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 0.9/39/28/32%  years up 0/6
+   5x  target $300 = 14.6% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 1.0/42/13/44%  years up 0/6
+   5x  target $400 = 19.5% move, stop 8.75% (-$179) -> $       0  drop 100%  liq/stop/target/24h 1.0/43/7/49%  years up 0/6
+  10x  target $100 =  2.4% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 1.3/39/59/1%  years up 0/6
+  10x  target $200 =  4.9% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.1/56/38/4%  years up 0/6
+  10x  target $300 =  7.3% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.3/62/26/10%  years up 0/6
+  10x  target $400 =  9.8% move, stop 3.75% (-$154) -> $       0  drop 100%  liq/stop/target/24h 2.5/65/17/15%  years up 0/6
+  20x  target $100 =  1.2% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 5.7/45/49/0%  years up 0/6
+  20x  target $200 =  2.4% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 7.3/59/33/0%  years up 0/6
+  20x  target $300 =  3.7% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 8.1/66/25/1%  years up 0/6
+  20x  target $400 =  4.9% move, stop 1.25% (-$102) -> $       0  drop 100%  liq/stop/target/24h 8.8/71/19/1%  years up 0/6

@@ -1,0 +1,24 @@
+ALL CELLS, all years 2021-26 (n, mean R, win rate, avg win / avg loss, exits, R by year)
+  F1 breakout  N20 stop 1.0xATR target 4R     n  5817  +0.030R t +1.11  win  22%  +3.90/-1.08R  stop  78% tgt  22% trail   0% | -0.017 +0.194 -0.016 +0.041 +0.087 -0.113
+  F1 breakout  N20 stop 1.0xATR target 5R     n  5261  +0.045R t +1.40  win  19%  +4.85/-1.09R  stop  81% tgt  19% trail   0% | +0.039 +0.201 -0.060 +0.084 +0.095 -0.085
+  F1 breakout  N20 stop 1.0xATR trail         n  4557  +0.127R t +1.98  win  20%  +4.68/-1.04R  stop  74% tgt   0% trail  26% | +0.283 +0.157 +0.278 +0.208 -0.099 -0.060
+  F1 breakout  N20 stop 2.0xATR target 4R     n  2772  +0.112R t +2.89  win  26%  +3.47/-1.04R  stop  74% tgt  21% trail   0% | +0.153 +0.152 +0.242 +0.115 +0.061 -0.057
+  F1 breakout  N20 stop 2.0xATR target 5R     n  2506  +0.109R t +2.41  win  23%  +4.09/-1.05R  stop  77% tgt  16% trail   0% | +0.223 +0.043 +0.167 +0.100 +0.069 +0.024
+  F1 breakout  N20 stop 2.0xATR trail         n  3670  +0.121R t +2.48  win  30%  +2.39/-0.86R  stop  45% tgt   0% trail  55% | +0.314 +0.089 +0.261 +0.184 -0.080 -0.020
+  F1 breakout  N55 stop 1.0xATR target 4R     n  3404  +0.029R t +0.83  win  22%  +3.89/-1.08R  stop  78% tgt  22% trail   0% | +0.033 +0.175 -0.037 -0.044 +0.096 -0.058
+  F1 breakout  N55 stop 1.0xATR target 5R     n  3152  +0.087R t +2.07  win  20%  +4.85/-1.08R  stop  80% tgt  19% trail   0% | +0.082 +0.192 +0.037 +0.011 +0.145 +0.056
+  F1 breakout  N55 stop 1.0xATR trail         n  2327  +0.346R t +2.42  win  16%  +7.95/-1.07R  stop  82% tgt   0% trail  17% | +0.725 +0.064 +0.706 +0.716 -0.166 +0.051
+  F1 breakout  N55 stop 2.0xATR target 4R     n  2065  +0.104R t +2.30  win  25%  +3.52/-1.04R  stop  74% tgt  21% trail   0% | +0.088 +0.150 +0.216 -0.054 +0.070 +0.176
+  F1 breakout  N55 stop 2.0xATR target 5R     n  1874  +0.151R t +2.84  win  23%  +4.14/-1.04R  stop  76% tgt  18% trail   0% | +0.171 +0.090 +0.327 +0.090 +0.057 +0.187
+  F1 breakout  N55 stop 2.0xATR trail         n  1807  +0.258R t +2.55  win  25%  +3.91/-0.97R  stop  64% tgt   0% trail  34% | +0.841 -0.004 +0.554 +0.381 -0.177 +0.042
+  F2 trend+1h  target 4R                      n  2541  +0.061R t +1.65  win  29%  +2.70/-1.03R  stop  68% tgt  15% trail   0% | +0.332 +0.062 +0.032 -0.071 +0.176 -0.040
+  F3 squeeze   target 4R                      n  2054  -0.038R t -0.88  win  22%  +3.65/-1.07R  stop  78% tgt  19% trail   0% | +0.276 -0.064 -0.119 +0.054 -0.164 -0.177
+  F2 trend+1h  target 5R                      n  2474  +0.102R t +2.49  win  28%  +2.94/-1.03R  stop  68% tgt  11% trail   0% | +0.435 +0.099 +0.094 -0.029 +0.177 -0.010
+  F3 squeeze   target 5R                      n  1989  -0.001R t -0.02  win  20%  +4.38/-1.07R  stop  80% tgt  16% trail   0% | +0.292 -0.067 -0.062 +0.094 -0.141 -0.083
+  F2 trend+1h  target trail                   n  2904  +0.127R t +2.29  win  31%  +2.37/-0.86R  stop  43% tgt   0% trail  51% | +0.705 +0.033 +0.206 -0.001 +0.024 +0.066
+  F3 squeeze   target trail                   n  2636  +0.095R t +1.82  win  30%  +2.34/-0.86R  stop  44% tgt   0% trail  56% | +0.217 +0.162 +0.025 +0.055 -0.030 +0.167
+
+CHOSEN ON 2021-23 (best mean R per family, n >= 100), JUDGED ON 2024-26
+  F1 breakout  N55 stop 1.0xATR trail         DEV +0.491R | TEST n 1174 +0.203R t +0.93  2024: +0.716 2025: -0.166 2026: +0.051 | $1,640 at 1% risk -> $2,567, drop 82%  fail
+  F2 trend+1h  target trail                   DEV +0.255R | TEST n 1645 +0.030R t +0.58  2024: -0.001 2025: +0.024 2026: +0.066 | $1,640 at 1% risk -> $1,912, drop 61%  fail
+  F3 squeeze   target trail                   DEV +0.131R | TEST n 1309 +0.060R t +0.93  2024: +0.055 2025: -0.030 2026: +0.167 | $1,640 at 1% risk -> $2,607, drop 68%  fail
