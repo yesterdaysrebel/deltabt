@@ -174,6 +174,15 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**OWNER'S EXIT + SIZE IDEAS — ALL FAIL (2026-11-12, "more leverage", "close it if coin moves certain % in favour",
+"cut the position if the price is stuck ... in a band").** `scripts/fade_owner_exits.py`, `out/fade_owner_exits.txt`.
+Binance rule A picks 2021-26 (3,608), paired vs the 24 h exit (+0.011R). Pass = better in >= 5/6 years and paired
+z >= 2. Take profit at 2/3/5/8/10/15/20% or 0.2/0.5/1.0x the stop: best +0.006R (2%), z <= 0.6, all fail. Stuck in a
+2/3/5% band for 2/3/4/6 h, always / only in profit / only in loss (36 cells): best +0.006R z 1.48 (4 h, 3%, in
+profit, 5/6 years) — fails z, and is the best of 36. SIZE: the same trades compounded with no notional cap:
+3% risk $1,500 -> $2,146 (drop 81%), 5% -> $1,068 (95%), 10% -> $7, 15%+ -> $0; QUICK 10% -> $364 (99%). More
+leverage only magnifies a near-zero edge; at 10% the six-year path is ruin (run 3's $1,000 floor would stop it first).
+
 **FUNDING BACKTEST TIMING FIX + REVIEWERS' IDEAS 1/3/5 — ALL FAIL (2026-11-11).** `scripts/funding_ideas.py`,
 `out/funding_ideas.txt`. Delta daily candles are stamped at their open, so `C.loc[t]` is the price at t+1 00:00 (the
 entry), but `backtest_survivors.portfolio()` booked funding for days t..t2-1 — one day early, and that day also sat in
