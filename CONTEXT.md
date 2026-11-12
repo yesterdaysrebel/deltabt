@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**TIGHT FIXED STOPS + SAFE LEVERAGE (liquidation >= 2x the stop), 25% PER PICK — PAPER PICKS LOOK OK, SIX YEARS
+RUIN (2026-11-12, owner "we can use tight SL? avoid liquidations").** Paper QUICK's 30 picks on Delta 1m + MARK
+(`fade_quick_full_replay.py --tight`, `out/fade_quick_tight_replay.txt`, entry at the 00:00 open): stop 1% $858,
+2% $1,058-1,211, 4% $1,254-1,620, 8% at 5x $1,779-1,999. Six years (`fade_tight_stops.py --safe25`,
+`out/fade_tight_safe25.txt`): realistic fills -> $0 in all 8 cells (mean per trade negative in every year but one
+cell-year); ideal fills: only 8% stop / 1.6% target survives ($4,818, drop 97%). Even with the 2x buffer, 0.2-4.9%
+of picks gap past liquidation inside one minute (Binance trade highs; Delta's mark is smoother: 1-2 of 30 on paper).
+
 **QUICK AS IS, FULL LEVERAGE, 25% OF CAPITAL PER PICK — RUIN, ON PAPER'S OWN TRADES TOO (2026-11-12).**
 `scripts/fade_quick_full_replay.py` (paper QUICK's 30 picks 10-29..11-12, taken + skipped, replayed on Delta's own
 1m trade + MARK candles; `out/fade_quick_full_replay.txt`) and `scripts/fade_quick_full25.py` (3,608 Binance picks

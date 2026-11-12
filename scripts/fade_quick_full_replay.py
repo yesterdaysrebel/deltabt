@@ -112,5 +112,68 @@ def main() -> None:
         print(f"  END ${bal:,.2f} ({100 * (bal / START - 1):+.1f}%), worst drop {100 * worst:.0f}%")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "--tight" not in sys.argv:
     main()
+
+
+def tight() -> None:
+    """Owner 2026-11-12: "we can use tight SL? avoid liquidations". Paper QUICK's picks with a FIXED tight stop, the most
+    leverage (up to Delta's max) that keeps liquidation >= 2x the stop away, 25% of capital as margin per pick.
+    Target 0.2x the stop (QUICK) or 1x the stop. Entry at paper's price (the 00:00 open: optimistic)."""
+    picks = [p for p in json.load(open(sys.argv[1])) if p.get("entry_price") and p.get("stop_price")]
+    tab = json.load(open("out/delta_margin/perp_margins_2026-11-12.json"))
+    print("TIGHT FIXED STOPS on paper QUICK's picks, 25% margin per pick, liquidation >= 2x the stop away, from $1,500")
+    for stop_pct in (0.01, 0.02, 0.04, 0.08):
+        for tk in (0.2, 1.0):
+            bal, peak, worst, n, hits = START, START, 0.0, 0, {"STOP": 0, "TARGET": 0, "TIME": 0, "LIQUIDATED": 0}
+            days = {}
+            for p in picks:
+                days.setdefault(p["day"], []).append(p)
+            for d in sorted(days):
+                start_bal, pnl = bal, 0.0
+                for p in days[d]:
+                    im, mm = (x / 100 for x in tab.get(p["symbol"], [5.0, 2.5]))
+                    L = max(1, min(int(1 / im), int(1 / (2 * stop_pct + mm))))
+                    q = dict(p, stop_price=p["entry_price"] * (1 + stop_pct))
+                    res = replay_k(q, L, mm, tk)
+                    if res is None:
+                        continue
+                    how, xp = res
+                    hits[how] += 1
+                    n += 1
+                    margin = MARGIN * start_bal
+                    if how == "LIQUIDATED":
+                        pnl -= margin
+                    else:
+                        ret = -(xp / p["entry_price"] - 1) - FEE - FEE * xp / p["entry_price"]
+                        pnl += max(L * margin * ret, -margin)
+                bal = max(bal + pnl, 0.0)
+                peak = max(peak, bal)
+                worst = max(worst, 1 - bal / peak)
+            print(f"  stop {100 * stop_pct:4.1f}%  target {100 * tk * stop_pct:4.1f}%  leverage up to "
+                  f"{max(1, min(20, int(1 / (2 * stop_pct + 0.025)))):2d}x  -> ${bal:>9,.2f}  worst drop {100 * worst:3.0f}%  "
+                  f"of {n}: target {hits['TARGET']}, stop {hits['STOP']}, 24 h {hits['TIME']}, liquidated {hits['LIQUIDATED']}")
+
+
+def replay_k(pick: dict, lev: float, mm: float, tk: float):
+    t0 = ts(pick["day"])
+    ltp, mark = candles(pick["symbol"], t0), candles("MARK:" + pick["symbol"], t0)
+    if not ltp:
+        return None
+    e, stop = pick["entry_price"], pick["stop_price"]
+    tgt = e - tk * (stop - e)
+    liq = e * (1 + 1 / lev - mm)
+    mk = {c["time"]: c for c in mark}
+    for c in ltp:
+        m = mk.get(c["time"])
+        if m and m["high"] >= liq:
+            return "LIQUIDATED", liq
+        if c["high"] >= stop:
+            return "STOP", max(stop, c["close"])
+        if c["low"] <= tgt:
+            return "TARGET", tgt
+    return "TIME", ltp[-1]["close"]
+
+
+if __name__ == "__main__" and "--tight" in sys.argv:
+    tight()

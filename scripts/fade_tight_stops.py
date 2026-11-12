@@ -28,10 +28,12 @@ import fade_quick_leverage as Q  # noqa: E402
 T, FEE = X.T, X.FEE
 
 
-def run(p, hi, lo, cl, im, mm, lev, stop, tk, through, extra):
+def run(p, hi, lo, cl, im, mm, lev, stop, tk, through, extra, margin=0.5, safe=False):
     n = len(p)
     entry = p.open.to_numpy()
     L = 1 / im if lev == "full" else np.minimum(float(lev), 1 / im)
+    if safe:                                                         # liquidation >= 2x the stop away
+        L = np.maximum(1, np.minimum(1 / im, np.floor(1 / (2 * stop + mm))))
     liq = 1 / L - mm
     cand = [(X.first(hi >= (entry * (1 + liq))[:, None]), entry * (1 + liq), 0)]
     sp = entry * (1 + stop)
@@ -44,7 +46,7 @@ def run(p, hi, lo, cl, im, mm, lev, stop, tk, through, extra):
     k = M.argmin(axis=0)
     xp = np.stack([c[1] for c in cand])[k, np.arange(n)]
     ret = -(xp / entry - 1) - FEE - FEE * xp / entry - extra
-    rb = np.where(k == 0, -0.5, np.maximum(0.5 * L * ret, -0.5))
+    rb = np.where(k == 0, -margin, np.maximum(margin * L * ret, -margin))
     return rb, k, L
 
 
@@ -78,5 +80,35 @@ def main() -> None:
                           f"mean {100 * rb.mean():+6.2f}%  up {up}/6  (stop costs {100 * 0.5 * float(np.median(L)) * stop:.0f}% of balance)")
 
 
+def safe25() -> None:
+    """Owner 2026-11-12 "we can use tight SL? avoid liquidations": fixed stops, the most leverage that keeps
+    liquidation >= 2x the stop away, 25% of capital as margin per pick; the cells of the paper-pick replay
+    (scripts/fade_quick_full_replay.py --tight) on six years."""
+    p0, hi0, lo0, cl = X.load()
+    im0, mm0, _ = Q.margins(p0)
+    for setname, e, thr, ex in (("IDEAL fills", 0, 0.0, 0.0), ("REALISTIC fills", 3, 0.001, 0.001)):
+        if e:
+            p = p0.copy()
+            p["open"] = cl[:, e - 1]
+            hi, lo = hi0.copy(), lo0.copy()
+            hi[:, :e], lo[:, :e] = -np.inf, np.inf
+        else:
+            p, hi, lo = p0, hi0, lo0
+        ok = np.isfinite(p.open.to_numpy()) & (p.open.to_numpy() > 0)
+        p, hi, lo, c, im, mm = p[ok].reset_index(drop=True), hi[ok], lo[ok], cl[ok], im0[ok], mm0[ok]
+        yrs = p.year.to_numpy()
+        print(f"\n{setname}: 25% margin per pick, liquidation >= 2x the stop away, from $1,500")
+        for stop in (0.01, 0.02, 0.04, 0.08):
+            for tk in (0.2, 1.0):
+                rb, k, L = run(p, hi, lo, c, im, mm, 1, stop, tk, thr, ex, margin=0.25, safe=True)
+                s, dd = Q.account(p, rb)
+                ye = s.groupby(s.index.year).last()
+                up = int((ye.to_numpy() > np.r_[1500.0, ye.to_numpy()[:-1]]).sum())
+                yr = " ".join(f"{y[2:]} {100 * rb[yrs == y].mean():+.2f}%" for y in X.YEARS)
+                print(f"  stop {100 * stop:3.0f}% target {100 * tk * stop:4.1f}% ({int(np.median(L)):2d}x) -> ${s.iloc[-1]:>9,.0f}  "
+                      f"drop {100 * dd:3.0f}%  liquidated {100 * (k == 0).mean():4.1f}%  win {100 * (rb > 0).mean():3.0f}%  "
+                      f"years up {up}/6 | mean per trade by year (% of balance): {yr}")
+
+
 if __name__ == "__main__":
-    main()
+    safe25() if "--safe25" in sys.argv else main()
