@@ -174,6 +174,13 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
+`fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
++0.2R: 0% win 55% $2,610 drop 66%; 25% 59% $2,250; 50% 63% $2,875 drop 57%; 66% 66% $2,734 drop 52%; 75% 68% $2,486
+drop 49%; 100% (QUICK) 76% $1,737. At +0.3R: 58-68%, $2,007-2,334. Each step up in win rate lowers R per trade
+(+0.021 -> +0.010); the dollar ends move with path luck. 66-75% at +0.2R: win 66-68%, drop ~50%, under $1,000 only in
+Sept 2025.
+
 **SKIP-NEGATIVE-FUNDING FILTER, RE-CHECKED ON LADDER SIZING + REAL TRADES — NOT ADOPTED (2026-11-13).**
 `scripts/fade_funding_filter.py`, `out/fade_funding_filter.txt`, real/paper trades in `out/fade_real_trades_2026-11-13.json`.
 Backtest (1,022 Delta picks, real-bot fills): keeps 46%; rule A +0.021 -> +0.038R (t 1.16) but it SWAPS years: 2025

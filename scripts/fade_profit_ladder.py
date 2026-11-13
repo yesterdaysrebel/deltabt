@@ -282,7 +282,29 @@ def bank_big() -> None:
     show("trail 0.3R behind the best price, from +1R", d, trailing(d, opens, ps, 1.0, 0.3), rules)
 
 
-if __name__ == "__main__" and "--bank" in sys.argv:
+def win_rate_map() -> None:
+    """Owner 2026-11-13: "need to improve ladders win rate, we should win mostly". Close a share of the position at
+    +0.2R or +0.3R, the rest runs to the 2x-ATR stop or 24 h: win rate against money, ladder sizing, real-bot fills."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    yrs = d.date.dt.year.to_numpy()
+    print(f"{len(d)} Delta picks 2025-01..2026-10, real-bot fills, ladder 10/5/3 from $1,640")
+    print(f"  {'plan':30s} {'win':>5s} {'per trade':>10s} {'2025':>7s} {'2026':>7s} | {'ladder ->':>10s} {'drop':>5s} {'green':>6s}  under $1,000")
+    for frac, lvl, lab in [(0.0, 0.2, "hold all to 24 h (today)")] + [(f, l, f"close {int(100 * f)}% at +{l}R") for l in (0.2, 0.3)
+                                                                       for f in (0.25, 0.5, 0.66, 0.75, 1.0)]:
+        r = scale_out(d, opens, ps, [(frac, lvl)] if frac else [])
+        ok = np.isfinite(r)
+        s, below = account(d, r, "ladder")
+        m = s.groupby(s.index.to_period("M")).last()
+        mret = m / m.shift(1).fillna(START) - 1
+        print(f"  {lab:30s} {100 * (r[ok] > 0).mean():4.0f}% {np.nanmean(r):+9.3f}R {np.nanmean(r[ok & (yrs == 2025)]):+7.3f} "
+              f"{np.nanmean(r[ok & (yrs == 2026)]):+7.3f} | ${s.iloc[-1]:>8,.0f} {100 * (1 - s / s.cummax()).max():4.0f}% "
+              f"{(mret > 0).sum():>3d}/22  {'never' if below is None else below.date()}")
+
+
+if __name__ == "__main__" and "--winmap" in sys.argv:
+    win_rate_map()
+elif __name__ == "__main__" and "--bank" in sys.argv:
     bank_big()
 elif __name__ == "__main__":
     as_today() if "--today" in sys.argv else lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()
