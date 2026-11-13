@@ -209,6 +209,9 @@ one that swapped years.)
 >= 0.05% filter + hold 24 h at 10% risk: +$9.94/trade, $1,640 -> $4,859, worst drop 42% (all picks today at 5%:
 +$0.73, $2,384, drop 78%). With 2/3 at +0.2R: 65% win, +$6.19/trade, $3,646, drop 44%. 324 trades / 15 a month.
 Caveat: threshold chosen after the Binance/Delta looks, t 1.45 on Delta.
+Owner "if we reach more than 1R we cut the trade" (`--target1r` -> `out/owner_target1r.txt`): with the funding filter,
+close at +1R: +0.041R, 56% win, 10% risk +$4.32/trade, $3,039, drop 41% (only 16% of trades reach +1R, ~19% fall in
+24 h). +0.5R target did best in dollars: +0.053R, 63% win, 10% risk +$12.73/trade, $5,766, drop 46%; hold 24 h $4,859.
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
