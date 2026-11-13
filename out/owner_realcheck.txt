@@ -1,0 +1,56 @@
+REAL PICKS 2026-10-29..11-12 (30 trades the bots took), Delta 1m + MARK candles, from $1,640
+
+  day        coin          stop  funding |        10x, 50% margin |     package (10% risk)
+
+  ALL PICKS (30 trades)
+  2026-10-29 EVAAUSD        19%  +0.278% | TARGET        +765.51 | TARGET         +80.32
+  2026-10-29 INITUSD        23%  +0.472% | 24h           +196.67 | 24h            +17.04
+  2026-10-30 BEATUSD        22%  +0.281% | 24h           -613.08 | 24h            -37.41
+  2026-10-30 PARTIUSD       20%  -1.007% | TARGET       +1251.37 | TARGET         +85.14
+  2026-10-31 AINUSD         25%  +0.361% | LIQUIDATED   -1620.24 | STOP          -180.69
+  2026-10-31 SOPHUSD        28%  -2.082% | TARGET       +2263.70 | TARGET         +88.04
+  2026-11-01 AINUSD         25%  -0.094% | LIQUIDATED   -1941.97 | STOP          -170.67
+  2026-11-01 EVAAUSD        31%  +0.346% | LIQUIDATED   -1941.97 | TARGET         +83.58
+  2026-11-02 AINUSD         26%  +0.153% | 24h             +0.00 | 24h            +14.11
+  2026-11-02 ESPORTSUSD     18%  +0.416% | LIQUIDATED      -0.00 | TARGET         +78.53
+  2026-11-03 ARIAUSD        32%  +0.018% | LIQUIDATED      -0.00 | 24h            -26.49
+  2026-11-03 EVAAUSD        39%  +0.243% | LIQUIDATED      -0.00 | 24h             +0.46
+  2026-11-04 AIOUSD         16%  +0.064% | TARGET          +0.00 | TARGET         +81.61
+  2026-11-04 BMTUSD         55%  -3.980% | LIQUIDATED      -0.00 | 24h            -28.42
+  2026-11-05 CAPUSD         35%  +0.404% | LIQUIDATED      -0.00 | 24h            -55.76
+  2026-11-05 INITUSD        54%  -0.778% | LIQUIDATED      -0.00 | 24h            +15.77
+  2026-11-06 ARIAUSD        27%  -0.014% | TARGET          +0.00 | TARGET         +83.04
+  2026-11-06 CAPUSD         36%  +0.523% | 24h             +0.00 | 24h            +29.84
+  2026-11-07 AIOUSD         23%  +0.030% | 24h             -0.00 | 24h            -20.77
+  2026-11-07 AKEUSD        247%  -0.368% | LIQUIDATED      -0.00 | 24h            -33.40
+  2026-11-08 AINUSD         98%  +0.486% | LIQUIDATED      -0.00 | 24h            -13.08
+  2026-11-08 AKEUSD        148%  -0.176% | 24h             +0.00 | 24h             +9.62
+  2026-11-09 AIOTUSD        17%  +0.140% | TARGET          +0.00 | TARGET         +85.00
+  2026-11-09 JCTUSD         58%  +1.168% | LIQUIDATED      -0.00 | TARGET         +86.47
+  2026-11-10 INITUSD        42%  -2.856% | LIQUIDATED      -0.00 | STOP          -199.58
+  2026-11-10 PIEVERSEUSD    16%  +0.283% | TARGET          +0.00 | TARGET         +93.20
+  2026-11-11 ARIAUSD        25%  +0.067% | LIQUIDATED      -0.00 | STOP          -182.11
+  2026-11-11 INITUSD        42% -21.008% | LIQUIDATED      -0.00 | TARGET         +89.46
+  2026-11-12 AINUSD        113%  +0.568% | 24h             +0.00 | 24h            +22.97
+  2026-11-12 ARIAUSD        30%  -0.018% | TARGET          +0.00 | TARGET         +84.53
+  END                                    |            $     0.00 |            $ 1,820.35
+
+  FUNDING FILTER ON (17 trades)
+  2026-10-29 EVAAUSD        19%  +0.278% | TARGET        +765.51 | TARGET         +80.32
+  2026-10-29 INITUSD        23%  +0.472% | 24h           +196.67 | 24h            +17.04
+  2026-10-30 BEATUSD        22%  +0.281% | 24h           -613.08 | 24h            -37.41
+  2026-10-31 AINUSD         25%  +0.361% | LIQUIDATED    -994.55 | STOP          -172.07
+  2026-11-01 EVAAUSD        31%  +0.346% | LIQUIDATED    -497.27 | TARGET         +75.45
+  2026-11-02 AINUSD         26%  +0.153% | 24h            +56.14 | 24h            +14.09
+  2026-11-02 ESPORTSUSD     18%  +0.416% | LIQUIDATED    -248.64 | TARGET         +78.43
+  2026-11-03 EVAAUSD        39%  +0.243% | LIQUIDATED    -152.39 | 24h             +0.46
+  2026-11-04 AIOUSD         16%  +0.064% | TARGET         +61.15 | TARGET         +82.79
+  2026-11-05 CAPUSD         35%  +0.404% | LIQUIDATED    -106.77 | 24h            -57.51
+  2026-11-06 CAPUSD         36%  +0.523% | 24h            +33.56 | 24h            +30.48
+  2026-11-08 AINUSD         98%  +0.486% | LIQUIDATED     -70.16 | 24h            -13.14
+  2026-11-09 AIOTUSD        17%  +0.140% | TARGET         +28.96 | TARGET         +84.93
+  2026-11-09 JCTUSD         58%  +1.168% | LIQUIDATED     -35.08 | TARGET         +86.39
+  2026-11-10 PIEVERSEUSD    16%  +0.283% | TARGET         +24.41 | TARGET         +93.12
+  2026-11-11 ARIAUSD        25%  +0.067% | LIQUIDATED     -44.22 | STOP          -202.07
+  2026-11-12 AINUSD        113%  +0.568% | 24h            +33.39 | 24h            +24.16
+  END                                    |            $    77.62 |            $ 1,825.47

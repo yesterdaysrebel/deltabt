@@ -1,0 +1,19 @@
+DOLLAR EXITS: take at +$X, cut at -$200, else 24 h. Fixed position size (no compounding). Delta 2025-01..2026-10.
+Fees + spread included. Liquidation not modelled (it would only make it worse).
+
+FUNDING FILTER ON (324 trades)
+  position $ 4,000 ( 2.4x of $1,640) = cut at +5.00%, take at -20.0% | take   6%  cut  64%  24h  31% | avg $  -25.4/trade  total $   -8,239  worst losing run $-11,810
+  position $ 4,000 ( 2.4x of $1,640) = cut at +5.00%, take at -25.0% | take   4%  cut  64%  24h  32% | avg $  -22.4/trade  total $   -7,270  worst losing run $-11,241
+  position $ 8,000 ( 4.9x of $1,640) = cut at +2.50%, take at -10.0% | take  13%  cut  79%  24h   8% | avg $  -64.0/trade  total $  -20,734  worst losing run $-24,396
+  position $ 8,000 ( 4.9x of $1,640) = cut at +2.50%, take at -12.5% | take  10%  cut  81%  24h   9% | avg $  -65.5/trade  total $  -21,232  worst losing run $-26,428
+  position $16,000 ( 9.8x of $1,640) = cut at +1.25%, take at - 5.0% | take  13%  cut  87%  24h   0% | avg $ -130.1/trade  total $  -42,154  worst losing run $-43,455
+  position $16,000 ( 9.8x of $1,640) = cut at +1.25%, take at - 6.2% | take  10%  cut  90%  24h   0% | avg $ -139.5/trade  total $  -45,190  worst losing run $-47,191
+
+ALL PICKS (1,022 trades)
+  position $ 4,000 ( 2.4x of $1,640) = cut at +5.00%, take at -20.0% | take   4%  cut  59%  24h  37% | avg $  -24.0/trade  total $  -24,493  worst losing run $-30,510
+  position $ 4,000 ( 2.4x of $1,640) = cut at +5.00%, take at -25.0% | take   2%  cut  59%  24h  38% | avg $  -21.4/trade  total $  -21,912  worst losing run $-28,994
+  position $ 8,000 ( 4.9x of $1,640) = cut at +2.50%, take at -10.0% | take  13%  cut  77%  24h  10% | avg $  -55.0/trade  total $  -56,189  worst losing run $-62,097
+  position $ 8,000 ( 4.9x of $1,640) = cut at +2.50%, take at -12.5% | take   8%  cut  78%  24h  14% | avg $  -56.5/trade  total $  -57,759  worst losing run $-64,164
+  position $16,000 ( 9.8x of $1,640) = cut at +1.25%, take at - 5.0% | take  16%  cut  83%  24h   1% | avg $  -94.9/trade  total $  -96,962  worst losing run $-100,484
+  position $16,000 ( 9.8x of $1,640) = cut at +1.25%, take at - 6.2% | take  13%  cut  86%  24h   2% | avg $  -98.4/trade  total $ -100,546  worst losing run $-103,265
+

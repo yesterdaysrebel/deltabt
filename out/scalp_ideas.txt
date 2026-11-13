@@ -1,0 +1,39 @@
+RULE A picks, Binance 2021-26, n 3608, realistic fills. Columns: mean R, win, TEST 2024-26 mean and t, R by year 2021 2022 2023 2024 2025 2026, best fixed risk and $1,500 ->
+
+0. BASELINES
+  rule A: 2x ATR stop, 24 h                            n 3608 (622/yr) -0.003R win  55% | TEST +0.019R t +1.01 | -0.028 +0.014 -0.056 -0.004 +0.016 +0.060 | best risk  0% -> $    1,500  fail 
+  2% quick target + 2x ATR disaster stop (Fable 'nearest') n 3608 (622/yr) -0.006R win  87% | TEST -0.005R t -0.67 | -0.011 +0.011 -0.022 -0.015 +0.004 +0.000 | best risk  0% -> $    1,500  fail 
+
+1. WHICH PICKS (rule A exit; and the 2% quick target exit)
+  Fable 1: funding last>=0 & prev-day sum>=0 & premium>=-0.05% [rule A] n 1603 (276/yr) +0.006R win  55% | TEST +0.028R t +1.00 | -0.021 +0.059 -0.058 -0.008 +0.016 +0.105 | best risk  1% -> $    1,577  fail 
+  Fable 1: funding last>=0 & prev-day sum>=0 & premium>=-0.05% [2% quick] n 1603 (276/yr) -0.009R win  87% | TEST -0.013R t -1.23 | -0.002 +0.007 -0.013 -0.011 -0.035 +0.004 | best risk  0% -> $    1,500  fail 
+  Fable 1b: funding gate only (no premium) [rule A]    n 1934 (333/yr) +0.002R win  55% | TEST +0.032R t +1.23 | -0.030 +0.026 -0.057 +0.004 +0.028 +0.091 | best risk  0% -> $    1,500  fail 
+  Fable 1b: funding gate only (no premium) [2% quick]  n 1934 (333/yr) -0.012R win  86% | TEST -0.013R t -1.32 | -0.008 +0.005 -0.022 -0.014 -0.036 +0.011 | best risk  0% -> $    1,500  fail 
+  Fable 3: seasoned (spot market & listed >= 180 d) [rule A] n 2353 (406/yr) -0.012R win  56% | TEST +0.008R t +0.32 | -0.048 +0.018 -0.050 +0.007 +0.039 -0.020 | best risk  0% -> $    1,500  fail 
+  Fable 3: seasoned (spot market & listed >= 180 d) [2% quick] n 2353 (406/yr) -0.005R win  86% | TEST +0.004R t +0.36 | -0.010 +0.011 -0.032 -0.011 +0.037 +0.000 | best risk  0% -> $    1,500  fail 
+  Sonnet 3: BTC prev day down [rule A]                 n 1788 (308/yr) +0.024R win  56% | TEST +0.040R t +1.46 | +0.026 +0.039 -0.031 -0.009 +0.071 +0.074 | best risk  5% -> $    4,044  fail 
+  Sonnet 3: BTC prev day down [2% quick]               n 1788 (308/yr) +0.009R win  88% | TEST +0.011R t +1.18 | +0.014 +0.015 -0.006 +0.010 +0.019 +0.002 | best risk 10% -> $    3,353  fail 
+  Haiku 2: no spot & age <= 30 d (D picked on DEV)     n   40 (  7/yr) -0.013R win  52% | TEST -0.007R t -0.06 |    n/a    n/a -0.044 +0.001 +0.066 -0.251 | best risk  0% -> $    1,500  fail 
+  Haiku 1: premium mid third (third picked on DEV)     n 1333 (230/yr) -0.014R win  55% | TEST -0.031R t -1.03 | -0.022 +0.035 -0.031 +0.009 -0.064 -0.068 | best risk  0% -> $    1,500  fail 
+  Sonnet 1: taker buy share low third (third picked on DEV) n 1133 (195/yr) +0.020R win  58% | TEST +0.018R t +0.54 | -0.018 +0.074 +0.070 -0.034 +0.069 +0.069 | best risk  5% -> $    2,549  fail 
+  Sonnet 1: spot/perp volume mid third (third picked on DEV) n 1187 (205/yr) +0.018R win  57% | TEST +0.034R t +1.10 | +0.067 +0.048 -0.072 -0.012 +0.018 +0.241 | best risk  4% -> $    2,300  fail 
+  Haiku 3: top-trader L/S mid third (third picked on DEV) n  498 ( 86/yr) -0.007R win  52% | TEST -0.028R t -0.54 | +0.103 +0.135 -0.015 -0.060 -0.064 +0.069 | best risk  0% -> $    1,500  fail 
+
+2. WHEN TO GET OUT (same picks, paired with rule A)
+  Fable 4: hold 48 h, no target                        n 3608 (622/yr) -0.019R win  53% | TEST +0.004R t +0.16 | -0.083 +0.041 -0.078 -0.022 -0.005 +0.054 | best risk  0% -> $    1,500  fail 
+  Fable 4: hold 72 h, no target                        n 3608 (622/yr) -0.021R win  51% | TEST +0.010R t +0.40 | -0.121 +0.062 -0.089 -0.022 +0.021 +0.044 | best risk  0% -> $    1,500  fail 
+  Fable 5: out at 04:00, stop 0.82x ATR (lev ~10x)     n 3608 (622/yr) -0.045R win  50% | TEST -0.022R t -0.90 | -0.058 -0.004 -0.125 -0.044 -0.027 +0.018 | best risk  0% -> $    1,500  fail 
+  Fable 5: out at 08:00, stop 1.15x ATR (lev ~7x)      n 3608 (622/yr) -0.028R win  52% | TEST -0.007R t -0.31 | -0.064 +0.007 -0.084 -0.038 -0.025 +0.064 | best risk  0% -> $    1,500  fail 
+  Fable 5: out at 04:00, stop 2.0x ATR (lev ~4x)       n 3608 (622/yr) -0.010R win  54% | TEST -0.000R t -0.02 | -0.018 -0.003 -0.036 -0.017 +0.005 +0.020 | best risk  0% -> $    1,500  fail 
+  Fable 5: out at 08:00, stop 2.0x ATR (lev ~4x)       n 3608 (622/yr) -0.012R win  55% | TEST -0.000R t -0.01 | -0.038 +0.001 -0.034 -0.026 +0.001 +0.039 | best risk  0% -> $    1,500  fail 
+  Fable 5: out at 12:00, stop 2.0x ATR (lev ~4x)       n 3608 (622/yr) -0.012R win  54% | TEST +0.004R t +0.25 | -0.030 -0.002 -0.044 -0.028 +0.006 +0.051 | best risk  0% -> $    1,500  fail 
+  Sonnet 4: close at 12:00 if >= 1% in profit, else 24 h n 3608 (622/yr) -0.013R win  62% | TEST +0.009R t +0.50 | -0.036 +0.005 -0.060 -0.021 +0.021 +0.039 | best risk  0% -> $    1,500  fail 
+
+3. WHEN TO GET IN / DIRECTION
+  Haiku 5: short at 12:03 if still >= 5% above the open n  761 (131/yr) -0.005R win  53% | TEST +0.020R t +0.41 | -0.029 +0.085 -0.109 -0.023 +0.004 +0.080 | best risk  0% -> $    1,500  fail 
+  Sonnet 5a: LONG the pump 00:03-02:00, stop 1x ATR    n 3608 (622/yr) -0.025R win  41% | TEST -0.029R t -1.48 | +0.007 -0.069 +0.000 -0.031 -0.051 +0.002 | best risk  0% -> $    1,500  fail 
+  Sonnet 5b: then short from 02:03, 2x ATR, 24 h       n 3608 (622/yr) -0.001R win  55% | TEST +0.007R t +0.37 | +0.000 +0.000 -0.021 -0.013 +0.010 +0.033 | best risk  0% -> $    1,500  fail 
+  Sonnet 5: both legs (R summed, long leg R x 0.5)     n 3608 (622/yr) -0.013R win  51% | TEST -0.008R t -0.36 | +0.003 -0.034 -0.021 -0.028 -0.015 +0.034 | best risk  0% -> $    1,500  fail 
+  Haiku 4: LONG rank 1 after 3 higher 1 h lows & OI +5%, 1x ATR n  459 ( 79/yr) -0.032R win  35% | TEST -0.085R t -0.76 | +0.123 +0.022 +0.035 +0.174 -0.303 -0.169 | best risk  0% -> $    1,500  fail 
+
+NOT TESTED: Fable 2 (top-5 breadth: this set has ranks 1-2 only), Fable 6 / Haiku hedge (spot leg, intraday premium not in this set), Sonnet 6 (risk throttle: sizing only, cannot change R).

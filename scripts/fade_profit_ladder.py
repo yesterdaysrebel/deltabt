@@ -267,5 +267,101 @@ def as_today() -> None:
                   + f"  floor {'never' if below is None else below.date()}" + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
 
 
-if __name__ == "__main__":
+def bank_big() -> None:
+    """Owner 2026-11-13: "by holding 24h we lost 200$ profit and closed at 40$ yesterday" (ARIA: +1.2R open at 14:00 UTC,
+    closed +0.27R). Full exit at +0.5R / +0.75R / +1R / +1.5R, and a trail that only starts at +1R."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    rules = [("ladder", "ladder 10/5/3 (today)"), (0.03, "fixed 3%")]
+    show("TODAY (hold to 24 h)", d, scale_out(d, opens, ps, []), rules)
+    for lvl in (0.5, 0.75, 1.0, 1.5):
+        r = scale_out(d, opens, ps, [(1.0, lvl)])
+        hit = np.nanmean(r >= lvl - 0.05)
+        show(f"close ALL at +{lvl}R (reached by ~{100 * hit:.0f}% of trades)", d, r, rules)
+    show("trail 0.5R behind the best price, from +1R", d, trailing(d, opens, ps, 1.0, 0.5), rules)
+    show("trail 0.3R behind the best price, from +1R", d, trailing(d, opens, ps, 1.0, 0.3), rules)
+
+
+def win_rate_map() -> None:
+    """Owner 2026-11-13: "need to improve ladders win rate, we should win mostly". Close a share of the position at
+    +0.2R or +0.3R, the rest runs to the 2x-ATR stop or 24 h: win rate against money, ladder sizing, real-bot fills."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    yrs = d.date.dt.year.to_numpy()
+    print(f"{len(d)} Delta picks 2025-01..2026-10, real-bot fills, ladder 10/5/3 from $1,640")
+    print(f"  {'plan':30s} {'win':>5s} {'per trade':>10s} {'2025':>7s} {'2026':>7s} | {'ladder ->':>10s} {'drop':>5s} {'green':>6s}  under $1,000")
+    for frac, lvl, lab in [(0.0, 0.2, "hold all to 24 h (today)")] + [(f, l, f"close {int(100 * f)}% at +{l}R") for l in (0.2, 0.3)
+                                                                       for f in (0.25, 0.5, 0.66, 0.75, 1.0)]:
+        r = scale_out(d, opens, ps, [(frac, lvl)] if frac else [])
+        ok = np.isfinite(r)
+        s, below = account(d, r, "ladder")
+        m = s.groupby(s.index.to_period("M")).last()
+        mret = m / m.shift(1).fillna(START) - 1
+        print(f"  {lab:30s} {100 * (r[ok] > 0).mean():4.0f}% {np.nanmean(r):+9.3f}R {np.nanmean(r[ok & (yrs == 2025)]):+7.3f} "
+              f"{np.nanmean(r[ok & (yrs == 2026)]):+7.3f} | ${s.iloc[-1]:>8,.0f} {100 * (1 - s / s.cummax()).max():4.0f}% "
+              f"{(mret > 0).sum():>3d}/22  {'never' if below is None else below.date()}")
+
+
+def more_risk_23() -> None:
+    """Owner 2026-11-13: "raise risk and levrage and test, can we make more money per trade?" Plan: close 2/3 at +0.2R,
+    the rest to the 2x-ATR stop or 24 h. Fixed risk 5/10/15/20% (notional = risk / stop), leverage up to 3x or 5x, 50% of
+    the balance as margin a day. Liquidation (1/L - 2.5% above entry): if reached before the +0.2R take, the whole margin
+    is lost; if reached after it, the last third's margin. Real-bot fills, from $1,640, compounding."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    r = scale_out(d, opens, ps, [(2 / 3, 0.2)])
+    print("close 2/3 at +0.2R, rest to the stop or 24 h; 1,022 Delta picks, real-bot fills, from $1,640")
+    for risk in (0.05, 0.10, 0.15, 0.20):
+        for lev in (3, 5):
+            eq = hw = START
+            path, below, dead, liq, usd = {}, None, None, 0, []
+            for t, idx in d.groupby("date").groups.items():
+                idx = [i for i in idx if np.isfinite(r[i])]
+                pnl = 0.0
+                for i in idx:
+                    dist = d.dist.iat[i]
+                    margin_cap = 0.5 * eq / len(idx)
+                    notional = min(risk * eq / dist, lev * margin_cap)
+                    L = max(1.0, min(float(lev), notional / margin_cap)) if margin_cap > 0 else 1.0
+                    margin = notional / L
+                    liq_d = 1 / L - 0.025
+                    x = r[i] * notional * dist
+                    if liq_d < dist:
+                        a = ps[i]
+                        hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+                        lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+                        e = pd.Series(a[2].astype(float)).ffill().to_numpy()[2]
+                        ml = np.nonzero(hi[3:] >= e * (1 + liq_d))[0]
+                        mt = np.nonzero(lo[3:] <= e * (1 - 0.2 * dist) * (1 - THR))[0]
+                        if len(ml):
+                            if not len(mt) or ml[0] <= mt[0]:
+                                liq += 1
+                                x = -margin
+                            elif ml[0] > mt[0]:
+                                liq += 1
+                                x = (2 / 3) * notional * (0.2 * dist - 2 * FEE - EXTRA) - margin / 3
+                    pnl += x
+                    usd.append(x)
+                eq = max(eq + pnl, 0.0)
+                hw = max(hw, eq)
+                path[t] = eq
+                if below is None and eq < FLOOR:
+                    below = t
+                if dead is None and eq < 1:
+                    dead = t
+            s = pd.Series(path)
+            u = np.array(usd)
+            print(f"  risk {100 * risk:3.0f}%, up to {lev}x: avg ${u.mean():+7.2f} a trade (wins avg ${u[u > 0].mean():+.0f}, "
+                  f"losses avg ${u[u <= 0].mean():+.0f}) -> ${s.iloc[-1]:>8,.0f}  drop {100 * (1 - s / s.cummax()).max():3.0f}%  "
+                  f"liquidated {liq}  under $1,000 {'never' if below is None else below.date()}"
+                  + (f"  $0 on {dead.date()}" if dead is not None else ""))
+
+
+if __name__ == "__main__" and "--risk23" in sys.argv:
+    more_risk_23()
+elif __name__ == "__main__" and "--winmap" in sys.argv:
+    win_rate_map()
+elif __name__ == "__main__" and "--bank" in sys.argv:
+    bank_big()
+elif __name__ == "__main__":
     as_today() if "--today" in sys.argv else lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()

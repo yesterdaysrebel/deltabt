@@ -174,6 +174,95 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**2/3-AT-+0.2R LADDER WITH MORE RISK AND LEVERAGE (2026-11-13, owner "raise risk and leverage, more money per trade?").**
+`fade_profit_ladder.py --risk23`, `out/fade_risk23.txt`. Fixed risk, 3x / 5x caps, 50% margin a day: 5% avg +$0.90 a
+trade, $2,562, drop 54%; 10% +$0.76, $2,419, drop 82%; 15% −$0.35..−0.44, ~$1,200; 20% −$1.0, $446-602. 5x changes
+nothing vs 3x (the notional rarely needs more). Dollars per trade peak at ~5% risk.
+
+**OWNER'S SCALP STYLE, IDEAS FROM OTHER MODELS (2026-11-13, owner "find ways to make what I am asking work, use diffrent
+models").** Prompt `out/review_pack/2026-11-13-scalp/PROMPT_SCALP.md` (self-contained, for pasting into external
+models; OpenRouter key now returns 401). Fable, Sonnet, Haiku answered (`reviews/`): all three say tight stop + quick
+target + high leverage cannot work here (bracket wins at ~S/(S+T), costs 0.3% round trip ~ the whole drift). Their 21
+testable rules in `scripts/scalp_ideas.py` -> `out/scalp_ideas.txt` (Binance 2021-26 rule A picks, realistic fills,
+bar: TEST 2024-26 each year > 0, t >= 2, beats baseline): **0 pass.** Best: BTC prev day down (+0.040R TEST, t 1.46,
+2024 -0.009); funding gate (+0.032, t 1.23). Clock exits 04/08/12 h with tighter stops, 48/72 h holds, 12 h profit
+lock, noon entry, long-the-pump-then-short, premium/taker/spot/L-S/listing-age filters all fail. Untested: top-5
+breadth (data has ranks 1-2 only), spot-hedged premium trade.
+Round 2 (`--round2` -> `out/scalp_ideas_round2.txt`): owner pasted Gemini (6) and DeepSeek (6) answers; proposers'
+own thresholds, same bar: **0 pass.** Closest: DeepSeek A' (funding >= 0.03%, prev-day sum > 0, OI +5%; 1.75 ATR stop,
+0.75x target, out 08:03): TEST +0.081R t 1.84 but 2024 -0.041, n 41/yr -- a funding-family lead like the earlier
+funding filter, not adopted. Gemini's top picks (08:03 fade +0.031R t 0.57; liquidity sweep +0.039R t 0.81) fail; long
+the opening wave -0.159R t -4.7. Several rules almost never fire on these picks (G3 n 1, DeepSeek A n 0, C n 5-11).
+Round 3 (`--round3` -> `out/scalp_ideas_round3.txt`): a fifth pasted answer (5 rules): **0 pass.** 06:00 "proof of
+profit" cut +0.014R TEST (rule A +0.019); funding+OI-falling filter n 13/yr; young-listing short -0.037R t -3.5; long
+00:03-04:00 -0.087R t -4.3. Total across 6 models: 47 rules, 0 pass, none with TEST t >= 2.
+Round 4 (`--round4` -> `out/scalp_ideas_round4.txt`): a sixth pasted answer: **0 pass.** Maker entry (limit +0.2% above,
+30 min): +0.039R better than a market entry on the SAME filled picks, but the 30% never filled are the best shorts
+(+0.10R TEST), so per pick it nets about the same as rule A. Hold winners to 48 h: no gain. **Crowded-long family is the
+one recurring lead:** Binance prev-day funding sum >= 0.05/0.10/0.20% -> TEST +0.043/+0.056/+0.095R but 2024
+negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 -0.103. On DELTA's own 1,022 picks
+(real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
+(both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
+one that swapped years.)
+**OWNER PACKAGE (2026-11-13, owner "you have pushed back alot, without finding solution to my needs").**
+`scripts/owner_package.py` -> `out/owner_package.txt`, Delta picks, real fills, liquidation >= 1.2x stop away. Funding
+>= 0.05% filter + hold 24 h at 10% risk: +$9.94/trade, $1,640 -> $4,859, worst drop 42% (all picks today at 5%:
++$0.73, $2,384, drop 78%). With 2/3 at +0.2R: 65% win, +$6.19/trade, $3,646, drop 44%. 324 trades / 15 a month.
+Caveat: threshold chosen after the Binance/Delta looks, t 1.45 on Delta.
+Owner "if we reach more than 1R we cut the trade" (`--target1r` -> `out/owner_target1r.txt`): with the funding filter,
+close at +1R: +0.041R, 56% win, 10% risk +$4.32/trade, $3,039, drop 41% (only 16% of trades reach +1R, ~19% fall in
+24 h). +0.5R target did best in dollars: +0.053R, 63% win, 10% risk +$12.73/trade, $5,766, drop 46%; hold 24 h $4,859.
+Owner "max leverage and 50% capital per trade" (`--maxlev` -> `out/owner_maxlev.txt`, isolated margin 50% of balance,
+Delta max leverage ~20x, funding filter, +0.5R): 256 of 324 trades liquidated, $0 by 2025-03-20. 10x: $0 by 2025-04;
+5x: $0-907; 3x: drop 98%. Liquidation sits ~2.5% away at 20x; these coins move that within hours.
+Later 2026-11-13 owner questions (results in `out/`, made by inline runs on the same Delta picks, funding filter,
+real fills, from $1,640): **Option B with the bot's real leverage rule** (whole leverage, mm 2.5%, from the worst fill)
+15% margin x max safe lev: ~3x, $5,342, drop 41% (`option_b_live_rule.txt`). **30% margin x max leverage keeping
+today's liq >= 2x stop** (~2x): $5,603, drop 47%; liq >= 1.2x (~3x): $7,774, drop 74% (`today_maxlev_filter.txt`).
+**10x** at 5-30% margin: $0-806 (`lev10_filter.txt`); 10x stop 6% / take 3-10%: best break-even $1,645
+(`lev10_take_grid.txt`). **Cut +0.5-3% / take 1-3% at 10x/20x**: all $0-31 (`scalp_filter_lev.txt`). **Dollar exits**
+(take +$800-1,000, cut -$200): all lose (`dollar_exits.txt`). Filtered coins' 24 h moves: median fall 8.9%, median
+rise 7.9%, rise >= 2.5% before the low on 64% of days (`filtered_moves.txt`). **Monthly cap** $2-3k never triggers
+(best month +$1,394); +20-50% caps end $6.5-6.7k, likely luck (`monthly_cap.txt`). Owner's hand-trade record (commit
+e09f637): 165 clean trades +$2,297, 44 liquidations -$9,172. Owner decision: **keep the real bot running as is**;
+Option B (filter + 0.5R + 30% margin x max safe lev, liq >= 2x stop) is the upgrade on offer, not built.
+
+**LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
+`fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
++0.2R: 0% win 55% $2,610 drop 66%; 25% 59% $2,250; 50% 63% $2,875 drop 57%; 66% 66% $2,734 drop 52%; 75% 68% $2,486
+drop 49%; 100% (QUICK) 76% $1,737. At +0.3R: 58-68%, $2,007-2,334. Each step up in win rate lowers R per trade
+(+0.021 -> +0.010); the dollar ends move with path luck. 66-75% at +0.2R: win 66-68%, drop ~50%, under $1,000 only in
+Sept 2025.
+
+**SKIP-NEGATIVE-FUNDING FILTER, RE-CHECKED ON LADDER SIZING + REAL TRADES — NOT ADOPTED (2026-11-13).**
+`scripts/fade_funding_filter.py`, `out/fade_funding_filter.txt`, real/paper trades in `out/fade_real_trades_2026-11-13.json`.
+Backtest (1,022 Delta picks, real-bot fills): keeps 46%; rule A +0.021 -> +0.038R (t 1.16) but it SWAPS years: 2025
+−0.017 -> +0.050, 2026 +0.067 -> +0.027 (the skipped picks made +0.114R in 2026). Ladder $2,610 -> $2,159, drop 66% ->
+48%, never under $1,000; fixed 5% $3,035 (drop 41%). QUICK: no gain (+0.010 -> +0.011R). Live 10-29..11-13 (2026-like):
+paper A kept +0.028R vs skipped +0.227R; QUICK kept +0.035 vs skipped +0.128; real kept −$26.44 vs skipped +$40.79
+(ARIA 11-12 at −0.018% funding). Smoother because it trades half as often, not because it picks better.
+
+**QUICK AT A FIXED $300 RISK (2026-11-13, owner).** `fade_optimal_size.py --qusd`, `out/fade_quick_usd.txt`: +$2.94 a
+trade, win 76% (avg +$54), losses avg −$158, 84 full stops; from $1,640 broke 2025-04-12; unlimited money +$3,003 with a
+$3,223 fall first (2025 −$123, 2026 +$3,127); needs ~$4,000+.
+
+**FIXED $300 RISK / $600 TARGET (2026-11-13, owner).** `fade_optimal_size.py --usd / --usdcap`, `out/fade_fixed_usd.txt`.
+Delta picks, real-bot fills, from $1,640, no compounding. 2x-ATR stop: target hit 14 of 1,022 (1%), stops 159, 24 h
+exits 849; +$4.74 a trade; broke 2025-04-11. 1x ATR: −$15.04 a trade, broke 2025-01-17; 0.5x ATR (3.8x the wallet in
+notional): −$47.95, broke 2025-03-22. With unlimited money the 2x-ATR plan ends +$4,848 but falls $7,838 first
+(2025 −$3,220, 2026 +$8,069): needs ~$8,000+ to survive at $300 a trade.
+
+**MORE RISK + MORE LEVERAGE + 1:2 ON THE LADDER (2026-11-13, owner).** `fade_optimal_size.py --r12`,
+`out/fade_more_risk_12.txt`. Delta picks, real-bot fills, 50% margin a day, risk 5-20%, up to 3x / 5x. 1:2 on the 2x-ATR
+stop (+0.016R): 5% $1,887 (3x) / $1,205 (5x, 124 liquidated); 10% $525 / $226; 15% $17 / $5; 20% $0. 1:2 on 1x ATR
+(−0.050R): $23 at 5%, $0 from 10%. Every cell under $1,000 in 2025.
+
+**BANK BIG OPEN PROFITS — WORSE (2026-11-13, owner "by holding 24h we lost 200$ profit and closed at 40$": real ARIA
+11-12, open +$194 at 14:00 UTC, closed +$39.55 / +0.27R).** `fade_profit_ladder.py --bank`, `out/fade_bank_big.txt`. Same
+1,022 Delta picks, real-bot fills: hold +0.021R (ladder $2,610); close all at +0.5R +0.014R ($1,810), +0.75R +0.004R
+($1,035), +1R +0.012R ($1,645, reached by ~10%), +1.5R +0.013R ($1,559); trail from +1R 0.5R/0.3R behind +0.009/+0.005R
+($1,433 / $1,029). Trades that reach +1R usually keep falling; capping them costs more than days like ARIA give back.
+
 **LADDER AT 5x AND 15% RISK (2026-11-12, owner).** `fade_ladder_5x.py --r15`, `out/fade_ladder_5x_r15.txt`. Delta picks,
 $1,640: fixed 15% -> $181 (drop 99%, worst month −83%, under $1,000 on 2025-01-21, 135 liquidations); ladder
 15/7.5/4.5% -> $1,904 (drop 77%, 2025 end $631). 3.4x full Kelly (4.4%).

@@ -1,0 +1,9 @@
+OPTION B (filter, 0.5R, 30% margin x max leverage with liq >= 2x stop), Delta 2025-01..2026-10, from $1,640
+Monthly cap: once the month's profit reaches the cap, no new trades until the 1st of next month.
+
+  no cap               end $  5,603  worst drop  47%  trades skipped   0  months capped  0 
+  cap $2,000 / month   end $  5,603  worst drop  47%  trades skipped   0  months capped  0 
+  cap $3,000 / month   end $  5,603  worst drop  47%  trades skipped   0  months capped  0 
+  cap +20% / month     end $  6,550  worst drop  47%  trades skipped  48  months capped  7 ['2025-12', '2026-02', '2026-04', '2026-06', '2026-08', '2026-09', '2026-10']
+  cap +30% / month     end $  6,557  worst drop  47%  trades skipped  28  months capped  4 ['2025-12', '2026-02', '2026-08', '2026-10']
+  cap +50% / month     end $  6,676  worst drop  47%  trades skipped  11  months capped  1 ['2026-08']

@@ -1,0 +1,35 @@
+DELTA rule A picks 2025-01-15..2026-10-27, real-bot fills, from $1,640
+
+ALL PICKS (today): 1022 trades (48/month)
+  hold 24 h (rule A)         +0.021R  win  55% | 2025 -0.017  2026 +0.067
+      risk   5%: avg $  +0.73/trade (win $    26 / loss $   -30)  2025 end $    753  end $  2,384  worst drop  78%
+      risk   8%: avg $  -0.14/trade (win $    25 / loss $   -30)  2025 end $    343  end $  1,497  worst drop  93%
+      risk  10%: avg $  -0.82/trade (win $    19 / loss $   -25)  2025 end $    172  end $    799  worst drop  97%
+      risk  15%: avg $  -1.57/trade (win $     8 / loss $   -13)  2025 end $     10  end $     31  worst drop 100%
+  2/3 at +0.2R, rest runs    +0.014R  win  66% | 2025 -0.006  2026 +0.037
+      risk   5%: avg $  +0.89/trade (win $    17 / loss $   -30)  2025 end $  1,229  end $  2,547  worst drop  54%
+      risk   8%: avg $  +0.93/trade (win $    21 / loss $   -39)  2025 end $    921  end $  2,588  worst drop  73%
+      risk  10%: avg $  +0.69/trade (win $    22 / loss $   -41)  2025 end $    722  end $  2,345  worst drop  82%
+      risk  15%: avg $  -0.41/trade (win $    17 / loss $   -35)  2025 end $    326  end $  1,221  worst drop  94%
+  all at +0.2R (QUICK)       +0.010R  win  76% | 2025 -0.001  2026 +0.023
+      risk   5%: avg $  +0.58/trade (win $    13 / loss $   -38)  2025 end $  1,465  end $  2,234  worst drop  44%
+      risk   8%: avg $  +0.56/trade (win $    17 / loss $   -52)  2025 end $  1,247  end $  2,215  worst drop  65%
+      risk  10%: avg $  +0.37/trade (win $    19 / loss $   -57)  2025 end $  1,075  end $  2,019  worst drop  75%
+      risk  15%: avg $  -0.48/trade (win $    16 / loss $   -54)  2025 end $    635  end $  1,150  worst drop  92%
+
+FUNDING >= 0.05% ONLY: 324 trades (15/month)
+  hold 24 h (rule A)         +0.061R  win  55% | 2025 +0.068  2026 +0.055
+      risk   5%: avg $  +5.77/trade (win $    68 / loss $   -71)  2025 end $  2,472  end $  3,508  worst drop  23%
+      risk   8%: avg $  +8.80/trade (win $   123 / loss $  -131)  2025 end $  2,921  end $  4,490  worst drop  35%
+      risk  10%: avg $  +9.94/trade (win $   159 / loss $  -172)  2025 end $  3,160  end $  4,859  worst drop  42%
+      risk  15%: avg $  +8.47/trade (win $   220 / loss $  -249)  2025 end $  3,427  end $  4,385  worst drop  58%
+  2/3 at +0.2R, rest runs    +0.033R  win  65% | 2025 +0.038  2026 +0.029
+      risk   5%: avg $  +3.04/trade (win $    28 / loss $   -43)  2025 end $  2,107  end $  2,625  worst drop  24%
+      risk   8%: avg $  +4.98/trade (win $    49 / loss $   -75)  2025 end $  2,382  end $  3,253  worst drop  36%
+      risk  10%: avg $  +6.19/trade (win $    64 / loss $   -99)  2025 end $  2,555  end $  3,646  worst drop  44%
+      risk  15%: avg $  +8.44/trade (win $   101 / loss $  -160)  2025 end $  2,917  end $  4,373  worst drop  59%
+  all at +0.2R (QUICK)       +0.020R  win  77% | 2025 +0.023  2026 +0.017
+      risk   5%: avg $  +1.55/trade (win $    17 / loss $   -50)  2025 end $  1,907  end $  2,141  worst drop  28%
+      risk   8%: avg $  +2.31/trade (win $    28 / loss $   -84)  2025 end $  2,045  end $  2,388  worst drop  42%
+      risk  10%: avg $  +2.69/trade (win $    35 / loss $  -107)  2025 end $  2,123  end $  2,510  worst drop  50%
+      risk  15%: avg $  +3.03/trade (win $    52 / loss $  -164)  2025 end $  2,257  end $  2,620  worst drop  66%

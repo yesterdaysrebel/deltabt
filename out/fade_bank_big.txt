@@ -1,0 +1,28 @@
+
+TODAY (hold to 24 h): +0.021R per trade, win 55% | 2025 -0.017  2026 +0.067
+  ladder 10/5/3 (today)              -> $  2,610 ( +59%)  worst drop  66%  green 10/22  floor 2025-04-12
+  fixed 3%                           -> $  2,430 ( +48%)  worst drop  57%  green 11/22  floor 2025-08-19
+
+close ALL at +0.5R (reached by ~34% of trades): +0.014R per trade, win 60% | 2025 -0.020  2026 +0.055
+  ladder 10/5/3 (today)              -> $  1,810 ( +10%)  worst drop  66%  green 12/22  floor 2025-07-14
+  fixed 3%                           -> $  2,178 ( +33%)  worst drop  56%  green 12/22  floor 2025-08-19
+
+close ALL at +0.75R (reached by ~18% of trades): +0.004R per trade, win 56% | 2025 -0.029  2026 +0.044
+  ladder 10/5/3 (today)              -> $  1,035 ( -37%)  worst drop  67%  green 10/22  floor 2025-04-12
+  fixed 3%                           -> $  1,548 (  -6%)  worst drop  60%  green 11/22  floor 2025-08-19
+
+close ALL at +1.0R (reached by ~10% of trades): +0.012R per trade, win 55% | 2025 -0.018  2026 +0.049
+  ladder 10/5/3 (today)              -> $  1,645 (  +0%)  worst drop  66%  green 11/22  floor 2025-04-11
+  fixed 3%                           -> $  1,932 ( +18%)  worst drop  57%  green 12/22  floor 2025-08-19
+
+close ALL at +1.5R (reached by ~3% of trades): +0.013R per trade, win 55% | 2025 -0.020  2026 +0.052
+  ladder 10/5/3 (today)              -> $  1,559 (  -5%)  worst drop  66%  green 11/22  floor 2025-04-12
+  fixed 3%                           -> $  1,931 ( +18%)  worst drop  57%  green 12/22  floor 2025-08-19
+
+trail 0.5R behind the best price, from +1R: +0.009R per trade, win 55% | 2025 -0.022  2026 +0.046
+  ladder 10/5/3 (today)              -> $  1,433 ( -13%)  worst drop  65%  green 11/22  floor 2025-04-12
+  fixed 3%                           -> $  1,730 (  +5%)  worst drop  57%  green 12/22  floor 2025-08-19
+
+trail 0.3R behind the best price, from +1R: +0.005R per trade, win 55% | 2025 -0.023  2026 +0.039
+  ladder 10/5/3 (today)              -> $  1,029 ( -37%)  worst drop  67%  green 10/22  floor 2025-04-11
+  fixed 3%                           -> $  1,557 (  -5%)  worst drop  58%  green 12/22  floor 2025-08-19

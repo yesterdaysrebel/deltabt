@@ -1,0 +1,41 @@
+ROUND 4: sixth external answer. Rule A picks Binance 2021-26, n 3608, realistic fills; same columns as round 1
+  rule A baseline: 2x ATR stop, 24 h                   n 3608 (622/yr) -0.003R win  55% | TEST +0.019R t +1.01 | -0.028 +0.014 -0.056 -0.004 +0.016 +0.060 | best risk  0% -> $    1,500  fail 
+
+P1 funding-qualified (threshold on prev-day funding sum picked on DEV; last print >= +0.01%)
+    funding sum >= 0.00%  <- DEV pick                  n 1416 (244/yr) -0.002R win  55% | TEST +0.021R t +0.60 | -0.030 +0.066 -0.053 -0.040 +0.065 +0.103 | best risk  0% -> $    1,500  fail 
+    funding sum >= 0.05%                               n  655 (113/yr) -0.006R win  53% | TEST +0.043R t +0.91 | -0.059 -1.008 -0.096 -0.064 +0.061 +0.136 | best risk  0% -> $    1,500  fail 
+    funding sum >= 0.10%                               n  479 ( 83/yr) +0.010R win  54% | TEST +0.056R t +0.98 | -0.036    n/a -0.222 -0.092 +0.144 +0.114 | best risk  1% -> $    1,543  fail 
+    funding sum >= 0.20%                               n  264 ( 46/yr) +0.049R win  55% | TEST +0.095R t +1.16 | +0.008    n/a -0.467 -0.270 +0.297 +0.128 | best risk  6% -> $    2,233  fail 
+    DEV pick + owner-style +0.25R target               n 1416 (244/yr) -0.024R win  71% | TEST -0.023R t -1.17 | -0.024 +0.015 -0.050 -0.065 -0.030 +0.060 | best risk  0% -> $    1,500  fail 
+
+P2 premium-qualified (prev-day closing premium; threshold picked on DEV; intraday premium exit NOT testable)
+    premium >= 0.2%  <- DEV pick                       n  201 ( 35/yr) +0.141R win  60% | TEST +0.157R t +1.75 | +0.147 +0.206 -0.018 -0.103 +0.396 +0.146 | best risk 20% -> $   23,914  fail 
+    premium >= 0.4%                                    n   44 (  8/yr) +0.167R win  61% | TEST +0.309R t +1.56 | -0.213 +0.528 -0.305 -0.008 +0.495 +0.333 | best risk 16% -> $    2,683  fail 
+    premium >= 0.8%                                    n   15 (  3/yr) +0.013R win  47% | TEST +0.258R t +0.99 | -1.016    n/a -0.305 -0.132 +1.178 +0.146 | best risk  2% -> $    1,502  fail 
+
+P3 maker entry (limit above the market; grid shown, cell picked on DEV)
+    +0.1% for  30 min: filled  73%; skipped picks under rule A +0.042R (TEST +0.086R)
+    +0.1% for  60 min: filled  79%; skipped picks under rule A +0.078R (TEST +0.136R)
+    +0.1% for 120 min: filled  84%; skipped picks under rule A +0.145R (TEST +0.240R)
+    +0.2% for  30 min: filled  70%; skipped picks under rule A +0.049R (TEST +0.103R)  <- DEV pick
+    maker +0.2% / 30 min, rule A exits                 n 2534 (437/yr) +0.013R win  56% | TEST +0.029R t +1.29 | -0.018 +0.020 -0.010 +0.014 +0.013 +0.067 | best risk  2% -> $    2,194  fail 
+    same picks, market entry (paired)                  n 2534 (437/yr) -0.026R win  53% | TEST -0.008R t -0.38 | -0.062 -0.012 -0.053 -0.019 -0.026 +0.025 | best risk  0% -> $    1,500  fail 
+    +0.2% for  60 min: filled  77%; skipped picks under rule A +0.082R (TEST +0.153R)
+    +0.2% for 120 min: filled  82%; skipped picks under rule A +0.142R (TEST +0.246R)
+    +0.4% for  30 min: filled  65%; skipped picks under rule A +0.062R (TEST +0.103R)
+    +0.4% for  60 min: filled  73%; skipped picks under rule A +0.099R (TEST +0.157R)
+    +0.4% for 120 min: filled  78%; skipped picks under rule A +0.151R (TEST +0.244R)
+
+P4 hold winners 24 h more (threshold at 24 h picked on DEV)
+    extend if >= +0.0R at 24 h                         n 3608 (622/yr) -0.018R win  44% | TEST +0.005R t +0.22 | -0.073 +0.019 -0.061 -0.027 -0.002 +0.061 | best risk  0% -> $    1,500  fail 
+    extend if >= +0.2R at 24 h                         n 3608 (622/yr) -0.007R win  51% | TEST +0.017R t +0.82 | -0.053 +0.024 -0.059 +0.005 +0.003 +0.054 | best risk  0% -> $    1,500  fail 
+    extend if >= +0.3R at 24 h                         n 3608 (622/yr) -0.007R win  52% | TEST +0.019R t +0.93 | -0.048 +0.019 -0.059 +0.002 +0.008 +0.061 | best risk  0% -> $    1,500  fail 
+    extend if >= +0.5R at 24 h  <- DEV pick            n 3608 (622/yr) -0.005R win  54% | TEST +0.015R t +0.75 | -0.034 +0.021 -0.056 +0.005 -0.001 +0.052 | best risk  0% -> $    1,500  fail 
+
+P5 second-leg pumps / P6 young no-spot (thresholds picked on DEV)
+    P5 3-day >= 25% & prev day up                      n 1916 (330/yr) -0.016R win  53% | TEST +0.020R t +0.75 | -0.034 -0.058 -0.133 -0.023 +0.020 +0.056 | best risk  0% -> $    1,500  fail 
+    P6 age 7-180 d & (no spot or low spot ratio)       n  589 (102/yr) -0.035R win  50% | TEST -0.017R t -0.44 | +0.146 -0.009 -0.114 -0.097 -0.030 +0.148 | best risk  0% -> $    1,500  fail 
+
+STACKED (the answer's 'realistic candidate'): P1 + P2 filters, maker entry, P4 extension
+    P1 + maker + P4                                    n 1047 (181/yr) -0.016R win  53% | TEST +0.009R t +0.20 | -0.063 +0.085 -0.054 -0.041 -0.050 +0.127 | best risk  0% -> $    1,500  fail 
+    P1 + P2 + maker + P4                               n  118 ( 20/yr) +0.105R win  58% | TEST +0.112R t +0.94 | +0.145    n/a -0.410 -0.237 +0.435 +0.062 | best risk 13% -> $    3,309  fail 

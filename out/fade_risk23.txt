@@ -1,0 +1,9 @@
+close 2/3 at +0.2R, rest to the stop or 24 h; 1,022 Delta picks, real-bot fills, from $1,640
+  risk   5%, up to 3x: avg $  +0.90 a trade (wins avg $+17, losses avg $-30) -> $   2,562  drop  54%  liquidated 0  under $1,000 2025-09-05
+  risk   5%, up to 5x: avg $  +0.89 a trade (wins avg $+17, losses avg $-30) -> $   2,548  drop  54%  liquidated 0  under $1,000 2025-09-05
+  risk  10%, up to 3x: avg $  +0.76 a trade (wins avg $+22, losses avg $-40) -> $   2,419  drop  82%  liquidated 0  under $1,000 2025-04-12
+  risk  10%, up to 5x: avg $  +0.76 a trade (wins avg $+22, losses avg $-42) -> $   2,417  drop  82%  liquidated 0  under $1,000 2025-04-12
+  risk  15%, up to 3x: avg $  -0.44 a trade (wins avg $+17, losses avg $-34) -> $   1,189  drop  93%  liquidated 0  under $1,000 2025-04-11
+  risk  15%, up to 5x: avg $  -0.35 a trade (wins avg $+17, losses avg $-34) -> $   1,278  drop  94%  liquidated 0  under $1,000 2025-04-09
+  risk  20%, up to 3x: avg $  -1.02 a trade (wins avg $+15, losses avg $-32) -> $     602  drop  96%  liquidated 0  under $1,000 2025-04-11
+  risk  20%, up to 5x: avg $  -1.17 a trade (wins avg $+11, losses avg $-25) -> $     446  drop  99%  liquidated 0  under $1,000 2025-03-23

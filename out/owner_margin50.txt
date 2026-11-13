@@ -1,0 +1,10 @@
+Funding filter, +0.5R target, 2x-ATR stop, Delta real fills, from $1,640. Leverage <= safe max (liq >= 1.2x stop away)
+A) 10% risk, margin raised to 50%: same position, lower leverage
+B) 50% margin x safe max leverage: position = margin x leverage (risk then = whatever the stop costs)
+
+  A  10% risk, 25% margin (package)  position 0.48x bal, leverage 1.9x, loss at stop  10% of bal | avg $  +12.73/trade  2025 end $  2,359  end $   5,766  worst drop  46%  liquidations 0
+  A  10% risk, 50% margin            position 0.48x bal, leverage 1.0x, loss at stop  10% of bal | avg $  +12.73/trade  2025 end $  2,359  end $   5,766  worst drop  46%  liquidations 0
+  B  15% margin x max safe lev       position 0.59x bal, leverage 4.0x, loss at stop  12% of bal | avg $  +15.77/trade  2025 end $  2,444  end $   6,750  worst drop  55%  liquidations 0
+  B  25% margin x max safe lev       position 0.99x bal, leverage 4.0x, loss at stop  20% of bal | avg $  +18.14/trade  2025 end $  2,286  end $   7,516  worst drop  82%  liquidations 0
+  B  35% margin x max safe lev       position 1.38x bal, leverage 4.0x, loss at stop  29% of bal | avg $   +6.50/trade  2025 end $  1,538  end $   3,746  worst drop  95%  liquidations 0
+  B  50% margin x max safe lev       position 1.98x bal, leverage 4.0x, loss at stop  41% of bal | avg $   -4.60/trade  2025 end $    334  end $     150  worst drop 100%  liquidations 0

@@ -1,0 +1,20 @@
+MAX LEVERAGE, 50% OF THE BALANCE AS MARGIN PER TRADE. Delta picks with the funding filter (324), +0.5R target, real-bot fills, from $1,640. Median Delta max leverage on these picks 20x
+
+  leverage   stop        trades target  stop  LIQ  24h  win  avg $/trade   2025 end       end  worst drop  first time under $500
+  Delta max  none           324     46     0  256   22  20%        -5.06  $       0 $       0        100%  2025-03-20
+  Delta max  80% to liq     324     38   227   47   12  15%        -5.06  $       0 $       0        100%  2025-04-05
+  Delta max  2x ATR      no placeable trades (stop beyond liquidation)
+  20x        none           324     46     0  254   24  20%        -5.06  $       0 $       0        100%  2025-03-20
+  20x        80% to liq     324     39   227   45   13  15%        -5.06  $       0 $       0        100%  2025-04-05
+  20x        2x ATR      no placeable trades (stop beyond liquidation)
+  10x        none           324    101     0  150   73  46%        -5.09  $       0 $       0        100%  2025-04-23
+  10x        80% to liq     324     91   161    8   64  43%        -5.06  $       0 $       0        100%  2025-04-23
+  10x        2x ATR      no placeable trades (stop beyond liquidation)
+  5x         none           324    137     0   57  130  61%        -5.06  $      43 $       0        100%  2025-09-13
+  5x         80% to liq     324    133    73    1  117  60%        -4.98  $     275 $      26        100%  2025-09-15
+  5x         2x ATR         100     51    15    2   32  63%        -7.33  $     925 $     907         92%  2026-02-24
+  3x         none           324    148     0   24  152  65%        -3.25  $   1,350 $     586         98%  2026-01-22
+  3x         80% to liq     324    147    34    0  143  65%        +6.76  $   1,059 $   3,830         98%  2026-01-22
+  3x         2x ATR         311    137    46    0  128  62%        -3.68  $     679 $     497         99%  2025-11-26
+
+REFERENCE (the package): 10% risk at the 2x-ATR stop, same picks and target -> $5,766, worst drop 46%

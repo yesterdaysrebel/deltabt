@@ -77,5 +77,131 @@ def main() -> None:
                   f"green {(mret > 0).sum()}/{len(mret)}  floor {'never' if below is None else below.date()}")
 
 
+def more_risk_12() -> None:
+    """Owner 2026-11-13: "run ladder with more risk i.e have more contract with more leverage and 1:2 R&R". Risk 10/15/20%,
+    leverage up to 5x (no liquidation buffer: liquidation at 1/L - 2.5% loses the margin), 50% of the balance as margin
+    a day, target 2x the stop; stops 2x ATR and 1x ATR. Real-bot fills (scripts/fade_rr12.simulate)."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    for sm, nm in ((2, "1:2, stop 2x ATR (~19%), target ~39%"), (1, "1:2, stop 1x ATR (~10%), target ~19%")):
+        res = R12.simulate(d, opens, ps, sm, 2)
+        r = np.array([x[0] for x in res])
+        sd = np.array([x[2] for x in res])
+        print(f"\n{nm}: {np.nanmean(r):+.3f}R per trade, win {100 * np.nanmean(r > 0):.0f}%")
+        for risk in (0.05, 0.10, 0.15, 0.20):
+            for lev in (3, 5):
+                eq = hw = START
+                below, path, liq = None, {}, 0
+                for t, idx in d.groupby("date").groups.items():
+                    idx = [i for i in idx if np.isfinite(r[i])]
+                    pnl = 0.0
+                    for i in idx:
+                        margin = 0.5 * eq / len(idx)
+                        notional = min(risk / sd[i], lev * margin)
+                        liq_d = 1 / lev - MM
+                        if sd[i] >= liq_d:                                 # liquidation sits inside the stop
+                            a = ps[i]
+                            hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+                            lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+                            e = pd.Series(a[2].astype(float)).ffill().to_numpy()[2]
+                            ml = np.nonzero(hi[3:] >= e * (1 + liq_d))[0]
+                            mt = np.nonzero(lo[3:] <= e * (1 - 2 * sd[i]) * (1 - 0.001))[0]
+                            if len(ml) and (not len(mt) or ml[0] <= mt[0]):
+                                liq += 1
+                                pnl -= eq * notional / lev                 # the margin is lost
+                                continue
+                        pnl += eq * notional * sd[i] * r[i]
+                    eq = max(eq + pnl, 0.0)
+                    hw = max(hw, eq)
+                    path[t] = eq
+                    if below is None and eq < FLOOR:
+                        below = t
+                s = pd.Series(path)
+                dead = s[s < 1]
+                print(f"  risk {100 * risk:3.0f}%, up to {lev}x -> ${s.iloc[-1]:>8,.0f}  worst drop {100 * (1 - s / s.cummax()).max():3.0f}%  "
+                      f"liquidated {liq}  under $1,000 {below.date() if below is not None else 'never'}"
+                      + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
+
+
+def fixed_usd() -> None:
+    """Owner 2026-11-13: "run tests with risk of 300$ and profite of 600$". Every trade risks $300 (notional = $300 /
+    stop distance) for a $600 target (1:2), no compounding, from $1,640; trading stops when the balance cannot cover the
+    margin. Stops 2x / 1x / 0.5x ATR; leverage needed is shown (liquidation >= 2x the stop needs 1/L - 2.5% >= 2 x stop)."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    for sm, nm in ((2, "stop 2x ATR"), (1, "stop 1x ATR"), (0.5, "stop 0.5x ATR")):
+        res = R12.simulate(d, opens, ps, sm, 2)
+        r = np.array([x[0] for x in res])
+        sd = np.array([x[2] for x in res])
+        how = np.array([x[1] for x in res])
+        ok = np.isfinite(r)
+        notional = 300 / sd[ok]
+        bal, low, low_at, path, broke = START, START, None, {}, None
+        for t, idx in d.groupby("date").groups.items():
+            for i in idx:
+                if not np.isfinite(r[i]) or broke is not None:
+                    continue
+                bal += 300 * r[i]
+                if bal < low:
+                    low, low_at = bal, t
+                if bal <= 300:
+                    broke = t
+            path[t] = bal
+        sr = pd.Series(path)
+        m = sr.groupby(sr.index.to_period("M")).last()
+        mchg = m.diff().fillna(m.iloc[0] - START)
+        cnt = {k: int((how[ok] == k).sum()) for k in ("STOP", "TARGET", "24H+", "24H-")}
+        print(f"\n$300 RISK / $600 TARGET, {nm} (median stop {100 * np.nanmedian(sd):.1f}%): {np.nanmean(r):+.3f}R = "
+              f"${300 * np.nanmean(r):+.2f} a trade on average")
+        print(f"  position ${np.median(notional):,.0f} median (${np.percentile(notional, 90):,.0f} at the 90th pct) = "
+              f"{np.median(notional) / START:.1f}x the $1,640 wallet")
+        print(f"  outcomes: stop {cnt['STOP']} (-$300+), target {cnt['TARGET']} (+$600), 24 h up {cnt['24H+']}, 24 h down {cnt['24H-']}")
+        print(f"  $1,640 -> ${sr.iloc[-1]:,.0f}; lowest ${low:,.0f} on {low_at.date() if low_at is not None else '-'}; "
+              + (f"BROKE (<= $300) on {broke.date()}" if broke is not None else "never broke")
+              + f" | worst month ${mchg.min():+,.0f}, best ${mchg.max():+,.0f}, green {(mchg > 0).sum()}/{len(mchg)}")
+
+
+def fixed_usd_capital() -> None:
+    """The $300 / $600 plan on the 2x-ATR stop with unlimited money: the deepest dollar hole, so the capital needed."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    res = R12.simulate(d, opens, ps, 2, 2)
+    pnl = pd.Series([300 * x[0] for x in res], index=d.date).dropna()
+    cum = pnl.groupby(level=0).sum().cumsum()
+    hole = (cum - cum.cummax()).min()
+    print(f"$300 / $600 on the 2x-ATR stop, unlimited money: total ${cum.iloc[-1]:+,.0f} over {len(pnl)} trades; deepest fall "
+          f"from a high ${hole:,.0f}; lowest point vs the start ${cum.min():+,.0f} on {cum.idxmin().date()}")
+    print("  by year: " + "  ".join(f"{y} ${v:+,.0f}" for y, v in pnl.groupby(pnl.index.year).sum().items()))
+
+
+def quick_usd() -> None:
+    """Owner 2026-11-13: "how about quick with same params": QUICK (all closed at +0.2R) with a fixed $300 risk, so a target
+    win is about +$60; no compounding, from $1,640 (broke at <= $300), and with unlimited money."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    r = PL.scale_out(d, opens, ps, [(1.0, 0.2)])
+    pnl = pd.Series(300 * r, index=d.date).dropna()
+    wins = pnl[pnl > 0]
+    print(f"QUICK, $300 risk: {np.nanmean(r):+.3f}R = ${pnl.mean():+.2f} a trade; win {100 * (pnl > 0).mean():.0f}% "
+          f"(avg +${wins.mean():.0f}), losses avg ${pnl[pnl <= 0].mean():.0f}; full stops {(r <= -0.95).sum()}")
+    bal, broke, low = START, None, (START, None)
+    for t, v in pnl.items():
+        if broke is not None:
+            break
+        bal += v
+        if bal < low[0]:
+            low = (bal, t)
+        if bal <= 300:
+            broke = t
+    print(f"  from $1,640: " + (f"BROKE on {broke.date()}" if broke is not None else f"ends ${bal:,.0f}")
+          + f"; lowest ${low[0]:,.0f} on {low[1].date() if low[1] is not None else '-'}")
+    cum = pnl.groupby(level=0).sum().cumsum()
+    print(f"  unlimited money: total ${cum.iloc[-1]:+,.0f}; deepest fall from a high ${(cum - cum.cummax()).min():,.0f}; "
+          f"lowest vs start ${cum.min():+,.0f} on {cum.idxmin().date()}")
+    print("  by year: " + "  ".join(f"{y} ${v:+,.0f}" for y, v in pnl.groupby(pnl.index.year).sum().items()))
+    m = pnl.groupby(pnl.index.to_period("M")).sum()
+    print(f"  months: green {(m > 0).sum()}/{len(m)}, best ${m.max():+,.0f}, worst ${m.min():+,.0f}")
+
+
 if __name__ == "__main__":
-    main()
+    quick_usd() if "--qusd" in sys.argv else fixed_usd_capital() if "--usdcap" in sys.argv else fixed_usd() if "--usd" in sys.argv else more_risk_12() if "--r12" in sys.argv else main()
