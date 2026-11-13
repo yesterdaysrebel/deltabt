@@ -174,6 +174,11 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**MORE RISK + MORE LEVERAGE + 1:2 ON THE LADDER (2026-11-13, owner).** `fade_optimal_size.py --r12`,
+`out/fade_more_risk_12.txt`. Delta picks, real-bot fills, 50% margin a day, risk 5-20%, up to 3x / 5x. 1:2 on the 2x-ATR
+stop (+0.016R): 5% $1,887 (3x) / $1,205 (5x, 124 liquidated); 10% $525 / $226; 15% $17 / $5; 20% $0. 1:2 on 1x ATR
+(−0.050R): $23 at 5%, $0 from 10%. Every cell under $1,000 in 2025.
+
 **BANK BIG OPEN PROFITS — WORSE (2026-11-13, owner "by holding 24h we lost 200$ profit and closed at 40$": real ARIA
 11-12, open +$194 at 14:00 UTC, closed +$39.55 / +0.27R).** `fade_profit_ladder.py --bank`, `out/fade_bank_big.txt`. Same
 1,022 Delta picks, real-bot fills: hold +0.021R (ladder $2,610); close all at +0.5R +0.014R ($1,810), +0.75R +0.004R

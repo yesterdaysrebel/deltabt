@@ -1,0 +1,20 @@
+
+1:2, stop 2x ATR (~19%), target ~39%: +0.016R per trade, win 55%
+  risk   5%, up to 3x -> $   1,887  worst drop  78%  liquidated 2  under $1,000 2025-05-14
+  risk   5%, up to 5x -> $   1,205  worst drop  81%  liquidated 124  under $1,000 2025-04-26
+  risk  10%, up to 3x -> $     525  worst drop  97%  liquidated 2  under $1,000 2025-04-11
+  risk  10%, up to 5x -> $     226  worst drop  98%  liquidated 124  under $1,000 2025-04-09
+  risk  15%, up to 3x -> $      17  worst drop 100%  liquidated 2  under $1,000 2025-01-22
+  risk  15%, up to 5x -> $       5  worst drop 100%  liquidated 124  under $1,000 2025-01-22  $0 on 2026-08-27
+  risk  20%, up to 3x -> $       0  worst drop 100%  liquidated 2  under $1,000 2025-01-17  $0 on 2025-08-19
+  risk  20%, up to 5x -> $       0  worst drop 100%  liquidated 124  under $1,000 2025-01-17  $0 on 2025-08-19
+
+1:2, stop 1x ATR (~10%), target ~19%: -0.050R per trade, win 47%
+  risk   5%, up to 3x -> $      23  worst drop  99%  liquidated 0  under $1,000 2025-03-23
+  risk   5%, up to 5x -> $      23  worst drop  99%  liquidated 0  under $1,000 2025-03-23
+  risk  10%, up to 3x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-20  $0 on 2025-08-19
+  risk  10%, up to 5x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-20  $0 on 2025-08-19
+  risk  15%, up to 3x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-17  $0 on 2025-08-10
+  risk  15%, up to 5x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-17  $0 on 2025-07-21
+  risk  20%, up to 3x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-16  $0 on 2025-06-09
+  risk  20%, up to 5x -> $       0  worst drop 100%  liquidated 0  under $1,000 2025-01-16  $0 on 2025-05-30

@@ -77,5 +77,51 @@ def main() -> None:
                   f"green {(mret > 0).sum()}/{len(mret)}  floor {'never' if below is None else below.date()}")
 
 
+def more_risk_12() -> None:
+    """Owner 2026-11-13: "run ladder with more risk i.e have more contract with more leverage and 1:2 R&R". Risk 10/15/20%,
+    leverage up to 5x (no liquidation buffer: liquidation at 1/L - 2.5% loses the margin), 50% of the balance as margin
+    a day, target 2x the stop; stops 2x ATR and 1x ATR. Real-bot fills (scripts/fade_rr12.simulate)."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    for sm, nm in ((2, "1:2, stop 2x ATR (~19%), target ~39%"), (1, "1:2, stop 1x ATR (~10%), target ~19%")):
+        res = R12.simulate(d, opens, ps, sm, 2)
+        r = np.array([x[0] for x in res])
+        sd = np.array([x[2] for x in res])
+        print(f"\n{nm}: {np.nanmean(r):+.3f}R per trade, win {100 * np.nanmean(r > 0):.0f}%")
+        for risk in (0.05, 0.10, 0.15, 0.20):
+            for lev in (3, 5):
+                eq = hw = START
+                below, path, liq = None, {}, 0
+                for t, idx in d.groupby("date").groups.items():
+                    idx = [i for i in idx if np.isfinite(r[i])]
+                    pnl = 0.0
+                    for i in idx:
+                        margin = 0.5 * eq / len(idx)
+                        notional = min(risk / sd[i], lev * margin)
+                        liq_d = 1 / lev - MM
+                        if sd[i] >= liq_d:                                 # liquidation sits inside the stop
+                            a = ps[i]
+                            hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+                            lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+                            e = pd.Series(a[2].astype(float)).ffill().to_numpy()[2]
+                            ml = np.nonzero(hi[3:] >= e * (1 + liq_d))[0]
+                            mt = np.nonzero(lo[3:] <= e * (1 - 2 * sd[i]) * (1 - 0.001))[0]
+                            if len(ml) and (not len(mt) or ml[0] <= mt[0]):
+                                liq += 1
+                                pnl -= eq * notional / lev                 # the margin is lost
+                                continue
+                        pnl += eq * notional * sd[i] * r[i]
+                    eq = max(eq + pnl, 0.0)
+                    hw = max(hw, eq)
+                    path[t] = eq
+                    if below is None and eq < FLOOR:
+                        below = t
+                s = pd.Series(path)
+                dead = s[s < 1]
+                print(f"  risk {100 * risk:3.0f}%, up to {lev}x -> ${s.iloc[-1]:>8,.0f}  worst drop {100 * (1 - s / s.cummax()).max():3.0f}%  "
+                      f"liquidated {liq}  under $1,000 {below.date() if below is not None else 'never'}"
+                      + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
+
+
 if __name__ == "__main__":
-    main()
+    more_risk_12() if "--r12" in sys.argv else main()
