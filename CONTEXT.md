@@ -215,6 +215,17 @@ close at +1R: +0.041R, 56% win, 10% risk +$4.32/trade, $3,039, drop 41% (only 16
 Owner "max leverage and 50% capital per trade" (`--maxlev` -> `out/owner_maxlev.txt`, isolated margin 50% of balance,
 Delta max leverage ~20x, funding filter, +0.5R): 256 of 324 trades liquidated, $0 by 2025-03-20. 10x: $0 by 2025-04;
 5x: $0-907; 3x: drop 98%. Liquidation sits ~2.5% away at 20x; these coins move that within hours.
+Later 2026-11-13 owner questions (results in `out/`, made by inline runs on the same Delta picks, funding filter,
+real fills, from $1,640): **Option B with the bot's real leverage rule** (whole leverage, mm 2.5%, from the worst fill)
+15% margin x max safe lev: ~3x, $5,342, drop 41% (`option_b_live_rule.txt`). **30% margin x max leverage keeping
+today's liq >= 2x stop** (~2x): $5,603, drop 47%; liq >= 1.2x (~3x): $7,774, drop 74% (`today_maxlev_filter.txt`).
+**10x** at 5-30% margin: $0-806 (`lev10_filter.txt`); 10x stop 6% / take 3-10%: best break-even $1,645
+(`lev10_take_grid.txt`). **Cut +0.5-3% / take 1-3% at 10x/20x**: all $0-31 (`scalp_filter_lev.txt`). **Dollar exits**
+(take +$800-1,000, cut -$200): all lose (`dollar_exits.txt`). Filtered coins' 24 h moves: median fall 8.9%, median
+rise 7.9%, rise >= 2.5% before the low on 64% of days (`filtered_moves.txt`). **Monthly cap** $2-3k never triggers
+(best month +$1,394); +20-50% caps end $6.5-6.7k, likely luck (`monthly_cap.txt`). Owner's hand-trade record (commit
+e09f637): 165 clean trades +$2,297, 44 liquidations -$9,172. Owner decision: **keep the real bot running as is**;
+Option B (filter + 0.5R + 30% margin x max safe lev, liq >= 2x stop) is the upgrade on offer, not built.
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at

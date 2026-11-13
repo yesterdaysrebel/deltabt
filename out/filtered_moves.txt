@@ -1,0 +1,7 @@
+FUNDING-FILTERED PICKS, Delta 2025-26 (324), first 24 h after the 00:03 entry
+
+  biggest FALL in 24 h (our profit side): median 8.9%  | fell >= 5%: 69%  >= 10%: 47%  >= 20%: 15%  >= 30%: 6%  >= 50%: 2%
+  biggest RISE in 24 h (against us):      median 7.9%  | rose >= 2.5%: 82%  >= 5%: 64%  >= 7.5%: 52%  >= 10%: 40%  >= 20%: 19%
+  rise BEFORE the day's low:              median 3.5%  | >= 2.5% (20x liq): 64%   >= 7.5% (10x liq): 25%
+  price after 24 h vs entry:              median +2.7% lower | lower than entry: 58%
+  hour of the day's low: median 11.6 h after entry

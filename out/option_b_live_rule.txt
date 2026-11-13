@@ -1,0 +1,8 @@
+OPTION B: funding >= 0.05%, +0.5R target, 15% margin x highest safe leverage. Delta real fills, from $1,640
+
+  as simulated before (fractional lev, liq >= 1.2x stop)                 lev median 4.0x (3-10) | skipped  0 | avg $+15.77/trade | 2025 end $ 2,444 end $ 6,750 drop  55% | loss at stop median 11% of bal
+  LIVE RULE: whole leverage, mm 2.5%, from worst fill, liq >= 1.2x stop  lev median 3.0x (2-7) | skipped  0 | avg $+11.43/trade | 2025 end $ 2,360 end $ 5,342 drop  41% | loss at stop median 9% of bal
+  LIVE RULE, liq >= 1.5x stop (more cushion)                             lev median 2.0x (1-6) | skipped  0 | avg $ +7.17/trade | 2025 end $ 2,077 end $ 3,963 drop  37% | loss at stop median 6% of bal
+  LIVE RULE, liq >= 2.0x stop (today's bot cushion)                      lev median 2.0x (1-4) | skipped  0 | avg $ +5.53/trade | 2025 end $ 1,884 end $ 3,430 drop  25% | loss at stop median 6% of bal
+
+LIVE RULE 1.2x: green months 14/22, worst month -32.9% (2026-01), best +30.7%

@@ -1,0 +1,8 @@
+10x: STOP 6% (just under the 7.5% liquidation), TAKE Y%, 24 h. Funding-filtered Delta picks 2025-26 (324)
+
+  take  3.0% | win  69% (need  69%) | take  69% stop  27% liq  1% 24h   3% | avg +0.05%/trade (2025 +0.28, 2026 -0.14) | margin  5%: $  1,645 drop  42% | margin 10%: $  1,422 drop  69%
+  take  4.0% | win  58% (need  62%) | take  55% stop  37% liq  1% 24h   6% | avg -0.40%/trade (2025 -0.34, 2026 -0.45) | margin  5%: $    777 drop  68% | margin 10%: $    301 drop  91%
+  take  5.0% | win  51% (need  56%) | take  47% stop  43% liq  2% 24h   9% | avg -0.63%/trade (2025 -0.55, 2026 -0.70) | margin  5%: $    521 drop  76% | margin 10%: $    129 drop  95%
+  take  6.0% | win  48% (need  52%) | take  41% stop  45% liq  2% 24h  12% | avg -0.52%/trade (2025 -0.59, 2026 -0.46) | margin  5%: $    618 drop  75% | margin 10%: $    176 drop  95%
+  take  8.0% | win  45% (need  44%) | take  35% stop  48% liq  2% 24h  15% | avg -0.32%/trade (2025 -0.56, 2026 -0.13) | margin  5%: $    809 drop  72% | margin 10%: $    276 drop  94%
+  take 10.0% | win  42% (need  39%) | take  27% stop  50% liq  3% 24h  20% | avg -0.27%/trade (2025 -0.48, 2026 -0.09) | margin  5%: $    863 drop  67% | margin 10%: $    298 drop  92%

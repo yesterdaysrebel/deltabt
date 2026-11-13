@@ -1,0 +1,6 @@
+FUNDING FILTER + 0.5R TARGET, Delta 2025-01..2026-10, real-bot fills, from $1,640 (324 trades)
+
+  A) today's sizing (ladder 10/5/3, 30% margin cap, 1-3x)        lev 1x | risk/trade  5.0% (max 10.0%) | avg $ +4.27/trade | 2025 end $ 1,790 | end $ 3,024 | worst drop  38% | green 14/22 | worst month -22%
+  B) 30% margin x max leverage, liq >= 2x stop (today's safety)  lev 2x | risk/trade  9.7% (max 13.5%) | avg $+12.23/trade | 2025 end $ 1,941 | end $ 5,603 | worst drop  47% | green 15/22 | worst month -31%
+  C) 30% margin x max leverage, liq >= 1.5x stop                 lev 2x | risk/trade 14.6% (max 18.2%) | avg $+12.58/trade | 2025 end $ 2,160 | end $ 5,716 | worst drop  68% | green 16/22 | worst month -51%
+  D) 30% margin x max leverage, liq >= 1.2x stop                 lev 3x | risk/trade 18.4% (max 21.9%) | avg $+18.93/trade | 2025 end $ 2,504 | end $ 7,774 | worst drop  74% | green 14/22 | worst month -57%

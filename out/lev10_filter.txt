@@ -1,0 +1,13 @@
+10x LEVERAGE + funding filter + 0.5R target (needs ~10% fall). Delta 2025-26, 324 trades, real 1m paths, from $1,640
+Liquidation at 10x is ~7.5% above entry (1/10 - 2.5% maintenance), before the usual ~20% stop.
+
+  10x, margin  5% (position 0.5x bal), none               | target 101 stop   0 liquidated 150 24h  73 | win  46% | end $     163 | worst drop  94%
+  10x, margin 10% (position 1.0x bal), none               | target 101 stop   0 liquidated 150 24h  73 | win  46% | end $       8 | worst drop 100% | under $100 on 2026-01-22
+  10x, margin 20% (position 2.0x bal), none               | target 101 stop   0 liquidated 150 24h  73 | win  46% | end $       0 | worst drop 100% | under $100 on 2025-09-05
+  10x, margin 30% (position 3.0x bal), none               | target 101 stop   0 liquidated 150 24h  73 | win  46% | end $       0 | worst drop 100% | under $100 on 2025-07-19
+  10x, margin  5% (position 0.5x bal), stop at 80% of liq | target  91 stop 161 liquidated   8 24h  64 | win  43% | end $     806 | worst drop  71%
+  10x, margin 10% (position 1.0x bal), stop at 80% of liq | target  91 stop 161 liquidated   8 24h  64 | win  43% | end $     260 | worst drop  94%
+  10x, margin 20% (position 2.0x bal), stop at 80% of liq | target  91 stop 161 liquidated   8 24h  64 | win  43% | end $       7 | worst drop 100% | under $100 on 2025-12-22
+  10x, margin 30% (position 3.0x bal), stop at 80% of liq | target  91 stop 161 liquidated   8 24h  64 | win  43% | end $       0 | worst drop 100% | under $100 on 2025-09-05
+
+For comparison: 2x (30% margin, liquidation >= 2x stop) -> $5,603, worst drop 47%, 0 liquidations
