@@ -1,0 +1,7 @@
+LADDER AS IS (rule A, all picks, 10/5/3 risk, 2x-ATR stop, 24 h), Delta 2025-01..2026-10, real-bot fills, from $1,640
+live caps: NOTIONAL_CAP 0.6, MARGIN_CAP 0.3, MAX_LEV 3, liquidation >= 2.0x stop
+
+  TODAY: margin cap 30%, position cap 60%    median position 0.17x bal, leverage 1x | avg $ +0.95/trade  2025 end $   796  end $ 2,610  worst drop  69%
+  1) margin cap 50%, position cap 60%        median position 0.17x bal, leverage 1x | avg $ +0.47/trade  2025 end $   796  end $ 2,117  worst drop  69%
+  2) margin cap 50%, position cap 150%       median position 0.17x bal, leverage 1x | avg $ -0.06/trade  2025 end $   749  end $ 1,576  worst drop  71%
+  3) 50% margin x highest safe leverage      median position 1.00x bal, leverage 2x | avg $ -1.62/trade  2025 end $     0  end $     0  worst drop 100%
