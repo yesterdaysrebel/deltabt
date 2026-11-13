@@ -160,8 +160,104 @@ def monthly() -> None:
     print(f"\nTOTAL: {len(df)} trades, ${START:,.0f} -> ${bal:,.0f}")
 
 
+def max_leverage() -> None:
+    """Owner 2026-11-13: "if I check on delta with max leverage and 50% captial per trade I can buy much more and make
+    much more, test it". Funding filter on, target +0.5R (0.5 x the 2x-ATR distance below entry), 24 h, real-bot fills.
+    Each trade: ISOLATED margin = 50% of the balance (two picks on a day = 100%), notional = leverage x margin.
+    Leverage = Delta's max for the coin (1 / initial margin, table 2026-11-12; 20x if unknown) or a fixed cap.
+    Liquidation when the high reaches entry x (1 + 1/lev - maintenance): the whole margin is lost.
+    Variants: no stop (liquidation is the stop) / a stop at 80% of the way to liquidation / the normal 2x-ATR stop
+    (only possible when liquidation is beyond it)."""
+    import json
+    tab = json.load(open("out/delta_margin/perp_margins_2026-11-12.json"))
+    d = L5.trades().reset_index(drop=True)
+    F = pd.read_parquet("out/binance_paths/delta_funding_daily.parquet")
+    d["f_prev"] = [F.at[t - pd.Timedelta(days=1), s] if (t - pd.Timedelta(days=1)) in F.index and s in F.columns else np.nan
+                   for t, s in zip(d.date, d.symbol)]
+    keep = (d.f_prev >= 0.0005).to_numpy()
+    opens, ps = R12.paths(d)
+    im = np.array([tab[s][0] / 100 if s in tab else 0.05 for s in d.symbol])
+    mm = np.array([tab[s][1] / 100 if s in tab else 0.025 for s in d.symbol])
+    FEE_, EX_, THR_ = PL.FEE, PL.EXTRA, PL.THR
+
+    def one(i, lev, mode):
+        """Return (return on margin, how). how: T target, S stop, L liquidated, D 24 h."""
+        a = ps[i]
+        hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+        lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+        cl = pd.Series(a[2].astype(float)).ffill().to_numpy()
+        if not (np.isfinite(cl[2]) and np.isfinite(cl[-1])):
+            return np.nan, "-"
+        e, dist = cl[2], d.dist.iat[i]
+        liq_d = 1 / lev - mm[i]
+        tp = e * (1 - 0.5 * dist)
+        stop_d = {"none": None, "80% to liq": 0.8 * liq_d, "2x ATR": dist}[mode]
+        if stop_d is not None and stop_d >= liq_d:
+            return np.nan, "x"                                         # stop beyond liquidation: not placeable
+        def first(m):
+            k = np.nonzero(m[3:])[0]
+            return 3 + k[0] if len(k) else 10 ** 9
+        ml = first(hi >= e * (1 + liq_d))
+        ms = first(hi >= e * (1 + stop_d)) if stop_d is not None else 10 ** 9
+        mt = first(lo <= tp * (1 - THR_))
+        m0 = min(ml, ms, mt)
+        if m0 == 10 ** 9:
+            xp, how = cl[-1], "D"
+        elif ms == m0 or ml == m0:
+            if ms <= ml:
+                xp, how = max(e * (1 + stop_d), cl[ms]), "S"
+                if xp >= e * (1 + liq_d):
+                    return -1.0 - FEE_ * lev, "L"
+            else:
+                return -1.0 - FEE_ * lev, "L"
+        else:
+            xp, how = tp, "T"
+        ret = -(xp / e - 1) - FEE_ - FEE_ * xp / e - EX_
+        return max(ret * lev, -1.0), how
+
+    print("MAX LEVERAGE, 50% OF THE BALANCE AS MARGIN PER TRADE. Delta picks with the funding filter (324), +0.5R target,"
+          f" real-bot fills, from ${START:,.0f}. Median Delta max leverage on these picks {np.median(1 / im[keep]):.0f}x\n")
+    print(f"  {'leverage':10s} {'stop':11s} {'trades':>6s} {'target':>6s} {'stop':>5s} {'LIQ':>4s} {'24h':>4s} {'win':>4s}  "
+          f"{'avg $/trade':>11s}  {'2025 end':>9s} {'end':>9s}  {'worst drop':>10s}  first time under $500")
+    for levs, lname in (("max", "Delta max"), (20, "20x"), (10, "10x"), (5, "5x"), (3, "3x")):
+        for mode in ("none", "80% to liq", "2x ATR"):
+            eq, hw, dd, pn, hows, under, rms = START, START, 0.0, [], [], None, []
+            for t, idx in d.groupby("date").groups.items():
+                pnl = 0.0
+                for i in idx:
+                    if not keep[i]:
+                        continue
+                    lev = 1 / im[i] if levs == "max" else min(float(levs), 1 / im[i])
+                    rm, how = one(i, lev, mode)
+                    if not np.isfinite(rm):
+                        continue
+                    x = 0.5 * eq * rm
+                    pnl += x
+                    pn.append(x)
+                    hows.append(how)
+                    rms.append(rm)
+                eq = max(eq + pnl, 0.0)
+                hw = max(hw, eq)
+                dd = max(dd, 1 - eq / hw if hw > 0 else 1)
+                if under is None and eq < 500:
+                    under = t
+                if t.year == 2025:
+                    e25 = eq
+            h = np.array(hows)
+            pn = np.array(pn)
+            if not len(pn):
+                print(f"  {lname:10s} {mode:11s} no placeable trades (stop beyond liquidation)")
+                continue
+            print(f"  {lname:10s} {mode:11s} {len(pn):6d} {(h == 'T').sum():6d} {(h == 'S').sum():5d} {(h == 'L').sum():4d} "
+                  f"{(h == 'D').sum():4d} {100 * (np.array(rms) > 0).mean():3.0f}%  {pn.mean():+11.2f}  ${e25:>8,.0f} ${eq:>8,.0f}  "
+                  f"{100 * dd:9.0f}%  {'never' if under is None else under.date()}")
+    print("\nREFERENCE (the package): 10% risk at the 2x-ATR stop, same picks and target -> $5,766, worst drop 46%")
+
+
 if __name__ == "__main__":
-    if "--monthly" in sys.argv:
+    if "--maxlev" in sys.argv:
+        max_leverage()
+    elif "--monthly" in sys.argv:
         monthly()
     elif "--target1r" in sys.argv:
         target_1r()
