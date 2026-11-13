@@ -204,6 +204,11 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**OWNER PACKAGE (2026-11-13, owner "you have pushed back alot, without finding solution to my needs").**
+`scripts/owner_package.py` -> `out/owner_package.txt`, Delta picks, real fills, liquidation >= 1.2x stop away. Funding
+>= 0.05% filter + hold 24 h at 10% risk: +$9.94/trade, $1,640 -> $4,859, worst drop 42% (all picks today at 5%:
++$0.73, $2,384, drop 78%). With 2/3 at +0.2R: 65% win, +$6.19/trade, $3,646, drop 44%. 324 trades / 15 a month.
+Caveat: threshold chosen after the Binance/Delta looks, t 1.45 on Delta.
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
