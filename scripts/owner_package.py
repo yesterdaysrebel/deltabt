@@ -254,8 +254,76 @@ def max_leverage() -> None:
     print("\nREFERENCE (the package): 10% risk at the 2x-ATR stop, same picks and target -> $5,766, worst drop 46%")
 
 
+def real_check() -> None:
+    """Owner 2026-11-13: "check previous real trades, they would have won in this test" -- 50% margin at 10x vs the
+    package, replayed on the 30 picks the bots actually took 2026-10-29..11-12 (out/fade_quick_full/quick_paper.json:
+    the bots' own entry and stop prices; the real account traded the same rule A picks). Delta 1m trade-price candles
+    for target/stop, 1m MARK candles for liquidation (cached by scripts/fade_quick_full_replay). Target = +0.5R
+    (entry - 0.5 x (stop - entry)). Funding filter from Delta's FUNDING history. From $1,640, compounding."""
+    import json
+    import explore_delta_basis as EB
+    import fade_quick_full_replay as QR
+    tab = json.load(open("out/delta_margin/perp_margins_2026-11-12.json"))
+    picks = [x for x in json.load(open("out/fade_quick_full/quick_paper.json")) if x.get("entry_price")]
+    cat = EB.ProductCatalog()
+    rows = []
+    for pk in picks:
+        t0 = QR.ts(pk["day"])
+        ltp, mark = QR.candles(pk["symbol"], t0), QR.candles("MARK:" + pk["symbol"], t0)
+        if not ltp:
+            continue
+        try:
+            iv = int(cat.get(pk["symbol"])["funding_interval_seconds"])
+        except Exception:                                                 # noqa: BLE001
+            iv = 8 * 3600
+        fs = EB.funding_daily(pk["symbol"], iv, t0 - 2 * 86400, t0)
+        fprev = float(fs.get(t0 - 86400, np.nan)) if len(fs) else np.nan
+        e, st = pk["entry_price"], pk["stop_price"]
+        dist = st / e - 1
+        mm = tab.get(pk["symbol"], [5, 2.5])[1] / 100
+        mk = {c["time"]: c for c in mark}
+
+        def play(stop, liq):
+            tgt = e - 0.5 * (st - e)
+            for c in ltp:
+                m = mk.get(c["time"])
+                if liq and m and m["high"] >= liq:
+                    return "LIQUIDATED", liq
+                if stop and c["high"] >= stop:
+                    return "STOP", max(stop, c["close"])
+                if c["low"] <= tgt * (1 - PL.THR):
+                    return "TARGET", tgt
+            return "24h", ltp[-1]["close"]
+        ret = lambda xp: -(xp / e - 1) - PL.FEE - PL.FEE * xp / e - PL.EXTRA           # noqa: E731
+        h10, x10 = play(None, e * (1 + 0.1 - mm))
+        hp, xp_ = play(st, None)
+        rows.append(dict(day=pk["day"][:10], sym=pk["symbol"], dist=dist, fprev=fprev, how10=h10,
+                         r10=-1.0 if h10 == "LIQUIDATED" else max(10 * ret(x10), -1.0), howp=hp, rp=ret(xp_)))
+    df = pd.DataFrame(rows).sort_values("day")
+    print(f"REAL PICKS 2026-10-29..11-12 ({len(df)} trades the bots took), Delta 1m + MARK candles, from ${START:,.0f}\n")
+    print(f"  {'day':10s} {'coin':12s} {'stop':>5s} {'funding':>8s} | {'10x, 50% margin':>22s} | {'package (10% risk)':>22s}")
+    for filt in (False, True):
+        g = df[df.fprev >= 0.0005] if filt else df
+        eq10 = eqp = START
+        print(f"\n  {'FUNDING FILTER ON' if filt else 'ALL PICKS'} ({len(g)} trades)")
+        for day, dd in g.groupby("day"):
+            p10 = pp = 0.0
+            for y in dd.itertuples():
+                a = 0.5 * eq10 * y.r10
+                notional = min(0.10 * eqp / y.dist, 1 / (1.2 * y.dist + 0.005) * 0.25 * eqp)
+                b = notional * y.rp
+                p10 += a
+                pp += b
+                print(f"  {y.day:10s} {y.sym:12s} {100 * y.dist:4.0f}% {100 * y.fprev:+7.3f}% | {y.how10:10s} {a:+10.2f} | "
+                      f"{y.howp:10s} {b:+10.2f}")
+            eq10, eqp = max(eq10 + p10, 0), max(eqp + pp, 0)
+        print(f"  {'END':10s} {'':12s} {'':5s} {'':8s} | {'':10s} ${eq10:>9,.2f} | {'':10s} ${eqp:>9,.2f}")
+
+
 if __name__ == "__main__":
-    if "--maxlev" in sys.argv:
+    if "--realcheck" in sys.argv:
+        real_check()
+    elif "--maxlev" in sys.argv:
         max_leverage()
     elif "--monthly" in sys.argv:
         monthly()
