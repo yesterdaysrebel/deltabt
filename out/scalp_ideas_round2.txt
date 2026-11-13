@@ -1,0 +1,25 @@
+ROUND 2: Gemini + DeepSeek proposals. Rule A picks Binance 2021-26, n 3608, realistic fills; same columns as round 1
+  rule A baseline: 2x ATR stop, 24 h                   n 3608 (622/yr) -0.003R win  55% | TEST +0.019R t +1.01 | -0.028 +0.014 -0.056 -0.004 +0.016 +0.060 | best risk  0% -> $    1,500  fail 
+
+GEMINI
+  G1 funding >= 0.03% & premium > 0, out 07:55         n  366 ( 63/yr) -0.010R win  74% | TEST -0.019R t -0.52 | +0.014    n/a -0.077 -0.091 -0.034 +0.040 | best risk  0% -> $    1,500  fail 
+  G1 funding >= 0.05% & premium > 0, out 07:55         n  260 ( 45/yr) -0.008R win  74% | TEST -0.031R t -0.72 | +0.019    n/a +0.045 -0.099 -0.019 +0.004 | best risk  0% -> $    1,500  fail 
+  G1 funding >= 0.08% & premium > 0, out 07:55         n  160 ( 28/yr) +0.013R win  76% | TEST +0.005R t +0.10 | +0.008    n/a +0.265 -0.074 +0.011 +0.038 | best risk  5% -> $    1,582  fail 
+  G2 post-Asia 08:03 fade, stop above 00-08 high, 1.5R n  843 (145/yr) +0.026R win  40% | TEST +0.031R t +0.57 | +0.193 -0.022 -0.078 +0.049 +0.006 +0.031 | best risk  3% -> $    1,977  fail 
+  G3 perp-only/low-spot + taker > 0.54, 0.8 ATR stop, 12 h n    1 (  0/yr) -1.049R win   0% | TEST -1.049R t +0.00 |    n/a    n/a    n/a    n/a    n/a -1.049 | best risk  0% -> $    1,500  fail 
+  G4 3-day >= 45% blow-off, cut if +3.5% vs BTC, 16:03 n  229 ( 39/yr) -0.071R win  43% | TEST -0.075R t -1.24 | -0.028 +0.065 -0.131 -0.015 -0.035 -0.123 | best risk  0% -> $    1,500  fail 
+  G5 liquidity sweep (+3% then back under open), 1.5R  n  554 ( 96/yr) +0.001R win  24% | TEST +0.039R t +0.81 | +0.062 -0.124 -0.081 +0.005 +0.036 +0.071 | best risk  0% -> $    1,500  fail 
+  G6 leg 1: LONG 00:03-04:03, +4% / -2.5%              n 2573 (444/yr) -0.139R win  35% | TEST -0.159R t -4.70 | -0.101 -0.251 -0.014 -0.171 -0.152 -0.153 | best risk  0% -> $    1,500  fail 
+  G6 leg 2: short 04:03 after leg 1 hit +4%, 6% / 6%   n  807 (139/yr) +0.017R win  48% | TEST -0.018R t -0.40 | +0.129 -0.002 +0.028 +0.120 -0.133 -0.019 | best risk  2% -> $    1,709  fail 
+  G6 both legs (R summed)                              n 2573 (444/yr) -0.134R win  34% | TEST -0.165R t -4.49 | -0.056 -0.251 -0.005 -0.139 -0.196 -0.160 | best risk  0% -> $    1,500  fail 
+
+DEEPSEEK
+  A crowded perp unwind, 1.75 ATR, 0.75 target, out 08:03 n    0 (  0/yr) +nanR win nan% | TEST +nanR t +0.00 |    n/a    n/a    n/a    n/a    n/a    n/a | best risk  0% -> $    1,500  fail 
+  A' looser: funding >= 0.03% & sum > 0 & OI +5% only  n  237 ( 41/yr) +0.055R win  57% | TEST +0.081R t +1.84 |    n/a -1.035 -0.150 -0.041 +0.061 +0.184 | best risk 13% -> $    3,569  fail 
+  B first-hour failed auction, stop above 1 h high, 1R, 12:03 n  221 ( 38/yr) -0.038R win  54% | TEST -0.023R t -0.24 | -0.082 +0.115 -0.144 +0.149 +0.029 -0.245 | best risk  0% -> $    1,500  fail 
+  C compression <= 1.2% (00-03) then breakdown, 1R     n    5 (  1/yr) -1.000R win   0% | TEST -1.000R t  -inf |    n/a    n/a    n/a -1.000 -1.000 -1.000 | best risk  0% -> $    1,500  fail 
+  C compression <= 3.0% (00-03) then breakdown, 1R (looser) n    6 (  1/yr) -1.022R win   0% | TEST -1.022R t -46.05 |    n/a    n/a    n/a -1.000 -1.067 -1.000 | best risk  0% -> $    1,500  fail 
+  C compression <= 5.0% (00-03) then breakdown, 1R (looser) n   11 (  2/yr) -0.403R win  36% | TEST -1.022R t -46.05 |    n/a +0.094 +0.708 -1.000 -1.067 -1.000 | best risk  0% -> $    1,500  fail 
+  D 15:03 short after a stalled day, 1.5R              n  641 (111/yr) -0.010R win  52% | TEST -0.049R t -0.92 | +0.005 -0.033 +0.055 -0.040 -0.050 -0.137 | best risk  0% -> $    1,500  fail 
+  E liquid (7d vol >= $50m) & low ATR, 1.5 ATR stop, 0.5x target n  560 ( 97/yr) -0.009R win  60% | TEST -0.049R t -0.91 | +0.098 +0.028 -0.067 -0.069 -0.049 +0.145 | best risk  0% -> $    1,500  fail 
+  F short only the pair's first-hour laggard, 1.2 ATR, 0.6x n 1198 (207/yr) -0.029R win  60% | TEST -0.022R t -0.68 | +0.019 -0.014 -0.081 +0.026 -0.038 -0.104 | best risk  0% -> $    1,500  fail 

@@ -188,6 +188,11 @@ bar: TEST 2024-26 each year > 0, t >= 2, beats baseline): **0 pass.** Best: BTC 
 2024 -0.009); funding gate (+0.032, t 1.23). Clock exits 04/08/12 h with tighter stops, 48/72 h holds, 12 h profit
 lock, noon entry, long-the-pump-then-short, premium/taker/spot/L-S/listing-age filters all fail. Untested: top-5
 breadth (data has ranks 1-2 only), spot-hedged premium trade.
+Round 2 (`--round2` -> `out/scalp_ideas_round2.txt`): owner pasted Gemini (6) and DeepSeek (6) answers; proposers'
+own thresholds, same bar: **0 pass.** Closest: DeepSeek A' (funding >= 0.03%, prev-day sum > 0, OI +5%; 1.75 ATR stop,
+0.75x target, out 08:03): TEST +0.081R t 1.84 but 2024 -0.041, n 41/yr -- a funding-family lead like the earlier
+funding filter, not adopted. Gemini's top picks (08:03 fade +0.031R t 0.57; liquidity sweep +0.039R t 0.81) fail; long
+the opening wave -0.159R t -4.7. Several rules almost never fire on these picks (G3 n 1, DeepSeek A n 0, C n 5-11).
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at

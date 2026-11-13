@@ -210,5 +210,168 @@ def main() -> None:
           "premium not in this set), Sonnet 6 (risk throttle: sizing only, cannot change R).")
 
 
+BIG = 10 ** 7
+
+
+def first_after(mask, start, end):
+    """First column c with start < c <= end where mask is True (per row); BIG if none."""
+    W = mask.shape[1]
+    cols = np.arange(W)[None, :]
+    n = mask.shape[0]
+    st = np.broadcast_to(np.asarray(start), (n,))[:, None]
+    en = np.broadcast_to(np.asarray(end), (n,))[:, None]
+    m = mask & (cols > st) & (cols <= en)
+    return np.where(m.any(1), m.argmax(1), BIG)
+
+
+def daily_feats(p):
+    """Prev-day pump, wick, 3-day return, volume surge, 7-day median quote volume (known at 00:00)."""
+    d = pd.concat([pd.read_parquet(f"out/{x}/daily.parquet") for x in ("binance", "binance_control")])
+    d = d.drop_duplicates(["symbol", "time"]).sort_values(["symbol", "time"])
+    g = d.groupby("symbol")
+    d["pump"] = d.close / d.open - 1
+    d["wick"] = (d.high - d.close) / (d.high - d.low).replace(0, np.nan)
+    d["ret3"] = d.close / g.close.shift(3) - 1
+    d["volx"] = d.quote_volume / g.quote_volume.transform(lambda v: v.shift(1).rolling(7, min_periods=4).mean())
+    d["vol7"] = g.quote_volume.transform(lambda v: v.rolling(7, min_periods=4).median())
+    d["time"] = d.time + 86400
+    return p[["symbol", "time"]].merge(d[["symbol", "time", "pump", "wick", "ret3", "volx", "vol7"]], on=["symbol", "time"], how="left")
+
+
+def round2() -> None:
+    """Gemini and DeepSeek proposals (owner pasted 2026-11-13). Same data, fills and PASS BAR as main(). Thresholds are
+    the proposers' own numbers (no tuning) unless noted. Not available here: top-3 gainers (ranks 1-2 only), 1-minute
+    volume (Gemini 1's volume clause dropped), live intraday premium/funding (previous-day values used)."""
+    p, hi, lo, cl = load()
+    n = len(p)
+    rows = np.arange(n)
+    yrs, t = p.year.astype(int).to_numpy(), p.time.to_numpy()
+    atr = p.dist.to_numpy() / 2
+    o = p.open.to_numpy()
+    f = daily_feats(p)
+    z = np.zeros(n, int)
+    W = cl.shape[1]
+    base, _, _ = sim(hi, lo, cl, z, -1, 2 * atr)
+    print(f"ROUND 2: Gemini + DeepSeek proposals. Rule A picks Binance 2021-26, n {n}, realistic fills; same columns as round 1")
+    bt = line("rule A baseline: 2x ATR stop, 24 h", base, yrs, t)
+    fl, fd, pr = p.fund_last.to_numpy(), p.fund_day.to_numpy(), p.prem_close.to_numpy()
+    entry0 = cl[:, 2]
+    b = np.load(S.OUT / "btc.npz")
+    bmap = {int(dd): pd.Series(c).ffill().to_numpy(dtype=float) for dd, c in zip(b["days"], b["close"])}
+    btc = np.stack([bmap.get(int(x), np.full(DAY, np.nan)) for x in t])
+
+    def cut_close_above(level, start, end):
+        m = first_after(cl > np.asarray(level)[:, None], start, end)
+        return m, cl[rows, np.minimum(m, W - 1)]
+
+    def merge(*ex):
+        ms = np.stack([e[0] for e in ex])
+        ps = np.stack([e[1] for e in ex])
+        j = ms.argmin(0)
+        return ms[j, rows], ps[j, rows]
+
+    print("\nGEMINI")
+    # G1: funding >= +0.05% & premium > 0; short 00:03; target min(0.35 ATR, 3%); stop 1x ATR; cut at 04:03 if up > 0.3 ATR; out 07:55
+    for thr in (0.0003, 0.0005, 0.0008):
+        m = (fl >= thr) & (pr > 0)
+        cut = np.where(cl[:, 243] > entry0 * (1 + 0.3 * atr), 243, BIG)
+        r, _, _ = sim(hi, lo, cl, z, -1, atr, np.minimum(0.35 * atr, 0.03), x_end=np.full(n, 475), extra=(cut, cl[:, 243]))
+        line(f"G1 funding >= {100 * thr:.2f}% & premium > 0, out 07:55", np.where(m, r, np.nan), yrs, t, base=bt)
+    # G2: 08:03 entry after Asia push and 1.5% roll-off
+    H08 = np.max(hi[:, :481], 1)
+    c08 = cl[:, 480]
+    ok2 = (c08 > entry0) & (H08 - c08 >= 0.015 * H08)
+    e2 = cl[:, 482]
+    d2 = H08 * 1.015 / e2 - 1
+    ok2 &= (d2 >= 0.025) & (d2 <= 0.08)
+    halfR = first_after(lo <= (e2 * (1 - 0.5 * d2))[:, None], 482, 722)
+    c12 = np.where((cl[:, 722] > e2) & (halfR == BIG), 722, BIG)
+    ex = merge(cut_close_above(H08, 482, 1435), (c12, cl[:, 722]))
+    r, _, _ = sim(hi, lo, cl, np.full(n, 480), -1, d2, 1.5 * d2, x_end=np.full(n, 1435), extra=ex)
+    line("G2 post-Asia 08:03 fade, stop above 00-08 high, 1.5R", np.where(ok2, r, np.nan), yrs, t, base=bt)
+    # G3: perp-only / low spot, taker chasing; prev-day >= 12%
+    sr, oi, ts, hs = p.spot_ratio.to_numpy(float), p.oi_chg.to_numpy(float), p.taker_share.to_numpy(float), p.has_spot.to_numpy()
+    ok3 = (f.pump.to_numpy() >= 0.12) & ((hs == 0) | ((sr < 0.15) & (oi > 0.25))) & (ts > 0.54)
+    d3 = np.minimum(0.8 * atr, 0.12)
+    c2 = np.where((cl[:, 122] > entry0) & (np.min(lo[:, 3:123], 1) > entry0 * 0.985), 122, BIG)
+    r, _, _ = sim(hi, lo, cl, z, -1, d3, 0.75 * d3, x_end=np.full(n, 722), extra=(c2, cl[:, 122]))
+    line("G3 perp-only/low-spot + taker > 0.54, 0.8 ATR stop, 12 h", np.where(ok3, r, np.nan), yrs, t, base=bt)
+    # G4: 3-day blow-off + BTC excess-return cut
+    ok4 = (f.ret3.to_numpy() >= 0.45) & (f.pump.to_numpy() >= 0.15) & (f.wick.to_numpy() >= 0.30)
+    d4 = np.minimum(0.75 * atr, 0.12)
+    exc = cl[:, :DAY] / entry0[:, None] - btc / btc[:, [2]]
+    m4 = first_after(np.pad(exc >= 0.035, ((0, 0), (0, W - DAY))), np.full(n, 30), np.full(n, 962))
+    r, _, _ = sim(hi, lo, cl, z, -1, d4, 0.8 * d4, x_end=np.full(n, 962), extra=(m4, cl[rows, np.minimum(m4, W - 1)]))
+    line("G4 3-day >= 45% blow-off, cut if +3.5% vs BTC, 16:03", np.where(ok4, r, np.nan), yrs, t, base=bt)
+    # G5: sweep +3% above open then close <= open x 0.995, between 00:15 and 03:00
+    rh = np.maximum.accumulate(hi[:, :181], 1)
+    swept = rh >= (o * 1.03)[:, None]
+    trig = swept & (cl[:, :181] <= (o * 0.995)[:, None])
+    trig[:, :15] = False
+    m5 = np.where(trig.any(1), trig.argmax(1), -1)
+    ok5 = m5 >= 0
+    m5c = np.maximum(m5, 0)
+    e5 = cl[rows, m5c + 2]
+    d5 = rh[rows, m5c] * 1.005 / e5 - 1
+    ok5 &= (d5 >= 0.025) & (d5 <= 0.07)
+    ex5 = cut_close_above(o * 1.01, m5c + 2, np.full(n, 1080))
+    r, _, _ = sim(hi, lo, cl, m5c, -1, d5, 1.5 * d5, x_end=np.full(n, 1080), extra=ex5)
+    line("G5 liquidity sweep (+3% then back under open), 1.5R", np.where(ok5, r, np.nan), yrs, t, base=bt)
+    # G6: long 00:03 -> 04:03 (+4% / -2.5%, cut 01:03 if red); short 04:03 only if leg 1 hit +4%
+    ok6 = (p.age_days.to_numpy() > 30) & (f.volx.to_numpy() >= 2.5)
+    c1 = np.where(cl[:, 62] < entry0, 62, BIG)
+    r1, k1, _ = sim(hi, lo, cl, z, +1, np.full(n, 0.025), np.full(n, 0.04), x_end=np.full(n, 242), extra=(c1, cl[:, 62]))
+    H4 = np.max(hi[:, :243], 1)
+    ex6 = cut_close_above(H4, np.full(n, 242), np.full(n, 1435))
+    r2, _, _ = sim(hi, lo, cl, np.full(n, 240), -1, np.full(n, 0.06), np.full(n, 0.06), x_end=np.full(n, 1435), extra=ex6)
+    line("G6 leg 1: LONG 00:03-04:03, +4% / -2.5%", np.where(ok6, r1, np.nan), yrs, t)
+    line("G6 leg 2: short 04:03 after leg 1 hit +4%, 6% / 6%", np.where(ok6 & (k1 == 1), r2, np.nan), yrs, t)
+    line("G6 both legs (R summed)", np.where(ok6, r1 + np.where(k1 == 1, r2, 0), np.nan), yrs, t, base=bt)
+
+    print("\nDEEPSEEK")
+    vol7 = f.vol7.to_numpy(float)
+    okA = ((hs == 1) & (p.age_days.to_numpy() >= 120) & (vol7 >= 20e6) & (f.pump.to_numpy() >= np.maximum(0.25, atr))
+           & (fl >= 0.0003) & (fd > 0) & (pr >= 0.003) & (oi >= 0.05) & ~(sr > 0.9) & (np.abs(p.btc_prev.to_numpy()) <= 0.03))
+    dA = 1.75 * atr
+    r, _, _ = sim(hi, lo, cl, z, -1, dA, 0.75 * dA, x_end=np.full(n, 482))
+    line("A crowded perp unwind, 1.75 ATR, 0.75 target, out 08:03", np.where(okA & (dA <= 0.25), r, np.nan), yrs, t, base=bt)
+    okA2 = (fl >= 0.0003) & (fd > 0) & (oi >= 0.05)
+    line("A' looser: funding >= 0.03% & sum > 0 & OI +5% only", np.where(okA2 & (dA <= 0.25), r, np.nan), yrs, t, base=bt)
+    Hh = np.max(hi[:, 3:63], 1)
+    okB = (Hh >= entry0 * (1 + 0.3 * atr)) & (cl[:, 62] < entry0)
+    eB = cl[:, 62]
+    dB = Hh * 1.001 / eB - 1
+    okB &= dB <= np.minimum(atr, 0.12)
+    r, _, _ = sim(hi, lo, cl, np.full(n, 60), -1, dB, dB, x_end=np.full(n, 722))
+    line("B first-hour failed auction, stop above 1 h high, 1R, 12:03", np.where(okB, r, np.nan), yrs, t, base=bt)
+    Hc, Lc = np.max(hi[:, 3:182], 1), np.min(lo[:, 3:182], 1)
+    for comp in (0.012, 0.03, 0.05):
+        okC = ((Hc - Lc) / entry0 <= comp) & (cl[:, 182] <= Lc)
+        dC = Hc * 1.002 / cl[:, 182] - 1
+        okC &= dC <= 0.10
+        r, _, _ = sim(hi, lo, cl, np.full(n, 180), -1, dC, dC, x_end=np.full(n, 602))
+        line(f"C compression <= {100 * comp:.1f}% (00-03) then breakdown, 1R" + ("" if comp == 0.012 else " (looser)"),
+             np.where(okC, r, np.nan), yrs, t, base=bt)
+    H15 = np.max(hi[:, :903], 1)
+    okD = (H15 <= 1.03 * entry0) & (cl[:, 902] < entry0)
+    dD = H15 * 1.002 / cl[:, 902] - 1
+    okD &= dD <= 0.12
+    r, _, _ = sim(hi, lo, cl, np.full(n, 900), -1, dD, 1.5 * dD, x_end=np.full(n, 1442))
+    line("D 15:03 short after a stalled day, 1.5R", np.where(okD, r, np.nan), yrs, t, base=bt)
+    dv = np.isin(yrs, DEV)
+    okE = (vol7 >= 50e6) & (atr <= np.nanmedian(atr[dv]))
+    r, _, _ = sim(hi, lo, cl, z, -1, 1.5 * atr, 0.75 * atr)
+    line("E liquid (7d vol >= $50m) & low ATR, 1.5 ATR stop, 0.5x target", np.where(okE, r, np.nan), yrs, t, base=bt)
+    fh = cl[:, 62] / entry0 - 1
+    df = pd.DataFrame({"t": t, "fh": fh})
+    lag = (df.groupby("t").fh.transform("count") == 2) & (df.fh == df.groupby("t").fh.transform("min"))
+    dF = 1.2 * atr
+    r, _, _ = sim(hi, lo, cl, np.full(n, 60), -1, dF, 0.6 * dF)
+    line("F short only the pair's first-hour laggard, 1.2 ATR, 0.6x", np.where(lag.to_numpy() & (dF <= 0.14), r, np.nan), yrs, t, base=bt)
+
+
 if __name__ == "__main__":
-    main()
+    if "--round2" in sys.argv:
+        round2()
+    else:
+        main()
