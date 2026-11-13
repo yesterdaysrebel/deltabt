@@ -1,0 +1,8 @@
+FUNDING-FILTERED DELTA TRADES (324), +0.5R target, 2x-ATR stop, 24 h. 'Against us by X%' = price X% above entry,
+before the target was hit. Cut = close at that moment (stop-like fill). Hold = the package's real outcome.
+
+  against us by   3%: 239 trades ( 74% of all) | later: hit target  36%, ended a winner  51%, hit the stop  19% | CUT there -0.174R vs HOLD -0.064R -> holding better
+  against us by   5%: 190 trades ( 59% of all) | later: hit target  33%, ended a winner  44%, hit the stop  24% | CUT there -0.277R vs HOLD -0.149R -> holding better
+  against us by   8%: 137 trades ( 42% of all) | later: hit target  24%, ended a winner  34%, hit the stop  34% | CUT there -0.429R vs HOLD -0.307R -> holding better
+  against us by  10%: 107 trades ( 33% of all) | later: hit target  18%, ended a winner  23%, hit the stop  42% | CUT there -0.539R vs HOLD -0.451R -> holding better
+  against us by  15%:  61 trades ( 19% of all) | later: hit target  11%, ended a winner  15%, hit the stop  61% | CUT there -0.705R vs HOLD -0.669R -> holding better
