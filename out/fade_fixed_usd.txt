@@ -1,0 +1,17 @@
+
+$300 RISK / $600 TARGET, stop 2x ATR (median stop 19.3%): +0.016R = $+4.74 a trade on average
+  position $1,556 median ($2,359 at the 90th pct) = 0.9x the $1,640 wallet
+  outcomes: stop 159 (-$300+), target 14 (+$600), 24 h up 545, 24 h down 304
+  $1,640 -> $244; lowest $244 on 2025-04-11; BROKE (<= $300) on 2025-04-11 | worst month $-863, best $+293, green 1/22
+
+$300 RISK / $600 TARGET, stop 1x ATR (median stop 9.6%): -0.050R = $-15.04 a trade on average
+  position $3,113 median ($4,718 at the 90th pct) = 1.9x the $1,640 wallet
+  outcomes: stop 373 (-$300+), target 86 (+$600), 24 h up 394, 24 h down 169
+  $1,640 -> $295; lowest $295 on 2025-01-17; BROKE (<= $300) on 2025-01-17 | worst month $-1,345, best $+0, green 0/22
+
+$300 RISK / $600 TARGET, stop 0.5x ATR (median stop 4.8%): -0.160R = $-47.95 a trade on average
+  position $6,225 median ($9,435 at the 90th pct) = 3.8x the $1,640 wallet
+  outcomes: stop 594 (-$300+), target 215 (+$600), 24 h up 163, 24 h down 50
+  $1,640 -> $271; lowest $271 on 2025-03-22; BROKE (<= $300) on 2025-03-22 | worst month $-2,703, best $+1,575, green 1/22
+$300 / $600 on the 2x-ATR stop, unlimited money: total $+4,848 over 1022 trades; deepest fall from a high $-7,838; lowest point vs the start $-7,598 on 2025-09-17
+  by year: 2025 $-3,220  2026 $+8,069

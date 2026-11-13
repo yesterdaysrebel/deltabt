@@ -123,5 +123,56 @@ def more_risk_12() -> None:
                       + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
 
 
+def fixed_usd() -> None:
+    """Owner 2026-11-13: "run tests with risk of 300$ and profite of 600$". Every trade risks $300 (notional = $300 /
+    stop distance) for a $600 target (1:2), no compounding, from $1,640; trading stops when the balance cannot cover the
+    margin. Stops 2x / 1x / 0.5x ATR; leverage needed is shown (liquidation >= 2x the stop needs 1/L - 2.5% >= 2 x stop)."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    for sm, nm in ((2, "stop 2x ATR"), (1, "stop 1x ATR"), (0.5, "stop 0.5x ATR")):
+        res = R12.simulate(d, opens, ps, sm, 2)
+        r = np.array([x[0] for x in res])
+        sd = np.array([x[2] for x in res])
+        how = np.array([x[1] for x in res])
+        ok = np.isfinite(r)
+        notional = 300 / sd[ok]
+        bal, low, low_at, path, broke = START, START, None, {}, None
+        for t, idx in d.groupby("date").groups.items():
+            for i in idx:
+                if not np.isfinite(r[i]) or broke is not None:
+                    continue
+                bal += 300 * r[i]
+                if bal < low:
+                    low, low_at = bal, t
+                if bal <= 300:
+                    broke = t
+            path[t] = bal
+        sr = pd.Series(path)
+        m = sr.groupby(sr.index.to_period("M")).last()
+        mchg = m.diff().fillna(m.iloc[0] - START)
+        cnt = {k: int((how[ok] == k).sum()) for k in ("STOP", "TARGET", "24H+", "24H-")}
+        print(f"\n$300 RISK / $600 TARGET, {nm} (median stop {100 * np.nanmedian(sd):.1f}%): {np.nanmean(r):+.3f}R = "
+              f"${300 * np.nanmean(r):+.2f} a trade on average")
+        print(f"  position ${np.median(notional):,.0f} median (${np.percentile(notional, 90):,.0f} at the 90th pct) = "
+              f"{np.median(notional) / START:.1f}x the $1,640 wallet")
+        print(f"  outcomes: stop {cnt['STOP']} (-$300+), target {cnt['TARGET']} (+$600), 24 h up {cnt['24H+']}, 24 h down {cnt['24H-']}")
+        print(f"  $1,640 -> ${sr.iloc[-1]:,.0f}; lowest ${low:,.0f} on {low_at.date() if low_at is not None else '-'}; "
+              + (f"BROKE (<= $300) on {broke.date()}" if broke is not None else "never broke")
+              + f" | worst month ${mchg.min():+,.0f}, best ${mchg.max():+,.0f}, green {(mchg > 0).sum()}/{len(mchg)}")
+
+
+def fixed_usd_capital() -> None:
+    """The $300 / $600 plan on the 2x-ATR stop with unlimited money: the deepest dollar hole, so the capital needed."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    res = R12.simulate(d, opens, ps, 2, 2)
+    pnl = pd.Series([300 * x[0] for x in res], index=d.date).dropna()
+    cum = pnl.groupby(level=0).sum().cumsum()
+    hole = (cum - cum.cummax()).min()
+    print(f"$300 / $600 on the 2x-ATR stop, unlimited money: total ${cum.iloc[-1]:+,.0f} over {len(pnl)} trades; deepest fall "
+          f"from a high ${hole:,.0f}; lowest point vs the start ${cum.min():+,.0f} on {cum.idxmin().date()}")
+    print("  by year: " + "  ".join(f"{y} ${v:+,.0f}" for y, v in pnl.groupby(pnl.index.year).sum().items()))
+
+
 if __name__ == "__main__":
-    more_risk_12() if "--r12" in sys.argv else main()
+    fixed_usd_capital() if "--usdcap" in sys.argv else fixed_usd() if "--usd" in sys.argv else more_risk_12() if "--r12" in sys.argv else main()

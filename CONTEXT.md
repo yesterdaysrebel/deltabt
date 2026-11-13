@@ -174,6 +174,12 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**FIXED $300 RISK / $600 TARGET (2026-11-13, owner).** `fade_optimal_size.py --usd / --usdcap`, `out/fade_fixed_usd.txt`.
+Delta picks, real-bot fills, from $1,640, no compounding. 2x-ATR stop: target hit 14 of 1,022 (1%), stops 159, 24 h
+exits 849; +$4.74 a trade; broke 2025-04-11. 1x ATR: −$15.04 a trade, broke 2025-01-17; 0.5x ATR (3.8x the wallet in
+notional): −$47.95, broke 2025-03-22. With unlimited money the 2x-ATR plan ends +$4,848 but falls $7,838 first
+(2025 −$3,220, 2026 +$8,069): needs ~$8,000+ to survive at $300 a trade.
+
 **MORE RISK + MORE LEVERAGE + 1:2 ON THE LADDER (2026-11-13, owner).** `fade_optimal_size.py --r12`,
 `out/fade_more_risk_12.txt`. Delta picks, real-bot fills, 50% margin a day, risk 5-20%, up to 3x / 5x. 1:2 on the 2x-ATR
 stop (+0.016R): 5% $1,887 (3x) / $1,205 (5x, 124 liquidated); 10% $525 / $226; 15% $17 / $5; 20% $0. 1:2 on 1x ATR
