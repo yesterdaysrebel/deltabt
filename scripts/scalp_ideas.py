@@ -370,8 +370,57 @@ def round2() -> None:
     line("F short only the pair's first-hour laggard, 1.2 ATR, 0.6x", np.where(lag.to_numpy() & (dF <= 0.14), r, np.nan), yrs, t, base=bt)
 
 
+def round3() -> None:
+    """Fifth external answer (owner pasted 2026-11-13, model not named). Proposers' numbers. Proxies: 'above the coin's
+    90-day median funding' -> above the DEV median of fund_last over all picks (no per-coin history here); basis exits
+    need intraday premium (not here) so P3 uses the price parts only; P2 'top gainer among young coins' -> the best-
+    ranked young coin among the day's top-2 picks. An 'if it trades above X' cut fills like a stop (worse of X and the
+    minute's close)."""
+    p, hi, lo, cl = load()
+    n = len(p)
+    rows = np.arange(n)
+    yrs, t = p.year.astype(int).to_numpy(), p.time.to_numpy()
+    atr = p.dist.to_numpy() / 2
+    z = np.zeros(n, int)
+    W = cl.shape[1]
+    e0 = cl[:, 2]
+    base, _, _ = sim(hi, lo, cl, z, -1, 2 * atr)
+    print(f"ROUND 3: fifth external answer. Rule A picks Binance 2021-26, n {n}, realistic fills; same columns as round 1")
+    bt = line("rule A baseline: 2x ATR stop, 24 h", base, yrs, t)
+
+    def touch_cut(level, end):
+        m = first_after(hi >= np.asarray(level)[:, None], 2, end)
+        return m, np.maximum(level, cl[rows, np.minimum(m, W - 1)])
+    fl, oi = p.fund_last.to_numpy(float), p.oi_chg.to_numpy(float)
+    dv = np.isin(yrs, DEV)
+    ok1 = (fl > 0) & (fl > np.nanmedian(fl[dv])) & (oi < 0)
+    r, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, np.full(n, 0.025), extra=touch_cut(e0 * 1.01, 180))
+    line("P1 funding > 0 & > median & OI fell; 2.5% target, cut +1% by 03:00", np.where(ok1, r, np.nan), yrs, t, base=bt)
+    line("P1 same exits, all picks (no filter)", r, yrs, t, base=bt)
+    r1b = np.where(ok1, base, np.nan)
+    line("P1 filter only, rule A exits", r1b, yrs, t, base=bt)
+    young = p.age_days.to_numpy() <= 60
+    df = pd.DataFrame({"t": t, "rk": np.where(young, p["rank"].to_numpy(), 99)})
+    ok2 = young & (df.rk == df.groupby("t").rk.transform("min")).to_numpy()
+    r, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, np.full(n, 0.03), extra=touch_cut(e0 * 1.03, 360))
+    line("P2 young (<= 60 d) top gainer; 3% target, cut +3% by 06:00", np.where(ok2, r, np.nan), yrs, t, base=bt)
+    ok3 = p.prem_close.to_numpy(float) > 0.005
+    c3 = np.where(cl[:, 180] > e0 * 1.015, 180, BIG)
+    r, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, np.full(n, 0.03), extra=(c3, cl[:, 180]))
+    line("P3 premium > 0.5%; 3% target, cut at 03:00 if up > 1.5%", np.where(ok3, r, np.nan), yrs, t, base=bt)
+    c4 = np.where(cl[:, 360] > e0 * 0.99, 360, BIG)
+    r, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, np.full(n, 0.03), extra=(c4, cl[:, 360]))
+    line("P4 06:00 'proof of profit' (< +1% -> out), 3% target", r, yrs, t, base=bt)
+    r, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, extra=(c4, cl[:, 360]))
+    line("P4b same 06:00 cut, no 3% target", r, yrs, t, base=bt)
+    r, _, _ = sim(hi, lo, cl, z, +1, np.full(n, 0.03), np.full(n, 0.02), x_end=np.full(n, 240))
+    line("P5 LONG 00:03-04:00, -3% stop / +2% target", r, yrs, t)
+
+
 if __name__ == "__main__":
-    if "--round2" in sys.argv:
+    if "--round3" in sys.argv:
+        round3()
+    elif "--round2" in sys.argv:
         round2()
     else:
         main()

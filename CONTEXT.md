@@ -193,6 +193,9 @@ own thresholds, same bar: **0 pass.** Closest: DeepSeek A' (funding >= 0.03%, pr
 0.75x target, out 08:03): TEST +0.081R t 1.84 but 2024 -0.041, n 41/yr -- a funding-family lead like the earlier
 funding filter, not adopted. Gemini's top picks (08:03 fade +0.031R t 0.57; liquidity sweep +0.039R t 0.81) fail; long
 the opening wave -0.159R t -4.7. Several rules almost never fire on these picks (G3 n 1, DeepSeek A n 0, C n 5-11).
+Round 3 (`--round3` -> `out/scalp_ideas_round3.txt`): a fifth pasted answer (5 rules): **0 pass.** 06:00 "proof of
+profit" cut +0.014R TEST (rule A +0.019); funding+OI-falling filter n 13/yr; young-listing short -0.037R t -3.5; long
+00:03-04:00 -0.087R t -4.3. Total across 6 models: 47 rules, 0 pass, none with TEST t >= 2.
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
