@@ -179,6 +179,16 @@ each: $5,740, 14/20 green, worst drop 22% (month-end).
 trade, $2,562, drop 54%; 10% +$0.76, $2,419, drop 82%; 15% −$0.35..−0.44, ~$1,200; 20% −$1.0, $446-602. 5x changes
 nothing vs 3x (the notional rarely needs more). Dollars per trade peak at ~5% risk.
 
+**OWNER'S SCALP STYLE, IDEAS FROM OTHER MODELS (2026-11-13, owner "find ways to make what I am asking work, use diffrent
+models").** Prompt `out/review_pack/2026-11-13-scalp/PROMPT_SCALP.md` (self-contained, for pasting into external
+models; OpenRouter key now returns 401). Fable, Sonnet, Haiku answered (`reviews/`): all three say tight stop + quick
+target + high leverage cannot work here (bracket wins at ~S/(S+T), costs 0.3% round trip ~ the whole drift). Their 21
+testable rules in `scripts/scalp_ideas.py` -> `out/scalp_ideas.txt` (Binance 2021-26 rule A picks, realistic fills,
+bar: TEST 2024-26 each year > 0, t >= 2, beats baseline): **0 pass.** Best: BTC prev day down (+0.040R TEST, t 1.46,
+2024 -0.009); funding gate (+0.032, t 1.23). Clock exits 04/08/12 h with tighter stops, 48/72 h holds, 12 h profit
+lock, noon entry, long-the-pump-then-short, premium/taker/spot/L-S/listing-age filters all fail. Untested: top-5
+breadth (data has ranks 1-2 only), spot-hedged premium trade.
+
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
 +0.2R: 0% win 55% $2,610 drop 66%; 25% 59% $2,250; 50% 63% $2,875 drop 57%; 66% 66% $2,734 drop 52%; 75% 68% $2,486
