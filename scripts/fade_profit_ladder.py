@@ -302,7 +302,64 @@ def win_rate_map() -> None:
               f"{(mret > 0).sum():>3d}/22  {'never' if below is None else below.date()}")
 
 
-if __name__ == "__main__" and "--winmap" in sys.argv:
+def more_risk_23() -> None:
+    """Owner 2026-11-13: "raise risk and levrage and test, can we make more money per trade?" Plan: close 2/3 at +0.2R,
+    the rest to the 2x-ATR stop or 24 h. Fixed risk 5/10/15/20% (notional = risk / stop), leverage up to 3x or 5x, 50% of
+    the balance as margin a day. Liquidation (1/L - 2.5% above entry): if reached before the +0.2R take, the whole margin
+    is lost; if reached after it, the last third's margin. Real-bot fills, from $1,640, compounding."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    r = scale_out(d, opens, ps, [(2 / 3, 0.2)])
+    print("close 2/3 at +0.2R, rest to the stop or 24 h; 1,022 Delta picks, real-bot fills, from $1,640")
+    for risk in (0.05, 0.10, 0.15, 0.20):
+        for lev in (3, 5):
+            eq = hw = START
+            path, below, dead, liq, usd = {}, None, None, 0, []
+            for t, idx in d.groupby("date").groups.items():
+                idx = [i for i in idx if np.isfinite(r[i])]
+                pnl = 0.0
+                for i in idx:
+                    dist = d.dist.iat[i]
+                    margin_cap = 0.5 * eq / len(idx)
+                    notional = min(risk * eq / dist, lev * margin_cap)
+                    L = max(1.0, min(float(lev), notional / margin_cap)) if margin_cap > 0 else 1.0
+                    margin = notional / L
+                    liq_d = 1 / L - 0.025
+                    x = r[i] * notional * dist
+                    if liq_d < dist:
+                        a = ps[i]
+                        hi = np.where(np.isfinite(a[0]), a[0], -np.inf)
+                        lo = np.where(np.isfinite(a[1]), a[1], np.inf)
+                        e = pd.Series(a[2].astype(float)).ffill().to_numpy()[2]
+                        ml = np.nonzero(hi[3:] >= e * (1 + liq_d))[0]
+                        mt = np.nonzero(lo[3:] <= e * (1 - 0.2 * dist) * (1 - THR))[0]
+                        if len(ml):
+                            if not len(mt) or ml[0] <= mt[0]:
+                                liq += 1
+                                x = -margin
+                            elif ml[0] > mt[0]:
+                                liq += 1
+                                x = (2 / 3) * notional * (0.2 * dist - 2 * FEE - EXTRA) - margin / 3
+                    pnl += x
+                    usd.append(x)
+                eq = max(eq + pnl, 0.0)
+                hw = max(hw, eq)
+                path[t] = eq
+                if below is None and eq < FLOOR:
+                    below = t
+                if dead is None and eq < 1:
+                    dead = t
+            s = pd.Series(path)
+            u = np.array(usd)
+            print(f"  risk {100 * risk:3.0f}%, up to {lev}x: avg ${u.mean():+7.2f} a trade (wins avg ${u[u > 0].mean():+.0f}, "
+                  f"losses avg ${u[u <= 0].mean():+.0f}) -> ${s.iloc[-1]:>8,.0f}  drop {100 * (1 - s / s.cummax()).max():3.0f}%  "
+                  f"liquidated {liq}  under $1,000 {'never' if below is None else below.date()}"
+                  + (f"  $0 on {dead.date()}" if dead is not None else ""))
+
+
+if __name__ == "__main__" and "--risk23" in sys.argv:
+    more_risk_23()
+elif __name__ == "__main__" and "--winmap" in sys.argv:
     win_rate_map()
 elif __name__ == "__main__" and "--bank" in sys.argv:
     bank_big()

@@ -174,6 +174,11 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**2/3-AT-+0.2R LADDER WITH MORE RISK AND LEVERAGE (2026-11-13, owner "raise risk and leverage, more money per trade?").**
+`fade_profit_ladder.py --risk23`, `out/fade_risk23.txt`. Fixed risk, 3x / 5x caps, 50% margin a day: 5% avg +$0.90 a
+trade, $2,562, drop 54%; 10% +$0.76, $2,419, drop 82%; 15% −$0.35..−0.44, ~$1,200; 20% −$1.0, $446-602. 5x changes
+nothing vs 3x (the notional rarely needs more). Dollars per trade peak at ~5% risk.
+
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
 +0.2R: 0% win 55% $2,610 drop 66%; 25% 59% $2,250; 50% 63% $2,875 drop 57%; 66% 66% $2,734 drop 52%; 75% 68% $2,486
