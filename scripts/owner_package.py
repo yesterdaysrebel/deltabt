@@ -109,8 +109,61 @@ def target_1r() -> None:
               f"{100 * np.nanmean((r1 < -0.9)[m]):.0f}%  |  ending at 24 h {100 * np.nanmean(((r1 >= -0.9) & (r1 <= 0.9))[m]):.0f}%")
 
 
+def monthly() -> None:
+    """Owner 2026-11-13: "with 10% risk, max leverage, filter on, 0.5R target simulate bot in year 2025 and 2026 and
+    give me numbers each month". Funding >= 0.05% filter, close all at +0.5R, else 2x-ATR stop or 24 h, risk 10% of the
+    balance at the stop, leverage = the most that keeps liquidation >= 1.2x the stop away (margin 25% a trade).
+    Exit class from R: target (R > +0.4), stop (R < -0.9), else 24 h."""
+    d = L5.trades().reset_index(drop=True)
+    F = pd.read_parquet("out/binance_paths/delta_funding_daily.parquet")
+    d["f_prev"] = [F.at[t - pd.Timedelta(days=1), s] if (t - pd.Timedelta(days=1)) in F.index and s in F.columns else np.nan
+                   for t, s in zip(d.date, d.symbol)]
+    opens, ps = R12.paths(d)
+    r = np.where((d.f_prev >= 0.0005).to_numpy(), PL.scale_out(d, opens, ps, [(1.0, 0.5)]), np.nan)
+    eq, rows = START, []
+    for t, idx in d.groupby("date").groups.items():
+        pnl = 0.0
+        for i in idx:
+            if not np.isfinite(r[i]):
+                continue
+            sd = d.dist.iat[i]
+            lev = 1 / (1.2 * sd + 0.005)
+            notional = min(0.10 * eq / sd, lev * 0.25 * eq)
+            x = notional * sd * r[i]
+            pnl += x
+            rows.append(dict(month=t.strftime("%Y-%m"), pnl=x, r=r[i], lev=notional / (0.25 * eq), notional=notional,
+                             start=eq))
+        eq = max(eq + pnl, 0.0)
+        rows and rows[-1].update(end=eq)
+    df = pd.DataFrame(rows)
+    df["end"] = df.end.ffill()
+    print("BOT SIMULATION: funding >= 0.05% filter, +0.5R target, 10% risk, max safe leverage (liq >= 1.2x stop)")
+    print(f"Delta, real-bot fills, from ${START:,.0f}. Leverage = notional / margin (25% of balance per trade).\n")
+    print(f"{'month':8s} {'start':>8s} {'trades':>6s} {'won':>4s} {'lost':>4s} {'target':>6s} {'stop':>5s} {'24h':>4s} "
+          f"{'avg lev':>7s} {'P&L':>9s} {'end':>8s} {'month':>7s}")
+    bal = START
+    allm = pd.period_range("2025-01", "2026-10", freq="M").strftime("%Y-%m")
+    for m in allm:
+        g = df[df.month == m]
+        if g.empty:
+            print(f"{m:8s} {bal:8,.0f} {0:6d} {'':>4s} {'':>4s} {'':>6s} {'':>5s} {'':>4s} {'':>7s} {0:+9.2f} {bal:8,.0f} {0:+6.1f}%")
+            continue
+        p = g.pnl.sum()
+        print(f"{m:8s} {bal:8,.0f} {len(g):6d} {(g.pnl > 0).sum():4d} {(g.pnl <= 0).sum():4d} {(g.r > 0.4).sum():6d} "
+              f"{(g.r < -0.9).sum():5d} {((g.r >= -0.9) & (g.r <= 0.4)).sum():4d} {g.lev.mean():6.1f}x {p:+9.2f} "
+              f"{bal + p:8,.0f} {100 * p / bal:+6.1f}%")
+        bal += p
+    for y in ("2025", "2026"):
+        g = df[df.month.str.startswith(y)]
+        print(f"\n{y}: {len(g)} trades, won {(g.pnl > 0).sum()} ({100 * (g.pnl > 0).mean():.0f}%), P&L ${g.pnl.sum():+,.2f}, "
+              f"best trade ${g.pnl.max():+,.0f}, worst ${g.pnl.min():+,.0f}")
+    print(f"\nTOTAL: {len(df)} trades, ${START:,.0f} -> ${bal:,.0f}")
+
+
 if __name__ == "__main__":
-    if "--target1r" in sys.argv:
+    if "--monthly" in sys.argv:
+        monthly()
+    elif "--target1r" in sys.argv:
         target_1r()
     else:
         main()
