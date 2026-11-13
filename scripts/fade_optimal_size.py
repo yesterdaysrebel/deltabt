@@ -174,5 +174,34 @@ def fixed_usd_capital() -> None:
     print("  by year: " + "  ".join(f"{y} ${v:+,.0f}" for y, v in pnl.groupby(pnl.index.year).sum().items()))
 
 
+def quick_usd() -> None:
+    """Owner 2026-11-13: "how about quick with same params": QUICK (all closed at +0.2R) with a fixed $300 risk, so a target
+    win is about +$60; no compounding, from $1,640 (broke at <= $300), and with unlimited money."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    r = PL.scale_out(d, opens, ps, [(1.0, 0.2)])
+    pnl = pd.Series(300 * r, index=d.date).dropna()
+    wins = pnl[pnl > 0]
+    print(f"QUICK, $300 risk: {np.nanmean(r):+.3f}R = ${pnl.mean():+.2f} a trade; win {100 * (pnl > 0).mean():.0f}% "
+          f"(avg +${wins.mean():.0f}), losses avg ${pnl[pnl <= 0].mean():.0f}; full stops {(r <= -0.95).sum()}")
+    bal, broke, low = START, None, (START, None)
+    for t, v in pnl.items():
+        if broke is not None:
+            break
+        bal += v
+        if bal < low[0]:
+            low = (bal, t)
+        if bal <= 300:
+            broke = t
+    print(f"  from $1,640: " + (f"BROKE on {broke.date()}" if broke is not None else f"ends ${bal:,.0f}")
+          + f"; lowest ${low[0]:,.0f} on {low[1].date() if low[1] is not None else '-'}")
+    cum = pnl.groupby(level=0).sum().cumsum()
+    print(f"  unlimited money: total ${cum.iloc[-1]:+,.0f}; deepest fall from a high ${(cum - cum.cummax()).min():,.0f}; "
+          f"lowest vs start ${cum.min():+,.0f} on {cum.idxmin().date()}")
+    print("  by year: " + "  ".join(f"{y} ${v:+,.0f}" for y, v in pnl.groupby(pnl.index.year).sum().items()))
+    m = pnl.groupby(pnl.index.to_period("M")).sum()
+    print(f"  months: green {(m > 0).sum()}/{len(m)}, best ${m.max():+,.0f}, worst ${m.min():+,.0f}")
+
+
 if __name__ == "__main__":
-    fixed_usd_capital() if "--usdcap" in sys.argv else fixed_usd() if "--usd" in sys.argv else more_risk_12() if "--r12" in sys.argv else main()
+    quick_usd() if "--qusd" in sys.argv else fixed_usd_capital() if "--usdcap" in sys.argv else fixed_usd() if "--usd" in sys.argv else more_risk_12() if "--r12" in sys.argv else main()

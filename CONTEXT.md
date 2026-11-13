@@ -174,6 +174,10 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**QUICK AT A FIXED $300 RISK (2026-11-13, owner).** `fade_optimal_size.py --qusd`, `out/fade_quick_usd.txt`: +$2.94 a
+trade, win 76% (avg +$54), losses avg −$158, 84 full stops; from $1,640 broke 2025-04-12; unlimited money +$3,003 with a
+$3,223 fall first (2025 −$123, 2026 +$3,127); needs ~$4,000+.
+
 **FIXED $300 RISK / $600 TARGET (2026-11-13, owner).** `fade_optimal_size.py --usd / --usdcap`, `out/fade_fixed_usd.txt`.
 Delta picks, real-bot fills, from $1,640, no compounding. 2x-ATR stop: target hit 14 of 1,022 (1%), stops 159, 24 h
 exits 849; +$4.74 a trade; broke 2025-04-11. 1x ATR: −$15.04 a trade, broke 2025-01-17; 0.5x ATR (3.8x the wallet in
