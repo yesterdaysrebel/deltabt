@@ -49,14 +49,14 @@ def load():
     return p[ok].reset_index(drop=True), hi[ok], lo[ok], cl[ok]
 
 
-def sim(hi, lo, cl, e, side, stop, tgt=None, x_end=None, extra=None):
+def sim(hi, lo, cl, e, side, stop, tgt=None, x_end=None, extra=None, ent=None, fee_in=None, slip=None):
     """Vector trade. e: decision minute (array); fill at close of e+2. side -1 short / +1 long. stop, tgt: fractions
     from entry (tgt None = no target). x_end: last minute (array; default e+2+1440). extra: (minute, price) early exit or
     None. Returns R, kind (0 stop 1 target 2 time 3 extra)."""
     n, W = cl.shape
     rows = np.arange(n)
     e = np.broadcast_to(np.asarray(e), (n,)).astype(int) + 2
-    entry = cl[rows, e]
+    entry = cl[rows, e] if ent is None else np.asarray(ent, float)
     stop = np.broadcast_to(np.asarray(stop, float), (n,))
     end = np.minimum(np.broadcast_to(np.asarray(x_end if x_end is not None else e + DAY), (n,)).astype(int), W - 1)
     cols = np.arange(W)[None, :]
@@ -94,7 +94,7 @@ def sim(hi, lo, cl, e, side, stop, tgt=None, x_end=None, extra=None):
             xp[s] = np.maximum(sp[s], c) if side < 0 else np.minimum(sp[s], c)
         else:
             xp[s] = px[s] if np.ndim(px) else px
-    g = side * (xp / entry - 1) - FEE - FEE * xp / entry - EXTRA
+    g = side * (xp / entry - 1) - (FEE if fee_in is None else fee_in) - FEE * xp / entry - (EXTRA if slip is None else slip)
     return g / stop, kind, xmin
 
 
@@ -417,8 +417,101 @@ def round3() -> None:
     line("P5 LONG 00:03-04:00, -3% stop / +2% target", r, yrs, t)
 
 
+def round4() -> None:
+    """Sixth external answer (owner pasted 2026-11-13). Not testable here: funding cash in P&L (no trade-day funding in
+    this set), the intraday 'premium <= 0' exit (daily premium only), P1's 'next qualifying coin down the rank' (ranks
+    1-2 only), P6's 'top-10' universe. P3 maker entry: limit short at max(00:00 open, 00:03 close) x (1+off), valid W
+    minutes, fills when the high trades 0.05% through; entry fee 0.02% (Delta maker), exit side keeps taker fee +
+    half the spread (0.05%); unfilled picks are skipped and reported separately (adverse selection)."""
+    p, hi, lo, cl = load()
+    n = len(p)
+    rows = np.arange(n)
+    yrs, t = p.year.astype(int).to_numpy(), p.time.to_numpy()
+    atr = p.dist.to_numpy() / 2
+    z = np.zeros(n, int)
+    W = cl.shape[1]
+    e0 = cl[:, 2]
+    f = daily_feats(p)
+    dv = np.isin(yrs, DEV)
+    base, kb, _ = sim(hi, lo, cl, z, -1, 2 * atr)
+    print(f"ROUND 4: sixth external answer. Rule A picks Binance 2021-26, n {n}, realistic fills; same columns as round 1")
+    bt = line("rule A baseline: 2x ATR stop, 24 h", base, yrs, t)
+    fd, fl = p.fund_day.to_numpy(float), p.fund_last.to_numpy(float)
+
+    print("\nP1 funding-qualified (threshold on prev-day funding sum picked on DEV; last print >= +0.01%)")
+    sc, lab, m1 = dev_pick(base, yrs, [(f"prev-day funding sum >= {100 * th:.2f}%", (fd >= th) & (fl >= 0.0001))
+                                       for th in (0.0, 0.0005, 0.001, 0.002)])
+    for th in (0.0, 0.0005, 0.001, 0.002):
+        m = (fd >= th) & (fl >= 0.0001)
+        line(f"  funding sum >= {100 * th:.2f}%" + ("  <- DEV pick" if f"{100 * th:.2f}%" in lab else ""),
+             np.where(m, base, np.nan), yrs, t, base=bt)
+    q25, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, 0.5 * atr)
+    line(f"  DEV pick + owner-style +0.25R target", np.where(m1, q25, np.nan), yrs, t, base=bt)
+
+    print("\nP2 premium-qualified (prev-day closing premium; threshold picked on DEV; intraday premium exit NOT testable)")
+    pr = p.prem_close.to_numpy(float)
+    sc, lab2, m2 = dev_pick(base, yrs, [(f"premium >= {100 * th:.1f}%", pr >= th) for th in (0.002, 0.004, 0.008)])
+    for th in (0.002, 0.004, 0.008):
+        line(f"  premium >= {100 * th:.1f}%" + ("  <- DEV pick" if f"{100 * th:.1f}%" in lab2 else ""),
+             np.where(pr >= th, base, np.nan), yrs, t, base=bt)
+
+    print("\nP3 maker entry (limit above the market; grid shown, cell picked on DEV)")
+    ref = np.maximum(p.open.to_numpy(), e0)
+    cells = {}
+    for off in (0.001, 0.002, 0.004):
+        for win in (30, 60, 120):
+            lim = ref * (1 + off)
+            fm = first_after(hi >= (lim * 1.0005)[:, None], 2, win)
+            filled = fm < BIG
+            r, _, _ = sim(hi, lo, cl, np.minimum(fm, W - 3) - 2, -1, 2 * atr, ent=lim, fee_in=0.0002, slip=0.0005)
+            cells[(off, win)] = (filled, r)
+    best = max(cells, key=lambda k: np.nanmean(np.where(cells[k][0] & dv, cells[k][1], np.nan)))
+    for (off, win), (filled, r) in cells.items():
+        tag = "  <- DEV pick" if (off, win) == best else ""
+        print(f"    +{100 * off:.1f}% for {win:3d} min: filled {100 * filled.mean():3.0f}%; skipped picks under rule A "
+              f"{np.nanmean(base[~filled]):+.3f}R (TEST {np.nanmean(base[~filled & ~dv]):+.3f}R){tag}")
+        if tag:
+            line(f"  maker +{100 * off:.1f}% / {win} min, rule A exits", np.where(filled, r, np.nan), yrs, t, base=bt)
+            line(f"  same picks, market entry (paired)", np.where(filled, base, np.nan), yrs, t)
+            mk_f, mk_r = filled, r
+
+    print("\nP4 hold winners 24 h more (threshold at 24 h picked on DEV)")
+    r48, _, _ = sim(hi, lo, cl, z, -1, 2 * atr, x_end=np.full(n, 2 + 2 * DAY))
+    opts = []
+    for th in (0.0, 0.2, 0.3, 0.5):
+        ext = (kb == 2) & (base >= th)
+        opts.append((f"extend if >= +{th}R at 24 h", np.where(ext, r48, base)))
+    dsc = [(np.nanmean(r[dv]), lab_, r) for lab_, r in opts]
+    bl = max(dsc, key=lambda x: x[0])[1]
+    for lab_, r in opts:
+        line("  " + lab_ + ("  <- DEV pick" if lab_ == bl else ""), r, yrs, t, base=bt)
+        if lab_ == bl:
+            r4 = r
+
+    print("\nP5 second-leg pumps / P6 young no-spot (thresholds picked on DEV)")
+    ret3, pump = f.ret3.to_numpy(float), f.pump.to_numpy(float)
+    sc, lab5, m5 = dev_pick(base, yrs, [(f"3-day >= {int(100 * th)}% & prev day up", (ret3 >= th) & (pump > 0))
+                                        for th in (0.25, 0.4, 0.6)])
+    line(f"  P5 {lab5}", np.where(m5, base, np.nan), yrs, t, base=bt)
+    age, hs, sr = p.age_days.to_numpy(float), p.has_spot.to_numpy(), p.spot_ratio.to_numpy(float)
+    low_sr = (hs == 0) | (sr < np.nanmedian(sr[dv]))
+    sc, lab6, m6 = dev_pick(base, yrs, [(f"age {a}-{b} d & (no spot or low spot ratio)", (age >= a) & (age <= b) & low_sr)
+                                        for a, b in ((7, 45), (7, 90), (7, 180))])
+    line(f"  P6 {lab6}", np.where(m6, base, np.nan), yrs, t, base=bt)
+
+    print("\nSTACKED (the answer's 'realistic candidate'): P1 + P2 filters, maker entry, P4 extension")
+    r48m, _, _ = sim(hi, lo, cl, np.minimum(first_after(hi >= (ref * (1 + best[0]) * 1.0005)[:, None], 2, best[1]), W - 3) - 2,
+                     -1, 2 * atr, x_end=np.full(n, 2 + 2 * DAY), ent=ref * (1 + best[0]), fee_in=0.0002, slip=0.0005)
+    th4 = float(bl.split("+")[1].split("R")[0])
+    stk = np.where((mk_r >= th4), r48m, mk_r)
+    line("  P1 + maker + P4", np.where(m1 & mk_f, stk, np.nan), yrs, t, base=bt)
+    line("  P1 + P2 + maker + P4", np.where(m1 & m2 & mk_f, stk, np.nan), yrs, t, base=bt)
+
+
 if __name__ == "__main__":
-    if "--round3" in sys.argv:
+    if "--round4" in sys.argv:
+        round4()
+    elif "--round3" in sys.argv:
         round3()
     elif "--round2" in sys.argv:
         round2()

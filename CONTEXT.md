@@ -196,6 +196,14 @@ the opening wave -0.159R t -4.7. Several rules almost never fire on these picks 
 Round 3 (`--round3` -> `out/scalp_ideas_round3.txt`): a fifth pasted answer (5 rules): **0 pass.** 06:00 "proof of
 profit" cut +0.014R TEST (rule A +0.019); funding+OI-falling filter n 13/yr; young-listing short -0.037R t -3.5; long
 00:03-04:00 -0.087R t -4.3. Total across 6 models: 47 rules, 0 pass, none with TEST t >= 2.
+Round 4 (`--round4` -> `out/scalp_ideas_round4.txt`): a sixth pasted answer: **0 pass.** Maker entry (limit +0.2% above,
+30 min): +0.039R better than a market entry on the SAME filled picks, but the 30% never filled are the best shorts
+(+0.10R TEST), so per pick it nets about the same as rule A. Hold winners to 48 h: no gain. **Crowded-long family is the
+one recurring lead:** Binance prev-day funding sum >= 0.05/0.10/0.20% -> TEST +0.043/+0.056/+0.095R but 2024
+negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 -0.103. On DELTA's own 1,022 picks
+(real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
+(both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
+one that swapped years.)
 
 **LADDER WIN RATE vs MONEY, PARTIAL EXITS (2026-11-13, owner "need to improve ladders win rate, we should win mostly").**
 `fade_profit_ladder.py --winmap`, `out/fade_win_rate_map.txt`. Ladder 10/5/3, real-bot fills, Delta picks. Close X% at
