@@ -174,6 +174,12 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**BANK BIG OPEN PROFITS — WORSE (2026-11-13, owner "by holding 24h we lost 200$ profit and closed at 40$": real ARIA
+11-12, open +$194 at 14:00 UTC, closed +$39.55 / +0.27R).** `fade_profit_ladder.py --bank`, `out/fade_bank_big.txt`. Same
+1,022 Delta picks, real-bot fills: hold +0.021R (ladder $2,610); close all at +0.5R +0.014R ($1,810), +0.75R +0.004R
+($1,035), +1R +0.012R ($1,645, reached by ~10%), +1.5R +0.013R ($1,559); trail from +1R 0.5R/0.3R behind +0.009/+0.005R
+($1,433 / $1,029). Trades that reach +1R usually keep falling; capping them costs more than days like ARIA give back.
+
 **LADDER AT 5x AND 15% RISK (2026-11-12, owner).** `fade_ladder_5x.py --r15`, `out/fade_ladder_5x_r15.txt`. Delta picks,
 $1,640: fixed 15% -> $181 (drop 99%, worst month −83%, under $1,000 on 2025-01-21, 135 liquidations); ladder
 15/7.5/4.5% -> $1,904 (drop 77%, 2025 end $631). 3.4x full Kelly (4.4%).

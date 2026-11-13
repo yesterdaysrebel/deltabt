@@ -267,5 +267,22 @@ def as_today() -> None:
                   + f"  floor {'never' if below is None else below.date()}" + (f"  $0 on {dead.index[0].date()}" if len(dead) else ""))
 
 
-if __name__ == "__main__":
+def bank_big() -> None:
+    """Owner 2026-11-13: "by holding 24h we lost 200$ profit and closed at 40$ yesterday" (ARIA: +1.2R open at 14:00 UTC,
+    closed +0.27R). Full exit at +0.5R / +0.75R / +1R / +1.5R, and a trail that only starts at +1R."""
+    d = L5.trades().reset_index(drop=True)
+    opens, ps = R12.paths(d)
+    rules = [("ladder", "ladder 10/5/3 (today)"), (0.03, "fixed 3%")]
+    show("TODAY (hold to 24 h)", d, scale_out(d, opens, ps, []), rules)
+    for lvl in (0.5, 0.75, 1.0, 1.5):
+        r = scale_out(d, opens, ps, [(1.0, lvl)])
+        hit = np.nanmean(r >= lvl - 0.05)
+        show(f"close ALL at +{lvl}R (reached by ~{100 * hit:.0f}% of trades)", d, r, rules)
+    show("trail 0.5R behind the best price, from +1R", d, trailing(d, opens, ps, 1.0, 0.5), rules)
+    show("trail 0.3R behind the best price, from +1R", d, trailing(d, opens, ps, 1.0, 0.3), rules)
+
+
+if __name__ == "__main__" and "--bank" in sys.argv:
+    bank_big()
+elif __name__ == "__main__":
     as_today() if "--today" in sys.argv else lev30() if "--lev30" in sys.argv else lev_main() if "--lev" in sys.argv else main()
