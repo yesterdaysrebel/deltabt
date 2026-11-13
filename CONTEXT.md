@@ -174,6 +174,14 @@ Funding collection (timing-fixed 2026-11-11, see below): $4,094 (+173%), 2025 +3
 months green, worst month −14%. Monthly correlation ladder vs funding +0.25; both red in 2 of 20 months; half in
 each: $5,740, 14/20 green, worst drop 22% (month-end).
 
+**SKIP-NEGATIVE-FUNDING FILTER, RE-CHECKED ON LADDER SIZING + REAL TRADES — NOT ADOPTED (2026-11-13).**
+`scripts/fade_funding_filter.py`, `out/fade_funding_filter.txt`, real/paper trades in `out/fade_real_trades_2026-11-13.json`.
+Backtest (1,022 Delta picks, real-bot fills): keeps 46%; rule A +0.021 -> +0.038R (t 1.16) but it SWAPS years: 2025
+−0.017 -> +0.050, 2026 +0.067 -> +0.027 (the skipped picks made +0.114R in 2026). Ladder $2,610 -> $2,159, drop 66% ->
+48%, never under $1,000; fixed 5% $3,035 (drop 41%). QUICK: no gain (+0.010 -> +0.011R). Live 10-29..11-13 (2026-like):
+paper A kept +0.028R vs skipped +0.227R; QUICK kept +0.035 vs skipped +0.128; real kept −$26.44 vs skipped +$40.79
+(ARIA 11-12 at −0.018% funding). Smoother because it trades half as often, not because it picks better.
+
 **QUICK AT A FIXED $300 RISK (2026-11-13, owner).** `fade_optimal_size.py --qusd`, `out/fade_quick_usd.txt`: +$2.94 a
 trade, win 76% (avg +$54), losses avg −$158, 84 full stops; from $1,640 broke 2025-04-12; unlimited money +$3,003 with a
 $3,223 fall first (2025 −$123, 2026 +$3,127); needs ~$4,000+.

@@ -1,0 +1,92 @@
+BACKTEST: 1022 Delta picks; funding known for 100%; the filter keeps 474 (46%)
+
+  LADDER / rule A
+    all picks                n 1022  +0.021R t +0.97  win  55% | 2025 -0.017  2026 +0.067
+    skip negative funding    n  474  +0.038R t +1.16  win  54% | 2025 +0.050  2026 +0.027
+    only the SKIPPED ones    n  548  +0.006R t +0.22  win  56% | 2025 -0.062  2026 +0.114
+    all picks                ladder 10/5/3 -> $  2,610  2025 end $    796  worst drop  66%  green 10/22  under $1,000 2025-04-12
+    all picks                fixed 3%      -> $  2,430  2025 end $  1,109  worst drop  57%  green 11/22  under $1,000 2025-08-19
+    all picks                fixed 5%      -> $  2,438  2025 end $    765  worst drop  77%  green 10/22  under $1,000 2025-05-14
+    skip negative funding    ladder 10/5/3 -> $  2,159  2025 end $  2,126  worst drop  48%  green 12/22  under $1,000 never
+    skip negative funding    fixed 3%      -> $  2,522  2025 end $  2,195  worst drop  25%  green 12/22  under $1,000 never
+    skip negative funding    fixed 5%      -> $  3,035  2025 end $  2,558  worst drop  41%  green 12/22  under $1,000 never
+
+  QUICK
+    all picks                n 1022  +0.010R t +0.86  win  76% | 2025 -0.001  2026 +0.023
+    skip negative funding    n  474  +0.011R t +0.66  win  76% | 2025 +0.011  2026 +0.011
+    only the SKIPPED ones    n  548  +0.009R t +0.57  win  76% | 2025 -0.009  2026 +0.036
+    all picks                ladder 10/5/3 -> $  1,737  2025 end $  1,160  worst drop  52%  green 13/22  under $1,000 2026-01-20
+    all picks                fixed 3%      -> $  2,071  2025 end $  1,569  worst drop  28%  green 13/22  under $1,000 never
+    all picks                fixed 5%      -> $  2,262  2025 end $  1,472  worst drop  44%  green 13/22  under $1,000 2026-01-30
+    skip negative funding    ladder 10/5/3 -> $  1,545  2025 end $  1,541  worst drop  44%  green 9/22  under $1,000 never
+    skip negative funding    fixed 3%      -> $  1,865  2025 end $  1,748  worst drop  25%  green 10/22  under $1,000 never
+    skip negative funding    fixed 5%      -> $  1,972  2025 end $  1,792  worst drop  39%  green 10/22  under $1,000 never
+
+REAL AND PAPER TRADES 2026-10-29..11-13 (closed), funding the day before entry
+
+  PAPER A: 23 trades, funding known 23; the filter would SKIP 8
+    kept    : n 15  mean +0.028R  total +0.42R  $+1.77
+    skipped : n  8  mean +0.227R  total +1.81R  $+8.91
+      2026-10-29 EVAAUSD      TIME    +1.04R $   +5.14   funding day before +0.278%  keep
+      2026-10-29 INITUSD      TIME    +0.11R $   +0.53   funding day before +0.472%  keep
+      2026-10-30 BEATUSD      TIME    -0.20R $   -0.98   funding day before +0.281%  keep
+      2026-10-30 PARTIUSD     TIME    +0.73R $   +3.43   funding day before -1.007%  SKIP
+      2026-10-31 SOPHUSD      TIME    +1.20R $   +6.14   funding day before -2.082%  SKIP
+      2026-10-31 AINUSD       STOP    -1.01R $   -4.48   funding day before +0.361%  keep
+      2026-11-01 EVAAUSD      TIME    +0.45R $   +2.21   funding day before +0.346%  keep
+      2026-11-02 ESPORTSUSD   TIME    +0.89R $   +4.44   funding day before +0.416%  keep
+      2026-11-03 EVAAUSD      TIME    +0.02R $   +0.10   funding day before +0.243%  keep
+      2026-11-03 ARIAUSD      TIME    -0.16R $   -0.82   funding day before +0.018%  keep
+      2026-11-04 BMTUSD       TIME    -0.23R $   -1.23   funding day before -3.980%  SKIP
+      2026-11-04 AIOUSD       TIME    -0.21R $   -0.98   funding day before +0.064%  keep
+      2026-11-05 INITUSD      TIME    +0.08R $   +0.36   funding day before -0.778%  SKIP
+      2026-11-05 CAPUSD       TIME    -0.22R $   -0.75   funding day before +0.404%  keep
+      2026-11-06 CAPUSD       TIME    +0.17R $   +0.65   funding day before +0.523%  keep
+      2026-11-06 ARIAUSD      TIME    +0.24R $   +1.22   funding day before -0.014%  SKIP
+      2026-11-07 AIOUSD       TIME    -0.11R $   -0.54   funding day before +0.030%  keep
+      2026-11-09 AIOTUSD      TIME    +0.01R $   +0.04   funding day before +0.140%  keep
+      2026-11-10 INITUSD      STOP    -1.09R $   -5.04   funding day before -2.856%  SKIP
+      2026-11-10 PIEVERSEUSD  TIME    +0.63R $   +2.01   funding day before +0.283%  keep
+      2026-11-11 ARIAUSD      STOP    -1.00R $   -4.79   funding day before +0.067%  keep
+      2026-11-11 INITUSD      TIME    +0.59R $   +2.67   funding day before -21.008%  SKIP
+      2026-11-12 ARIAUSD      TIME    +0.29R $   +1.35   funding day before -0.018%  SKIP
+
+  PAPER QUICK: 24 trades, funding known 24; the filter would SKIP 8
+    kept    : n 16  mean +0.035R  total +0.56R  $+1.95
+    skipped : n  8  mean +0.128R  total +1.03R  $+4.84
+      2026-10-29 INITUSD      TARGET  +0.20R $   +0.91   funding day before +0.472%  keep
+      2026-10-29 EVAAUSD      TARGET  +0.19R $   +0.97   funding day before +0.278%  keep
+      2026-10-30 BEATUSD      TARGET  +0.20R $   +0.96   funding day before +0.281%  keep
+      2026-10-30 PARTIUSD     TARGET  +0.20R $   +0.91   funding day before -1.007%  SKIP
+      2026-10-31 SOPHUSD      TARGET  +0.20R $   +0.99   funding day before -2.082%  SKIP
+      2026-10-31 AINUSD       STOP    -1.01R $   -4.48   funding day before +0.361%  keep
+      2026-11-01 EVAAUSD      TARGET  +0.20R $   +0.96   funding day before +0.346%  keep
+      2026-11-02 ESPORTSUSD   TARGET  +0.19R $   +0.97   funding day before +0.416%  keep
+      2026-11-03 EVAAUSD      TIME    +0.02R $   +0.09   funding day before +0.243%  keep
+      2026-11-03 ARIAUSD      TARGET  +0.20R $   +0.93   funding day before +0.018%  keep
+      2026-11-04 AIOUSD       TARGET  +0.19R $   +0.93   funding day before +0.064%  keep
+      2026-11-04 BMTUSD       TIME    -0.23R $   -1.16   funding day before -3.980%  SKIP
+      2026-11-05 INITUSD      TIME    +0.08R $   +0.36   funding day before -0.778%  SKIP
+      2026-11-05 CAPUSD       TARGET  +0.20R $   +0.68   funding day before +0.404%  keep
+      2026-11-06 ARIAUSD      TARGET  +0.20R $   +1.00   funding day before -0.014%  SKIP
+      2026-11-06 CAPUSD       TARGET  +0.20R $   +0.77   funding day before +0.523%  keep
+      2026-11-07 AIOUSD       TARGET  +0.20R $   +0.95   funding day before +0.030%  keep
+      2026-11-09 AIOTUSD      TARGET  +0.19R $   +0.53   funding day before +0.140%  keep
+      2026-11-10 INITUSD      TARGET  +0.20R $   +0.92   funding day before -2.856%  SKIP
+      2026-11-10 PIEVERSEUSD  TARGET  +0.19R $   +0.62   funding day before +0.283%  keep
+      2026-11-11 ARIAUSD      STOP    -1.00R $   -4.79   funding day before +0.067%  keep
+      2026-11-11 INITUSD      TARGET  +0.20R $   +0.89   funding day before -21.008%  SKIP
+      2026-11-12 ARIAUSD      TARGET  +0.20R $   +0.93   funding day before -0.018%  SKIP
+      2026-11-13 HANAUSD      TARGET  +0.20R $   +0.94   funding day before +0.098%  keep
+
+  REAL: 8 trades, funding known 8; the filter would SKIP 2
+    kept    : n  6  mean -0.137R  total -0.82R  $-26.44
+    skipped : n  2  mean +0.259R  total +0.52R  $+40.79
+      2026-11-03 ARIAUSD      TIME    -0.16R $   -0.81   funding day before +0.018%  keep
+      2026-11-04 AIOUSD       TIME    -0.22R $   -1.08   funding day before +0.064%  keep
+      2026-11-06 ARIAUSD      TIME    +0.25R $   +1.24   funding day before -0.014%  SKIP
+      2026-11-07 AIOUSD       TIME    -0.09R $   -0.43   funding day before +0.030%  keep
+      2026-11-09 AIOTUSD      MARGIN  -0.06R $   -0.16   funding day before +0.140%  keep
+      2026-11-10 PIEVERSEUSD  TIME    +0.64R $  +98.36   funding day before +0.283%  keep
+      2026-11-11 ARIAUSD      STOP_LOSS -0.94R $ -122.33   funding day before +0.067%  keep
+      2026-11-12 ARIAUSD      TIME    +0.27R $  +39.55   funding day before -0.018%  SKIP
