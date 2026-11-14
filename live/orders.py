@@ -210,4 +210,8 @@ class OrderRequest:
         if (self.bracket_stop_loss_price is not None
                 or self.bracket_take_profit_price is not None):
             payload["stop_trigger_method"] = self.stop_trigger_method.value
+            # Delta's documented name for a BRACKET's trigger (docs.delta.exchange, Place Order, 2026-11-15). Until
+            # then only `stop_trigger_method` was sent, which Delta may ignore for brackets (default: mark price) --
+            # harmless for rule A (it wants mark). Both are sent; the spike run's probe reads the leg back.
+            payload["bracket_stop_trigger_method"] = self.stop_trigger_method.value
         return payload

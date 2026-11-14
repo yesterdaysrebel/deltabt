@@ -204,6 +204,8 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**RUN 4 BUILT (2026-11-15), NOT DEPLOYED:** `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
+
 **20x SPIKE VERSION — CHOSEN BY THE OWNER 2026-11-15 FOR THE NEXT REAL BOT; numbers verified twice.** Rule: rule A's
 two picks; a resting limit sell 5% above the 00:03 close (valid to 24:00, fills when a 1m high trades 0.05% through);
 50% of the balance as isolated margin at 20x (Delta per-coin limits: 20x only up to max_leverage_notional, $50k on most,

@@ -29,6 +29,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Mapping
 
 import requests
@@ -429,3 +430,49 @@ class LiveClient:
                 last = VenueUnavailable(f"{type(exc).__name__} on /v2/orders")
             time.sleep(min(2.0 ** attempt, 8.0))
         raise VenueUnavailable(f"giving up on cancel {order_id}: {last}")
+
+    # -- edits (added 2026-11-15 for the spike run: docs.delta.exchange, "Edit Order" and "Add/Remove Position Margin")
+
+    def edit_stop_price(self, order_id: int, product_id: int, stop_price: Decimal | str) -> dict:
+        """Move a resting stop order's trigger (PUT /v2/orders: id, product_id, stop_price).
+
+        Idempotent: setting the same trigger twice leaves the same order, so it is RETRIED on a transport error or
+        a 5xx/429 like a cancel. The caller reads the order back (get_pending_orders) to confirm the new trigger.
+        """
+        body = encode_body({"id": int(order_id), "product_id": int(product_id), "stop_price": _price_str(stop_price)})
+        last: Exception | None = None
+        for attempt in range(self.max_retries):
+            try:
+                return self._parse(self._send_once("PUT", "/v2/orders", "", body), "/v2/orders")
+            except VenueUnavailable as exc:
+                last = exc
+            except requests.RequestException as exc:
+                last = VenueUnavailable(f"{type(exc).__name__} on PUT /v2/orders")
+            time.sleep(min(2.0 ** attempt, 8.0))
+        raise VenueUnavailable(f"giving up on editing stop {order_id}: {last}")
+
+    def add_position_margin(self, product_id: int, delta_margin: float) -> dict:
+        """Add isolated margin to an open position (POST /v2/positions/change_margin: product_id, delta_margin;
+        positive adds). Returns Delta's position row (margin, liquidation_price, ...).
+
+        NOT idempotent -- a resend would add the margin twice -- so it is sent ONCE: an unobserved outcome raises
+        AmbiguousWrite and the caller reads the position's margin back before deciding anything."""
+        if not delta_margin > 0:
+            raise ValueError("add_position_margin only adds (delta_margin > 0)")
+        path = "/v2/positions/change_margin"
+        body = encode_body({"product_id": int(product_id), "delta_margin": f"{float(delta_margin):.2f}"})
+        try:
+            resp = self._send_once("POST", path, "", body)
+        except requests.RequestException as exc:
+            raise AmbiguousWrite(f"add margin {delta_margin:.2f} on product {product_id}: {type(exc).__name__}; "
+                                 "read the position's margin before retrying") from exc
+        try:
+            return self._parse(resp, path)
+        except VenueUnavailable as exc:
+            raise AmbiguousWrite(f"add margin {delta_margin:.2f} on product {product_id}: {exc}; "
+                                 "read the position's margin before retrying") from exc
+
+
+def _price_str(value) -> str:
+    """A price as Delta wants it: a plain decimal string."""
+    return format(Decimal(str(value)).normalize(), "f")
