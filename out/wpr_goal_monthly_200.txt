@@ -1,0 +1,10 @@
+MONTHLY GOAL +$2,000, +$200 a trade, whole balance as margin, from $1,600. 15m %R(140) cross + SuperTrend, 10 large coins. One run per start month (64 runs, 2021-01..), until bust or data end
+
+PROFITS STAY IN THE ACCOUNT
+  10x: busted in 100% of runs, median 1 months in | survived 3+ months   3% | months that hit +$2,000: median 0 per run (of 1 months traded) | money out + left, median $0, mean $0 (put in $1,600)
+  20x: busted in 100% of runs, median 1 months in | survived 3+ months   0% | months that hit +$2,000: median 0 per run (of 1 months traded) | money out + left, median $0, mean $0 (put in $1,600)
+
+PROFITS WITHDRAWN EACH MONTH (always trades from $1,600)
+  10x: busted in 100% of runs, median 1 months in | survived 3+ months   3% | months that hit +$2,000: median 0 per run (of 1 months traded) | money out + left, median $0, mean $60 (put in $1,600)
+  20x: busted in 100% of runs, median 1 months in | survived 3+ months   0% | months that hit +$2,000: median 0 per run (of 1 months traded) | money out + left, median $0, mean $32 (put in $1,600)
+

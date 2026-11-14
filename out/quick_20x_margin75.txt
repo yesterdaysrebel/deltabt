@@ -1,0 +1,63 @@
+75% OF THE BALANCE AS MARGIN, 20x, ONE TRADE A DAY, stop +2.25%, from $3,184. Position = 75% x balance / 5.12%,
+at most $50,000 (Delta's 20x limit). A stop costs ~38% of the balance while the position is under the limit.
+
+A) THE REAL PICKS 2026-10-29..11-14
+  first pick of the day  target $500 hard stops none : 6 targets, 9 stops, 0 skipped -> $153 (lowest $153)
+  first pick of the day  target $500 hard stops week : 5 targets, 4 stops, 6 skipped -> $1,301 (lowest $1,301)
+  first pick of the day  target $500 hard stops month: 5 targets, 2 stops, 8 skipped -> $3,320 (lowest $1,820)
+  first pick of the day  target $1,000 hard stops none : 7 targets, 8 stops, 0 skipped -> $1,687 (lowest $687)
+  first pick of the day  target $1,000 hard stops week : 5 targets, 4 stops, 6 skipped -> $3,077 (lowest $2,631)
+  first pick of the day  target $1,000 hard stops month: 5 targets, 2 stops, 8 skipped -> $5,631 (lowest $2,631)
+  second pick of the day target $500 hard stops none : 9 targets, 6 stops, 0 skipped -> $1,700 (lowest $700)
+  second pick of the day target $500 hard stops week : 6 targets, 3 stops, 6 skipped -> $2,354 (lowest $2,354)
+  second pick of the day target $500 hard stops month: 7 targets, 1 stops, 7 skipped -> $5,407 (lowest $3,184)
+  second pick of the day target $1,000 hard stops none : 7 targets, 8 stops, 0 skipped -> $1,687 (lowest $687)
+  second pick of the day target $1,000 hard stops week : 6 targets, 4 stops, 5 skipped -> $4,077 (lowest $3,184)
+  second pick of the day target $1,000 hard stops month: 6 targets, 2 stops, 7 skipped -> $6,631 (lowest $3,184)
+
+  TRADE BY TRADE (first pick of the day, target $1,000, hard stops per week)
+  day        coin      balance contracts position      entry fall%     target       stop tgt hit stop hit   result     P&L
+  Thu 10-29  EVAA        3,184    32,282   46,641     1.4448  2.34    1.41093    1.47731   00:35    01:46   TARGET   +1000
+  Fri 10-30  BEAT        4,184    49,020   50,000      0.102  2.20   0.099756   0.104295   00:18    03:51   TARGET   +1000
+  Sat 10-31  AIN         5,184     2,769   50,000     0.1806  2.20   0.176627   0.184664     -      00:16     STOP   -1277
+  Sun 11-01  AIN         3,907     2,136   50,000    0.23404  2.20   0.228891   0.239306   02:16    00:49     STOP   -1277
+  Mon 11-02  AIN         2,631     1,331   38,534    0.28942  2.80    0.28133   0.295932   03:05      -     TARGET   +1000
+  Tue 11-03  ARIA        3,631    43,156   50,000    0.11586  2.20   0.113311   0.118467   00:55    01:22   TARGET   +1000
+  Wed 11-04  AIO         4,631    13,785   50,000    0.03627  2.20  0.0354721  0.0370861   00:20    04:30   TARGET   +1000
+  Fri 11-06  ARIA        5,631   skipped (3 wins in a row: off until next week)
+  Sat 11-07  AIO         5,631   skipped (3 wins in a row: off until next week)
+  Mon 11-09  AIOT        5,631     3,075   50,000    0.16258  2.20   0.159003   0.166238   00:21    00:09     STOP   -1277
+  Tue 11-10  PIEVERSE    4,354     2,461   50,000     2.0318  2.20     1.9871    2.07752   01:03    00:09     STOP   -1277
+  Wed 11-11  ARIA        3,077   skipped (2 stops: off until next week)
+  Thu 11-12  ARIA        3,077   skipped (2 stops: off until next week)
+  Fri 11-13  HANA        3,077   skipped (2 stops: off until next week)
+  Sat 11-14  SOPH        3,077   skipped (2 stops: off until next week)
+  -> $3,077
+
+  TRADE BY TRADE (second pick of the day, target $1,000, hard stops per week)
+  day        coin      balance contracts position      entry fall%     target       stop tgt hit stop hit   result     P&L
+  Thu 10-29  INIT        3,184    20,813   46,641    0.22409  2.34   0.218837   0.229132   00:06    10:54   TARGET   +1000
+  Fri 10-30  PARTI       4,184     8,365   50,000    0.05977  2.20  0.0584551  0.0611148   00:18      -     TARGET   +1000
+  Sat 10-31  SOPH        5,184   229,991   50,000   0.002174  2.20 0.00212617 0.00222292   01:01    00:22     STOP   -1277
+  Sun 11-01  EVAA        3,907    35,061   50,000     1.4261  2.20    1.39473    1.45819   00:11    07:05   TARGET   +1000
+  Mon 11-02  ESPORTS     4,907    28,852   50,000    0.01733  2.20  0.0169487  0.0177199   00:01    00:00     STOP   -1277
+  Tue 11-03  ARIA        3,631    43,156   50,000    0.11586  2.20   0.113311   0.118467   00:55    01:22   TARGET   +1000
+  Wed 11-04  AIO         4,631    13,785   50,000    0.03627  2.20  0.0354721  0.0370861   00:20    04:30   TARGET   +1000
+  Fri 11-06  ARIA        5,631    31,590   50,000    0.15828  2.20   0.154798   0.161841   00:48      -     TARGET   +1000
+  Sat 11-07  AIO         6,631   skipped (3 wins in a row: off until next week)
+  Mon 11-09  AIOT        6,631     3,075   50,000    0.16258  2.20   0.159003   0.166238   00:21    00:09     STOP   -1277
+  Tue 11-10  PIEVERSE    5,354     2,461   50,000     2.0318  2.20     1.9871    2.07752   01:03    00:09     STOP   -1277
+  Wed 11-11  ARIA        4,077   skipped (2 stops: off until next week)
+  Thu 11-12  ARIA        4,077   skipped (2 stops: off until next week)
+  Fri 11-13  HANA        4,077   skipped (2 stops: off until next week)
+  Sat 11-14  SOPH        4,077   skipped (2 stops: off until next week)
+  -> $4,077
+
+B) THE FULL HISTORY (first pick each day, Delta 2025-01..2026-10), target = the fall that makes $500 / $1,000 at the start, scaled to the balance
+                target hard stops | from Jan 2025  lowest taken  hit | 21 monthly starts: under $500 up after 3 mo median after 3 mo
+     $500 (1.27% fall)       none |            99      99    55  64% |                     20 of 21       0 of 21                89
+     $500 (1.27% fall)       week |            95      95    38  61% |                     20 of 21       1 of 21                95
+     $500 (1.27% fall)      month |            98      98    26  54% |                     19 of 21       6 of 21             1,173
+   $1,000 (2.34% fall)       none |            68      68    30  43% |                     20 of 21       2 of 21                88
+   $1,000 (2.34% fall)       week |            64      64    30  43% |                     20 of 21       2 of 21                80
+   $1,000 (2.34% fall)      month |            72      72    26  42% |                     19 of 21       3 of 21               754

@@ -1,0 +1,89 @@
+50% margin, 20x (~$31,094 position on $3,184), SELL THE SPIKE +5%, TARGET +$500, stop +2.25%, lock +$200 after a 1% fall,
+one position at a time, balance compounds. HARD STOPS: after N wins in a row (target or locked) or M full stops,
+no new trades until the next week / month.
+
+  hard stop                      | real picks Oct29-Nov14   T/L/S/skip | history from Jan 2025  lowest | 21 monthly starts: under $1,000 up after 3 mo median 3 mo median 6 mo
+  none                           |                  6,420 10/2/2/0   |                 1,541     312 |                       20 of 21       6 of 21       1,921       2,026
+  per week: 3 wins / 2 stops     |                  6,000  7/1/1/5   |                 1,301     727 |                       20 of 21       7 of 21       1,801       2,470
+  per week: 2 wins / 2 stops     |                  5,078  5/1/1/7   |                   996     609 |                       21 of 21       1 of 21       1,916       1,770
+  per week: 3 wins / 1 stops     |                  5,000  5/1/1/7   |                 1,438     670 |                       17 of 21       4 of 21       2,219       2,096
+  per week: - / 2 stops          |                  6,420 10/2/2/0   |                 1,344     612 |                       20 of 21       6 of 21       2,116       2,083
+  per week: 3 wins / -           |                  6,000  7/1/1/5   |                 1,498     469 |                       20 of 21       4 of 21       2,415       2,615
+  per month: 3 wins / 2 stops    |                  2,934  3/1/2/8   |                 1,521     723 |                        4 of 21       9 of 21       2,542       2,968
+  per month: 2 wins / 2 stops    |                  2,618  2/1/2/9   |                   951     908 |                        4 of 21       9 of 21       2,954       2,450
+  per month: 3 wins / 1 stops    |                  3,677  3/1/1/9   |                   700     700 |                       10 of 21       7 of 21       2,415       3,057
+  per month: - / 2 stops         |                  3,257  4/1/2/7   |                 2,754     852 |                        3 of 21       4 of 21       2,149       2,107
+  per month: 3 wins / -          |                  4,106  5/2/2/5   |                 1,837     551 |                        8 of 21       6 of 21       2,916       2,797
+
+TRADE BY TRADE, real picks, hard stops per week: 3 wins in a row / 2 stops
+  day        coin      balance contracts    sell at filled     target       stop  result closed     P&L
+  Thu 10-29  EVAA        3,184    20,484    1.51799  01:46    1.49175    1.55214  TARGET  01:47    +500
+  Thu 10-29  INIT        3,684    15,425   0.233237  10:55   0.229715   0.238484  LOCKED  11:11    +164
+  Fri 10-30  BEAT        3,848    34,548    0.10878  15:25   0.107202   0.111228  TARGET  15:35    +500
+  Fri 10-30  PARTI       4,348   never rose 5%: no trade
+  Sat 10-31  AIN         4,348   skipped: 3 wins in a row, off until next week
+  Sat 10-31  SOPH        4,348   never rose 5%: no trade
+  Sun 11-01  AIN         4,348   skipped: 3 wins in a row, off until next week
+  Sun 11-01  EVAA        4,348   skipped: 3 wins in a row, off until next week
+  Mon 11-02  AIN         4,348   never rose 5%: no trade
+  Mon 11-02  ESPORTS     4,348    19,213  0.0178605  00:05  0.0175788  0.0182624    STOP  00:06    -849
+  Tue 11-03  ARIA        3,500    28,163   0.121349  01:56   0.119428   0.124079  TARGET  02:08    +500
+  Wed 11-04  AIO         4,000    10,313  0.0378735  05:26  0.0373432  0.0387257  TARGET  05:27    +500
+  Fri 11-06  ARIA        4,500   never rose 5%: no trade
+  Sat 11-07  AIO         4,500   never rose 5%: no trade
+  Mon 11-09  AIOT        4,500     2,533   0.173481  08:18   0.171299   0.177384  TARGET  08:21    +500
+  Tue 11-10  PIEVERSE    5,000     1,795    2.13139  00:52    2.10099    2.17935  TARGET  00:53    +500
+  Wed 11-11  ARIA        5,500    23,367   0.228344  04:55    0.22593   0.233481  TARGET  05:03    +500
+  Thu 11-12  ARIA        6,000   never rose 5%: no trade
+  Fri 11-13  HANA        6,000   skipped: 3 wins in a row, off until next week
+  Sat 11-14  SOPH        6,000   skipped: 3 wins in a row, off until next week
+  -> $6,000
+
+TRADE BY TRADE, real picks, hard stops per month: 3 wins in a row / 2 stops
+  day        coin      balance contracts    sell at filled     target       stop  result closed     P&L
+  Thu 10-29  EVAA        3,184    20,484    1.51799  01:46    1.49175    1.55214  TARGET  01:47    +500
+  Thu 10-29  INIT        3,684    15,425   0.233237  10:55   0.229715   0.238484  LOCKED  11:11    +164
+  Fri 10-30  BEAT        3,848    34,548    0.10878  15:25   0.107202   0.111228  TARGET  15:35    +500
+  Fri 10-30  PARTI       4,348   never rose 5%: no trade
+  Sat 10-31  AIN         4,348   skipped: 3 wins in a row, off until next month
+  Sat 10-31  SOPH        4,348   never rose 5%: no trade
+  Sun 11-01  AIN         4,348     1,715   0.247643  01:34   0.244429   0.253214  TARGET  01:50    +500
+  Sun 11-01  EVAA        4,848    31,762    1.49069  07:05    1.47315    1.52423    STOP  07:06   -1171
+  Mon 11-02  AIN         3,677   never rose 5%: no trade
+  Mon 11-02  ESPORTS     3,677    16,816  0.0178605  00:05  0.0175417  0.0182624    STOP  00:06    -743
+  Tue 11-03  ARIA        2,934   skipped: 2 stops, off until next month
+  Wed 11-04  AIO         2,934   skipped: 2 stops, off until next month
+  Fri 11-06  ARIA        2,934   never rose 5%: no trade
+  Sat 11-07  AIO         2,934   never rose 5%: no trade
+  Mon 11-09  AIOT        2,934   skipped: 2 stops, off until next month
+  Tue 11-10  PIEVERSE    2,934   skipped: 2 stops, off until next month
+  Wed 11-11  ARIA        2,934   skipped: 2 stops, off until next month
+  Thu 11-12  ARIA        2,934   never rose 5%: no trade
+  Fri 11-13  HANA        2,934   skipped: 2 stops, off until next month
+  Sat 11-14  SOPH        2,934   skipped: 2 stops, off until next month
+  -> $2,934
+
+MONTH BY MONTH, full history from Jan 2025, hard stops per month (3 wins / 2 stops)
+  month      start traded  T  L  S skip      P&L     end
+  2025-01    3,184      4  1  1  2   12     -970   2,214
+  2025-02    2,214      3  0  3  0    8     +531   2,745
+  2025-03    2,745      2  0  0  2   23   -1,166   1,579
+  2025-04    1,579      4  0  2  2   27     -422   1,157
+  2025-05    1,157      3  0  1  2   28     -346     811
+  2025-06      811      4  0  2  2   20      -87     723
+  2025-07      723      3  0  3  0   34     +574   1,297
+  2025-08    1,297      3  0  3  0   25     +557   1,855
+  2025-09    1,855      4  0  2  2   33     -543   1,312
+  2025-10    1,312      4  0  2  2   18     -306   1,006
+  2025-11    1,006      3  0  3  0   25     +566   1,572
+  2025-12    1,572      6  1  4  1   24     +765   2,337
+  2026-01    2,337      4  0  2  2   14     -753   1,584
+  2026-02    1,584      3  0  3  0   17     +549   2,133
+  2026-03    2,133      3  1  2  0   27     +857   2,991
+  2026-04    2,991      6  3  2  1   21   +1,036   4,027
+  2026-05    4,027      6  5  0  1   32   +1,286   5,312
+  2026-06    5,312      4  2  1  1   26     -118   5,194
+  2026-07    5,194      5  3  0  2   19   -1,229   3,965
+  2026-08    3,965      4  2  1  1   34     +213   4,179
+  2026-09    4,179      2  0  0  2   33   -1,775   2,404
+  2026-10    2,404      3  0  1  2   21     -883   1,521

@@ -1,0 +1,16 @@
+PROP-FIRM SIMULATION on the filtered 3x fade, Delta 2025-01-15..2026-10-27 (324 trades). Balance in units of the account; $ shown for a $100,000 account.
+
+RULES: max loss 6% of the start, daily loss limit 4%
+  margin  1% a trade (a stop costs ~0.8%): challenge +8.5%: pass 100% (median 466 days, unfinished 45%) | challenge +10.0%: pass 100% (median 561 days, unfinished 75%) | funded 12 months: account lost   0% of runs, average payout $287/month per $100k (median $280)
+  margin  2% a trade (a stop costs ~1.7%): challenge +8.5%: pass 100% (median 236 days, unfinished 11%) | challenge +10.0%: pass 100% (median 283 days, unfinished 17%) | funded 12 months: account lost   0% of runs, average payout $567/month per $100k (median $551)
+  margin  3% a trade (a stop costs ~2.5%): challenge +8.5%: pass  71% (median 111 days, unfinished  6%) | challenge +10.0%: pass  71% (median 144 days, unfinished  7%) | funded 12 months: account lost  95% of runs, average payout $319/month per $100k (median $340)
+  margin  5% a trade (a stop costs ~4.2%): challenge +8.5%: pass  22% (median  22 days, unfinished  0%) | challenge +10.0%: pass  15% (median  23 days, unfinished  0%) | funded 12 months: account lost 100% of runs, average payout $166/month per $100k (median $0)
+  margin  8% a trade (a stop costs ~6.6%): challenge +8.5%: pass  29% (median  13 days, unfinished  0%) | challenge +10.0%: pass  23% (median  14 days, unfinished  0%) | funded 12 months: account lost 100% of runs, average payout $230/month per $100k (median $0)
+
+RULES: max loss 10% of the start, daily loss limit 5%
+  margin  1% a trade (a stop costs ~0.8%): challenge +8.5%: pass 100% (median 466 days, unfinished 45%) | challenge +10.0%: pass 100% (median 561 days, unfinished 75%) | funded 12 months: account lost   0% of runs, average payout $287/month per $100k (median $280)
+  margin  2% a trade (a stop costs ~1.7%): challenge +8.5%: pass 100% (median 236 days, unfinished 11%) | challenge +10.0%: pass 100% (median 283 days, unfinished 17%) | funded 12 months: account lost   0% of runs, average payout $567/month per $100k (median $551)
+  margin  3% a trade (a stop costs ~2.5%): challenge +8.5%: pass 100% (median 149 days, unfinished  6%) | challenge +10.0%: pass 100% (median 177 days, unfinished  7%) | funded 12 months: account lost   0% of runs, average payout $839/month per $100k (median $818)
+  margin  5% a trade (a stop costs ~4.2%): challenge +8.5%: pass  69% (median  52 days, unfinished  0%) | challenge +10.0%: pass  63% (median  66 days, unfinished  0%) | funded 12 months: account lost  98% of runs, average payout $483/month per $100k (median $490)
+  margin  8% a trade (a stop costs ~6.6%): challenge +8.5%: pass  37% (median  15 days, unfinished  0%) | challenge +10.0%: pass  30% (median  16 days, unfinished  0%) | funded 12 months: account lost 100% of runs, average payout $267/month per $100k (median $0)
+

@@ -1,0 +1,30 @@
+QUICK AT 20x, 50% OF THE BALANCE AS MARGIN PER TRADE (isolated). Take profit when the coin has FALLEN X%.
+Liquidation at 20x is ~2.5% above entry (10x coins: ~7.5%). Delta picks 2025-01..2026-10, real 1m paths, fees.
+
+ALL PICKS (as QUICK trades today)
+  no stop (liquidation)  take   1% | TP  70% SL   0% LIQ  30% 24h   0% | avg ROE  -18.4% | from $1,640: account gone by 2025-01-17 after 6 trades
+  no stop (liquidation)  take   2% | TP  54% SL   0% LIQ  45% 24h   0% | avg ROE  -25.6% | from $1,640: account gone by 2025-01-17 after 6 trades
+  no stop (liquidation)  take   3% | TP  44% SL   0% LIQ  55% 24h   1% | avg ROE  -31.1% | from $1,640: account gone by 2025-01-17 after 6 trades
+  no stop (liquidation)  take   5% | TP  27% SL   0% LIQ  69% 24h   4% | avg ROE  -41.5% | from $1,640: account gone by 2025-01-17 after 6 trades
+  stop just before liq.  take   1% | TP  68% SL  16% LIQ  15% 24h   0% | avg ROE  -12.4% | from $1,640: account gone by 2025-03-14 after 67 trades
+  stop just before liq.  take   2% | TP  51% SL  25% LIQ  23% 24h   0% | avg ROE  -17.3% | from $1,640: account gone by 2025-01-20 after 12 trades
+  stop just before liq.  take   3% | TP  40% SL  29% LIQ  29% 24h   1% | avg ROE  -21.5% | from $1,640: account gone by 2025-01-20 after 12 trades
+  stop just before liq.  take   5% | TP  25% SL  36% LIQ  36% 24h   3% | avg ROE  -28.5% | from $1,640: account gone by 2025-01-20 after 12 trades
+
+FUNDING FILTER ON
+  no stop (liquidation)  take   1% | TP  70% SL   0% LIQ  30% 24h   0% | avg ROE  -18.9% | from $1,640: account gone by 2025-04-23 after 16 trades
+  no stop (liquidation)  take   2% | TP  54% SL   0% LIQ  46% 24h   0% | avg ROE  -26.8% | from $1,640: account gone by 2025-04-20 after 14 trades
+  no stop (liquidation)  take   3% | TP  42% SL   0% LIQ  57% 24h   1% | avg ROE  -34.0% | from $1,640: account gone by 2025-04-20 after 14 trades
+  no stop (liquidation)  take   5% | TP  25% SL   0% LIQ  72% 24h   2% | avg ROE  -47.5% | from $1,640: account gone by 2025-04-20 after 14 trades
+  stop just before liq.  take   1% | TP  67% SL  15% LIQ  18% 24h   0% | avg ROE  -14.3% | from $1,640: account gone by 2025-08-12 after 71 trades
+  stop just before liq.  take   2% | TP  51% SL  22% LIQ  27% 24h   0% | avg ROE  -19.8% | from $1,640: account gone by 2025-05-10 after 23 trades
+  stop just before liq.  take   3% | TP  39% SL  27% LIQ  33% 24h   1% | avg ROE  -24.6% | from $1,640: account gone by 2025-04-27 after 19 trades
+  stop just before liq.  take   5% | TP  23% SL  35% LIQ  40% 24h   2% | avg ROE  -34.4% | from $1,640: account gone by 2025-05-01 after 20 trades
+
+THE BOTS' REAL PICKS 2026-10-29..11-14 (Delta 1m + MARK), 20x, 50% margin, no stop, from $1,640
+  take 2%: TP 22 LIQ 10 24h 0 of 32 -> $158
+     10-29 EVAA TP $+295 | 10-29 INIT TP $+295 | 10-30 BEAT TP $+402 | 10-30 PARTI TP $+402 | 10-31 AIN LIQ $-1,517 | 10-31 SOPH TP $+546 | 11-01 AIN LIQ $-1,032 | 11-01 EVAA TP $+372 | 11-02 AIN TP $+253 | 11-02 ESPORTS LIQ $-702 | 11-03 ARIA TP $+172 | 11-03 EVAA LIQ $-477 | 11-04 AIO TP $+117 | 11-04 BMT LIQ $-325
+  take 3%: TP 17 LIQ 15 24h 0 of 32 -> ACCOUNT GONE on 2026-10-31
+     10-29 EVAA TP $+459 | 10-29 INIT TP $+459 | 10-30 BEAT TP $+717 | 10-30 PARTI TP $+717 | 10-31 AIN LIQ $-1,996 | 10-31 SOPH LIQ $-1,996
+  take 5%: TP 16 LIQ 16 24h 0 of 32 -> ACCOUNT GONE on 2026-10-31
+     10-29 EVAA TP $+788 | 10-29 INIT TP $+788 | 10-30 BEAT TP $+1,544 | 10-30 PARTI TP $+1,544 | 10-31 AIN LIQ $-3,152 | 10-31 SOPH LIQ $-3,152

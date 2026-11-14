@@ -1,0 +1,85 @@
+MOVE THE STOP WHEN THE TRADE GOES IN FAVOUR. 20x, 50% of $3,184 margin, stop +2.25%, each trade alone, Delta per-coin limits
+Once the price has fallen TRIG from the fill, the stop moves to the entry (+$0 after all costs) or locks +$50 / +$100.
+
+A) THE 20 REAL PICKS 2026-10-29..11-14
+  entry                    target              move stop | target  stop BE stop  24h | avg/trade     total green mo
+  sell at 00:03 (today)       300      never (as before) |    65%   35%      0%   0% |     -71.7    -1,435    1/2  
+  sell at 00:03 (today)       300    after 0.5% -> entry |    25%   15%     60%   0% |     -51.6    -1,031    1/2  
+  sell at 00:03 (today)       300    after 1.0% -> entry |    50%   35%     15%   0% |    -121.4    -2,428    1/2  
+  sell at 00:03 (today)       300    after 1.5% -> entry |    65%   35%      0%   0% |     -71.7    -1,435    1/2  
+  sell at 00:03 (today)       300     after 1.0% -> +$50 |    45%   35%     20%   0% |    -127.9    -2,558    1/2  
+  sell at 00:03 (today)       300    after 1.0% -> +$100 |    40%   35%     25%   0% |    -129.5    -2,589    1/2  
+  sell at 00:03 (today)       500      never (as before) |    65%   35%      0%   0% |     +58.3    +1,165    1/2  
+  sell at 00:03 (today)       500    after 0.5% -> entry |    20%   15%     65%   0% |     -28.1      -562    1/2  
+  sell at 00:03 (today)       500    after 1.0% -> entry |    40%   35%     25%   0% |     -74.5    -1,490    1/2  
+  sell at 00:03 (today)       500    after 1.5% -> entry |    60%   35%      5%   0% |     +31.7      +634    1/2  
+  sell at 00:03 (today)       500     after 1.0% -> +$50 |    40%   35%     25%   0% |     -62.0    -1,239    1/2  
+  sell at 00:03 (today)       500    after 1.0% -> +$100 |    35%   35%     30%   0% |     -71.0    -1,420    0/2  
+
+  sell the spike +5%          300      never (as before) |    79%   21%      0%   0% |     +78.6    +1,101    1/2  
+  sell the spike +5%          300    after 0.5% -> entry |    50%   14%     36%   0% |     +36.8      +515    1/2  
+  sell the spike +5%          300    after 1.0% -> entry |    79%   14%      7%   0% |    +131.3    +1,839    2/2  
+  sell the spike +5%          300    after 1.5% -> entry |    79%   21%      0%   0% |     +78.6    +1,101    1/2  
+  sell the spike +5%          300     after 1.0% -> +$50 |    79%   14%      7%   0% |    +134.9    +1,889    2/2  
+  sell the spike +5%          300    after 1.0% -> +$100 |    79%   14%      7%   0% |    +138.5    +1,939    2/2  
+  sell the spike +5%          500      never (as before) |    71%   29%      0%   0% |    +145.1    +2,032    2/2  
+  sell the spike +5%          500    after 0.5% -> entry |    43%   14%     43%   0% |     +98.8    +1,384    2/2  
+  sell the spike +5%          500    after 1.0% -> entry |    57%   14%     29%   0% |    +174.7    +2,446    2/2  
+  sell the spike +5%          500    after 1.5% -> entry |    71%   21%      7%   0% |    +197.8    +2,770    2/2  
+  sell the spike +5%          500     after 1.0% -> +$50 |    57%   14%     29%   0% |    +189.0    +2,646    2/2  
+  sell the spike +5%          500    after 1.0% -> +$100 |    57%   14%     29%   0% |    +203.3    +2,846    2/2  
+
+  sell at 01:00               300      never (as before) |    75%   25%      0%   0% |     +26.5      +530    1/2  
+  sell at 01:00               300    after 0.5% -> entry |    25%   15%     60%   0% |     -62.5    -1,250    1/2  
+  sell at 01:00               300    after 1.0% -> entry |    65%   25%     10%   0% |      -6.4      -127    1/2  
+  sell at 01:00               300    after 1.5% -> entry |    75%   25%      0%   0% |     +26.5      +530    1/2  
+  sell at 01:00               300     after 1.0% -> +$50 |    65%   25%     10%   0% |      -1.4       -27    1/2  
+  sell at 01:00               300    after 1.0% -> +$100 |    65%   25%     10%   0% |      +3.6       +73    1/2  
+  sell at 01:00               500      never (as before) |    70%   30%      0%   0% |    +111.8    +2,236    2/2  
+  sell at 01:00               500    after 0.5% -> entry |    15%   15%     70%   0% |     -65.4    -1,307    1/2  
+  sell at 01:00               500    after 1.0% -> entry |    55%   25%     20%   0% |     +70.7    +1,415    1/2  
+  sell at 01:00               500    after 1.5% -> entry |    65%   25%     10%   0% |    +123.6    +2,473    2/2  
+  sell at 01:00               500     after 1.0% -> +$50 |    55%   25%     20%   0% |     +80.8    +1,615    1/2  
+  sell at 01:00               500    after 1.0% -> +$100 |    55%   25%     20%   0% |     +90.8    +1,815    1/2  
+
+B) FULL HISTORY, 1,022 Delta picks 2025-01..2026-10
+  entry                    target              move stop | target  stop BE stop  24h | avg/trade     total green mo
+  sell at 00:03 (today)       300      never (as before) |    66%   34%      0%   0% |     -75.2   -76,892    6/22 
+  sell at 00:03 (today)       300    after 0.5% -> entry |    30%   19%     51%   0% |     -74.7   -76,334    5/22 
+  sell at 00:03 (today)       300    after 1.0% -> entry |    56%   30%     15%   0% |     -73.2   -74,798    4/22 
+  sell at 00:03 (today)       300    after 1.5% -> entry |    66%   34%      0%   0% |     -75.2   -76,892    6/22 
+  sell at 00:03 (today)       300     after 1.0% -> +$50 |    53%   30%     17%   0% |     -73.0   -74,641    5/22 
+  sell at 00:03 (today)       300    after 1.0% -> +$100 |    49%   30%     21%   0% |     -73.9   -75,570    5/22 
+  sell at 00:03 (today)       500      never (as before) |    54%   46%      0%   0% |     -94.8   -96,873    4/22 
+  sell at 00:03 (today)       500    after 0.5% -> entry |    20%   19%     62%   0% |     -69.7   -71,221    5/22 
+  sell at 00:03 (today)       500    after 1.0% -> entry |    35%   30%     35%   0% |     -72.7   -74,304    7/22 
+  sell at 00:03 (today)       500    after 1.5% -> entry |    46%   38%     16%   0% |     -81.0   -82,732    6/22 
+  sell at 00:03 (today)       500     after 1.0% -> +$50 |    31%   30%     39%   0% |     -71.9   -73,491    5/22 
+  sell at 00:03 (today)       500    after 1.0% -> +$100 |    28%   30%     42%   0% |     -67.6   -69,068    5/22 
+
+  sell the spike +5%          300      never (as before) |    67%   33%      0%   0% |     -55.4   -33,436    6/22 
+  sell the spike +5%          300    after 0.5% -> entry |    40%   21%     39%   0% |     -54.3   -32,779    7/22 
+  sell the spike +5%          300    after 1.0% -> entry |    60%   29%     11%   0% |     -47.3   -28,558    8/22 
+  sell the spike +5%          300    after 1.5% -> entry |    67%   33%      0%   0% |     -55.4   -33,436    6/22 
+  sell the spike +5%          300     after 1.0% -> +$50 |    59%   29%     12%   0% |     -44.6   -26,939    8/22 
+  sell the spike +5%          300    after 1.0% -> +$100 |    57%   29%     14%   0% |     -42.8   -25,874    8/22 
+  sell the spike +5%          500      never (as before) |    56%   43%      0%   0% |     -50.3   -30,386    8/22 
+  sell the spike +5%          500    after 0.5% -> entry |    27%   21%     51%   0% |     -39.9   -24,077    9/22 
+  sell the spike +5%          500    after 1.0% -> entry |    39%   29%     32%   0% |     -37.3   -22,535   10/22 
+  sell the spike +5%          500    after 1.5% -> entry |    50%   38%     12%   0% |     -43.9   -26,541    7/22 
+  sell the spike +5%          500     after 1.0% -> +$50 |    37%   29%     34%   0% |     -31.8   -19,224    9/22 
+  sell the spike +5%          500    after 1.0% -> +$100 |    34%   29%     37%   0% |     -27.0   -16,334    9/22 
+
+  sell at 01:00               300      never (as before) |    59%   40%      0%   0% |    -141.4  -144,465    2/22 
+  sell at 01:00               300    after 0.5% -> entry |    25%   20%     55%   0% |    -105.7  -108,053    1/22 
+  sell at 01:00               300    after 1.0% -> entry |    50%   35%     15%   0% |    -136.1  -139,084    1/22 
+  sell at 01:00               300    after 1.5% -> entry |    59%   40%      0%   0% |    -141.4  -144,465    2/22 
+  sell at 01:00               300     after 1.0% -> +$50 |    48%   35%     17%   0% |    -135.1  -138,085    1/22 
+  sell at 01:00               300    after 1.0% -> +$100 |    45%   35%     19%   0% |    -132.1  -135,013    1/22 
+  sell at 01:00               500      never (as before) |    50%   50%      0%   0% |    -146.8  -150,080    2/22 
+  sell at 01:00               500    after 0.5% -> entry |    16%   20%     63%   0% |    -100.4  -102,589    2/22 
+  sell at 01:00               500    after 1.0% -> entry |    33%   35%     31%   0% |    -124.8  -127,553    3/22 
+  sell at 01:00               500    after 1.5% -> entry |    44%   44%     12%   0% |    -132.3  -135,161    3/22 
+  sell at 01:00               500     after 1.0% -> +$50 |    29%   35%     35%   0% |    -127.1  -129,855    3/22 
+  sell at 01:00               500    after 1.0% -> +$100 |    26%   35%     39%   0% |    -125.6  -128,351    2/22 
+

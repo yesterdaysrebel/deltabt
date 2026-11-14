@@ -1,0 +1,13 @@
+ENTRY TIME (external lead: pump shorts worked in the Europe/US session, lost in Asia 00-08 UTC).
+Rule A picks, Binance 2021-26, realistic fills, 2x-ATR stop from the entry, out 24 h after the entry
+
+  enter 00:03 UTC, hold 24 h                           n 3608 (622/yr) -0.003R win  55% | TEST +0.019R t +1.01 | -0.028 +0.014 -0.056 -0.004 +0.016 +0.060 | best risk  0% -> $    1,500  fail 
+  enter 00:03 UTC, +0.5R target                        n 3608 (622/yr) -0.011R win  60% | TEST +0.001R t +0.05 | -0.016 +0.008 -0.051 -0.014 +0.005 +0.018 | best risk  0% -> $    1,500  fail 
+  enter 04:03 UTC, hold 24 h                           n 3608 (622/yr) +0.001R win  55% | TEST +0.003R t +0.19 | -0.006 +0.028 -0.026 +0.009 -0.030 +0.037 | best risk  0% -> $    1,500  fail 
+  enter 04:03 UTC, +0.5R target                        n 3608 (622/yr) -0.006R win  60% | TEST -0.009R t -0.67 | +0.003 +0.025 -0.034 -0.011 -0.031 +0.021 | best risk  0% -> $    1,500  fail 
+  enter 08:03 UTC, hold 24 h                           n 3608 (622/yr) -0.008R win  54% | TEST +0.001R t +0.06 | -0.034 +0.013 -0.026 +0.017 -0.034 +0.020 | best risk  0% -> $    1,500  fail 
+  enter 08:03 UTC, +0.5R target                        n 3608 (622/yr) -0.016R win  58% | TEST -0.020R t -1.43 | -0.003 +0.008 -0.037 +0.000 -0.051 -0.011 | best risk  0% -> $    1,500  fail 
+  enter 12:03 UTC, hold 24 h                           n 3608 (622/yr) -0.007R win  54% | TEST +0.013R t +0.75 | -0.042 +0.014 -0.046 +0.021 -0.012 +0.031 | best risk  0% -> $    1,500  fail 
+  enter 12:03 UTC, +0.5R target                        n 3608 (622/yr) -0.010R win  58% | TEST +0.000R t +0.02 | -0.017 +0.009 -0.048 +0.010 -0.025 +0.016 | best risk  0% -> $    1,500  fail 
+  enter 16:03 UTC, hold 24 h                           n 3608 (622/yr) -0.019R win  54% | TEST -0.003R t -0.17 | -0.056 +0.014 -0.058 +0.015 -0.022 -0.007 | best risk  0% -> $    1,500  fail 
+  enter 16:03 UTC, +0.5R target                        n 3608 (622/yr) -0.019R win  57% | TEST -0.010R t -0.78 | -0.025 +0.012 -0.064 +0.016 -0.059 +0.009 | best risk  0% -> $    1,500  fail 

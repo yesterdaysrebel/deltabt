@@ -1,0 +1,26 @@
+THE SAME RULE STARTED AT THE BEGINNING OF EACH MONTH (22 starts), from $1,640, compounding
+
+start     after 1 month  after 3 months  highest balance   account gone after
+2025-02              58              58            1,640  15 days (13 trades)
+2025-03              59              59            1,731  18 days (21 trades)
+2025-04              80              80            2,584  19 days (28 trades)
+2025-05              51              51            1,640   8 days (18 trades)
+2025-06              58              58            1,640   5 days (10 trades)
+2025-07              94              94            1,640   5 days (10 trades)
+2025-08              88              88            1,640   9 days (16 trades)
+2025-09              84              84            2,640   9 days (20 trades)
+2025-10           3,460              59            8,374  63 days (91 trades)
+2025-11              76              76            3,198  19 days (32 trades)
+2025-12              58              58            2,140  18 days (31 trades)
+2026-01           1,522              59            6,641  74 days (94 trades)
+2026-02           1,948              59            6,650  43 days (63 trades)
+2026-03              82              82            1,640   8 days (13 trades)
+2026-04              91              91            1,928  10 days (19 trades)
+2026-05              74              74            1,640   6 days (14 trades)
+2026-06              66              66            1,640  15 days (25 trades)
+2026-07              80              80            1,640  20 days (26 trades)
+2026-08              77              77            1,640   7 days (15 trades)
+2026-09              78              78            1,640    3 days (7 trades)
+2026-10             158             158            3,686 still alive at the end
+
+account gone in 20 of 21 starts (median 12 days); after 1 month above $1,640 in 2 of 21, after 3 months above $1,640 in 0 of 21

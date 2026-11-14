@@ -1,0 +1,5 @@
+GOAL +$2,000 FROM $1,600, take +$500 a trade, whole balance as margin. 15m %R(140) cross + SuperTrend aligned, 10 large coins, 13,955 signals 2021-2026; 300 start dates
+
+   5x (position $8,000 at the start; +$500 = 6.25% move): reached +$2,000 in   9% of runs (median 12 trades) | lost the account in  87% (median 76 trades) | average result per run $-1,211
+  10x (position $16,000 at the start; +$500 = 3.12% move): reached +$2,000 in  17% of runs (median 9 trades) | lost the account in  83% (median 30 trades) | average result per run $-933
+  20x (position $32,000 at the start; +$500 = 1.56% move): reached +$2,000 in  26% of runs (median 5 trades) | lost the account in  74% (median 11 trades) | average result per run $-592

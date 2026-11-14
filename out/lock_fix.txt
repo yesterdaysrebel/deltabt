@@ -1,0 +1,9 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+FIXING THE LOCK. Spike +5%, 50% margin at 20x, $500 target, stop +2.25%. Each trade on a fixed $3,184.
+
+  version                                          | REAL 20 picks: strict  lenient | HISTORY avg/trade: strict  lenient | stops small exits of which < $0 (strict)
+  now: lock +$200 after a 1% fall                  |                +1,463   +2,172 |                    -127.4    -36.6 |   20%         45%                    12%
+  A: lock +$100 after a 1% fall                    |                +2,242   +2,848 |                    -127.1    -34.6 |   20%         37%                    29%
+  B: lock +$200 after a 1.5% fall                  |                +1,920   +1,935 |                    -143.0    -42.4 |   26%         18%                    10%
+  C: resting take 40% at -1%, rest to breakeven    |                +2,134   +2,500 |                    -112.7    -27.0 |   21%         27%                     5%

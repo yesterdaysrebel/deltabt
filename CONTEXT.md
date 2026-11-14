@@ -204,6 +204,31 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**20x SPIKE VERSION — CHOSEN BY THE OWNER 2026-11-15 FOR THE NEXT REAL BOT; numbers verified twice.** Rule: rule A's
+two picks; a resting limit sell 5% above the 00:03 close (valid to 24:00, fills when a 1m high trades 0.05% through);
+50% of the balance as isolated margin at 20x (Delta per-coin limits: 20x only up to max_leverage_notional, $50k on most,
+$10k ESPORTS/PIEVERSE; contract limits; `out/delta_margin/product_limits_2026-11-15.json`); take-profit netting +$500;
+stop +2.25% (20x liquidation = entry x (1 + IM - MM) = +2.5%, matches Delta-reported liquidation prices); when a 1m low
+first reaches -1% the stop moves to the price netting +$200 (if the close is already above it the stop fires at once,
+at the close); 24 h; off for the month after 2 full stops; one position at a time. **Fill model (all final numbers):**
+entry maker 0.02% + 0.05% slip; exit taker 0.05% (a real SOPH stop paid 0.053% = 0.045% + 18% GST); a triggered stop
+fills at the worse of its price and the minute's close +0.1% (STRICT) -- the LENIENT bound (stop price +0.1%) is the
+optimistic edge; a stop fill past liquidation loses the margin. Code: `scripts/clean_compare.py` (`short`, `account`,
+`checks()` asserts the known facts) and `scripts/verify_independent.py`, an independent re-implementation: **604/604
+history fills and 14/14 real fills identical** (`out/verify_independent.txt`). Results, start $3,184: 20 real picks
+10-29..11-14 +$1,463 (strict) .. +$2,172 (lenient) per-trade sum, account with the hard stop $2,452..$3,013; full Delta
+history 2025-01..2026-10 **-$127 (strict) .. -$37 (lenient) per trade**, account $31..$262; 57 of 604 fills are
+liquidations under STRICT (a 1m jump past +2.5%). The owner decided to build it knowing this. Earlier 20x tables in
+this session (before `clean_compare`) used a stop fill at the stop price, a backwards lock condition and a 2.62%
+liquidation -- all superseded. IDEAS LOGGED, not adopted (all on the same model, `out/*`): extra isolated margin after
+the fill removes liquidations (25% extra: -$75..-$37/trade; `avoid_liquidation.txt`, `fill_bounds.txt`); tighter stops
+0.5-1.5% and wider 3-5% (+extra margin) both worse (`tight_sl_grid.txt`, `tight_sl_real.txt`, `wider_stop.txt`); 75%
+margin worse at every target (`margin_target_grid.txt`); lock fixes A +$100 lock / B move after 1.5% / C resting 40%
+take at -1% then breakeven (C best: -$113..-$27; `lock_fix.txt`); fixed-$ targets $200-1,000, weekly/monthly
+win-streak and loss-streak hard stops, entry at 01:00-08:00, sell-the-spike 1-8% (`quick_20x_*.txt`). The steady
+version (filter + 3x + 10% margin + take 10%) on the same model: +$11/trade, 19/22 green months, $3,184 -> $8,336
+(`clean_compare.txt`).
+
 **OWNER PACKAGE (2026-11-13, owner "you have pushed back alot, without finding solution to my needs").**
 `scripts/owner_package.py` -> `out/owner_package.txt`, Delta picks, real fills, liquidation >= 1.2x stop away. Funding
 >= 0.05% filter + hold 24 h at 10% risk: +$9.94/trade, $1,640 -> $4,859, worst drop 42% (all picks today at 5%:

@@ -1,0 +1,7 @@
+
+TIGHTER STOP ON THE 20 REAL PICKS (fixed lenient). Spike +5%, 50% margin at 20x, $500 target, lock +$200 after 1% fall, fixed $3,184/trade
+  stop +2.25%: targets 5, locked 7, stops 2 (each -715 strict / -715 lenient) | total STRICT $+1,463  LENIENT $+2,172
+  stop +1.50%: targets 4, locked 7, stops 3 (each -597 strict / -510 lenient) | total STRICT $+603  LENIENT $+1,571
+  stop +1.00%: targets 4, locked 7, stops 3 (each -545 strict / -362 lenient) | total STRICT $+759  LENIENT $+2,016
+  stop +0.75%: targets 4, locked 5, stops 5 (each -432 strict / -293 lenient) | total STRICT $-22  LENIENT $+1,380
+  stop +0.50%: targets 4, locked 3, stops 7 (each -341 strict / -220 lenient) | total STRICT $+121  LENIENT $+971

@@ -1,0 +1,19 @@
+QUICK AT 20x WITH A STOP-LOSS. All Delta picks 2025-01..2026-10 (1,022), real 1m paths, fees, from $1,640
+Stop fill: BEST case = 0.1% past the stop price; REAL-BOT rule = the worse of the stop and that minute's close.
+
+BEST-CASE STOP FILLS
+  SL +1.0%  take 2% | TP  32% SL  68% LIQ   0% | a win  +36% of margin, an SL  -26% | avg  -6.2% | 50% margin: gone after 57 trades | 10% margin: gone after 316 trades
+  SL +1.0%  take 5% | TP  14% SL  86% LIQ   0% | a win  +94% of margin, an SL  -26% | avg  -8.8% | 50% margin: gone after 57 trades | 10% margin: gone after 254 trades
+  SL +1.5%  take 2% | TP  40% SL  60% LIQ   0% | a win  +36% of margin, an SL  -36% | avg  -7.2% | 50% margin: gone after 47 trades | 10% margin: gone after 238 trades
+  SL +1.5%  take 5% | TP  18% SL  81% LIQ   0% | a win  +92% of margin, an SL  -36% | avg -11.2% | 50% margin: gone after 38 trades | 10% margin: gone after 191 trades
+  SL +2.0%  take 2% | TP  48% SL  51% LIQ   0% | a win  +36% of margin, an SL  -46% | avg  -6.5% | 50% margin: gone after 47 trades | 10% margin: gone after 256 trades
+  SL +2.0%  take 5% | TP  23% SL  75% LIQ   0% | a win  +92% of margin, an SL  -46% | avg -11.7% | 50% margin: gone after 45 trades | 10% margin: gone after 248 trades
+
+REAL-BOT STOP FILLS
+  SL +1.0%  take 2% | TP  32% SL  66% LIQ   2% | a win  +36% of margin, an SL  -26% | avg  -7.6% | 50% margin: gone after 55 trades | 10% margin: gone after 280 trades
+  SL +1.0%  take 5% | TP  14% SL  84% LIQ   2% | a win  +94% of margin, an SL  -26% | avg -10.6% | 50% margin: gone after 47 trades | 10% margin: gone after 221 trades
+  SL +1.5%  take 2% | TP  40% SL  57% LIQ   3% | a win  +36% of margin, an SL  -36% | avg  -9.3% | 50% margin: gone after 47 trades | 10% margin: gone after 202 trades
+  SL +1.5%  take 5% | TP  18% SL  76% LIQ   5% | a win  +92% of margin, an SL  -36% | avg -14.2% | 50% margin: gone after 39 trades | 10% margin: gone after 180 trades
+  SL +2.0%  take 2% | TP  48% SL  46% LIQ   6% | a win  +36% of margin, an SL  -46% | avg  -9.4% | 50% margin: gone after 45 trades | 10% margin: gone after 200 trades
+  SL +2.0%  take 5% | TP  23% SL  65% LIQ   9% | a win  +92% of margin, an SL  -46% | avg -16.5% | 50% margin: gone after 41 trades | 10% margin: gone after 204 trades
+

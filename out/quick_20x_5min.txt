@@ -1,0 +1,29 @@
+QUICK AT 20x, all Delta picks 2025-01..2026-10 (1,022), real 1m paths, fees + spread, from $1,640
+
+A) TIME LIMIT: take at X% fall, else close after N minutes (liquidation still applies). 50% margin per trade
+  limit 5 min   take  1% | TP  26% LIQ   5% time-out  68% | win  46% avg ROE   -6.1% (2025 -5.9, 2026 -6.3) | 50% margin: gone after 78 trades
+  limit 5 min   take  2% | TP   9% LIQ   6% time-out  86% | win  43% avg ROE   -5.6% (2025 -6.0, 2026 -5.2) | 50% margin: gone after 75 trades
+  limit 5 min   take  5% | TP   1% LIQ   6% time-out  93% | win  42% avg ROE   -5.7% (2025 -6.0, 2026 -5.3) | 50% margin: gone after 75 trades
+  limit 15 min  take  1% | TP  43% LIQ  13% time-out  44% | win  54% avg ROE  -10.7% (2025 -9.4, 2026 -12.3) | 50% margin: gone after 72 trades
+  limit 15 min  take  2% | TP  20% LIQ  15% time-out  64% | win  46% avg ROE  -11.2% (2025 -9.4, 2026 -13.3) | 50% margin: gone after 72 trades
+  limit 15 min  take  5% | TP   3% LIQ  17% time-out  80% | win  43% avg ROE  -12.7% (2025 -9.9, 2026 -16.0) | 50% margin: gone after 72 trades
+  limit 30 min  take  1% | TP  53% LIQ  19% time-out  28% | win  59% avg ROE  -13.6% (2025 -13.5, 2026 -13.6) | 50% margin: gone after 53 trades
+  limit 30 min  take  2% | TP  30% LIQ  24% time-out  46% | win  50% avg ROE  -14.3% (2025 -14.2, 2026 -14.4) | 50% margin: gone after 49 trades
+  limit 30 min  take  5% | TP   5% LIQ  26% time-out  69% | win  45% avg ROE  -16.6% (2025 -15.5, 2026 -18.0) | 50% margin: gone after 49 trades
+  limit 60 min  take  1% | TP  62% LIQ  23% time-out  14% | win  65% avg ROE  -15.2% (2025 -15.1, 2026 -15.3) | 50% margin: gone after 47 trades
+  limit 60 min  take  2% | TP  39% LIQ  30% time-out  31% | win  53% avg ROE  -16.7% (2025 -16.6, 2026 -16.8) | 50% margin: gone after 35 trades
+  limit 60 min  take  5% | TP   8% LIQ  35% time-out  57% | win  44% avg ROE  -20.2% (2025 -18.0, 2026 -22.9) | 50% margin: gone after 35 trades
+  limit 24 h    take  1% | TP  70% LIQ  30% time-out   0% | win  70% avg ROE  -18.4% (2025 -19.7, 2026 -16.9) | 50% margin: gone after 6 trades
+  limit 24 h    take  2% | TP  54% LIQ  45% time-out   0% | win  55% avg ROE  -25.6% (2025 -29.3, 2026 -21.2) | 50% margin: gone after 6 trades
+  limit 24 h    take  5% | TP  27% LIQ  69% time-out   4% | win  30% avg ROE  -41.5% (2025 -45.0, 2026 -37.2) | 50% margin: gone after 6 trades
+
+B) 5% MARGIN per trade (position = 1x the balance at 20x), no time limit
+  take  1%: gone after 292 trades
+  take  2%: gone after 175 trades
+  take  3%: gone after 175 trades
+  take  5%: gone after 157 trades
+
+C) 5 MINUTE LIMIT with 5% margin
+  take  1%: $1,640 -> $65 (worst drop 96%)
+  take  2%: $1,640 -> $81 (worst drop 95%)
+  take  5%: $1,640 -> $77 (worst drop 95%)
