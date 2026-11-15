@@ -92,24 +92,32 @@ def run(days, variant, lenient):
     for day, picks in days:
         if day.strftime("%Y-%m") != cur:
             cur, full_stops = day.strftime("%Y-%m"), 0
+            if v.get("refill") == "month" and balance < D.START:
+                out.append((day.date(), "-", "reload", 0, 0, "RELOAD", D.START - balance, D.START))
+                balance = D.START
             if v["bank"] and balance > D.START:
                 bank, balance = bank + balance - D.START, D.START
         base = int(day.timestamp()) // 60
-        if balance < v["floor"] or full_stops >= 2 or free_at > base + 2:
+        if balance < v["floor"] or full_stops >= v.get("stop_limit", 2) or free_at > base + 2:
             continue
         trades = []
         for rank, sym, H, L, Cl in picks:
-            t = first_trade(sym, H, L, Cl, balance, lenient)
+            t = first_trade(sym, H, L, Cl, D.START if v.get("fixed") else balance, lenient)
             if t:
                 trades.append((t["k"], rank, sym, H, L, Cl, t))
         if not trades:
             continue
         trades.sort(key=lambda z: (z[0], z[1]))
         _, rank, sym, H, L, Cl, t = trades[0]
-        balance = max(balance + t["pnl"], 0.0)
+        balance = balance + t["pnl"] if v.get("fixed") else max(balance + t["pnl"], 0.0)
         free_at = base + t["j"]
         full_stops += t["how"] in ("STOP", "LIQ")
         out.append((day.date(), sym, "sell", t["k"], t["j"], "24h" if t["how"] == "TIME" else t["how"], t["pnl"], balance))
+        if v.get("refill") == "after2" and full_stops == 2:
+            add = D.START - balance if balance < D.START else 0.0
+            balance += add
+            full_stops = 0
+            out.append((day.date(), "-", "reload", 0, 0, "RELOAD", add, balance))
         if v["resell"] and t["how"] in ("STOP", "LIQ") and t["j"] <= 1438 and full_stops < 2 and balance >= v["floor"]:
             q = resell(sym, H, L, Cl, t["j"], balance, lenient)
             if q:

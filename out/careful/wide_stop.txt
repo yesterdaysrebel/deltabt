@@ -1,0 +1,61 @@
+CHECK PASSED: two implementations agree on every trade of all 54 designs, both fills.
+
+R per trade (1 R = the planned loss at the stop), STRICT .. LENIENT. TRAIN = 2025 (321 fills), TEST = 2026 + real (296).
+  design                                     |      TRAIN avg R |       TEST avg R | TEST strict: stops, win rate, t-stat | position per $750 risk
+  stop +5.0%, no target , hold  4 h          | -0.010 .. +0.045 | +0.068 .. +0.118 |  47% stops,  47% win, t +0.8 | $ 14,361
+  stop +5.0%, no target , hold 12 h          | -0.012 .. +0.052 | +0.049 .. +0.107 |  59% stops,  37% win, t +0.5 | $ 14,361
+  stop +5.0%, no target , hold 24 h          | +0.038 .. +0.105 | -0.009 .. +0.053 |  68% stops,  31% win, t -0.1 | $ 14,361
+  stop +5.0%, target 5% , hold  4 h          | -0.034 .. +0.018 | -0.040 .. +0.004 |  41% stops,  53% win, t -0.7 | $ 14,361
+  stop +5.0%, target 5% , hold 12 h          | -0.022 .. +0.034 | -0.005 .. +0.041 |  45% stops,  54% win, t -0.1 | $ 14,361
+  stop +5.0%, target 5% , hold 24 h          | -0.027 .. +0.030 | -0.011 .. +0.035 |  46% stops,  53% win, t -0.2 | $ 14,361
+  stop +5.0%, target 10%, hold  4 h          | -0.003 .. +0.052 | +0.048 .. +0.093 |  45% stops,  49% win, t +0.7 | $ 14,361
+  stop +5.0%, target 10%, hold 12 h          | +0.003 .. +0.063 | +0.040 .. +0.090 |  54% stops,  43% win, t +0.5 | $ 14,361
+  stop +5.0%, target 10%, hold 24 h          | +0.024 .. +0.086 | +0.028 .. +0.080 |  59% stops,  40% win, t +0.3 | $ 14,361
+  stop +7.5%, no target , hold  4 h          | +0.008 .. +0.038 | +0.061 .. +0.085 |  31% stops,  53% win, t +0.9 | $  9,710
+  stop +7.5%, no target , hold 12 h          | +0.002 .. +0.039 | +0.127 .. +0.157 |  44% stops,  50% win, t +1.6 | $  9,710
+  stop +7.5%, no target , hold 24 h          | +0.025 .. +0.065 | +0.107 .. +0.140 |  52% stops,  44% win, t +1.2 | $  9,710
+  stop +7.5%, target 5% , hold  4 h          | +0.001 .. +0.029 | +0.005 .. +0.023 |  26% stops,  60% win, t +0.1 | $  9,710
+  stop +7.5%, target 5% , hold 12 h          | +0.003 .. +0.034 | +0.048 .. +0.069 |  32% stops,  66% win, t +1.1 | $  9,710
+  stop +7.5%, target 5% , hold 24 h          | -0.012 .. +0.020 | +0.045 .. +0.066 |  34% stops,  65% win, t +1.0 | $  9,710
+  stop +7.5%, target 10%, hold  4 h          | +0.019 .. +0.048 | +0.052 .. +0.073 |  29% stops,  55% win, t +1.0 | $  9,710
+  stop +7.5%, target 10%, hold 12 h          | +0.015 .. +0.052 | +0.097 .. +0.122 |  40% stops,  55% win, t +1.6 | $  9,710
+  stop +7.5%, target 10%, hold 24 h          | +0.015 .. +0.052 | +0.097 .. +0.125 |  45% stops,  52% win, t +1.5 | $  9,710
+  stop +10.0%, no target , hold  4 h         | +0.036 .. +0.055 | +0.041 .. +0.055 |  24% stops,  56% win, t +0.8 | $  7,335
+  stop +10.0%, no target , hold 12 h         | +0.053 .. +0.078 | +0.104 .. +0.121 |  34% stops,  54% win, t +1.6 | $  7,335
+  stop +10.0%, no target , hold 24 h         | +0.063 .. +0.090 | +0.082 .. +0.105 |  43% stops,  49% win, t +1.1 | $  7,335
+  stop +10.0%, target 5% , hold  4 h         | +0.005 .. +0.024 | +0.009 .. +0.020 |  19% stops,  64% win, t +0.3 | $  7,335
+  stop +10.0%, target 5% , hold 12 h         | +0.005 .. +0.026 | +0.051 .. +0.062 |  24% stops,  71% win, t +1.3 | $  7,335
+  stop +10.0%, target 5% , hold 24 h         | +0.002 .. +0.024 | +0.045 .. +0.057 |  26% stops,  70% win, t +1.1 | $  7,335
+  stop +10.0%, target 10%, hold  4 h         | +0.031 .. +0.050 | +0.050 .. +0.062 |  22% stops,  58% win, t +1.2 | $  7,335
+  stop +10.0%, target 10%, hold 12 h         | +0.039 .. +0.063 | +0.091 .. +0.104 |  30% stops,  60% win, t +1.8 | $  7,335
+  stop +10.0%, target 10%, hold 24 h         | +0.049 .. +0.075 | +0.083 .. +0.097 |  36% stops,  57% win, t +1.6 | $  7,335
+  stop +15.0%, no target , hold  4 h         | +0.031 .. +0.042 | +0.043 .. +0.047 |  15% stops,  59% win, t +1.1 | $  4,925
+  stop +15.0%, no target , hold 12 h         | +0.042 .. +0.054 | +0.089 .. +0.096 |  25% stops,  60% win, t +1.8 | $  4,925
+  stop +15.0%, no target , hold 24 h         | +0.054 .. +0.068 | +0.068 .. +0.079 |  32% stops,  55% win, t +1.2 | $  4,925
+  stop +15.0%, target 5% , hold  4 h         | +0.009 .. +0.021 | +0.008 .. +0.011 |  12% stops,  67% win, t +0.3 | $  4,925
+  stop +15.0%, target 5% , hold 12 h         | +0.001 .. +0.013 | +0.032 .. +0.037 |  17% stops,  76% win, t +1.1 | $  4,925
+  stop +15.0%, target 5% , hold 24 h         | +0.001 .. +0.015 | +0.030 .. +0.035 |  19% stops,  75% win, t +1.0 | $  4,925
+  stop +15.0%, target 10%, hold  4 h         | +0.027 .. +0.038 | +0.046 .. +0.049 |  13% stops,  62% win, t +1.4 | $  4,925
+  stop +15.0%, target 10%, hold 12 h         | +0.028 .. +0.041 | +0.067 .. +0.073 |  22% stops,  66% win, t +1.8 | $  4,925
+  stop +15.0%, target 10%, hold 24 h         | +0.037 .. +0.051 | +0.051 .. +0.059 |  27% stops,  63% win, t +1.2 | $  4,925
+  stop +20.0%, no target , hold  4 h         | +0.034 .. +0.041 | +0.037 .. +0.041 |  10% stops,  61% win, t +1.2 | $  3,707
+  stop +20.0%, no target , hold 12 h         | +0.043 .. +0.052 | +0.065 .. +0.070 |  18% stops,  61% win, t +1.6 | $  3,707
+  stop +20.0%, no target , hold 24 h         | +0.038 .. +0.049 | +0.062 .. +0.068 |  24% stops,  59% win, t +1.3 | $  3,707
+  stop +20.0%, target 5% , hold  4 h         | +0.017 .. +0.025 | +0.012 .. +0.015 |   8% stops,  69% win, t +0.6 | $  3,707
+  stop +20.0%, target 5% , hold 12 h         | +0.013 .. +0.021 | +0.031 .. +0.035 |  11% stops,  79% win, t +1.3 | $  3,707
+  stop +20.0%, target 5% , hold 24 h         | +0.006 .. +0.015 | +0.038 .. +0.042 |  13% stops,  80% win, t +1.5 | $  3,707
+  stop +20.0%, target 10%, hold  4 h         | +0.030 .. +0.038 | +0.040 .. +0.043 |   9% stops,  64% win, t +1.6 | $  3,707
+  stop +20.0%, target 10%, hold 12 h         | +0.033 .. +0.041 | +0.063 .. +0.067 |  14% stops,  68% win, t +2.1 | $  3,707
+  stop +20.0%, target 10%, hold 24 h         | +0.028 .. +0.039 | +0.057 .. +0.061 |  19% stops,  68% win, t +1.7 | $  3,707
+  stop +30.0%, no target , hold  4 h         | +0.020 .. +0.023 | +0.016 .. +0.019 |   5% stops,  61% win, t +0.7 | $  2,481
+  stop +30.0%, no target , hold 12 h         | +0.025 .. +0.030 | +0.029 .. +0.035 |  11% stops,  63% win, t +1.0 | $  2,481
+  stop +30.0%, no target , hold 24 h         | +0.021 .. +0.026 | +0.013 .. +0.020 |  17% stops,  60% win, t +0.4 | $  2,481
+  stop +30.0%, target 5% , hold  4 h         | +0.008 .. +0.011 | +0.001 .. +0.003 |   5% stops,  70% win, t +0.0 | $  2,481
+  stop +30.0%, target 5% , hold 12 h         | +0.008 .. +0.013 | +0.009 .. +0.012 |   7% stops,  80% win, t +0.4 | $  2,481
+  stop +30.0%, target 5% , hold 24 h         | +0.006 .. +0.011 | +0.008 .. +0.011 |   9% stops,  81% win, t +0.4 | $  2,481
+  stop +30.0%, target 10%, hold  4 h         | +0.017 .. +0.021 | +0.019 .. +0.022 |   5% stops,  64% win, t +1.0 | $  2,481
+  stop +30.0%, target 10%, hold 12 h         | +0.018 .. +0.023 | +0.029 .. +0.032 |   9% stops,  69% win, t +1.2 | $  2,481
+  stop +30.0%, target 10%, hold 24 h         | +0.015 .. +0.019 | +0.014 .. +0.018 |  13% stops,  69% win, t +0.5 | $  2,481
+
+designs positive on TRAIN (strict): 47 of 54; of those positive on TEST strict: 46, TEST lenient: 47
+BEST ON TRAIN (strict): stop +10.0%, no target , hold 24 h: TRAIN +0.063 .. +0.090 R -> TEST +0.082 .. +0.105 R (t +1.1)

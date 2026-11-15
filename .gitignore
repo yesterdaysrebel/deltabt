@@ -98,3 +98,5 @@ out/wpr/
 # scripts/careful_dataset_prevclose.py (picks.csv, the ledgers and the reports ARE tracked).
 /out/careful/candles/
 /out/careful/dataset.npz
+/out/careful/mark.npz
+/out/careful/btc.npz

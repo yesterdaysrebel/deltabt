@@ -1,0 +1,28 @@
+CHECK PASSED: two implementations agree on every trade of all 22 trailing designs, both fills.
+
+Average $ per trade at a fixed $3,184, STRICT .. LENIENT. As built (lock + 0.8% trail after it): 2025 -94 .. -49, 2026 -94 .. -32.
+  design                                               |           2025 |    2026 + real | 2026 strict: win rate, avg win, avg loss, targets
+  trail 0.50%, start 2.25% stop, target +$500          |   -98 ..   -56 |   -99 ..   -52 |  39%,  +273,   -339,  16%
+  trail 0.80%, start 2.25% stop, target +$500          |  -105 ..   -49 |  -104 ..   -48 |  37%,  +348,   -368,  23%
+  trail 1.00%, start 2.25% stop, target +$500          |  -100 ..   -42 |  -113 ..   -47 |  38%,  +362,   -398,  26%
+  trail 1.50%, start 2.25% stop, target +$500          |   -96 ..   -53 |  -135 ..   -66 |  35%,  +473,   -465,  33%
+  trail 2.25%, start 2.25% stop, target +$500          |  -100 ..   -61 |  -113 ..   -52 |  46%,  +500,   -642,  46%
+  trail 3.00%, start 2.25% stop, target +$500          |   -89 ..   -48 |   -99 ..   -43 |  54%,  +500,   -796,  54%
+  trail 0.50%, start pure trail, target +$500          |  -105 ..   -33 |  -126 ..   -26 |  33%,  +262,   -322,  12%
+  trail 0.80%, start pure trail, target +$500          |  -107 ..   -39 |  -126 ..   -33 |  33%,  +337,   -358,  20%
+  trail 1.00%, start pure trail, target +$500          |  -109 ..   -44 |  -133 ..   -42 |  34%,  +355,   -390,  23%
+  trail 1.50%, start pure trail, target +$500          |  -104 ..   -55 |  -135 ..   -68 |  33%,  +471,   -440,  31%
+  trail 3.00%, start pure trail, target +$500          |   -70 ..   -34 |  -109 ..   -58 |  55%,  +500,   -865,  55%
+  trail 0.50%, start 2.25% stop, no target             |   -97 ..   -43 |   -83 ..   -25 |  39%,  +322,   -341,   0%
+  trail 0.80%, start 2.25% stop, no target             |   -93 ..   -21 |   -93 ..   -23 |  36%,  +387,   -369,   0%
+  trail 1.00%, start 2.25% stop, no target             |   -89 ..    -7 |  -112 ..   -20 |  37%,  +401,   -410,   0%
+  trail 1.50%, start 2.25% stop, no target             |  -110 ..   -40 |  -134 ..   -31 |  34%,  +528,   -477,   0%
+  trail 2.25%, start 2.25% stop, no target             |  -118 ..   -50 |  -114 ..   -12 |  35%,  +745,   -578,   0%
+  trail 3.00%, start 2.25% stop, no target             |  -121 ..   -42 |  -110 ..   -14 |  34%,  +954,   -652,   0%
+  trail 0.50%, start pure trail, no target             |  -106 ..   -25 |  -106 ..    +6 |  33%,  +324,   -322,   0%
+  trail 0.80%, start pure trail, no target             |   -96 ..   -12 |  -111 ..    -5 |  33%,  +381,   -358,   0%
+  trail 1.00%, start pure trail, no target             |   -98 ..   -10 |  -129 ..   -13 |  34%,  +394,   -400,   0%
+  trail 1.50%, start pure trail, no target             |  -120 ..   -45 |  -125 ..   -28 |  33%,  +529,   -450,   0%
+  trail 3.00%, start pure trail, no target             |  -104 ..   -26 |  -111 ..   -20 |  35%,  +954,   -696,   0%
+
+designs profitable in BOTH 2025 and 2026 (strict): 0 of 22

@@ -1,0 +1,34 @@
+NO STOP-LOSS. Every trade the rule takes at a fixed $3,184 size. STRICT (liquidation on last traded price) .. LENIENT (on mark price).
+  version                                      | trades |     liquidated | liquidation costs | left at 24 h |                 total | avg per trade
+  quick book >= $50, extra margin 25% (liq ~+5.1%) |    459 |  60 ..  63 (13%) | $  2,356 each     |    0 ..   0 |   -45,118 ..   -53,780 |   -98 ..  -117
+  quick book >= $50, extra margin 51% (liq ~+7.8%) |    457 |  44 ..  45 (10%) | $  3,184 each     |    0 ..   0 |   -38,486 ..   -43,096 |   -84 ..   -94
+  +$500 target, extra margin 25% (liq ~+5.1%)  |    456 | 114 .. 113 (25%) | $  2,356 each     |    1 ..   1 |   -98,262 ..   -95,906 |  -215 ..  -211
+  +$500 target, extra margin 51% (liq ~+7.8%)  |    451 |  75 ..  75 (17%) | $  3,184 each     |    4 ..   4 |   -56,227 ..   -56,227 |  -125 ..  -125
+  (with the 2.25% stop: quick book -19,321 .. -4,829; as built -40,700 .. -18,224)
+
+ACCOUNT from $3,184 (first fill wins, one position at a time, no trades under $1,000), end balance STRICT .. LENIENT:
+  version                                      |      full history |   2026 from Jan 1 |     20 real picks | 22 monthly starts: under $1,000, above $3,184, median trades before the first liquidation
+  quick book >= $50, extra margin 25%          |     828 ..     828 |     932 ..     932 |   2,405 ..   2,405 | 22 .. 22,   0 ..  0,  6 trades
+  quick book >= $50, extra margin 51%          |       0 ..       0 |       0 ..       0 |       0 ..       0 | 22 .. 22,   0 ..  0,  6 trades
+  +$500 target, extra margin 25%               |     828 ..     828 |     958 ..     958 |     333 ..     333 | 22 .. 22,   0 ..  0,  3 trades
+  +$500 target, extra margin 51%               |       0 ..       0 |       0 ..       0 |       0 ..       0 | 22 .. 22,   0 ..  0,  5 trades
+
+  quick book, extra 25%, full history, STRICT -- every trade until the account stops:
+    2025-01-15 LDOUSD       LIQ    held  126 min   -2,356  balance      828
+
+  quick book, extra 25%, full history, LENIENT -- every trade until the account stops:
+    2025-01-15 LDOUSD       LIQ    held  126 min   -2,356  balance      828
+
+  20 real picks, quick book, extra 25%, STRICT:
+    2026-10-29 EVAAUSD      BOOKED held    1 min   +1,483  balance    4,667
+    2026-10-30 BEATUSD      BOOKED held    1 min     +181  balance    4,848
+    2026-10-31 AINUSD       BOOKED held    1 min     +453  balance    5,301
+    2026-11-01 AINUSD       BOOKED held   13 min     +223  balance    5,524
+    2026-11-02 ESPORTSUSD   LIQ    held    4 min   -4,088  balance    1,436
+    2026-11-03 ARIAUSD      BOOKED held    1 min      +78  balance    1,515
+    2026-11-04 AIOUSD       BOOKED held    1 min     +180  balance    1,695
+    2026-11-09 AIOTUSD      BOOKED held    1 min     +168  balance    1,863
+    2026-11-10 PIEVERSEUSD  BOOKED held    1 min     +263  balance    2,126
+    2026-11-11 ARIAUSD      BOOKED held    1 min      +54  balance    2,180
+    2026-11-13 HANAUSD      BOOKED held   14 min      +39  balance    2,219
+    2026-11-14 SOPHUSD      BOOKED held    1 min     +186  balance    2,405

@@ -1,0 +1,43 @@
+20 real picks (Oct 29 - Nov 14 2026, Delta 1m), 20 picks on 15 days. 10% margin (position ~$6,200 at start), from $3,184.
+
+Spike Sell as built: ends $3,611 (strict) .. $3,779 (lenient); winners 10 of 12, full stops 1
+   2026-10-29 EVAAUSD      TARGET held    1 min    +102  bal  3,286 | lenient TARGET    +102 bal  3,286
+   2026-10-30 BEATUSD      TARGET held   12 min    +105  bal  3,391 | lenient TARGET    +105 bal  3,391
+   2026-10-31 AINUSD       LOCKED held    2 min    -114  bal  3,277 | lenient LOCKED     +37 bal  3,428
+   2026-11-01 AINUSD       TARGET held   16 min    +105  bal  3,382 | lenient TARGET    +110 bal  3,538
+   2026-11-02 ESPORTSUSD   STOP   held    1 min    -163  bal  3,219 | lenient STOP      -171 bal  3,367
+   2026-11-03 ARIAUSD      LOCKED held    5 min     +35  bal  3,254 | lenient LOCKED     +37 bal  3,404
+   2026-11-04 AIOUSD       TARGET held    1 min    +104  bal  3,358 | lenient TARGET    +109 bal  3,513
+   2026-11-09 AIOTUSD      LOCKED held    3 min     +37  bal  3,395 | lenient LOCKED     +38 bal  3,551
+   2026-11-10 PIEVERSEUSD  TARGET held    3 min    +109  bal  3,504 | lenient TARGET    +114 bal  3,665
+   2026-11-11 ARIAUSD      LOCKED held    5 min     +37  bal  3,540 | lenient LOCKED     +40 bal  3,705
+   2026-11-13 HANAUSD      LOCKED held   20 min     +32  bal  3,572 | lenient LOCKED     +33 bal  3,739
+   2026-11-14 SOPHUSD      LOCKED held    2 min     +39  bal  3,611 | lenient LOCKED     +41 bal  3,779
+
+Quick booking: ends $3,842 (strict) .. $3,842 (lenient); winners 11 of 12, full stops 1
+   2026-10-29 EVAAUSD      BOOKED held    1 min    +303  bal  3,487 | lenient BOOKED    +303 bal  3,487
+   2026-10-30 BEATUSD      BOOKED held    1 min     +28  bal  3,514 | lenient BOOKED     +28 bal  3,514
+   2026-10-31 AINUSD       BOOKED held    1 min     +67  bal  3,581 | lenient BOOKED     +67 bal  3,581
+   2026-11-01 AINUSD       BOOKED held   13 min     +31  bal  3,612 | lenient BOOKED     +31 bal  3,612
+   2026-11-02 ESPORTSUSD   STOP   held    1 min    -174  bal  3,438 | lenient STOP      -174 bal  3,438
+   2026-11-03 ARIAUSD      BOOKED held    1 min     +38  bal  3,476 | lenient BOOKED     +38 bal  3,476
+   2026-11-04 AIOUSD       BOOKED held    1 min     +84  bal  3,560 | lenient BOOKED     +84 bal  3,560
+   2026-11-09 AIOTUSD      BOOKED held    1 min     +72  bal  3,632 | lenient BOOKED     +72 bal  3,632
+   2026-11-10 PIEVERSEUSD  BOOKED held    1 min    +112  bal  3,744 | lenient BOOKED    +112 bal  3,744
+   2026-11-11 ARIAUSD      BOOKED held    1 min     +19  bal  3,763 | lenient BOOKED     +19 bal  3,763
+   2026-11-13 HANAUSD      BOOKED held   14 min     +14  bal  3,777 | lenient BOOKED     +14 bal  3,777
+   2026-11-14 SOPHUSD      BOOKED held    1 min     +65  bal  3,842 | lenient BOOKED     +65 bal  3,842
+
+Break-even + 5% trail: ends $4,055 (strict) .. $4,303 (lenient); winners 4 of 12, full stops 1
+   2026-10-29 EVAAUSD      TRAIL  held    6 min    +216  bal  3,400 | lenient TRAIL     +278 bal  3,462
+   2026-10-30 BEATUSD      TRAIL  held    4 min      -7  bal  3,394 | lenient TRAIL       -7 bal  3,456
+   2026-10-31 AINUSD       TRAIL  held    2 min    -114  bal  3,279 | lenient TRAIL       -7 bal  3,449
+   2026-11-01 AINUSD       TRAIL  held   25 min     +95  bal  3,375 | lenient TRAIL     +100 bal  3,549
+   2026-11-02 ESPORTSUSD   STOP   held    1 min    -163  bal  3,212 | lenient STOP      -171 bal  3,378
+   2026-11-03 ARIAUSD      TRAIL  held   89 min    +696  bal  3,907 | lenient TRAIL     +732 bal  4,109
+   2026-11-04 AIOUSD       TRAIL  held   13 min      -8  bal  3,899 | lenient TRAIL       -8 bal  4,101
+   2026-11-09 AIOTUSD      TRAIL  held    4 min     -12  bal  3,887 | lenient TRAIL       -8 bal  4,093
+   2026-11-10 PIEVERSEUSD  TRAIL  held   50 min    +231  bal  4,118 | lenient TRAIL     +244 bal  4,337
+   2026-11-11 ARIAUSD      TRAIL  held   76 min     -40  bal  4,079 | lenient TRAIL       -8 bal  4,328
+   2026-11-13 HANAUSD      TRAIL  held    5 min     -15  bal  4,063 | lenient TRAIL      -16 bal  4,312
+   2026-11-14 SOPHUSD      TRAIL  held    2 min      -8  bal  4,055 | lenient TRAIL       -8 bal  4,303

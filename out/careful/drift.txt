@@ -1,0 +1,44 @@
+A  short at the 00:02 price (1049 entries)
+   +   15m all : mean +0.04% (se 0.07%, t +0.5)  median +0.06%  short wins 52%  worst 5% -3.3%  best 5% +3.2%
+   +   15m 2025: mean +0.03% (se 0.08%, t +0.4)  median +0.06%  short wins 52%  worst 5% -2.5%  best 5% +2.7%
+   +   15m 2026: mean +0.05% (se 0.12%, t +0.4)  median +0.06%  short wins 51%  worst 5% -3.8%  best 5% +3.7%
+
+   +    1h all : mean +0.34% (se 0.13%, t +2.7)  median +0.33%  short wins 56%  worst 5% -5.5%  best 5% +6.2%
+   +    1h 2025: mean +0.39% (se 0.14%, t +2.9)  median +0.34%  short wins 57%  worst 5% -4.5%  best 5% +5.0%
+   +    1h 2026: mean +0.28% (se 0.22%, t +1.3)  median +0.30%  short wins 55%  worst 5% -6.1%  best 5% +6.8%
+
+   +    4h all : mean +0.56% (se 0.25%, t +2.2)  median +0.90%  short wins 59%  worst 5% -10.9%  best 5% +10.8%
+   +    4h 2025: mean +0.33% (se 0.25%, t +1.3)  median +0.64%  short wins 56%  worst 5% -9.0%  best 5% +9.0%
+   +    4h 2026: mean +0.83% (se 0.46%, t +1.8)  median +1.43%  short wins 62%  worst 5% -12.0%  best 5% +11.9%
+
+   +   12h all : mean +0.94% (se 0.39%, t +2.4)  median +1.67%  short wins 61%  worst 5% -18.7%  best 5% +15.6%
+   +   12h 2025: mean +0.51% (se 0.41%, t +1.3)  median +1.32%  short wins 59%  worst 5% -14.0%  best 5% +12.6%
+   +   12h 2026: mean +1.44% (se 0.69%, t +2.1)  median +2.47%  short wins 62%  worst 5% -23.5%  best 5% +19.9%
+
+   +   24h all : mean +0.78% (se 0.52%, t +1.5)  median +2.20%  short wins 61%  worst 5% -23.9%  best 5% +19.7%
+   +   24h 2025: mean +0.53% (se 0.51%, t +1.0)  median +1.59%  short wins 59%  worst 5% -19.0%  best 5% +15.9%
+   +   24h 2026: mean +1.06% (se 0.96%, t +1.1)  median +3.33%  short wins 63%  worst 5% -30.3%  best 5% +24.0%
+
+B  short at the +5% limit (617 entries)
+   +    5m all : mean -0.03% (se 0.12%, t -0.3)  median +0.11%  short wins 54%  worst 5% -3.2%  best 5% +2.8%
+   +    5m 2025: mean -0.05% (se 0.19%, t -0.3)  median +0.06%  short wins 52%  worst 5% -2.1%  best 5% +2.5%
+   +    5m 2026: mean -0.01% (se 0.16%, t -0.0)  median +0.27%  short wins 56%  worst 5% -4.1%  best 5% +3.1%
+
+   +   15m all : mean -0.02% (se 0.16%, t -0.1)  median +0.19%  short wins 55%  worst 5% -5.3%  best 5% +4.4%
+   +   15m 2025: mean -0.03% (se 0.23%, t -0.1)  median +0.15%  short wins 54%  worst 5% -3.6%  best 5% +3.9%
+   +   15m 2026: mean -0.00% (se 0.22%, t -0.0)  median +0.26%  short wins 55%  worst 5% -5.6%  best 5% +4.6%
+
+   +    1h all : mean +0.23% (se 0.27%, t +0.9)  median +0.37%  short wins 55%  worst 5% -8.1%  best 5% +9.2%
+   +    1h 2025: mean +0.13% (se 0.34%, t +0.4)  median +0.54%  short wins 56%  worst 5% -7.1%  best 5% +7.4%
+   +    1h 2026: mean +0.34% (se 0.42%, t +0.8)  median +0.27%  short wins 53%  worst 5% -10.1%  best 5% +10.9%
+
+   +    4h all : mean +0.77% (se 0.41%, t +1.9)  median +1.68%  short wins 63%  worst 5% -15.0%  best 5% +13.5%
+   +    4h 2025: mean +0.80% (se 0.45%, t +1.8)  median +1.58%  short wins 63%  worst 5% -10.7%  best 5% +10.9%
+   +    4h 2026: mean +0.74% (se 0.70%, t +1.0)  median +1.99%  short wins 63%  worst 5% -21.1%  best 5% +15.1%
+
+   +   24h all : mean +1.43% (se 0.77%, t +1.9)  median +3.87%  short wins 64%  worst 5% -26.8%  best 5% +23.2%
+   +   24h 2025: mean +1.56% (se 0.75%, t +2.1)  median +2.67%  short wins 62%  worst 5% -19.5%  best 5% +21.0%
+   +   24h 2026: mean +1.28% (se 1.38%, t +0.9)  median +5.03%  short wins 66%  worst 5% -45.0%  best 5% +27.9%
+
+A: worst rise against the short within 24 h: median +6.7%; over +2.25% in 80%, over +5% in 59%, over +10% in 34%, over +20% in 14%
+B: worst rise against the short within 24 h: median +6.8%; over +2.25% in 82%, over +5% in 62%, over +10% in 38%, over +20% in 19%

@@ -1,0 +1,34 @@
+1. AFTER THE +5% LEVEL FILLS (617 trades), the next 24 h, measured from that level:
+    move x | price goes >= x ABOVE | price goes >= x BELOW | +x comes first | -x comes first | neither
+     1.00% |                   91% |                   96% |            48% |            52% | 0%
+     1.80% |                   85% |                   92% |            49% |            51% | 0%
+     2.25% |                   82% |                   90% |            49% |            51% | 0%
+     5.00% |                   62% |                   75% |            44% |            52% | 3%
+    10.00% |                   38% |                   48% |            33% |            40% | 27%
+
+   CHECK PASSED: two implementations agree on every trade of all 20 long designs, both fills.
+
+2. BUY INSTEAD OF SELL at the same moment. Average per trade as % of the position, STRICT .. LENIENT:
+   long design                        |              2025 |       2026 + real | 2026: stopped, target hit | $ per trade at $30,472 (2026)
+   target +1.00%     , stop -1.00%    | -0.82% .. -0.31% | -0.98% .. -0.35% |  74%,  26%            | $  -300 .. $  -106
+   target +2.25%     , stop -1.00%    | -0.84% .. -0.28% | -0.97% .. -0.27% |  82%,  18%            | $  -294 .. $   -83
+   target +5.00%     , stop -1.00%    | -0.91% .. -0.34% | -0.99% .. -0.27% |  91%,   9%            | $  -303 .. $   -83
+   target +10.00%    , stop -1.00%    | -0.99% .. -0.38% | -0.99% .. -0.20% |  95%,   5%            | $  -302 .. $   -62
+   target none (24 h), stop -1.00%    | -0.97% .. -0.35% | -1.43% .. -0.82% |  98%,   0%            | $  -437 .. $  -251
+   target +1.00%     , stop -2.25%    | -0.73% .. -0.35% | -0.94% .. -0.40% |  48%,  52%            | $  -287 .. $  -122
+   target +2.25%     , stop -2.25%    | -0.89% .. -0.33% | -1.06% .. -0.51% |  64%,  36%            | $  -323 .. $  -154
+   target +5.00%     , stop -2.25%    | -0.98% .. -0.50% | -1.15% .. -0.49% |  78%,  22%            | $  -350 .. $  -148
+   target +10.00%    , stop -2.25%    | -1.12% .. -0.61% | -1.30% .. -0.59% |  88%,  12%            | $  -397 .. $  -179
+   target none (24 h), stop -2.25%    | -1.45% .. -0.86% | -1.19% .. -0.58% |  95%,   0%            | $  -364 .. $  -176
+   target +1.00%     , stop -5.00%    | -0.67% .. -0.27% | -0.98% .. -0.48% |  28%,  72%            | (stop past 20x liquidation)
+   target +2.25%     , stop -5.00%    | -0.76% .. -0.28% | -1.29% .. -0.73% |  44%,  56%            | (stop past 20x liquidation)
+   target +5.00%     , stop -5.00%    | -1.28% .. -0.74% | -1.54% .. -0.84% |  60%,  39%            | (stop past 20x liquidation)
+   target +10.00%    , stop -5.00%    | -1.47% .. -0.90% | -2.00% .. -1.09% |  73%,  22%            | (stop past 20x liquidation)
+   target none (24 h), stop -5.00%    | -1.88% .. -1.28% | -1.96% .. -0.88% |  84%,   0%            | (stop past 20x liquidation)
+   target +1.00%     , stop -10.00%   | -0.71% .. -0.38% | -1.10% .. -0.55% |  16%,  82%            | (stop past 20x liquidation)
+   target +2.25%     , stop -10.00%   | -0.87% .. -0.29% | -1.33% .. -0.86% |  25%,  71%            | (stop past 20x liquidation)
+   target +5.00%     , stop -10.00%   | -1.47% .. -0.90% | -1.91% .. -1.14% |  38%,  52%            | (stop past 20x liquidation)
+   target +10.00%    , stop -10.00%   | -2.01% .. -1.26% | -2.53% .. -1.69% |  48%,  32%            | (stop past 20x liquidation)
+   target none (24 h), stop -10.00%   | -2.46% .. -1.70% | -2.19% .. -1.35% |  60%,   0%            | (stop past 20x liquidation)
+
+   long designs positive on BOTH 2025 and 2026 (strict): 0 of 20

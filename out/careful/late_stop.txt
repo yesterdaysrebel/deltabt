@@ -1,0 +1,28 @@
+CHECK PASSED: two implementations agree on every trade of all 22 versions, both fills.
+
+Average $ per trade at a fixed $3,184 (617 fills), STRICT .. LENIENT.
+  version                                            |           2025 |    2026 + real | all strict: booked, stopped/cut, liquidated | avg loss on a stop/cut/liq
+  stop 2.25% from the start (quick book as tested)   |   -62 ..   -41 |   -46 ..   -22 |  74%,  25%,   1%                    | $-900
+  no stop for  2 min, then stop 2.25%                |   -52 ..   -33 |   -56 ..   -47 |  76%,  22%,   2%                    | $-974
+  no stop for  5 min, then stop 2.25%                |   -44 ..   -31 |   -76 ..   -69 |  78%,  18%,   4%                    | $-1,111
+  no stop for 10 min, then stop 2.25%                |   -46 ..   -35 |   -68 ..   -63 |  80%,  15%,   5%                    | $-1,216
+  no stop for 30 min, then stop 2.25%                |   -61 ..   -57 |   -90 ..   -88 |  83%,   9%,   8%                    | $-1,597
+  no stop for  2 min, then stop 3.50%                |   -36 ..   -31 |   -79 ..   -75 |  82%,  16%,   3%                    | $-1,349
+  no stop for  5 min, then stop 3.50%                |   -37 ..   -34 |   -86 ..   -84 |  83%,  13%,   5%                    | $-1,478
+  no stop for 10 min, then stop 3.50%                |   -44 ..   -41 |   -89 ..   -87 |  83%,  11%,   6%                    | $-1,573
+  no stop for 30 min, then stop 3.50%                |   -65 ..   -63 |   -94 ..   -91 |  85%,   7%,   8%                    | $-1,826
+  no stop; cut on a close 1.00% against              |   -55 ..   -55 |   -35 ..   -35 |  65%,  34%,   1%                    | $-595
+  no stop; cut on a close 1.50% against              |   -38 ..   -38 |   -45 ..   -45 |  72%,  27%,   1%                    | $-760
+  no stop; cut on a close 2.25% against              |   -43 ..   -43 |   -42 ..   -42 |  77%,  22%,   1%                    | $-981
+  no stop; cut on a close 3.00% against              |   -23 ..   -23 |   -50 ..   -50 |  82%,  17%,   2%                    | $-1,225
+  no stop; cut if losing after  5 min                |   -43 ..   -43 |   -84 ..   -84 |  59%,  37%,   4%                    | $-537
+  no stop; cut if losing after 10 min                |   -42 ..   -42 |   -56 ..   -56 |  68%,  27%,   5%                    | $-696
+  no stop; cut if losing after 30 min                |   -55 ..   -55 |  -103 ..  -103 |  78%,  14%,   8%                    | $-1,227
+  no stop; cut if losing after 60 min                |   -98 ..   -98 |  -100 ..  -100 |  82%,   8%,  10%                    | $-1,636
+  stop 2.25%; cut if losing after  5 min             |   -56 ..   -45 |   -50 ..   -31 |  57%,  42%,   1%                    | $-476
+  stop 2.25%; cut if losing after 10 min             |   -50 ..   -38 |   -40 ..   -19 |  65%,  34%,   1%                    | $-597
+  stop 2.25%; cut if losing after 30 min             |   -57 ..   -39 |   -54 ..   -31 |  71%,  28%,   1%                    | $-797
+  stop 2.25%; cut if losing after 60 min             |   -61 ..   -41 |   -53 ..   -30 |  73%,  26%,   1%                    | $-870
+  no stop at all (liquidation only)                  |  -108 ..  -108 |  -102 ..  -102 |  87%,   0%,  13%                    | $-2,356
+
+versions profitable in BOTH 2025 and 2026 (strict): 0 of 22

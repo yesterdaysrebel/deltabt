@@ -77,14 +77,17 @@ def run(days, variant, lenient):
         t0 = int(day.timestamp()) // 60
         if day.strftime("%Y-%m") != acct["month"]:
             acct["month"], acct["stops"] = day.strftime("%Y-%m"), 0
+            if v.get("refill") == "month" and acct["bal"] < D.START:
+                ledger.append((day.date(), "-", "reload", 0, 0, "RELOAD", D.START - acct["bal"], D.START))
+                acct["bal"] = D.START
             if v["bank"] and acct["bal"] > D.START:
                 acct["bank"] += acct["bal"] - D.START
                 acct["bal"] = D.START
-        if acct["bal"] < v["floor"] or acct["stops"] >= 2 or acct["busy_abs"] > t0 + 2:
+        if acct["bal"] < v["floor"] or acct["stops"] >= v.get("stop_limit", 2) or acct["busy_abs"] > t0 + 2:
             continue
         orders = [dict(rank=r, sym=s, H=H, L=L, C=Cl, limit=Cl[2] * 1.05) for r, s, H, L, Cl in picks]
         state, pos, watch, src = "RESTING", None, None, None
-        day_bal = acct["bal"]
+        day_bal = D.START if v.get("fixed") else acct["bal"]
         for k in range(3, 2881):
             if state == "RESTING":
                 if k >= 1440:
@@ -100,10 +103,15 @@ def run(days, variant, lenient):
                 if res is None:
                     continue
                 how, pnl = res
-                acct["bal"] = max(acct["bal"] + pnl, 0.0)
+                acct["bal"] = acct["bal"] + pnl if v.get("fixed") else max(acct["bal"] + pnl, 0.0)
                 acct["busy_abs"] = t0 + k
                 acct["stops"] += how in ("STOP", "LIQ")
                 ledger.append((day.date(), pos.sym, pos.kind, pos.opened, k, how, pnl, acct["bal"]))
+                if v.get("refill") == "after2" and acct["stops"] >= 2:
+                    top_up = max(0.0, D.START - acct["bal"])
+                    acct["bal"] += top_up
+                    acct["stops"] = 0
+                    ledger.append((day.date(), "-", "reload", 0, 0, "RELOAD", top_up, acct["bal"]))
                 if (pos.kind == "sell" and v["resell"] and how in ("STOP", "LIQ") and k <= 1438
                         and acct["stops"] < 2 and acct["bal"] >= v["floor"]):
                     watch = dict(top=src["H"][k], stopped_at=k)

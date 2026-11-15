@@ -204,6 +204,108 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**THE STOP-LOSS PROBLEM, DIAGNOSED (2026-11-15, owner: "find a way to solve the stop-loss problem"; all on the
+careful dataset, every family double-implemented, train 2025 / test 2026+real):**
+- At 20x the trade has NO edge, whatever the stop: 23 entry designs (limit +3..15%, sell-after-the-turn; `careful_entry_grid.py`)
+  and 48 exit designs (stop 1..3% x target $500..none x lock; `careful_exit_grid.py`) -- 0 of 71 positive on 2025.
+  Lenient loss ~ the trading cost ($30-50/trade): zero edge minus costs.
+- WHY (`careful_drift.py`, `out/careful/drift.txt`): the short at the +5% limit drifts 0.0% in 15 min, +0.2% in 1 h, +0.8%
+  in 4 h, **+1.4% in 24 h** (wins 64%; 2025 +1.56%, 2026 +1.28%), but goes >2.25% against it in 82% of trades, >5% in
+  62%, >10% in 38%. The 20x trade lasts a median 10 minutes -- where the drift is zero.
+- WIDE STOP, HOURS-LONG HOLD, risk-sized (`careful_wide_stop.py`): 47 of 54 designs positive on 2025, 46 of those also
+  on 2026 (strict). Chosen on 2025: limit +5%, stop +10%, no target, out after 24 h. With Delta funding
+  (`careful_wide_account.py`; shorts PAY a mean 0.30%/day on these picks): **+0.055 (strict) .. +0.080 (lenient) R per
+  trade**, 617 trades (28/month), t +1.2, bootstrap P(<=0) 10% -- small and NOT yet statistically proven; half-years
+  +0.10 / 0.00 / +0.07 / +0.07 R. Kelly 4.2% of balance per trade. Accounts from $3,184 (no month-off -- the 2-stops rule
+  kills it; floor $1,000): risk 2% $6,068 .. $7,376 (max drawdown 38%), 3% $7,475 .. $10,050 (53%), 5% $9,134 ..
+  $15,109 (73%); 22 of 22 monthly starts end above the start at 2-5%. Risk 10%+ overbets: 23.5% ($750/trade, today's
+  stop size) is under $1,000 by Jul 2025. Fixed risk: +1.5 .. +2.2 R a month, worst month -10.6 R, 14 of 23 months up.
+- Funding filter re-check (skip D-1 funding < 0, `careful_wide_more.py`): +0.111 .. +0.127 R on the kept half (2025
+  +0.16, 2026 +0.08), drawdown roughly halves (risk 3%: 30% vs 53%), but on 2026 alone no better than random skipping.
+- So: $2,000/month needs ~1 R = $900-1,300 = 28-40% of $3,184 per trade = ruin; it is a capital question (~$30k at 3%).
+- MARK-price stop trigger (Delta's own MARK 1m candles, `careful_dataset_mark.py`, `careful_mark_stop.py`): avoids only
+  3 of 190 stops; -$97 vs -$94 per trade strict (paired t -0.5). The stops are real moves, not wicks on Delta's book. CLOSED.
+- BUY instead of sell at the +5% fill (owner: "price goes against the short >2.25% in 82% ... can we not buy here?",
+  `careful_long_instead.py`): over the 24 h the price is also >= 2.25% BELOW the level in 90% (>= 5%: 75% vs 62% above);
+  +2.25% comes first 49%, -2.25% first 51%. 20 long designs (targets 1..10%/none x stops 1..10%): 0 positive on both
+  years; -0.3% (lenient) .. -1% (strict) of the position per trade = -$83 .. -$437 at $30,472. CLOSED (again, on Delta data).
+- MARKET CONTEXT before the fill (owner: "can you not find a solution to the SL problem with the spike sell setup?";
+  `careful_fill_context.py`, Delta volume + MARK premium + BTCUSD 1m via `careful_dataset_btc.py`): 10 readings (5-min
+  volume ratio, perp premium, 1 h realised vol / range, run from the day's low, gap to the day's high, pressing under
+  the limit, last close, BTC 1 h / day), 100 skip rules: 1 positive per kept trade on 2025, 0 on 2026; stops and non-stops
+  have the same medians; a logistic model on all readings: safest quarter +$47 on 2025 -> -$94 .. -$39 on 2026. CLOSED.
+- BOOK A SMALL PROFIT on every trade (owner: "before turning against us does the trade go in favour? ... book small
+  profit at that point"; `careful_small_target.py`): yes it goes in favour first -- before the 2.25% stop 85% of trades
+  fall >= 0.1%, 82% >= 0.3%, 77% >= 0.5%, 69% >= 1%, 57% >= 1.8% (even of later-stopped trades 78% >= 0.3%) -- but 18%
+  never do and each costs ~$900: net +$25/50 wins 82% (needs 95-97%), +$100 77% (needs 90%), +$200 72% (needs 82%),
+  +$500 57% (needs 64%). 28 designs (net $25..500 x stop 1.5..4.5%): 0 profitable in both years, even with touch fills
+  and stops at their price. CLOSED.
+- TRAILING STOP from the fill instead of the lock (owner: "how about a trailing stop loss per trade instead of a
+  lock?"; `careful_trailing.py`): trail 0.5..3% above the lowest low, starting from the 2.25% stop or as a pure trail,
+  with / without the $500 target -- 22 designs, 0 profitable in both years; -$83 .. -$135 strict, -$5 .. -$68 lenient
+  per trade on 2026 (as built -$94 .. -$32). A tight trail makes the losses small (-$340) but the wins too (+$270..390)
+  and only 33-39% win: the same zero-edge-minus-costs. CLOSED.
+- QUICK EXIT by the clock / first profitable close (owner: "booking a quick profit per trade before it flips";
+  `careful_quick_exit.py`): buy back 1..60 min after the fill, or at the first 1m close netting >= $0..200 (stop 2.25%):
+  0 of 13 profitable in both years, but they LOSE LESS than as built on the same fills: first close >= $50: 2025 -$62 ..
+  -$36, 2026 -$35 .. +$5 (as built -$94 .. -$49 / -$94 .. -$32); 77% of trades book ~+$220-280, 23-26% stop at ~-$900.
+- QUICK BOOK as a full account (owner: "test what you found"; `careful_quick_book.py`, two implementations agree on
+  every trade): first close netting >= $50 x balance/$3,184, stop 2.25%, no target/lock/trail. Every trade at fixed
+  $3,184: -$19,321 (strict) .. -$4,829 (lenient) over 459 trades (as built -$40,700 .. -$18,224); 341 booked avg +$246
+  (median 2 min after the fill), 118 stops avg -$876 .. -$753; 8 of 23 months up. Bot account from $3,184: full history
+  $828 .. $763 (floor by May-Jun 2025, as built $836 .. $854); 2026 $995 .. $810; 20 real picks $7,140 (11 booked, 1
+  stop); 22 monthly starts under $1,000 in 20 .. 11 (as built 22 .. 14), above start 1 .. 10. Halves the bleed; still
+  loses; still ends at the floor.
+- NO STOP-LOSS AT ALL (owner: "how about no SL at all?"; `careful_no_stop.py`, two implementations, liquidation on LTP
+  strict / MARK lenient): liquidation becomes the stop and takes margin + extra. Quick book, 25% extra (liq ~+5.1%):
+  13% of trades liquidated at $2,356 each (74% of the balance), every trade at fixed size -$45,118 .. -$53,780 (with the
+  2.25% stop -$19,321 .. -$4,829); 51% extra (liq ~+7.8%): 10% liquidated at $3,184 (100%), -$38,486 .. -$43,096. $500
+  target: 25% / 17% liquidated, -$98k / -$56k. Account from $3,184: the FIRST trade (LDO 2025-01-15) is liquidated ->
+  $828; all 22 monthly starts end under $1,000 (median 3-6 trades to the first liquidation); real picks $2,405
+  (ESPORTS liquidated, -$4,088). CLOSED: the 2.25% stop is what keeps a loss at ~$900 instead of ~$2,400.
+- NO STOP FIRST, STOP / CUT LATER (owner: "people having no SL first and when things go south they apply SL or cut";
+  `careful_late_stop.py`, two implementations, quick-book exit): grace 2..30 min then stop 2.25/3.5%; cut on a 1m close
+  1..3% against; cut if still losing after 5..60 min (with / without the 2.25% stop) -- 22 versions, 0 profitable in
+  both years, all -$23 .. -$108 per trade (stop from the start -$62 .. -$41 / -$46 .. -$22). A grace period books more
+  trades (76-85% vs 74%) but liquidations go 1% -> 2-8% and the average bad trade from -$900 to -$1,000..-$1,800.
+  Least bad: 2.25% stop + cut if losing after 10 min (-$50 .. -$38 / -$40 .. -$19) -- within noise of the plain stop. CLOSED.
+- WHAT QUICK BOOK GIVES UP (`careful_left_on_table.py`): of its booked trades 76% later reach +$500, 54% +$1,000, 35%
+  +$2,000 (best point avg +$2,012), but held with the 2.25% stop 76% come back and stop (-$847), 24% are open at 24 h
+  (+$3,502): held avg +$195 vs booked +$237 (2025 +$31 vs +$202; 2026 +$377 vs +$276).
+- BEST WAY TO TRAIL (owner: "what is best way to trail?"; `careful_trail_ways.py`, 27 methods, two implementations):
+  pct from the fill, break-even-then-trail (activation $50/150/300 x trail 1..5%), last-M-minute high, k x 1m range,
+  step ratchet. 0 profitable in both years strict; 2 lenient. Best on 2025 = "after the best point nets +$150 move the
+  stop to break-even, then trail 5% above the low": 2025 -$52 .. +$12, 2026 -$36 .. +$55 (quick book -$62 .. -$41 /
+  -$46 .. -$22; as built -$94 .. -$49 / -$94 .. -$32); 13% of trades win avg +$1,861, the rest avg -$320. Pattern:
+  early break-even + a WIDE trail (5%, 60-min high, 20 x 1m range) beats every tight trail; roughly break-even between
+  the fill bounds, not a proven profit.
+- BREAK-EVEN + 5% TRAIL as a full account (owner: "Run all tests"; `careful_be_trail.py`, two implementations agree
+  on every trade; activation scales with the balance; exits after the stop moved do not count for month-off): every
+  trade at fixed $3,184: -$17,470 (strict) .. +$16,585 (lenient) over 452 trades -- the whole result is how break-even
+  stops fill (losing trail exits avg -$98 strict vs -$40 lenient); 12% winners avg +$1,990, top 10 winners = +$45k;
+  months up 5 .. 15 of 23. Bot account from $3,184: full history $774 .. $981 (under the floor by Apr 2025: two full
+  stops in Jan 2025 before any big winner); 2026 $992 .. $872; 20 real picks $7,356 .. $8,895; 22 monthly starts under
+  $1,000 in 21 .. 16 (as built 22 .. 14, quick book 20 .. 11), above start 1 .. 6. Not better than quick book as an account.
+- 10% MARGIN (owner: "Run number with 10% margin"; `careful_margin.py`, two implementations per exit, 49% reproduces
+  the earlier results): position ~$6,219 at 20x, stop ~$150-180, every $ level scaled x 10/49, extra margin 5.1%
+  (liq ~+5.1%). Bot accounts from $3,184, strict .. lenient, full history: as built $1,843 .. $2,811 (deepest drop
+  55% .. 34%), quick book $2,206 .. $2,830 (47% .. 44%), break-even + 5% trail $1,801 .. $3,890 (67% .. 53%); never
+  under the $1,000 floor in any of 22 monthly starts. 2026 from Jan 1: $2,182 .. $2,949 / $3,197 .. $3,889 / $3,784 ..
+  $6,071. 22 starts ending above $3,184: as built 0 .. 9, quick 9 .. 16, BE-trail 11 .. 22 (median $3,177 .. $5,345).
+  20 real picks $3,611 .. $4,303. 20% margin: full history back at the floor in strict for all three. So 10% survives
+  and hovers around break-even (a slow bleed on strict fills); it does not make $2,000 a month.
+- MARGIN SWEEP 5/10/15/20/30/49% (owner: "testing on different margins"; `careful_margin_sweep.py`,
+  `out/careful/margin_sweep.txt`, two implementations agree at every margin). Full history end from $3,184, strict ..
+  lenient: as built 5% $2,483 .. $3,050, 10% $1,843 .. $2,811, 15% $1,299 .. $2,492, 20% $962 .. $2,121, 30%+ at the
+  floor; quick book 5% $2,719 .. $3,064, 10% $2,206 .. $2,830, 15% $1,697 .. $2,507, 20%+ floor; BE + 5% trail 5%
+  $2,554 .. $3,738, 10% $1,801 .. $3,890, 15%+ floor. No margin is profitable on strict fills for any exit; margin only
+  scales the result (losses and the real-picks gain alike: real picks +$210..$540 at 5% -> +$2,500..$5,700 at 49%).
+  22 starts never under $1,000 at <= 10% (quick book also at 15%); BE-trail starts above $3,184: 13..22 at 5%, 11..22
+  at 10%, 9..20 at 15%, 8..16 at 20%, 3..11 at 30%, 1..6 at 49%.
+  TALLY for the 20x setup: entries 23, exits 48, stop distance / close-confirmed 11, MARK trigger, earlier stop moves,
+  buy instead 20, coin filters 72, context rules 100 + model, re-sell, reloads -- nothing passes out of sample.
+NOT built. A candidate for a PAPER account (rule family of the paper LADDER/A accounts, entry at the spike).
+
 **RE-SELL PARKED (owner 2026-11-15: "let's park re-sell").** Not built, not on paper; the research
 (`scripts/run4_resell*.py`, `careful_sim_*` variants) stays for later.
 
@@ -217,7 +319,16 @@ EVERY trade, all variants, both fills (`out/careful/compare.txt`); 10 hand-worke
 Accounts with the $1,000 floor: 20 real picks run 4 $5,702 .. $7,248, + re-sell $14,087 .. $17,497 (ESPORTS re-sell now
 held its full 24 h, +$5,648, which also blocks Nov 3); 2026 from Jan 1 run 4 $950 .. $825 (floor by May), + re-sell
 $800 .. $994; 22 monthly starts: run 4 ended under $1,000 in 22 .. 14, above $3,184 in 0 .. 2; + re-sell + monthly
-banking above $3,184 under $1,000 in 15 .. 12, above $3,184 in 1 .. 5. Earlier history numbers also cut every trade
+banking above $3,184 under $1,000 in 15 .. 12, above $3,184 in 1 .. 5. RELOADS (owner: "if we reloaded the $3,000
+post 2 stops", `scripts/careful_reload.py`, `out/careful/reload.txt`, A/B/C agree): full history NET (end - $3,184 -
+reloads) run 4 -$2,348 .. -$2,330; reload to $3,184 each month -$11,145 .. -$4,793 ($13,040 .. $6,698 put in);
+reload at once after 2 stops and trade on -$50,571 .. -$27,395 ($54,158 .. $32,783 put in); of 22 monthly starts
+0 .. 4 made money. Reloading feeds a losing rule. STOPS (owner: "huge stops is the real pain point";
+`out/careful/stop_pain.txt`, `stop_grid.txt`): of 459 trades the 138 stops cost -$119.7k .. -$103.9k vs +$79.0k ..
++$85.7k from the rest; 86% of stops are back under the stop within 30 min, BUT sitting through them does not pay: touch
+stops +1.5..+4.5% and close-confirmed stops (close > +2.25/3/3.5%, hard +3.5/4.5%), chosen on 2025, all do worse than
+the as-built +2.25% on 2026 (-$94 .. -$32 per trade; best-on-train -$116 .. -$75) -- fewer stops but bigger ones and
+more liquidations. CLOSED. Earlier history numbers also cut every trade
 at 23:59 (1-day Binance files).
 
 **ACCOUNT-SIM CORRECTION (2026-11-15, late):** every run-4 ACCOUNT number before `scripts/run4_account.py` took the
@@ -269,7 +380,16 @@ just trading less; per KEPT trade the best are -$25 .. +$44 on test, none clearl
 BANK PROFITS monthly above $3,184 (`out/run4_bank_profits.txt`): history total $652 .. $1,163 vs $43 .. $128; 2026
 unchanged ($110 .. $700, it never got ahead to bank). It protects gains already made; it cannot cushion losses.
 
-**SPIKE SELL (run 4) BUILT (2026-11-15), NOT DEPLOYED:** (name: owner 2026-11-15, "Spike Sell"; run number stays 4) `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Option A: a 2.5 s watcher tops up the margin right after a fill (shared lock with the 30 s pass; once per position). As built: history -$71.5 (strict) .. -$33.8 (lenient) per trade, 3/604 liquidations strict; 20 real picks +$1,494 .. +$2,196 (`out/run4_final_numbers.txt`). Target/lock now SCALE with the balance (owner: "Scale can be kept, cap is no"); 2026 from $3,184: $847 .. $2,125; 82 trades of 482 picks (342 skipped by the hard stop). Trail 0.8% after the lock added (bot-moved, not Delta's native trail); 20 real picks with the final rules as an account: $3,184 -> $2,589 (strict) .. $3,307 (lenient), Nov stopped after EVAA + ESPORTS (`out/run4_final_rules_real_trades.txt`). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
+**SPIKE SELL AS IT WILL RUN (owner 2026-11-15: "I suggest we deploy with 10% margin", exit "C approved") -- BUILT, NOT
+DEPLOYED:** `live/spike_live.py`: TRADE_MARGIN 0.10, EXTRA_MARGIN 0.051, NO take-profit order (target_price NULL),
+stop +2.25% LTP; once a 1m low nets +$30.61 x balance/$3,184 (`BREAKEVEN_AFTER_USD` = 150 x 10/49, ~0.6% fall) the
+stop moves to break-even (`LOCK_USD` 0; lock_price column / LOCK_* events keep their names), then `TRAIL` 5% above the
+lowest low; 24 h exit; month off after 2 full stops (not after the move); $1,000 floor. Tested numbers and the
+replaced first version: `docs/fade_live_spike_prereg.md`. tests/live + live_exec: 2,886 passed (PG tests need
+DELTABOT_TEST_DSN -> the local `deltabt-testpg` container on network dtnet). Go-live is the owner's: merge PR #168,
+deploy, then the probe (owner's yes) must PASS. The text below describes the FIRST version (49%, $500 target).
+
+**SPIKE SELL (run 4) FIRST VERSION, BUILT 2026-11-15, REPLACED BEFORE ANY ORDER:** (name: owner 2026-11-15, "Spike Sell"; run number stays 4) `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Option A: a 2.5 s watcher tops up the margin right after a fill (shared lock with the 30 s pass; once per position). As built: history -$71.5 (strict) .. -$33.8 (lenient) per trade, 3/604 liquidations strict; 20 real picks +$1,494 .. +$2,196 (`out/run4_final_numbers.txt`). Target/lock now SCALE with the balance (owner: "Scale can be kept, cap is no"); 2026 from $3,184: $847 .. $2,125; 82 trades of 482 picks (342 skipped by the hard stop). Trail 0.8% after the lock added (bot-moved, not Delta's native trail); 20 real picks with the final rules as an account: $3,184 -> $2,589 (strict) .. $3,307 (lenient), Nov stopped after EVAA + ESPORTS (`out/run4_final_rules_real_trades.txt`). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
 
 **20x SPIKE VERSION — CHOSEN BY THE OWNER 2026-11-15 FOR THE NEXT REAL BOT; numbers verified twice.** Rule: rule A's
 two picks; a resting limit sell 5% above the 00:03 close (valid to 24:00, fills when a 1m high trades 0.05% through);

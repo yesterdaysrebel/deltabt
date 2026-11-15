@@ -1,0 +1,13 @@
+sanity: all fills reaching +$500 before the stop: 2026 57% (small-target test: 57%)
+
+QUICK BOOK booked 459 of 617 trades at an average $+237.
+If those same trades had been HELD with the 2.25% stop instead:
+   best point reached at least +$500: 76%
+   best point reached at least +$1,000: 54%
+   best point reached at least +$2,000: 35%
+   best point reached at least +$3,000: 23%
+   came back and hit the stop later: 76% (avg $-847); still open at 24 h: 24% (avg $+3,502)
+   average if simply held to the stop or 24 h: $+195   vs booked $+237
+   average best point (only knowable afterwards): $+2,012
+   2025: booked avg $+202; held avg $+31; later stopped 76%; reached +$500 75%
+   2026: booked avg $+276; held avg $+377; later stopped 76%; reached +$500 78%
