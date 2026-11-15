@@ -58,6 +58,9 @@ MONTH_STOP_LIMIT = 2
 COST = 0.0002 + 0.0005 + 0.0005
 #: Delta's fee reserve in an order's margin (measured: 83,682 SOPH contracts on 50% of $1,534.98).
 FEE_RESERVE = 0.0012
+#: Option A (owner 2026-11-15): while an entry rests, a watcher checks it this often, so the extra margin lands within
+#: seconds of a fill instead of on the next 30 s pass (liquidation is ~+2.5% until it lands).
+FAST_POLL = 2.5
 #: Defaults when a product row lacks a field (never assume more leverage than 20x).
 DEFAULT_CAP = 50_000.0
 
@@ -111,6 +114,7 @@ class SpikeLive(L.LiveFade):
         self.start_usd = max(self.start_usd, RUN_START_USD)
         self._candles = candles                        # (symbol, start, end) -> [{"time","low","close"}]; None = public API
         self._product_extra: dict[str, dict] = {}
+        self._mutex = asyncio.Lock()                    # the 30 s pass and the fast watcher never act at the same time
 
     # -- venue reads ---------------------------------------------------------------------------------------------
     def product(self, symbol: str) -> dict:
@@ -153,6 +157,39 @@ class SpikeLive(L.LiveFade):
         return None
 
     # -- the pass --------------------------------------------------------------------------------------------------
+    async def step(self, con, now: float) -> None:
+        async with self._mutex:
+            await super().step(con, now)
+
+    async def fast(self, con, now: float) -> int:
+        """Option A: settle resting entries (a fill -> OPEN + the extra margin at once) and top up any open position
+        that is still without its extra margin. Returns how many rows it looked at. Never raises."""
+        async with self._mutex:
+            try:
+                await con.execute(SCHEMA)
+                rows = await con.fetch("SELECT id FROM fade_live_positions WHERE status = 'RESTING' "
+                                       "OR (status = 'OPEN' AND extra_margin IS NULL AND entry_time IS NOT NULL) ORDER BY id")
+                for x in rows:
+                    r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", x["id"])
+                    if r["status"] == "RESTING":
+                        await self._resting(con, r, now)
+                    elif r["status"] == "OPEN" and r["extra_margin"] is None and self.entries:
+                        await self._add_extra(con, r, now)
+                return len(rows)
+            except Exception:                            # noqa: BLE001 -- the 30 s pass records and halts; this only helps
+                log.exception("spike fast watcher pass failed")
+                return 0
+
+    async def watch(self, pool, poll: float = FAST_POLL) -> None:
+        """Run `fast` every `poll` seconds on its own pooled connection (started by the paper runner)."""
+        while True:
+            try:
+                async with pool.acquire() as con:
+                    await self.fast(con, time.time())
+            except Exception:                            # noqa: BLE001
+                log.exception("spike fast watcher could not reach the database")
+            await asyncio.sleep(poll)
+
     async def _reconcile(self, con, now: float) -> None:
         await con.execute(SCHEMA)
         for rid in [x["id"] for x in await con.fetch(
@@ -210,6 +247,13 @@ class SpikeLive(L.LiveFade):
 
     async def _add_extra(self, con, r, now: float) -> None:
         from live.client import AmbiguousWrite, VenueError
+        r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
+        if r["extra_margin"] is not None or r["status"] != "OPEN":
+            return                                       # already added (or no longer open): never twice
+        if r["detail"] and '"extra_margin_tried"' in r["detail"]:
+            return                                       # refused or unclear once: logged, not retried blindly
+        await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb WHERE id = $1",
+                          r["id"], json.dumps({"extra_margin_tried": int(now)}))
         want = round(EXTRA_MARGIN * float(r["balance_before"]), 2)
         before = await asyncio.to_thread(self.margined_position, r["product_id"])
         try:

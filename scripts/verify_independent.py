@@ -51,7 +51,7 @@ def position_and_liquidation(symbol: str, margin_usd: float, price: float) -> tu
     return notional, (im0 + ims * over) - (mm0 + mms * over)
 
 
-def trade(symbol, highs, lows, closes, k_decide, margin_usd):
+def trade(symbol, highs, lows, closes, k_decide, margin_usd, extra_usd=0.0):
     ref = closes[k_decide - 1]
     limit = ref * 1.05
     fill_min = None
@@ -63,12 +63,14 @@ def trade(symbol, highs, lows, closes, k_decide, margin_usd):
         return None
     entry = limit
     notional, liq_dist = position_and_liquidation(symbol, margin_usd, entry)
+    liq_dist += extra_usd / notional            # option A: extra isolated margin from the fill pushes liquidation out
+    lost_if_liquidated = margin_usd + extra_usd
     in_cost = MAKER_FEE + HALF_SPREAD
 
     def net(exit_price):
         gross = notional * (entry - exit_price) / entry
         fees = notional * in_cost + notional * (exit_price / entry) * TAKER_FEE
-        return max(gross - fees, -margin_usd)
+        return max(gross - fees, -lost_if_liquidated)
 
     round_trip = in_cost + TAKER_FEE
     target_price = entry * (1 - (500.0 / notional + round_trip))
@@ -81,7 +83,7 @@ def trade(symbol, highs, lows, closes, k_decide, margin_usd):
         if highs[k] >= stop_price:
             fill = max(stop_price, closes[k]) * 1.001
             if fill >= liq_price:
-                return "LIQ", -margin_usd, fill_min, k
+                return "LIQ", -lost_if_liquidated, fill_min, k
             return ("LOCKED" if locked else "STOP"), net(fill), fill_min, k
         if lows[k] <= target_price * 0.999:
             gross = notional * (entry - target_price) / entry
@@ -100,14 +102,16 @@ def main() -> None:
     hist, *_ = C.paths_history()
     real = C.paths_real()
     margin = 0.5 * C.START
+    extra = 0.25 * C.START if "--extra" in sys.argv else 0.0
+    print(f"extra margin after the fill: ${extra:,.2f}\n")
     for label, paths in (("HISTORY (1,022 picks)", hist), ("REAL PICKS (20)", real)):
         same = diff = 0
         worst = []
         a_tot = b_tot = 0.0
         kinds_a, kinds_b = {}, {}
         for day, sym, hi, lo, cl, k0 in paths:
-            a = C.short(sym, hi, lo, cl, k0, margin, 500, "spike", 200, 0.0225)
-            b = trade(sym, hi, lo, cl, k0, margin)
+            a = C.short(sym, hi, lo, cl, k0, margin, 500, "spike", 200, 0.0225, None, None, extra)
+            b = trade(sym, hi, lo, cl, k0, margin, extra)
             if a is None and b is None:
                 continue
             if (a is None) != (b is None):

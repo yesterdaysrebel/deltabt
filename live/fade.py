@@ -369,6 +369,9 @@ class FadeRunner:
                     await fade_live.record_off(con, why)
                     log.info("fade live account off: %s", why)
         self.ready = True
+        if self.live is not None and hasattr(self.live, "watch"):
+            # run 4, option A (owner 2026-11-15): a fill gets its extra margin within seconds, not on the next 30 s pass
+            self._watch_task = asyncio.create_task(self.live.watch(self._pool))
         log.info("fade paper runner started; accounts %s%s", list(ACCOUNTS),
                  "" if self.live is None else " + LIVE (real money)" if self.live.entries else " + LIVE exits only")
         return True

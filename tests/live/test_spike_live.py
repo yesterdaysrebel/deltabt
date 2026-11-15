@@ -387,3 +387,49 @@ async def test_a_liquidation_counts_as_a_full_stop_and_does_not_halt():
         assert (await _state(con))["status"] == "RUNNING" and await acct.month_stops(con, D0 + DAY) == 1
     finally:
         await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_option_a_the_fast_watcher_adds_the_extra_margin_without_waiting_for_the_pass():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        seen = await acct.fast(con, D0 + 125)                           # 5 s later, between two 30 s passes
+        rows = await _rows(con)
+        assert seen >= 1 and rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["extra_margin"] == round(0.25 * 3184, 2)
+        assert rows["YUSD"]["status"] == "SKIPPED"                      # the other pick cancelled at once too
+        await acct.fast(con, D0 + 128)                                  # and again, and the next full pass:
+        await acct.step(con, D0 + 150)
+        assert fake.margin_added == [(1, round(0.25 * 3184, 2))]        # ... the margin was added exactly once
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_option_a_a_refused_top_up_is_logged_and_not_retried_every_poll():
+    import live.client as C
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    calls = []
+
+    def refused(pid, delta):
+        calls.append(delta)
+        raise C.VenueRejected(400, "/v2/positions/change_margin", {"error": {"code": "insufficient_margin"}})
+    fake.add_position_margin = refused
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        for t in (125, 128, 131, 150):
+            await acct.fast(con, D0 + t)
+        await acct.step(con, D0 + 180)
+        assert len(calls) == 1
+        assert [e["kind"] for e in await _events(con, "EXTRA_MARGIN_REFUSED")] == ["EXTRA_MARGIN_REFUSED"]
+    finally:
+        await con.close()

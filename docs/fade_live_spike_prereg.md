@@ -21,7 +21,11 @@ its price and that minute's close (+0.1%); LENIENT = at its price (+0.1%). Real 
 | full history as an account | $31 | $262 |
 | fills liquidated (a 1m jump past +2.5%) | 57 of 604 | 0 |
 
-Extra margin of 25% after the fill (approved, below) removes most liquidations: −$75 (strict) per trade in the history.
+**As built (49% margin, 25% extra margin from the fill via the option A watcher; `scripts/run4_final_numbers.py`,
+`out/run4_final_numbers.txt`, extra-margin case verified 604/604 by `scripts/verify_independent.py --extra`):** 20 real
+picks +$1,494 (strict) .. +$2,196 (lenient), no liquidation; full history **−$71.5 .. −$33.8 per trade**, 3 liquidations
+in 604 fills (strict) .. 0 (lenient), account with the hard stop $45 .. $292; of 21 monthly starts 12 .. 8 fell under
+$1,000. Liquidation is NOT impossible: a jump past ~+5% inside a minute, or past +2.5% in the seconds before the top-up.
 Every other variant tested is logged in CONTEXT.md ("20x SPIKE VERSION"). **The history says this rule loses money; the
 three recent weeks were a good stretch. The owner chose to run it knowing this.**
 
@@ -41,7 +45,9 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
 5. **After the fill:** the stop must cover the position within 30 s (else bought back and HALT); isolated margin is
    checked (else bought back and HALT) — both run 3's rules; then **25% of the balance is added as isolated margin**
    (POST /v2/positions/change_margin), moving liquidation from about +2.5% to about +5%. A top-up whose reply is lost is
-   read back, never resent.
+   read back, never resent. **Option A (owner 2026-11-15):** while an entry rests, a watcher checks it every 2.5 s
+   (`SpikeLive.watch`, started by the paper runner), so the extra margin lands within seconds of the fill; the watcher
+   and the 30 s pass share one lock, and a top-up is attempted once per position (refused or unclear: logged).
 6. **The lock:** once a **1m low since the fill reaches −1%** from the entry, the stop is **moved to the price that nets
    +$200** (PUT /v2/orders, read back). If the last price is already above that level, the bot **buys back at once**
    ("LOCK"). The move happens on the bot's next pass (30 s).

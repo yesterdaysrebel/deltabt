@@ -1,0 +1,19 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+RUN 4 AS BUILT, from $3,184: 49% margin at 20x + 25% extra margin from the fill (option A)
+
+20 REAL PICKS 2026-10-29..11-14
+  STRICT : fills  14 | target   5 locked   7 stop   2 LIQUIDATED  0 24h  0 | avg $ +106.7/trade, sum $   +1,494 | avg full stop $-702, worst $-754 | green months 2/2
+           account: with the 2-stops/month hard stop $2,487 (lowest $2,487) | no hard stop $4,312 (lowest $2,487)
+  LENIENT: fills  14 | target   5 locked   7 stop   2 LIQUIDATED  0 24h  0 | avg $ +156.9/trade, sum $   +2,196 | avg full stop $-702, worst $-754 | green months 2/2
+           account: with the 2-stops/month hard stop $3,044 (lowest $3,044) | no hard stop $5,534 (lowest $3,044)
+
+FULL HISTORY 2025-01..2026-10 (1,022 picks)
+  STRICT : fills 604 | target 151 locked 277 stop 172 LIQUIDATED  3 24h  1 | avg $  -71.5/trade, sum $  -43,210 | avg full stop $-814, worst $-2,356 | green months 7/22
+           account: with the 2-stops/month hard stop $45 (lowest $45) | no hard stop $50 (lowest $50)
+  LENIENT: fills 604 | target 151 locked 277 stop 175 LIQUIDATED  0 24h  1 | avg $  -33.8/trade, sum $  -20,414 | avg full stop $-754, worst $-754 | green months 10/22
+           account: with the 2-stops/month hard stop $292 (lowest $113) | no hard stop $45 (lowest $45)
+
+21 MONTHLY STARTS (history), with the hard stop
+  STRICT : fell under $1,000 in 12/21; ahead after 3 months in 2/21; median balance after 12 months $540
+  LENIENT: fell under $1,000 in 8/21; ahead after 3 months in 5/21; median balance after 12 months $1,196
