@@ -34,7 +34,7 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
    whose 2 × ATR14% stop would be more than 32.5% away is skipped (the universe every test used).
 2. **Entry:** a resting **post-only GTC limit sell 5% above the last traded price** at entry time, with an exchange-held
    bracket: **stop +2.25% from the limit, triggered on the last traded price** (market stop), and a **take-profit where
-   the trade nets +$500** after costs (maker 0.02% + 0.05% slippage in, taker 0.05% out). Skipped if the bid is already
+   the trade nets +$500 x balance / $3,184** after costs (owner 2026-11-15: "Scale can be kept, cap is no") (maker 0.02% + 0.05% slippage in, taker 0.05% out). Skipped if the bid is already
    at the limit. Not filled by **24:00 UTC** → cancelled ("no spike").
 3. **Size:** **49% of the wallet balance** as isolated margin per resting order (two may rest: 2 × 49% plus Delta's fee
    reserve fit the wallet), at the most leverage **up to 20x** Delta allows for that notional on that coin
@@ -49,7 +49,7 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
    (`SpikeLive.watch`, started by the paper runner), so the extra margin lands within seconds of the fill; the watcher
    and the 30 s pass share one lock, and a top-up is attempted once per position (refused or unclear: logged).
 6. **The lock:** once a **1m low since the fill reaches −1%** from the entry, the stop is **moved to the price that nets
-   +$200** (PUT /v2/orders, read back). If the last price is already above that level, the bot **buys back at once**
+   +$200 x balance / $3,184** (PUT /v2/orders, read back). If the last price is already above that level, the bot **buys back at once**
    ("LOCK"). The move happens on the bot's next pass (30 s).
 7. **Exits:** the take-profit or the stop at Delta; **24 h after the fill** the bot buys back ("TIME"). TIME, LOCK and
    LIQUIDATION (a jump past the stop: a tested risk, counted as a full stop) are planned; anything else unexplained
@@ -62,6 +62,13 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
     (run 3); run 4 uses `RUN_START_USD = 3184` for the new-run wallet check ($1,000..$3,980), so no host change is needed.
 11. **Logged:** every stop fill against its trigger (`STOP_FILL`: trigger, fill, slip %), every lock (`LOCK_MOVED` /
     `LOCK_AT_MARKET` / `LOCK_FAILED`), every margin top-up (`EXTRA_MARGIN*`).
+
+## Scaling and the trade count (owner 2026-11-15)
+The target and lock scale with the balance (the same ~1.8% / ~0.8% price fall at any balance). A +$2,000 monthly cap was
+tested and NOT adopted. 2026 from $3,184 with scaling (`scripts/run4_scaled_cap.py`): $847 (strict) .. $2,125 (lenient)
+by Nov 14; full history $38 .. $235; 21 monthly starts: 12 .. 8 fell under $1,000. Trade count 2026: 482 picks -> 82
+trades: 342 skipped by the 2-stops hard stop (it fired early in every month), 45 never spiked 5%, 13 blocked by an open
+trade (`out/run4_2026_pick_accounting.txt`). Without the hard stop 260 trades, but every history start ran down to ~$45.
 
 ## Before the first order
 1. Merge the PR (no `user_data` change: the image deploy rolls the bot; the run 3 → 4 switch happens at the first pass).

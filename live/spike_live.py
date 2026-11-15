@@ -84,14 +84,20 @@ def spike_size(balance: float, price: float, cv: float, im_pct: float, cap: floa
     return 0, 0, 0.0
 
 
-def target_price(entry: float, notional: float) -> float:
-    """The take-profit for a short of `notional` that nets +TARGET_USD after COST."""
-    return entry * (1 - (TARGET_USD / notional + COST))
+def scale(balance: float) -> float:
+    """Owner 2026-11-15 ("Scale can be kept, cap is no"): the $500 target and $200 lock are sized for the $3,184 start
+    and move with the balance (at $1,592 they are $250 / $100), i.e. the same price fall at any balance."""
+    return balance / RUN_START_USD if balance > 0 else 1.0
 
 
-def lock_price(entry: float, notional: float) -> float:
-    """The stop that nets +LOCK_USD after COST."""
-    return entry * (1 - (LOCK_USD / notional + COST))
+def target_price(entry: float, notional: float, balance: float = RUN_START_USD) -> float:
+    """The take-profit for a short of `notional` that nets +TARGET_USD x scale(balance) after COST."""
+    return entry * (1 - (TARGET_USD * scale(balance) / notional + COST))
+
+
+def lock_price(entry: float, notional: float, balance: float = RUN_START_USD) -> float:
+    """The stop that nets +LOCK_USD x scale(balance) after COST."""
+    return entry * (1 - (LOCK_USD * scale(balance) / notional + COST))
 
 
 SCHEMA = """
@@ -298,7 +304,7 @@ class SpikeLive(L.LiveFade):
             return
         prod = await asyncio.to_thread(self.product, r["symbol"])
         notional = e * r["contracts"] * r["contract_value"]
-        lp = to_tick(lock_price(e, notional), prod["tick"], up=True)
+        lp = to_tick(lock_price(e, notional, float(r["balance_before"])), prod["tick"], up=True)
         last = await asyncio.to_thread(self.last_price, r["symbol"])
         await con.execute("UPDATE fade_live_positions SET lock_price = $2 WHERE id = $1", r["id"], float(lp))
         if last <= 0 or last >= float(lp):
@@ -320,7 +326,7 @@ class SpikeLive(L.LiveFade):
             await con.execute("UPDATE fade_live_positions SET lock_price = NULL WHERE id = $1", r["id"])   # retried next pass
             return
         await event(con, "LOCK_MOVED", r["symbol"], {"stop_from": r["stop_price"], "stop_to": float(lp), "last": last})
-        log.warning("spike %s: stop moved to %s (locks +$%.0f)", r["symbol"], lp, LOCK_USD)
+        log.warning("spike %s: stop moved to %s (locks +$%.0f)", r["symbol"], lp, LOCK_USD * scale(float(r["balance_before"])))
 
     async def _closed_at_venue(self, con, r, now: float) -> None:
         await super()._closed_at_venue(con, r, now)
@@ -380,7 +386,7 @@ class SpikeLive(L.LiveFade):
             return
         notional = n * float(limit) * prod["cv"]
         stop = to_tick(float(limit) * (1 + STOP_ABOVE), prod["tick"], up=False)
-        target = to_tick(target_price(float(limit), notional), prod["tick"], up=False)
+        target = to_tick(target_price(float(limit), notional, bal), prod["tick"], up=False)
         try:
             await asyncio.to_thread(self.client.set_order_leverage, prod["id"], lev)
             got = await asyncio.to_thread(self.client.get_order_leverage, prod["id"])

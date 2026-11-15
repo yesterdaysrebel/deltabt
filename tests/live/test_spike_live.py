@@ -433,3 +433,12 @@ async def test_option_a_a_refused_top_up_is_logged_and_not_retried_every_poll():
         assert [e["kind"] for e in await _events(con, "EXTRA_MARGIN_REFUSED")] == ["EXTRA_MARGIN_REFUSED"]
     finally:
         await con.close()
+
+
+def test_the_target_and_lock_scale_with_the_balance():
+    e = 1.0
+    full = S.target_price(e, 31_000.0, 3184.0), S.lock_price(e, 31_000.0, 3184.0)
+    half = S.target_price(e, 15_500.0, 1592.0), S.lock_price(e, 15_500.0, 1592.0)
+    assert full == pytest.approx(half)                                   # the same price fall at half the balance
+    assert abs(15_500.0 * (e - half[0]) / e - 15_500.0 * S.COST - 250.0) < 1e-6   # $250 target at $1,592
+    assert abs(15_500.0 * (e - half[1]) / e - 15_500.0 * S.COST - 100.0) < 1e-6   # $100 lock at $1,592

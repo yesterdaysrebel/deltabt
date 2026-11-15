@@ -1,0 +1,6 @@
+RUN 4 AS BUILT, 21 MONTHLY STARTS from $3,184: WITH vs WITHOUT the 2-stops/month hard stop
+
+  STRICT  with hard stop : fell under $1,000 12/21 | ahead after 3 mo  2/21 (median $1,527) | ahead after 12 mo 0/9 (median $540) | median lowest point $767
+  STRICT  NO hard stop   : fell under $1,000 21/21 | ahead after 3 mo  2/21 (median $287) | ahead after 12 mo 0/9 (median $47) | median lowest point $45
+  LENIENT with hard stop : fell under $1,000  8/21 | ahead after 3 mo  5/21 (median $1,990) | ahead after 12 mo 0/9 (median $1,196) | median lowest point $1,314
+  LENIENT NO hard stop   : fell under $1,000 21/21 | ahead after 3 mo  3/21 (median $840) | ahead after 12 mo 0/9 (median $40) | median lowest point $49
