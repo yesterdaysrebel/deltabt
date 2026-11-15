@@ -204,6 +204,13 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**ACCOUNT-SIM CORRECTION (2026-11-15, late):** every run-4 ACCOUNT number before `scripts/run4_account.py` took the
+day's picks in list order and let the second pick trade after the first closed; the bot (correctly) trades only the
+pick that FILLS FIRST and cancels the other, and places nothing while a trade is open. Per-trade numbers were not
+affected. Corrected (two independent account implementations agree to the cent, `out/run4_account.txt`), final rules
+from $3,184, strict .. lenient: 20 real picks $5,702 .. $7,248; 2026 to Nov 14 $110 .. $700; full history $43 .. $84;
+21 starts under $1,000: 20 .. 15. 75% margin, best-ranked pick only: real $7,088 .. $7,125; 2026 $34 .. $50.
+
 **RUN 4 BUILT (2026-11-15), NOT DEPLOYED:** `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Option A: a 2.5 s watcher tops up the margin right after a fill (shared lock with the 30 s pass; once per position). As built: history -$71.5 (strict) .. -$33.8 (lenient) per trade, 3/604 liquidations strict; 20 real picks +$1,494 .. +$2,196 (`out/run4_final_numbers.txt`). Target/lock now SCALE with the balance (owner: "Scale can be kept, cap is no"); 2026 from $3,184: $847 .. $2,125; 82 trades of 482 picks (342 skipped by the hard stop). Trail 0.8% after the lock added (bot-moved, not Delta's native trail); 20 real picks with the final rules as an account: $3,184 -> $2,589 (strict) .. $3,307 (lenient), Nov stopped after EVAA + ESPORTS (`out/run4_final_rules_real_trades.txt`). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
 
 **20x SPIKE VERSION — CHOSEN BY THE OWNER 2026-11-15 FOR THE NEXT REAL BOT; numbers verified twice.** Rule: rule A's

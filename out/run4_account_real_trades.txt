@@ -1,0 +1,68 @@
+49%, both picks rest (as built) -- STRICT
+   10-29  #1 INIT fills 10:55, #2 EVAA fills 01:46 -> TRADED EVAA: TARGET at 01:47, +500 -> $3,684
+   10-30  #1 PARTI, #2 BEAT fills 15:25 -> TRADED BEAT: TARGET at 15:37, +579 -> $4,263
+   10-31  #1 SOPH, #2 AIN fills 00:16 -> TRADED AIN: LOCKED at 00:18, -705 -> $3,558
+   11-01  #1 AIN fills 01:34, #2 EVAA fills 07:05 -> TRADED AIN: TARGET at 01:50, +559 -> $4,118
+   11-02  #1 ESPORTS fills 00:05, #2 AIN -> TRADED ESPORTS: STOP at 00:06, -800 -> $3,317
+   11-03  #1 ARIA fills 01:56 -> TRADED ARIA: LOCKED at 02:01, +177 -> $3,494
+   11-04  #2 AIO fills 05:26 -> TRADED AIO: TARGET at 05:27, +549 -> $4,044
+   11-06  #1 ARIA: no fill
+   11-07  #2 AIO: no fill
+   11-09  #2 AIOT fills 08:18 -> TRADED AIOT: LOCKED at 08:21, +216 -> $4,259
+   11-10  #2 PIEVERSE fills 00:52 -> TRADED PIEVERSE: TARGET at 00:55, +669 -> $4,928
+   11-11  #1 ARIA fills 04:55 -> TRADED ARIA: LOCKED at 05:00, +253 -> $5,181
+   11-12  #2 ARIA: no fill
+   11-13  #2 HANA fills 07:06 -> TRADED HANA: LOCKED at 07:26, +229 -> $5,410
+   11-14  #2 SOPH fills 09:49 -> TRADED SOPH: LOCKED at 09:51, +292 -> $5,702
+
+49%, both picks rest (as built) -- LENIENT
+   10-29  #1 INIT fills 10:55, #2 EVAA fills 01:46 -> TRADED EVAA: TARGET at 01:47, +500 -> $3,684
+   10-30  #1 PARTI, #2 BEAT fills 15:25 -> TRADED BEAT: TARGET at 15:37, +579 -> $4,263
+   10-31  #1 SOPH, #2 AIN fills 00:16 -> TRADED AIN: LOCKED at 00:18, +227 -> $4,491
+   11-01  #1 AIN fills 01:34, #2 EVAA fills 07:05 -> TRADED AIN: TARGET at 01:50, +706 -> $5,196
+   11-02  #1 ESPORTS fills 00:05, #2 AIN -> TRADED ESPORTS: STOP at 00:06, -960 -> $4,236
+   11-03  #1 ARIA fills 01:56 -> TRADED ARIA: LOCKED at 02:01, +226 -> $4,462
+   11-04  #2 AIO fills 05:26 -> TRADED AIO: TARGET at 05:27, +701 -> $5,163
+   11-06  #1 ARIA: no fill
+   11-07  #2 AIO: no fill
+   11-09  #2 AIOT fills 08:18 -> TRADED AIOT: LOCKED at 08:21, +275 -> $5,439
+   11-10  #2 PIEVERSE fills 00:52 -> TRADED PIEVERSE: TARGET at 00:55, +855 -> $6,293
+   11-11  #1 ARIA fills 04:55 -> TRADED ARIA: LOCKED at 05:00, +337 -> $6,630
+   11-12  #2 ARIA: no fill
+   11-13  #2 HANA fills 07:06 -> TRADED HANA: LOCKED at 07:26, +286 -> $6,916
+   11-14  #2 SOPH fills 09:49 -> TRADED SOPH: LOCKED at 09:50, +332 -> $7,248
+
+75%, best-ranked pick only -- STRICT
+   10-29  #1 INIT fills 10:55 -> TRADED INIT: TARGET at 11:10, +500 -> $3,684
+   10-30  #1 PARTI: no fill
+   10-31  #1 SOPH: no fill
+   11-01  #1 AIN fills 01:34 -> TRADED AIN: TARGET at 01:50, +579 -> $4,263
+   11-02  #1 ESPORTS fills 00:05 -> TRADED ESPORTS: STOP at 00:06, -1,142 -> $3,122
+   11-03  #1 ARIA fills 01:56 -> TRADED ARIA: TARGET at 02:04, +490 -> $3,612
+   11-04  #2 AIO fills 05:26 -> TRADED AIO: TARGET at 05:27, +568 -> $4,180
+   11-06  #1 ARIA: no fill
+   11-07  #2 AIO: no fill
+   11-09  #2 AIOT fills 08:18 -> TRADED AIOT: TARGET at 08:20, +657 -> $4,836
+   11-10  #2 PIEVERSE fills 00:52 -> TRADED PIEVERSE: TARGET at 00:53, +760 -> $5,596
+   11-11  #1 ARIA fills 04:55 -> TRADED ARIA: LOCKED at 05:01, +243 -> $5,839
+   11-12  #2 ARIA: no fill
+   11-13  #2 HANA fills 07:06 -> TRADED HANA: TARGET at 07:26, +917 -> $6,756
+   11-14  #2 SOPH fills 09:49 -> TRADED SOPH: LOCKED at 09:50, +332 -> $7,088
+
+75%, best-ranked pick only -- LENIENT
+   10-29  #1 INIT fills 10:55 -> TRADED INIT: TARGET at 11:10, +500 -> $3,684
+   10-30  #1 PARTI: no fill
+   10-31  #1 SOPH: no fill
+   11-01  #1 AIN fills 01:34 -> TRADED AIN: TARGET at 01:50, +579 -> $4,263
+   11-02  #1 ESPORTS fills 00:05 -> TRADED ESPORTS: STOP at 00:06, -1,142 -> $3,122
+   11-03  #1 ARIA fills 01:56 -> TRADED ARIA: TARGET at 02:04, +490 -> $3,612
+   11-04  #2 AIO fills 05:26 -> TRADED AIO: TARGET at 05:27, +568 -> $4,180
+   11-06  #1 ARIA: no fill
+   11-07  #2 AIO: no fill
+   11-09  #2 AIOT fills 08:18 -> TRADED AIOT: TARGET at 08:20, +657 -> $4,836
+   11-10  #2 PIEVERSE fills 00:52 -> TRADED PIEVERSE: TARGET at 00:53, +760 -> $5,596
+   11-11  #1 ARIA fills 04:55 -> TRADED ARIA: LOCKED at 05:01, +274 -> $5,871
+   11-12  #2 ARIA: no fill
+   11-13  #2 HANA fills 07:06 -> TRADED HANA: TARGET at 07:26, +922 -> $6,793
+   11-14  #2 SOPH fills 09:49 -> TRADED SOPH: LOCKED at 09:50, +332 -> $7,125
+

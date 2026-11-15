@@ -1,0 +1,4 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+FINAL RULES HISTORY (1,022 picks): trades 604, IDENTICAL 604, different 0; totals $-42,958.60 vs $-42,958.60
+FINAL RULES REAL PICKS (20): trades 14, IDENTICAL 14, different 0; totals $+1,493.65 vs $+1,493.65

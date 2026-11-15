@@ -32,10 +32,9 @@ MAKER_FEE, TAKER_FEE, HALF_SPREAD = 0.0002, 0.0005, 0.0005
 def position_and_liquidation(symbol: str, margin_usd: float, price: float) -> tuple[float, float]:
     """Delta: order margin = notional x (IM + 0.12% fee reserve); IM rises by `ims` per $ above max_leverage_notional;
     position capped by the contract limit. Liquidation distance = IM - MM of the resulting notional."""
-    p = PRODUCTS.get(symbol)
-    if p is None:
-        notional = min(margin_usd / (IM_DEFAULT + 0.0012), CAP_DEFAULT * 1e9)
-        return notional, IM_DEFAULT - MM_DEFAULT
+    # a coin missing from today's product table (delisted since) gets Delta's usual terms: 20x up to $50,000 of
+    # position, then 0.001% more initial margin per $ (fixed 2026-11-15: it had no cap here, the reference had one)
+    p = PRODUCTS.get(symbol) or dict(im=5.0, mm=2.5, ims=1e-05, mms=5e-06, max_lev_notional=CAP_DEFAULT, limit=10 ** 12, cv=1.0)
     im0, mm0, ims, mms, cap = p["im"] / 100, p["mm"] / 100, p["ims"] / 100, p["mms"] / 100, p["max_lev_notional"]
     # solve notional x (im0 + ims x max(0, notional - cap) + 0.0012) = margin by bisection
     lo_n, hi_n = 0.0, margin_usd / (im0 + 0.0012)
@@ -51,7 +50,7 @@ def position_and_liquidation(symbol: str, margin_usd: float, price: float) -> tu
     return notional, (im0 + ims * over) - (mm0 + mms * over)
 
 
-def trade(symbol, highs, lows, closes, k_decide, margin_usd, extra_usd=0.0):
+def trade(symbol, highs, lows, closes, k_decide, margin_usd, extra_usd=0.0, target_usd=500.0, lock_usd=200.0, trail=None):
     ref = closes[k_decide - 1]
     limit = ref * 1.05
     fill_min = None
@@ -73,11 +72,12 @@ def trade(symbol, highs, lows, closes, k_decide, margin_usd, extra_usd=0.0):
         return max(gross - fees, -lost_if_liquidated)
 
     round_trip = in_cost + TAKER_FEE
-    target_price = entry * (1 - (500.0 / notional + round_trip))
+    target_price = entry * (1 - (target_usd / notional + round_trip))
     stop_price = entry * 1.0225
     liq_price = entry * (1 + liq_dist)
-    lock_price = entry * (1 - (200.0 / notional + round_trip))
+    lock_price = entry * (1 - (lock_usd / notional + round_trip))
     locked = False
+    lowest = entry
     last = min(len(closes) - 1, fill_min + 1440)
     for k in range(fill_min + 1, last + 1):
         if highs[k] >= stop_price:
@@ -89,11 +89,18 @@ def trade(symbol, highs, lows, closes, k_decide, margin_usd, extra_usd=0.0):
             gross = notional * (entry - target_price) / entry
             fees = notional * in_cost + notional * (target_price / entry) * TAKER_FEE
             return "TARGET", gross - fees, fill_min, k
+        lowest = min(lowest, lows[k])
         if not locked and lows[k] <= entry * 0.99:
             locked = True
             stop_price = lock_price
             if closes[k] >= lock_price:
                 return "LOCKED", net(closes[k] * 1.001), fill_min, k
+        if trail is not None and locked:
+            trailing_level = lowest * (1 + trail)
+            if trailing_level < stop_price:
+                stop_price = trailing_level
+                if closes[k] >= stop_price:
+                    return "LOCKED", net(closes[k] * 1.001), fill_min, k
     return "24h", net(closes[last] * 1.001), fill_min, last
 
 
@@ -135,5 +142,33 @@ def main() -> None:
         print()
 
 
+def main_final() -> None:
+    """The FINAL rules (49% margin, 25% extra, trail 0.8%) per trade on a fixed $3,184, vs scripts/run4_trailing.short."""
+    import run4_trailing as T
+    C.checks()
+    hist, *_ = C.paths_history()
+    real = C.paths_real()
+    margin, extra = 0.49 * C.START, 0.25 * C.START
+    for label, paths in (("HISTORY (1,022 picks)", hist), ("REAL PICKS (20)", real)):
+        same = diff = 0
+        ta = tb = 0.0
+        bad = []
+        for day, sym, hi, lo, cl, k0 in paths:
+            a = T.short(sym, hi, lo, cl, k0, margin, 500.0, 200.0, extra, False, 0.008, None)
+            b = trade(sym, hi, lo, cl, k0, margin, extra, 500.0, 200.0, 0.008)
+            if a is None and b is None:
+                continue
+            if (a is None) != (b is None) or a[0] != b[0] or a[3] != b[3] or abs(a[1] - b[1]) >= 0.05:
+                diff += 1
+                bad.append((day.date(), sym, a, b))
+                continue
+            same += 1
+            ta += a[1]
+            tb += b[1]
+        print(f"FINAL RULES {label}: trades {same + diff}, IDENTICAL {same}, different {diff}; totals ${ta:+,.2f} vs ${tb:+,.2f}")
+        for x in bad[:8]:
+            print("   DIFF", x)
+
+
 if __name__ == "__main__":
-    main()
+    main_final() if "--final" in sys.argv else main()
