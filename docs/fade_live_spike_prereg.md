@@ -1,15 +1,96 @@
-# Spike Sell (real-money run 4) — "sell the spike" at 20x, $3,184 — rules fixed before any order
+# Spike Sell (real-money run 4) — 10% margin, break-even then a 5% trail — rules fixed before any order
 
 **Name (owner 2026-11-15): Spike Sell.** "Run 4" stays its run number in the bot's database.
 
-Owner, 2026-11-15: "we want to deploy this version to prod, decommission rule A"; choices: hard stop **"Month: 2 stops
-only"**, size **"50% margin as tested"**, paper accounts **kept running**; "we will keep lock after a 1% fall, keep these
-ideas logged"; then **"approved"** for: stop triggered on the **last traded price**, **extra isolated margin after the
-fill**, and **every stop's fill logged against its trigger**.
-Supersedes run 3 (`docs/fade_live_ladder_prereg.md`, rule A ladder) for the real account. Code: `live/spike_live.py`
-(the rules), on run 3's machinery in `live/fade_live.py`. Paper accounts (A, QUICK, LADDER, funding, options) unchanged.
+Owner, 2026-11-15: "we want to deploy this version to prod, decommission rule A"; hard stop **"Month: 2 stops only"**;
+paper accounts **kept running**; **"approved"** for: stop triggered on the **last traded price**, **extra isolated
+margin after the fill**, **every stop's fill logged against its trigger**. Then, after the careful simulation and the
+margin sweep: **"I suggest we deploy with 10% margin"** and, of the three tested exits, **"C approved"** (break-even,
+then a 5% trail). Supersedes run 3 (`docs/fade_live_ladder_prereg.md`, rule A ladder) for the real account. Code:
+`live/spike_live.py` (the rules), on run 3's machinery in `live/fade_live.py`. Paper accounts unchanged.
 
 ## What the evidence says (recorded so the review cannot rewrite it)
+All on Delta's OWN 1m prices, 48 h per pick, 1,049 picks 2025-01-15..2026-11-14 (`docs/careful_sim_spec.md`,
+`scripts/careful_dataset.py`), every number from two independently written implementations that agree on every trade
+(`scripts/careful_be_trail.py`, `scripts/careful_margin.py`, `scripts/careful_margin_sweep.py`). STRICT = a triggered
+stop fills at the worse of its price and that minute's close (+0.1%); LENIENT = at its price (+0.1%). Real fills land
+between.
+
+| these rules, from $3,184 (first fill wins, month off after 2 full stops, $1,000 floor) | STRICT | LENIENT |
+|---|---|---|
+| full history 2025-01-15..2026-11-14, end balance | **$1,801** | **$3,890** |
+| deepest drop on the way | 67% | 53% |
+| 2026 from Jan 1, end balance | $3,784 | $6,071 |
+| 20 real picks 2026-10-29..11-14, end balance (4 winners of 12 trades, 1 full stop) | $4,055 | $4,303 |
+| 22 monthly starts (each to 2026-11-14): ended under $1,000 | 0 | 0 |
+| 22 monthly starts: ended above $3,184 | 11 | 22 |
+| 22 monthly starts: median / worst end | $3,177 / $1,801 | $5,345 / $3,210 |
+
+Per trade the exit is about break-even: at a fixed size the same 452 trades total −$17,470 (strict) .. +$16,585
+(lenient) at 49% margin (`out/careful/be_trail.txt`), i.e. the result hangs on how the break-even stops fill. About
+12% of trades win (average ~10x the average loss), the ten largest winners outweigh the whole result, and the months
+are very uneven. No margin from 5% to 49% makes any tested exit profitable on strict fills
+(`out/careful/margin_sweep.txt`); 10% is about the largest that never reached the floor in any start (15%: 5 .. 1 of
+22 did). The underlying edge is slow (the short gains ~+1.4% of the position over 24 h, 0% over 15 min;
+`out/careful/drift.txt`) and a 20x position cannot hold that long. **The history says roughly break-even with deep
+drops; the three recent weeks were a good stretch. The owner chose to run it knowing this.**
+
+## The rules
+1. **Picks:** the paper runner's rule A picks (top 2 previous-UTC-day gainers), within 30 minutes of 00:00 UTC; a pick
+   whose 2 × ATR14% stop would be more than 32.5% away is skipped (the universe every test used).
+2. **Entry:** a resting **post-only GTC limit sell 5% above the last traded price** at entry time, with an
+   exchange-held **stop +2.25% from the limit, triggered on the last traded price** (market stop). **No take-profit
+   order.** Skipped if the bid is already at the limit. Not filled by **24:00 UTC** → cancelled ("no spike").
+3. **Size:** **10% of the wallet balance** as isolated margin per resting order (two may rest), at the most leverage
+   **up to 20x** Delta allows for that notional on that coin (`initial_margin`, `max_leverage_notional`,
+   `initial_margin_scaling_factor`, `position_size_limit` from /v2/products), leverage set and read back. About
+   $6,200 of position on $3,184; a full stop costs about $177.
+4. **One position at a time:** the first pick to fill is the trade; the other pick's resting order is cancelled at once.
+   No new resting orders while a position is open. A partial fill keeps what filled; the rest is cancelled.
+5. **After the fill:** the stop must cover the position within 30 s (else bought back and HALT); isolated margin is
+   checked (else bought back and HALT) — both run 3's rules; then **5.1% of the balance is added as isolated margin**
+   (POST /v2/positions/change_margin; 25% × 10/49, the tested liquidation distance), moving liquidation from about
+   +2.5% to about +5%. A top-up whose reply is lost is read back, never resent. **Option A:** while an entry rests, a
+   watcher checks it every 2.5 s (`SpikeLive.watch`), so the extra margin lands within seconds of the fill; the
+   watcher and the 30 s pass share one lock, and a top-up is attempted once per position (refused or unclear: logged).
+6. **Break-even:** once a **1m low since the fill reaches the price where the trade nets +$30.61 × balance / $3,184**
+   after costs (maker 0.02% + 0.05% slippage in, taker 0.05% out; about a 0.6% fall), the stop is **moved to
+   break-even** — the price netting $0 after those costs (PUT /v2/orders, read back). If the last price is already at
+   or above that level, the bot **buys back at once** ("LOCK"). The move happens on the bot's next pass (30 s).
+   ($30.61 = the tested +$150 on a 49%-margin position × 10/49: the same price fall.)
+7. **The trail:** from then on the stop trails **5% above the lowest 1m low since the fill**, only when that is lower
+   than the stop it has, and never up; if the last price is already at or above the new level the bot buys back at
+   once ("LOCK"). Moved by the bot (PUT /v2/orders, read back), not Delta's native trailing stop (a native trail would
+   start 5% above the current price — far looser than break-even).
+8. **Exits:** the stop at Delta; **24 h after the fill** the bot buys back ("TIME"). TIME, LOCK and LIQUIDATION (a
+   jump past the stop: a tested risk, counted as a full stop) are planned; anything else unexplained HALTs, as run 3.
+9. **Hard stop:** after **2 full stops** (STOP_LOSS or LIQUIDATION while the stop was still the original one — not
+   after the break-even move) in a calendar month (UTC), **no new entries until the 1st**.
+10. **Kept from run 3:** the $1,000 floor (STOPPED until a refill, `fade-live-capital`), the $3,000 refill budget, HALT
+    on anything unexplained, the capital check, exits-only without the switch, the kill switch.
+11. **Start:** Spike Sell begins on the funded wallet ($3,184.13 on 2026-11-15). The host's `DELTABOT_EQUITY` still
+    says 1500 (run 3); Spike Sell uses `RUN_START_USD = 3184` for the new-run wallet check ($1,000..$3,980), so no
+    host change is needed. The dollar levels scale with the balance (× balance / $3,184).
+12. **Logged:** every stop fill against its trigger (`STOP_FILL`: trigger, fill, slip %), every break-even move
+    (`LOCK_MOVED` / `LOCK_AT_MARKET` / `LOCK_FAILED`), every trail move (`TRAIL_MOVED` / `TRAIL_AT_MARKET` /
+    `TRAIL_FAILED`), every margin top-up (`EXTRA_MARGIN*`).
+
+## Before the first order
+1. Merge the PR (no `user_data` change: the image deploy rolls the bot; the run 3 → 4 switch happens at the first pass).
+2. **Probe** (`python -m live fade-live-probe XRPUSD`, owner's yes): proves the post-only resting sell, the last-traded
+   stop leg, the stop edit and the margin top-up on prod; PASS required.
+3. The halt from the manual SOPH trade (2026-11-14) needs no `fade-live-resume`: a new run begins from the wallet.
+
+## Review
+After 20 filled trades or 2026-12-31, whichever comes first: per-trade P&L, stop fill vs trigger — above all the
+BREAK-EVEN stops (the result between STRICT and LENIENT hangs on them: a losing break-even exit cost ~$98 strict vs
+~$40 lenient per $30k of position in the test) — liquidations, exits at market. Stop the run if the wallet is under
+$1,500 at a review.
+
+## History: the first version (49% margin, +$500 target, +$200 lock, 0.8% trail) — NOT what runs
+Kept as recorded. It was built first and replaced before any order, after the careful simulation showed it at the
+$1,000 floor in 22 .. 14 of 22 monthly starts (`out/careful/report.txt`).
+
 **Superseded 2026-11-15 by the careful simulation** (`docs/careful_sim_spec.md`, Delta's own 1m prices for all 1,049 picks, 48 h each, three implementations agreeing on every trade, `out/careful/report.txt`): per trade at $3,184 **-$94 (strict) .. -$41 (lenient)**; from $3,184 with the $1,000 floor: 20 real picks $5,702 .. $7,248, 2026 from Jan 1 $950 .. $825 (floor by May), 22 monthly starts ended under $1,000 in 22 .. 14 and above $3,184 in 0 .. 2. The numbers below are the earlier ones (Binance prices, trades cut at 23:59), kept as recorded.
 
 Backtest of exactly these rules on one stated fill model (`scripts/clean_compare.py`, `checks()` asserting known Delta
@@ -33,7 +114,7 @@ $1,000. Liquidation is NOT impossible: a jump past ~+5% inside a minute, or past
 Every other variant tested is logged in CONTEXT.md ("20x SPIKE VERSION"). **The history says this rule loses money; the
 three recent weeks were a good stretch. The owner chose to run it knowing this.**
 
-## The rules
+### Its rules
 1. **Picks:** the paper runner's rule A picks (top 2 previous-UTC-day gainers), within 30 minutes of 00:00 UTC; a pick
    whose 2 × ATR14% stop would be more than 32.5% away is skipped (the universe every test used).
 2. **Entry:** a resting **post-only GTC limit sell 5% above the last traded price** at entry time, with an exchange-held
@@ -73,19 +154,9 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
 11. **Logged:** every stop fill against its trigger (`STOP_FILL`: trigger, fill, slip %), every lock (`LOCK_MOVED` /
     `LOCK_AT_MARKET` / `LOCK_FAILED`), every margin top-up (`EXTRA_MARGIN*`).
 
-## Scaling and the trade count (owner 2026-11-15)
+### Its scaling and trade count (owner 2026-11-15)
 The target and lock scale with the balance (the same ~1.8% / ~0.8% price fall at any balance). A +$2,000 monthly cap was
 tested and NOT adopted. 2026 from $3,184 with scaling (`scripts/run4_scaled_cap.py`): $847 (strict) .. $2,125 (lenient)
 by Nov 14; full history $38 .. $235; 21 monthly starts: 12 .. 8 fell under $1,000. Trade count 2026: 482 picks -> 82
 trades: 342 skipped by the 2-stops hard stop (it fired early in every month), 45 never spiked 5%, 13 blocked by an open
 trade (`out/run4_2026_pick_accounting.txt`). Without the hard stop 260 trades, but every history start ran down to ~$45.
-
-## Before the first order
-1. Merge the PR (no `user_data` change: the image deploy rolls the bot; the run 3 → 4 switch happens at the first pass).
-2. **Probe** (`python -m live fade-live-probe XRPUSD`, owner's yes): proves the post-only resting sell, the last-traded
-   stop leg, the stop edit and the margin top-up on prod; PASS required.
-3. The halt from the manual SOPH trade (2026-11-14) needs no `fade-live-resume`: a new run begins from the wallet.
-
-## Review
-After 20 filled trades or 2026-12-31, whichever comes first: per-trade P&L, stop fill vs trigger (where between STRICT
-and LENIENT), liquidations, locks at market. Stop the run if the wallet is under $1,500 at a review.

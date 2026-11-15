@@ -1,8 +1,10 @@
-"""The real account's RUN 4, "sell the spike" at 20x (live/spike_live.py; rules in docs/fade_live_spike_prereg.md).
+"""The real account's RUN 4, Spike Sell (live/spike_live.py; rules in docs/fade_live_spike_prereg.md): 10% margin at up
+to 20x, no take-profit, the stop to break-even once the best point nets +$30.61 x scale, then a 5% trail.
 
 The pure sizing always runs. The account's day -- two resting post-only sells, the first fill cancels the other, extra
-isolated margin after the fill, the +$200 lock (moved, or at market), the 24 h exit after the fill, a stop at Delta
-logged against its trigger, the 2-stops-a-month hard stop, a resting order left at 24:00 -- runs against PostgreSQL
+isolated margin after the fill, the break-even move (moved, or at market), the 5% trail, the 24 h exit after the fill,
+a stop at Delta logged against its trigger, the 2-stops-a-month hard stop, a resting order left at 24:00 -- runs
+against PostgreSQL
 (DELTABOT_TEST_DSN) and a fake Delta built on tests/live/test_fade_live.FakeDelta: a GTC sell RESTS until the test
 fills it (fill_resting), and the bracket legs appear with the fill.
 """
@@ -23,24 +25,32 @@ def test_sizing_is_twenty_x_up_to_the_coin_limits():
     # the owner's SOPH screen: 50% of $1,534.98 at 20x = 83,682 contracts of 100 SOPH at 0.001792
     n, lev, notional = S.spike_size(1534.98, 0.001792, 100, 5.0, 50_000, 0.001, 202_000, share=0.50)
     assert lev == 20 and abs(n - 83_682) / 83_682 < 0.01
-    # the run's own share: 49% of $3,184 at 20x on a plain coin
+    # the run's own share: 10% of $3,184 at 20x on a plain coin
+    assert S.TRADE_MARGIN == 0.10 and S.EXTRA_MARGIN == 0.051
     n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None)
+    assert lev == 20 and 6_100 < notional < 6_300
+    # the first version's share: 49% of $3,184 at 20x
+    n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None, share=0.49)
     assert lev == 20 and 30_000 < notional < 31_000
-    # PIEVERSE: 20x only up to $10,000 (scaling 0.005% per $ above): $1,560 of margin cannot carry 20x
-    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None)
+    # PIEVERSE: 20x only up to $10,000 (scaling 0.005% per $ above): $1,560 of margin cannot carry 20x ...
+    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None, share=0.49)
     assert lev < 20 and notional / lev <= 0.49 * 3184 + 1e-6
+    # ... but the run's $318 can
+    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None)
+    assert lev == 20 and notional < 10_000
     # the contract limit binds
     n, lev, _ = S.spike_size(3184, 0.001, 100, 5.0, 50_000, 0.001, 1_000)
     assert n == 1_000
     assert S.spike_size(0, 1.0, 1, 5.0, 50_000, 0.001, None) == (0, 0, 0.0)
 
 
-def test_target_and_lock_prices_net_the_planned_dollars():
-    e, notional = 1.0, 31_000.0
-    tp, lk = S.target_price(e, notional), S.lock_price(e, notional)
-    assert abs(notional * (e - tp) / e - notional * S.COST - S.TARGET_USD) < 1e-6
-    assert abs(notional * (e - lk) / e - notional * S.COST - S.LOCK_USD) < 1e-6
-    assert tp < lk < e
+def test_activation_and_break_even_prices_net_the_planned_dollars():
+    e, notional = 1.0, 6_219.0
+    act, lk = S.activation_price(e, notional), S.lock_price(e, notional)
+    assert S.BREAKEVEN_AFTER_USD == pytest.approx(150 * 10 / 49) and S.LOCK_USD == 0 and S.TRAIL == 0.05
+    assert abs(notional * (e - act) / e - notional * S.COST - S.BREAKEVEN_AFTER_USD) < 1e-6   # nets +$30.61
+    assert abs(notional * (e - lk) / e - notional * S.COST) < 1e-9                            # nets $0: break-even
+    assert act < lk < e and 0.005 < 1 - act / e < 0.007                                       # a ~0.6% fall
 
 
 # ============================================================ a fake Delta with resting orders
@@ -87,9 +97,10 @@ class SpikeDelta(FakeDelta):
         self._id += 1
         self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True, stop_order_type="stop_loss_order",
                                  stop_price=p["bracket_stop_loss_price"], order_type="market_order"))
-        self._id += 1
-        self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True, stop_order_type="take_profit_order",
-                                 stop_price=p["bracket_take_profit_price"], order_type="market_order"))
+        if p.get("bracket_take_profit_price"):               # exit C sends none
+            self._id += 1
+            self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True, stop_order_type="take_profit_order",
+                                     stop_price=p["bracket_take_profit_price"], order_type="market_order"))
 
     def cancel_order(self, oid, pid):
         super().cancel_order(oid, pid)
@@ -150,9 +161,10 @@ async def test_two_resting_sells_with_a_last_price_stop_and_both_cancelled_at_mi
         assert x["limit_price"] == "1.05"                              # 5% above the last price 1.00
         assert x["bracket_stop_loss_price"] == "1.0736"                # +2.25% from the limit, on the tick
         assert x["stop_trigger_method"] == x["bracket_stop_trigger_method"] == "last_traded_price"
+        assert "bracket_take_profit_price" not in x and rows["XUSD"]["target_price"] is None   # exit C: no target
         assert fake.lev[1] == 20 and rows["XUSD"]["leverage"] == 20
         notional = x["size"] * 1.05
-        assert abs(notional - 0.49 * 3184 / (0.05 + S.FEE_RESERVE)) <= 1.05   # margin / (5% + Delta's 0.12% fee reserve)
+        assert abs(notional - 0.10 * 3184 / (0.05 + S.FEE_RESERVE)) <= 1.05   # margin / (5% + Delta's 0.12% fee reserve)
         assert not fake.pos                                             # nothing sold yet
         await acct.step(con, D0 + DAY + 5)                              # 24:00 UTC: no spike came
         rows = await _rows(con)
@@ -178,8 +190,8 @@ async def test_the_first_fill_cancels_the_other_and_adds_extra_margin():
         assert rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["entry_price"] == 1.05
         assert rows["YUSD"]["status"] == "SKIPPED" and "filled first" in rows["YUSD"]["skip_reason"]
         assert fake.resting[_cid(fake, 2)]["row"]["state"] == "cancelled"
-        assert fake.margin_added == [(1, round(0.25 * 3184, 2))]
-        assert rows["XUSD"]["extra_margin"] == round(0.25 * 3184, 2)
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
+        assert rows["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
         assert [e["kind"] for e in await _events(con, "EXTRA_MARGIN")] == ["EXTRA_MARGIN"]
         assert (await _state(con))["status"] == "RUNNING"               # a resting fill is not a stranger's position
     finally:
@@ -207,7 +219,7 @@ async def test_a_partial_fill_keeps_what_filled_and_cancels_the_rest():
 
 @requires_pg
 @pytest.mark.asyncio
-async def test_the_lock_moves_the_stop_after_a_one_percent_fall():
+async def test_the_stop_moves_to_break_even_once_the_best_point_nets_the_activation_profit():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
     fake = SpikeDelta(balance=3184.0)
     lows = {"low": 1.05}
@@ -216,15 +228,18 @@ async def test_the_lock_moves_the_stop_after_a_one_percent_fall():
         await acct.step(con, D0 + 120)
         fake.fill_resting(_cid(fake, 1))
         await acct.step(con, D0 + 600)
-        assert not fake.edits                                           # no 1% fall yet
-        lows["low"] = 1.05 * 0.989                                      # the low reaches -1.1%
-        fake.book["XUSD"] = (1.035, 1.036, 1.035)                       # and the price is still below the lock level
+        assert not fake.edits                                           # no fall yet
+        lows["low"] = 1.05 * 0.996                                      # a 0.4% fall nets under +$30.61: nothing moves
+        fake.book["XUSD"] = (1.046, 1.047, 1.046)
+        await acct.step(con, D0 + 750)
+        assert not fake.edits and (await _rows(con))["XUSD"]["lock_price"] is None
+        lows["low"] = 1.05 * 0.993                                      # a 0.7% fall: past the ~0.61% activation
+        fake.book["XUSD"] = (1.043, 1.044, 1.043)                       # and the price is still below break-even
         await acct.step(con, D0 + 900)
         x = (await _rows(con))["XUSD"]
         assert x["status"] == "OPEN" and x["lock_price"] is not None
         assert fake.edits and float(fake.edits[-1][2]) == x["lock_price"]
-        notional = x["contracts"] * 1.05
-        assert abs(notional * (1.05 - x["lock_price"]) / 1.05 - notional * S.COST - S.LOCK_USD) < notional * 0.0001 + 1
+        assert abs(x["lock_price"] - 1.05 * (1 - S.COST)) < 0.0002      # break-even: the entry less the costs
         assert [e["kind"] for e in await _events(con) if e["kind"] in LOCK_EVENTS] == ["LOCK_MOVED"]
         n_edits = len(fake.edits)
         await acct.step(con, D0 + 1200)                                 # moved once only
@@ -242,7 +257,7 @@ async def test_the_lock_buys_back_at_market_when_the_price_is_already_above_it_a
     try:
         await acct.step(con, D0 + 120)
         fake.fill_resting(_cid(fake, 1))
-        fake.book["XUSD"] = (1.049, 1.0495, 1.049)                      # bounced back above the +$200 level
+        fake.book["XUSD"] = (1.049, 1.0495, 1.049)                      # bounced back above the break-even level
         await acct.step(con, D0 + 600)
         x = (await _rows(con))["XUSD"]
         assert (x["status"], x["exit_reason"]) == ("CLOSED", "LOCK")
@@ -400,11 +415,11 @@ async def test_option_a_the_fast_watcher_adds_the_extra_margin_without_waiting_f
         fake.fill_resting(_cid(fake, 1))
         seen = await acct.fast(con, D0 + 125)                           # 5 s later, between two 30 s passes
         rows = await _rows(con)
-        assert seen >= 1 and rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["extra_margin"] == round(0.25 * 3184, 2)
+        assert seen >= 1 and rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
         assert rows["YUSD"]["status"] == "SKIPPED"                      # the other pick cancelled at once too
         await acct.fast(con, D0 + 128)                                  # and again, and the next full pass:
         await acct.step(con, D0 + 150)
-        assert fake.margin_added == [(1, round(0.25 * 3184, 2))]        # ... the margin was added exactly once
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # ... the margin was added exactly once
         assert (await _state(con))["status"] == "RUNNING"
     finally:
         await con.close()
@@ -435,13 +450,12 @@ async def test_option_a_a_refused_top_up_is_logged_and_not_retried_every_poll():
         await con.close()
 
 
-def test_the_target_and_lock_scale_with_the_balance():
+def test_the_activation_scales_with_the_balance():
     e = 1.0
-    full = S.target_price(e, 31_000.0, 3184.0), S.lock_price(e, 31_000.0, 3184.0)
-    half = S.target_price(e, 15_500.0, 1592.0), S.lock_price(e, 15_500.0, 1592.0)
+    full = S.activation_price(e, 6_200.0, 3184.0), S.lock_price(e, 6_200.0, 3184.0)
+    half = S.activation_price(e, 3_100.0, 1592.0), S.lock_price(e, 3_100.0, 1592.0)
     assert full == pytest.approx(half)                                   # the same price fall at half the balance
-    assert abs(15_500.0 * (e - half[0]) / e - 15_500.0 * S.COST - 250.0) < 1e-6   # $250 target at $1,592
-    assert abs(15_500.0 * (e - half[1]) / e - 15_500.0 * S.COST - 100.0) < 1e-6   # $100 lock at $1,592
+    assert abs(3_100.0 * (e - half[0]) / e - 3_100.0 * S.COST - S.BREAKEVEN_AFTER_USD / 2) < 1e-6   # $15.31 at $1,592
 
 
 @requires_pg
@@ -449,27 +463,27 @@ def test_the_target_and_lock_scale_with_the_balance():
 async def test_the_trail_follows_the_price_down_after_the_lock_and_never_up():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
     fake = SpikeDelta(balance=3184.0)
-    lows = {"low": 1.05 * 0.989}                                        # a 1.1% fall: the lock goes in
+    lows = {"low": 1.05 * 0.989}                                        # a 1.1% fall: the stop goes to break-even
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
         fake.fill_resting(_cid(fake, 1))
         fake.book["XUSD"] = (1.035, 1.036, 1.035)
-        await acct.step(con, D0 + 600)                                  # the lock
+        await acct.step(con, D0 + 600)                                  # the break-even move
         x = (await _rows(con))["XUSD"]
         lock = x["lock_price"]
         assert lock is not None and x["trail_price"] is None
-        await acct.step(con, D0 + 900)                                  # low 1.1%: 0.8% above it is looser than the lock
+        await acct.step(con, D0 + 900)                                  # low 1.1%: 5% above it is looser than break-even
         assert (await _rows(con))["XUSD"]["trail_price"] is None
-        lows["low"] = 1.05 * 0.984                                      # a 1.6% fall: 0.8% above it is tighter
-        fake.book["XUSD"] = (1.034, 1.035, 1.034)
+        lows["low"] = 1.05 * 0.94                                       # a 6% fall: 5% above it is tighter
+        fake.book["XUSD"] = (0.99, 0.991, 0.99)
         await acct.step(con, D0 + 1200)
         x = (await _rows(con))["XUSD"]
         assert x["trail_price"] is not None and x["trail_price"] < lock
-        assert abs(x["trail_price"] - 1.05 * 0.984 * 1.008) < 0.0002
+        assert abs(x["trail_price"] - 1.05 * 0.94 * 1.05) < 0.0002
         assert float(fake.edits[-1][2]) == x["trail_price"]
         n = len(fake.edits)
-        lows["low"] = 1.05 * 0.984                                      # no new low: the stop does not move (never up)
+        lows["low"] = 1.05 * 0.94                                       # no new low: the stop does not move (never up)
         await acct.step(con, D0 + 1500)
         assert len(fake.edits) == n
         assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_MOVED"]
@@ -488,9 +502,9 @@ async def test_the_trail_buys_back_at_market_when_the_price_already_bounced_abov
         await acct.step(con, D0 + 120)
         fake.fill_resting(_cid(fake, 1))
         fake.book["XUSD"] = (1.035, 1.036, 1.035)
-        await acct.step(con, D0 + 600)                                  # the lock
-        lows["low"] = 1.05 * 0.983                                      # fell 1.7% ...
-        fake.book["XUSD"] = (1.045, 1.046, 1.045)                       # ... and is back up past the trailing level
+        await acct.step(con, D0 + 600)                                  # the break-even move
+        lows["low"] = 1.05 * 0.93                                       # fell 7% ...
+        fake.book["XUSD"] = (1.03, 1.031, 1.03)                         # ... and is back up past the trailing level (1.0253)
         await acct.step(con, D0 + 900)
         x = (await _rows(con))["XUSD"]
         assert (x["status"], x["exit_reason"]) == ("CLOSED", "LOCK") and fake.pos[1] == 0

@@ -1,31 +1,36 @@
-"""Gainer-fade REAL-MONEY account, SPIKE SELL (run 4): "sell the spike" at 20x (owner 2026-11-15: "we want to deploy this version to
-prod, decommission rule A"; choices: hard stop "Month: 2 stops only", "50% margin as tested", paper accounts kept;
-then "approved" for: stop triggered on the LAST TRADED price, extra isolated margin after the fill, every stop's fill
-logged against its trigger). Rules fixed in docs/fade_live_spike_prereg.md; this module is them, nothing more.
+"""Gainer-fade REAL-MONEY account, SPIKE SELL (run 4): "sell the spike" at up to 20x (owner 2026-11-15: "we want to
+deploy this version to prod, decommission rule A"; hard stop "Month: 2 stops only"; paper accounts kept; stop on the
+LAST TRADED price, extra isolated margin after the fill, every stop's fill logged against its trigger). After the
+careful simulation (docs/careful_sim_spec.md) the owner chose, 2026-11-15: **"deploy with 10% margin"** and exit
+**"C approved"** = break-even, then a 5% trail. Rules fixed in docs/fade_live_spike_prereg.md; this module is them.
 
 THE RULES (per UTC day, on the paper runner's two rule-A picks):
   entry      a resting post-only LIMIT SELL 5% above the last traded price at entry time (00:00-00:30 UTC), GTC,
-             with an exchange-held bracket: stop +2.25% from the limit (last-traded trigger) and a take-profit
-             where the trade nets +$500 after costs. Not filled by 24:00 UTC -> cancelled ("no spike").
-  size       49% of the balance as isolated margin per resting order (two may rest: 2 x 49% + Delta's fee reserve
-             fit the wallet), at the most leverage up to 20x that Delta allows for that notional on that coin.
+             with an exchange-held stop +2.25% from the limit (last-traded trigger). NO take-profit order.
+             Not filled by 24:00 UTC -> cancelled ("no spike").
+  size       10% of the balance as isolated margin per resting order, at the most leverage up to 20x that Delta
+             allows for that notional on that coin (~$6,200 of position on $3,184).
   one at a   the first pick to fill is the trade; the other pick's resting order is cancelled at once.
    time      No new resting orders while a position is open.
   after the  the rest of an order that filled in part is cancelled; the stop must cover the position (else bought
-   fill      back + HALT, as run 3); isolated margin checked (as run 3); then EXTRA isolated margin of 25% of the
+   fill      back + HALT, as run 3); isolated margin checked (as run 3); then EXTRA isolated margin of 5.1% of the
              balance is added (POST /v2/positions/change_margin) -- liquidation from ~+2.5% to ~+5%.
-  the lock   once a 1m low since the fill reaches -1% from the entry, the stop is moved (PUT /v2/orders) to the
-             price that nets +$200; if the last price is already above that level the position is bought back at
-             once ("LOCK"). The move happens on the bot's next pass (30 s), as the backtest moved it at the minute's
-             close.
-  exits      take-profit or stop at Delta; 24 h after the FILL the bot buys back ("TIME").
-  hard stop  after 2 full stops (STOP_LOSS or LIQUIDATION without a lock) in a calendar month (UTC), no new entries
-             until the 1st.
+  break-even once a 1m low since the fill reaches the price where the trade nets +$30.61 x balance / $3,184 (about a
+             0.6% fall), the stop is moved (PUT /v2/orders) to BREAK-EVEN (the price netting $0 after costs); if the
+             last price is already at or above that level the position is bought back at once ("LOCK").
+  the trail  from then on the stop trails 5% above the lowest 1m low since the fill, only when that is lower than
+             the stop it has, never up; if the last price is already at or above the new level: bought back ("LOCK").
+             Both moves happen on the bot's next pass (30 s), as the backtest moved them at the minute's close.
+  exits      the stop at Delta; 24 h after the FILL the bot buys back ("TIME").
+  hard stop  after 2 full stops (STOP_LOSS or LIQUIDATION before the stop was moved) in a calendar month (UTC), no
+             new entries until the 1st.
   kept       run 3's machinery: $1,000 floor (STOPPED until a refill), HALT on anything unexplained, the capital
              check, reconcile, isolated-margin check, buy-backs that never over-buy, exits-only without the switch.
-Backtest of exactly these rules (scripts/clean_compare.py, verified by scripts/verify_independent.py, 604/604 fills
-identical): 20 real picks 2026-10-29..11-14 +$1,463..+$2,172 on $3,184; full Delta history 2025-01..2026-10
--$127..-$37 per trade (strict..lenient stop fills). The owner chose to run it knowing this (CONTEXT.md).
+Backtest of exactly these rules (scripts/careful_be_trail.py + scripts/careful_margin.py, two implementations
+agreeing on every trade, Delta's own 1m prices 2025-01..2026-11): from $3,184 the full history ends $1,801 (strict)
+.. $3,890 (lenient), deepest drop 67% .. 53%; 11 .. 22 of 22 monthly starts end above the start, none under the
+$1,000 floor; the 20 real picks +$871 .. +$1,119. About 1 trade in 8 is a winner. Roughly break-even on the
+history: the owner chose to run it knowing this (CONTEXT.md).
 """
 from __future__ import annotations
 
@@ -46,20 +51,24 @@ RUN_VERSION = 4
 #: without a host replacement. Floor ($1,000) and refill rules are run 3's.
 RUN_START_USD = 3184.0
 SPIKE_ABOVE = 0.05
-TRADE_MARGIN = 0.49
-EXTRA_MARGIN = 0.25
+#: Owner 2026-11-15 ("I suggest we deploy with 10% margin"): 10% of the balance per trade; the extra margin keeps the
+#: tested liquidation distance (25% x 10/49 = 5.1% of the balance -> ~+5.1%).
+TRADE_MARGIN = 0.10
+EXTRA_MARGIN = 0.051
 MAX_LEVERAGE = 20
 STOP_ABOVE = 0.0225
-TARGET_USD = 500.0
-LOCK_AFTER = 0.01
-LOCK_USD = 200.0
-#: Owner 2026-11-15 ("Yes add it"): after the lock the stop trails 0.8% above the lowest price since the fill, only when
-#: that is tighter than the stop it has (in practice from a ~1.58% fall, just short of the ~1.76% target); never up.
-#: Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: set at the lock, a native trail would start
-#: 0.8% above the CURRENT price -- looser than the +$200 lock -- which is not the tested rule.
-TRAIL = 0.008
+#: Exit C (owner 2026-11-15, "C approved"): once the trade's best point (a 1m low) nets this much x balance/$3,184 the
+#: stop goes to break-even. Tested as +$150 on a 49%-margin position; at 10% margin the same price fall is 150 x 10/49.
+BREAKEVEN_AFTER_USD = 150.0 * TRADE_MARGIN / 0.49
+#: The stop after that move nets this (0 = break-even after costs). Named "lock" in the table and the events (run 4's
+#: first version locked +$200 here).
+LOCK_USD = 0.0
+#: ... and then trails this far above the lowest price since the fill, only when that is lower than the stop it has;
+#: never up. Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: a native trail would start 5% above
+#: the CURRENT price -- far looser than break-even -- which is not the tested rule.
+TRAIL = 0.05
 MONTH_STOP_LIMIT = 2
-#: Costs used to place the take-profit and the lock: maker entry 0.02% + 0.05% slippage, taker exit 0.05%.
+#: Costs used to place the break-even levels: maker entry 0.02% + 0.05% slippage, taker exit 0.05%.
 COST = 0.0002 + 0.0005 + 0.0005
 #: Delta's fee reserve in an order's margin (measured: 83,682 SOPH contracts on 50% of $1,534.98).
 FEE_RESERVE = 0.0012
@@ -90,18 +99,19 @@ def spike_size(balance: float, price: float, cv: float, im_pct: float, cap: floa
 
 
 def scale(balance: float) -> float:
-    """Owner 2026-11-15 ("Scale can be kept, cap is no"): the $500 target and $200 lock are sized for the $3,184 start
-    and move with the balance (at $1,592 they are $250 / $100), i.e. the same price fall at any balance."""
+    """Owner 2026-11-15 ("Scale can be kept, cap is no"): the dollar levels are sized for the $3,184 start and move
+    with the balance, i.e. the same price fall at any balance."""
     return balance / RUN_START_USD if balance > 0 else 1.0
 
 
-def target_price(entry: float, notional: float, balance: float = RUN_START_USD) -> float:
-    """The take-profit for a short of `notional` that nets +TARGET_USD x scale(balance) after COST."""
-    return entry * (1 - (TARGET_USD * scale(balance) / notional + COST))
+def activation_price(entry: float, notional: float, balance: float = RUN_START_USD) -> float:
+    """The price at which a short of `notional` nets +BREAKEVEN_AFTER_USD x scale(balance) after COST: a 1m low at or
+    under it moves the stop to break-even."""
+    return entry * (1 - (BREAKEVEN_AFTER_USD * scale(balance) / notional + COST))
 
 
 def lock_price(entry: float, notional: float, balance: float = RUN_START_USD) -> float:
-    """The stop that nets +LOCK_USD x scale(balance) after COST."""
+    """The stop after the move: nets +LOCK_USD x scale(balance) after COST (LOCK_USD = 0: break-even)."""
     return entry * (1 - (LOCK_USD * scale(balance) / notional + COST))
 
 
@@ -308,17 +318,17 @@ class SpikeLive(L.LiveFade):
         start = int(r["entry_time"].timestamp()) // 60 * 60
         bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
         lows = [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
-        if not lows or min(lows) > e * (1 - LOCK_AFTER):
-            return
-        prod = await asyncio.to_thread(self.product, r["symbol"])
         notional = e * r["contracts"] * r["contract_value"]
+        if not lows or notional <= 0 or min(lows) > activation_price(e, notional, float(r["balance_before"])):
+            return                                       # the best point has not netted +$30.61 x scale yet
+        prod = await asyncio.to_thread(self.product, r["symbol"])
         lp = to_tick(lock_price(e, notional, float(r["balance_before"])), prod["tick"], up=True)
         last = await asyncio.to_thread(self.last_price, r["symbol"])
         await con.execute("UPDATE fade_live_positions SET lock_price = $2 WHERE id = $1", r["id"], float(lp))
         if last <= 0 or last >= float(lp):
             await event(con, "LOCK_AT_MARKET", r["symbol"], {"lock": float(lp), "last": last})
             fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
-            await self._close(con, fresh, now, "LOCK", "the price was already back above the +$200 level")
+            await self._close(con, fresh, now, "LOCK", "the price was already back at the break-even level")
             return
         so = await asyncio.to_thread(self.stop_order, r["product_id"])
         try:
@@ -334,11 +344,12 @@ class SpikeLive(L.LiveFade):
             await con.execute("UPDATE fade_live_positions SET lock_price = NULL WHERE id = $1", r["id"])   # retried next pass
             return
         await event(con, "LOCK_MOVED", r["symbol"], {"stop_from": r["stop_price"], "stop_to": float(lp), "last": last})
-        log.warning("spike %s: stop moved to %s (locks +$%.0f)", r["symbol"], lp, LOCK_USD * scale(float(r["balance_before"])))
+        log.warning("spike %s: stop moved to %s (break-even)", r["symbol"], lp)
 
     async def _trail(self, con, r, now: float) -> None:
-        """After the lock: move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter (lower)
-        than the stop now; if the last price is already at or above it, buy back at once ("LOCK"), as the backtest."""
+        """After the break-even move: move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter
+        (lower) than the stop now; if the last price is already at or above it, buy back at once ("LOCK"), as the
+        backtest."""
         from live.client import VenueError
         start = int(r["entry_time"].timestamp()) // 60 * 60
         bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
@@ -423,11 +434,10 @@ class SpikeLive(L.LiveFade):
             return
         n, lev, notional = spike_size(bal, float(limit), prod["cv"], prod["im"], prod["cap"], prod["ims"], prod["limit"])
         if n < 1 or lev < 1:
-            await self._skip(con, day, p, "below one contract at 49% margin")
+            await self._skip(con, day, p, f"below one contract at {TRADE_MARGIN:.0%} margin")
             return
         notional = n * float(limit) * prod["cv"]
         stop = to_tick(float(limit) * (1 + STOP_ABOVE), prod["tick"], up=False)
-        target = to_tick(target_price(float(limit), notional, bal), prod["tick"], up=False)
         try:
             await asyncio.to_thread(self.client.set_order_leverage, prod["id"], lev)
             got = await asyncio.to_thread(self.client.get_order_leverage, prod["id"])
@@ -443,11 +453,11 @@ class SpikeLive(L.LiveFade):
             "leverage, balance_before, paper_entry, ref_price, limit_price, stop_price, target_price, risk_pct, "
             "entry_cid, detail) VALUES ($1,$2,$3,'SENDING',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
             _ts(day), sym, p["rank"], prod["id"], prod["cv"], n, lev, bal, p["entry_price"], ref,
-            float(limit), float(stop), float(target), round(n * prod["cv"] * (float(stop) - float(limit)) / bal, 4), cid,
+            float(limit), float(stop), None, round(n * prod["cv"] * (float(stop) - float(limit)) / bal, 4), cid,
             json.dumps({"bid": bid, "run": RUN_VERSION, "notional": round(notional, 2)}))
         order = OrderRequest(product_id=prod["id"], size=n, side=Side.SELL, order_type=OrderType.LIMIT,
                              client_order_id=cid, limit_price=limit, time_in_force=TimeInForce.GTC, post_only=True,
-                             bracket_stop_loss_price=stop, bracket_take_profit_price=target,
+                             bracket_stop_loss_price=stop,     # no take-profit: break-even, then the 5% trail
                              stop_trigger_method=StopTriggerMethod.LAST_TRADED, note="spike-live entry")
         try:
             o = await asyncio.to_thread(self.client.place_order, order)
@@ -459,7 +469,7 @@ class SpikeLive(L.LiveFade):
         except (AmbiguousWrite, VenueError) as exc:
             await self.set_state(con, "HALTED", f"{sym} entry outcome unknown: {exc}")
             return                                       # left SENDING: _resting asks again
-        log.warning("spike %s: resting sell x%d at %s (stop %s, target %s, %dx)", sym, n, limit, stop, target, lev)
+        log.warning("spike %s: resting sell x%d at %s (stop %s, no target, %dx)", sym, n, limit, stop, lev)
         await self._resting(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id), now)
         _ = (o, fee, fill_price, time)                   # the reply is read again by client order id in _resting
 
