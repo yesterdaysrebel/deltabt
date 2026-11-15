@@ -53,6 +53,11 @@ STOP_ABOVE = 0.0225
 TARGET_USD = 500.0
 LOCK_AFTER = 0.01
 LOCK_USD = 200.0
+#: Owner 2026-11-15 ("Yes add it"): after the lock the stop trails 0.8% above the lowest price since the fill, only when
+#: that is tighter than the stop it has (in practice from a ~1.58% fall, just short of the ~1.76% target); never up.
+#: Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: set at the lock, a native trail would start
+#: 0.8% above the CURRENT price -- looser than the +$200 lock -- which is not the tested rule.
+TRAIL = 0.008
 MONTH_STOP_LIMIT = 2
 #: Costs used to place the take-profit and the lock: maker entry 0.02% + 0.05% slippage, taker exit 0.05%.
 COST = 0.0002 + 0.0005 + 0.0005
@@ -104,6 +109,7 @@ SCHEMA = """
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS order_id BIGINT;
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS lock_price DOUBLE PRECISION;
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS extra_margin DOUBLE PRECISION;
+ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS trail_price DOUBLE PRECISION;
 """
 
 
@@ -293,6 +299,8 @@ class SpikeLive(L.LiveFade):
                 await self._close(con, r, now, "TIME", "24 h after the fill")
             elif r["lock_price"] is None and r["entry_price"]:
                 await self._lock(con, r, now)
+            elif r["entry_price"]:
+                await self._trail(con, r, now)
 
     async def _lock(self, con, r, now: float) -> None:
         from live.client import VenueError
@@ -328,11 +336,44 @@ class SpikeLive(L.LiveFade):
         await event(con, "LOCK_MOVED", r["symbol"], {"stop_from": r["stop_price"], "stop_to": float(lp), "last": last})
         log.warning("spike %s: stop moved to %s (locks +$%.0f)", r["symbol"], lp, LOCK_USD * scale(float(r["balance_before"])))
 
+    async def _trail(self, con, r, now: float) -> None:
+        """After the lock: move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter (lower)
+        than the stop now; if the last price is already at or above it, buy back at once ("LOCK"), as the backtest."""
+        from live.client import VenueError
+        start = int(r["entry_time"].timestamp()) // 60 * 60
+        bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
+        lows = [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
+        if not lows:
+            return
+        prod = await asyncio.to_thread(self.product, r["symbol"])
+        current = float(r["trail_price"] or r["lock_price"])
+        new = to_tick(min(lows) * (1 + TRAIL), prod["tick"], up=True)
+        if float(new) >= current - float(prod["tick"]) * 0.5:
+            return                                       # not tighter: the lock (or the last trail) stays
+        last = await asyncio.to_thread(self.last_price, r["symbol"])
+        if last <= 0 or last >= float(new):
+            await event(con, "TRAIL_AT_MARKET", r["symbol"], {"trail": float(new), "last": last})
+            await self._close(con, r, now, "LOCK", "the price was already back above the trailing level")
+            return
+        so = await asyncio.to_thread(self.stop_order, r["product_id"])
+        try:
+            if so is None or so.get("id") is None:
+                raise VenueError("no resting stop order to move")
+            await asyncio.to_thread(self.client.edit_stop_price, int(so["id"]), r["product_id"], new)
+            moved = await asyncio.to_thread(self.stop_order, r["product_id"])
+            ok = moved is not None and abs(float(moved.get("stop_price") or 0) - float(new)) <= float(prod["tick"]) * 1.5
+        except (VenueError, TypeError, ValueError) as exc:
+            ok = False
+            await event(con, "TRAIL_FAILED", r["symbol"], {"trail": float(new), "error": str(exc)[:300]})
+        if ok:
+            await con.execute("UPDATE fade_live_positions SET trail_price = $2 WHERE id = $1", r["id"], float(new))
+            await event(con, "TRAIL_MOVED", r["symbol"], {"stop_from": current, "stop_to": float(new), "last": last})
+
     async def _closed_at_venue(self, con, r, now: float) -> None:
         await super()._closed_at_venue(con, r, now)
         x = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
         if x["status"] == "CLOSED" and x["exit_reason"] == "STOP_LOSS" and x["exit_price"]:
-            trig = float(x["lock_price"] or x["stop_price"])
+            trig = float(x["trail_price"] or x["lock_price"] or x["stop_price"])
             await event(con, "STOP_FILL", x["symbol"], {"trigger": trig, "fill": float(x["exit_price"]),
                                                        "slip_pct": round(100 * (float(x["exit_price"]) / trig - 1), 4),
                                                        "locked": x["lock_price"] is not None})

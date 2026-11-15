@@ -51,6 +51,12 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
 6. **The lock:** once a **1m low since the fill reaches −1%** from the entry, the stop is **moved to the price that nets
    +$200 x balance / $3,184** (PUT /v2/orders, read back). If the last price is already above that level, the bot **buys back at once**
    ("LOCK"). The move happens on the bot's next pass (30 s).
+6b. **The trail (owner 2026-11-15, "Yes add it"):** after the lock the stop trails **0.8% above the lowest price since
+   the fill**, only when that is tighter than the stop it has (in practice from a ~1.58% fall, just short of the ~1.76%
+   target) and never up; if the last price is already above the new level the bot buys back at once ("LOCK"). Moved
+   by the bot (PUT /v2/orders, read back), not Delta's native trailing stop: set at the lock, a native trail would start
+   0.8% above the current price -- looser than the +$200 lock. Tested (`scripts/run4_trailing.py`): 2026 from $3,184
+   $871 (strict) .. $2,241 (lenient) vs $847 .. $2,125 without; the same 29 targets in 2026 (no winners lost).
 7. **Exits:** the take-profit or the stop at Delta; **24 h after the fill** the bot buys back ("TIME"). TIME, LOCK and
    LIQUIDATION (a jump past the stop: a tested risk, counted as a full stop) are planned; anything else unexplained
    HALTs, as run 3.

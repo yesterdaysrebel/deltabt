@@ -21,7 +21,7 @@ import run4_pause_rules as P  # noqa: E402
 CFG = P.CFG
 
 
-def run(paths, lenient, scaled, cap, log=False):
+def run(paths, lenient, scaled, cap, log=False, stop_limit=2):
     bal, low, busy, per, stops, m_start = C.START, C.START, -1, None, 0, C.START
     rows: dict = {}
     by_day: dict = {}
@@ -34,9 +34,9 @@ def run(paths, lenient, scaled, cap, log=False):
         row = rows.setdefault(m, dict(start=bal, trades=0, TARGET=0, LOCKED=0, STOP=0, LIQ=0, h24=0, off=0, pnl=0.0, why=""))
         for _, sym, hi, lo, cl, k0 in by_day[day]:
             capped = cap is not None and bal - m_start >= cap
-            if stops >= 2 or capped:
+            if (stop_limit and stops >= stop_limit) or capped:
                 row["off"] += 1
-                row["why"] = row["why"] or ("2 stops" if stops >= 2 else f"+${cap:,.0f} reached")
+                row["why"] = row["why"] or ("2 stops" if stop_limit and stops >= stop_limit else f"+${cap:,.0f} reached")
                 continue
             if bal < 50:
                 continue

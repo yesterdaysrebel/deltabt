@@ -442,3 +442,58 @@ def test_the_target_and_lock_scale_with_the_balance():
     assert full == pytest.approx(half)                                   # the same price fall at half the balance
     assert abs(15_500.0 * (e - half[0]) / e - 15_500.0 * S.COST - 250.0) < 1e-6   # $250 target at $1,592
     assert abs(15_500.0 * (e - half[1]) / e - 15_500.0 * S.COST - 100.0) < 1e-6   # $100 lock at $1,592
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_trail_follows_the_price_down_after_the_lock_and_never_up():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05 * 0.989}                                        # a 1.1% fall: the lock goes in
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.035, 1.036, 1.035)
+        await acct.step(con, D0 + 600)                                  # the lock
+        x = (await _rows(con))["XUSD"]
+        lock = x["lock_price"]
+        assert lock is not None and x["trail_price"] is None
+        await acct.step(con, D0 + 900)                                  # low 1.1%: 0.8% above it is looser than the lock
+        assert (await _rows(con))["XUSD"]["trail_price"] is None
+        lows["low"] = 1.05 * 0.984                                      # a 1.6% fall: 0.8% above it is tighter
+        fake.book["XUSD"] = (1.034, 1.035, 1.034)
+        await acct.step(con, D0 + 1200)
+        x = (await _rows(con))["XUSD"]
+        assert x["trail_price"] is not None and x["trail_price"] < lock
+        assert abs(x["trail_price"] - 1.05 * 0.984 * 1.008) < 0.0002
+        assert float(fake.edits[-1][2]) == x["trail_price"]
+        n = len(fake.edits)
+        lows["low"] = 1.05 * 0.984                                      # no new low: the stop does not move (never up)
+        await acct.step(con, D0 + 1500)
+        assert len(fake.edits) == n
+        assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_MOVED"]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_trail_buys_back_at_market_when_the_price_already_bounced_above_it():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05 * 0.989}
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.035, 1.036, 1.035)
+        await acct.step(con, D0 + 600)                                  # the lock
+        lows["low"] = 1.05 * 0.983                                      # fell 1.7% ...
+        fake.book["XUSD"] = (1.045, 1.046, 1.045)                       # ... and is back up past the trailing level
+        await acct.step(con, D0 + 900)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "LOCK") and fake.pos[1] == 0
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()

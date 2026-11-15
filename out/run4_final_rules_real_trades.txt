@@ -1,0 +1,54 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+RUN 4 FINAL RULES on the 20 REAL picks 2026-10-29..11-14 (Delta 1m candles), from $3,184 as an account:
+spike +5% / 49% margin at 20x / +25% extra margin at the fill / stop +2.25% last-traded / target +$500 x bal/3,184 /
+lock +$200 x bal/3,184 after a 1% fall / trail 0.8% after the lock / 24 h / off for the month after 2 full stops
+
+STRICT stop fills
+  day    coin       balance    sell at filled  result closed      P&L    after
+  10-29  EVAA         3,184    1.51799  01:46  TARGET  01:47     +500    3,684
+  10-29  INIT         3,684   0.233237  10:55  LOCKED  11:10     +126    3,811
+  10-30  BEAT         3,811    0.10878  15:25  TARGET  15:37     +599    4,409
+  10-30  PARTI        4,409  0.0625275   never rose 5%: no trade
+  10-31  AIN          4,409   0.189252  00:16  LOCKED  00:18     -729    3,680
+  10-31  SOPH         3,680 0.00227955   never rose 5%: no trade
+  11-01  AIN          3,680   0.247643  01:34  TARGET  01:50     +578    4,259
+  11-01  EVAA         4,259    1.49069  07:05    STOP  07:06    -1008    3,251
+  11-02  AIN          3,251   0.304836   never rose 5%: no trade
+  11-02  ESPORTS      3,251  0.0178605  00:05    STOP  00:06     -661    2,589
+  11-03  ARIA         2,589   skipped: 2 full stops this month
+  11-04  AIO          2,589   skipped: 2 full stops this month
+  11-06  ARIA         2,589   skipped: 2 full stops this month
+  11-07  AIO          2,589   skipped: 2 full stops this month
+  11-09  AIOT         2,589   skipped: 2 full stops this month
+  11-10  PIEVERSE     2,589   skipped: 2 full stops this month
+  11-11  ARIA         2,589   skipped: 2 full stops this month
+  11-12  ARIA         2,589   skipped: 2 full stops this month
+  11-13  HANA         2,589   skipped: 2 full stops this month
+  11-14  SOPH         2,589   skipped: 2 full stops this month
+  -> {'TARGET': 3, 'LOCKED': 2, 'STOP': 2}: $3,184 -> $2,589
+
+LENIENT stop fills
+  day    coin       balance    sell at filled  result closed      P&L    after
+  10-29  EVAA         3,184    1.51799  01:46  TARGET  01:47     +500    3,684
+  10-29  INIT         3,684   0.233237  10:55  LOCKED  11:10     +126    3,811
+  10-30  BEAT         3,811    0.10878  15:25  TARGET  15:37     +599    4,409
+  10-30  PARTI        4,409  0.0625275   never rose 5%: no trade
+  10-31  AIN          4,409   0.189252  00:16  LOCKED  00:18     +235    4,644
+  10-31  SOPH         4,644 0.00227955   never rose 5%: no trade
+  11-01  AIN          4,644   0.247643  01:34  TARGET  01:50     +730    5,374
+  11-01  EVAA         5,374    1.49069  07:05    STOP  07:06    -1269    4,105
+  11-02  AIN          4,105   0.304836   never rose 5%: no trade
+  11-02  ESPORTS      4,105  0.0178605  00:05    STOP  00:06     -798    3,307
+  11-03  ARIA         3,307   skipped: 2 full stops this month
+  11-04  AIO          3,307   skipped: 2 full stops this month
+  11-06  ARIA         3,307   skipped: 2 full stops this month
+  11-07  AIO          3,307   skipped: 2 full stops this month
+  11-09  AIOT         3,307   skipped: 2 full stops this month
+  11-10  PIEVERSE     3,307   skipped: 2 full stops this month
+  11-11  ARIA         3,307   skipped: 2 full stops this month
+  11-12  ARIA         3,307   skipped: 2 full stops this month
+  11-13  HANA         3,307   skipped: 2 full stops this month
+  11-14  SOPH         3,307   skipped: 2 full stops this month
+  -> {'TARGET': 3, 'LOCKED': 2, 'STOP': 2}: $3,184 -> $3,307
+
