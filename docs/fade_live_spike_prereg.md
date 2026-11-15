@@ -1,4 +1,6 @@
-# Fade real-money run 4 — "sell the spike" at 20x, $3,184 — rules fixed before any order
+# Spike Sell (real-money run 4) — "sell the spike" at 20x, $3,184 — rules fixed before any order
+
+**Name (owner 2026-11-15): Spike Sell.** "Run 4" stays its run number in the bot's database.
 
 Owner, 2026-11-15: "we want to deploy this version to prod, decommission rule A"; choices: hard stop **"Month: 2 stops
 only"**, size **"50% margin as tested"**, paper accounts **kept running**; "we will keep lock after a 1% fall, keep these
@@ -8,6 +10,8 @@ Supersedes run 3 (`docs/fade_live_ladder_prereg.md`, rule A ladder) for the real
 (the rules), on run 3's machinery in `live/fade_live.py`. Paper accounts (A, QUICK, LADDER, funding, options) unchanged.
 
 ## What the evidence says (recorded so the review cannot rewrite it)
+**Superseded 2026-11-15 by the careful simulation** (`docs/careful_sim_spec.md`, Delta's own 1m prices for all 1,049 picks, 48 h each, three implementations agreeing on every trade, `out/careful/report.txt`): per trade at $3,184 **-$94 (strict) .. -$41 (lenient)**; from $3,184 with the $1,000 floor: 20 real picks $5,702 .. $7,248, 2026 from Jan 1 $950 .. $825 (floor by May), 22 monthly starts ended under $1,000 in 22 .. 14 and above $3,184 in 0 .. 2. The numbers below are the earlier ones (Binance prices, trades cut at 23:59), kept as recorded.
+
 Backtest of exactly these rules on one stated fill model (`scripts/clean_compare.py`, `checks()` asserting known Delta
 facts), verified by an independent re-implementation (`scripts/verify_independent.py`: **604/604 history fills and
 14/14 real fills identical**, `out/verify_independent.txt`). Start $3,184. STRICT = a triggered stop fills at the worse of
@@ -64,8 +68,8 @@ three recent weeks were a good stretch. The owner chose to run it knowing this.*
    entries until the 1st**.
 9. **Kept from run 3:** the $1,000 floor (STOPPED until a refill, `fade-live-capital`), the $3,000 refill budget, HALT on
    anything unexplained, the capital check, exits-only without the switch, the kill switch.
-10. **Start:** run 4 begins on the funded wallet ($3,184.13 on 2026-11-15). The host's `DELTABOT_EQUITY` still says 1500
-    (run 3); run 4 uses `RUN_START_USD = 3184` for the new-run wallet check ($1,000..$3,980), so no host change is needed.
+10. **Start:** Spike Sell begins on the funded wallet ($3,184.13 on 2026-11-15). The host's `DELTABOT_EQUITY` still says 1500
+    (run 3); Spike Sell uses `RUN_START_USD = 3184` for the new-run wallet check ($1,000..$3,980), so no host change is needed.
 11. **Logged:** every stop fill against its trigger (`STOP_FILL`: trigger, fill, slip %), every lock (`LOCK_MOVED` /
     `LOCK_AT_MARKET` / `LOCK_FAILED`), every margin top-up (`EXTRA_MARGIN*`).
 

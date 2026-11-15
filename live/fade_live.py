@@ -330,7 +330,7 @@ class LiveFade:
     """The real account. `client` is a live.client.LiveClient on prod (a fake in tests). Its venue
     methods are synchronous and are called through asyncio.to_thread."""
 
-    #: The run this class trades (a subclass with other rules is another run: live/spike_live.py is run 4).
+    #: The run this class trades (a subclass with other rules is another run: live/spike_live.py is run 4, Spike Sell).
     run_version = RUN_VERSION
     #: The bot's own buy-backs that are the plan working (any other reason HALTs the account).
     planned_exits: tuple[str, ...] = ("TIME",)
@@ -927,7 +927,7 @@ def from_env(env: dict | None = None) -> tuple[LiveFade | None, str]:
         return None, why
     from live.config import client_from_env
     src = os.environ if env is None else env
-    # Run 4 replaces run 3's rule A (owner 2026-11-15, "decommission rule A"; docs/fade_live_spike_prereg.md).
+    # Spike Sell (run 4) replaces run 3's rule A (owner 2026-11-15, "decommission rule A"; docs/fade_live_spike_prereg.md).
     # Run 3's open positions, if any, are still reconciled and bought back by the same machinery.
     from live.spike_live import SpikeLive
     acct = SpikeLive(client_from_env(src), risk_pct=_num_env(src, "DELTABOT_RISK_PER_TRADE", 0.0),

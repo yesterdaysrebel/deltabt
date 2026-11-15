@@ -1,4 +1,4 @@
-"""Gainer-fade REAL-MONEY account, RUN 4: "sell the spike" at 20x (owner 2026-11-15: "we want to deploy this version to
+"""Gainer-fade REAL-MONEY account, SPIKE SELL (run 4): "sell the spike" at 20x (owner 2026-11-15: "we want to deploy this version to
 prod, decommission rule A"; choices: hard stop "Month: 2 stops only", "50% margin as tested", paper accounts kept;
 then "approved" for: stop triggered on the LAST TRADED price, extra isolated margin after the fill, every stop's fill
 logged against its trigger). Rules fixed in docs/fade_live_spike_prereg.md; this module is them, nothing more.
@@ -114,7 +114,7 @@ ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS trail_price DOUBLE PREC
 
 
 class SpikeLive(L.LiveFade):
-    """Run 4. Status flow of a row: SENDING -> RESTING -> OPEN -> CLOSED (or SKIPPED / FAILED)."""
+    """Spike Sell (run 4). Status flow of a row: SENDING -> RESTING -> OPEN -> CLOSED (or SKIPPED / FAILED)."""
 
     run_version = RUN_VERSION
     #: TIME and LOCK are the bot's own exits; a LIQUIDATION (a jump past the stop, a tested risk of this rule) counts as
@@ -467,7 +467,7 @@ class SpikeLive(L.LiveFade):
 # ============================================================ operator command
 
 def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
-    """ONE real contract through run 4's order shapes, then flat again (`python -m live fade-live-probe [SYMBOL]`).
+    """ONE real contract through Spike Sell's order shapes, then flat again (`python -m live fade-live-probe [SYMBOL]`).
     Owner's yes required each time (docs/fade_live_spike_prereg.md). Costs a few cents of fees. The account must be
     flat; run `fade-live-capital` after it if the account is running (its fees move the wallet).
       1. a resting POST-ONLY GTC sell 20% above the market with a last-traded bracket is accepted, then cancelled
