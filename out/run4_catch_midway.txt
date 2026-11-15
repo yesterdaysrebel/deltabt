@@ -1,0 +1,42 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Once it is 'surely falling': from the sell point, does it fall another 1.8% (target) before it rises 2.25%
+(stop)? Full stops in history + real picks, strict sell price:
+   3.0% off the high          reached 177 of 177 | falls 1.8% first  87 (49%) | rises 2.25% first  89 | neither 1
+   5.0% off the high          reached 169 of 177 | falls 1.8% first  82 (49%) | rises 2.25% first  87 | neither 0
+   7.5% off the high          reached 159 of 177 | falls 1.8% first  74 (47%) | rises 2.25% first  80 | neither 5
+   10.0% off the high         reached 135 of 177 | falls 1.8% first  54 (40%) | rises 2.25% first  79 | neither 2
+   15.0% off the high         reached  83 of 177 | falls 1.8% first  40 (48%) | rises 2.25% first  41 | neither 2
+   back below our stop price  reached 174 of 177 | falls 1.8% first  78 (45%) | rises 2.25% first  96 | neither 0
+   back below our entry price reached 154 of 177 | falls 1.8% first  67 (44%) | rises 2.25% first  86 | neither 1
+   (break-even needs about 2.25/(1.8+2.25) = 56% 'falls first' before costs; more after costs)
+
+Per trade on a fixed $3,184, STRICT .. LENIENT:
+  20 real picks:
+    run 4 as built             total $   +1,494 .. $   +2,196
+    3.0% off the high          total $   +1,079 .. $   +3,197 | re-entries 2..2: 0..2 targets, 0..0 stops, re-entry P&L $-415 .. $+1,001
+    5.0% off the high          total $     +384 .. $   +1,949 | re-entries 2..2: 0..1 targets, 1..1 stops, re-entry P&L $-1,110 .. $-247
+    7.5% off the high          total $   +1,632 .. $   +2,350 | re-entries 2..2: 1..1 targets, 0..0 stops, re-entry P&L $+138 .. $+154
+    10.0% off the high         total $   +1,349 .. $   +2,513 | re-entries 2..2: 1..1 targets, 1..0 stops, re-entry P&L $-145 .. $+317
+    15.0% off the high         total $   +1,246 .. $   +1,949 | re-entries 2..2: 1..1 targets, 1..1 stops, re-entry P&L $-247 .. $-247
+    back below our stop price  total $     -443 .. $     +804 | re-entries 2..2: 0..0 targets, 2..2 stops, re-entry P&L $-1,936 .. $-1,393
+    back below our entry price total $     +101 .. $     +804 | re-entries 2..2: 0..0 targets, 2..2 stops, re-entry P&L $-1,393 .. $-1,393
+  full history + real:
+    run 4 as built             total $  -41,465 .. $  -17,238
+    3.0% off the high          total $  -78,183 .. $  -35,602 | re-entries 177..177: 39..41 targets, 76..63 stops, re-entry P&L $-36,718 .. $-18,364
+    5.0% off the high          total $  -77,650 .. $  -32,569 | re-entries 169..169: 32..38 targets, 70..59 stops, re-entry P&L $-36,185 .. $-15,331
+    7.5% off the high          total $  -73,087 .. $  -23,346 | re-entries 159..159: 36..48 targets, 66..49 stops, re-entry P&L $-31,622 .. $-6,108
+    10.0% off the high         total $  -84,060 .. $  -28,332 | re-entries 135..135: 27..41 targets, 67..49 stops, re-entry P&L $-42,596 .. $-11,094
+    15.0% off the high         total $  -59,698 .. $  -19,437 | re-entries 83..83: 27..36 targets, 35..29 stops, re-entry P&L $-18,233 .. $-2,199
+    back below our stop price  total $  -79,830 .. $  -18,356 | re-entries 174..174: 33..47 targets, 70..48 stops, re-entry P&L $-38,365 .. $-1,118
+    back below our entry price total $  -78,815 .. $  -35,742 | re-entries 154..154: 22..35 targets, 67..57 stops, re-entry P&L $-37,350 .. $-18,504
+
+As an account from $3,184 (fill-first, 2-stops hard stop, scaling), STRICT .. LENIENT:
+   run 4 as built            : 20 real $5,702 .. $7,248 | 2026 $110 .. $700 | history + real $43 .. $128
+   3.0% off the high         : 20 real $5,063 .. $8,332 | 2026 $47 .. $664 | history + real $46 .. $201
+   5.0% off the high         : 20 real $5,063 .. $8,332 | 2026 $50 .. $492 | history + real $49 .. $46
+   7.5% off the high         : 20 real $5,063 .. $6,538 | 2026 $184 .. $1,016 | history + real $39 .. $275
+   10.0% off the high        : 20 real $2,650 .. $6,872 | 2026 $58 .. $1,298 | history + real $37 .. $46
+   15.0% off the high        : 20 real $6,586 .. $8,332 | 2026 $103 .. $627 | history + real $40 .. $143
+   back below our stop price : 20 real $2,650 .. $3,425 | 2026 $43 .. $566 | history + real $39 .. $111
+   back below our entry price: 20 real $2,650 .. $3,425 | 2026 $50 .. $200 | history + real $48 .. $41

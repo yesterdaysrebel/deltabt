@@ -204,14 +204,72 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 (real fills) funding sum >= 0.05% -> +0.061R t 1.45 (2025 +0.068, 2026 +0.055; n 324), >= 0.10% -> +0.084R t 1.49
 (both years positive) vs all picks +0.021R. t < 2 everywhere: a lead, not an edge. (The earlier >= 0 filter was the
 one that swapped years.)
+**RE-SELL PARKED (owner 2026-11-15: "let's park re-sell").** Not built, not on paper; the research
+(`scripts/run4_resell*.py`, `careful_sim_*` variants) stays for later.
+
+**CAREFUL SIM of SPIKE SELL (2026-11-15, latest -- supersedes every earlier run-4 number):** rules `docs/careful_sim_spec.md`;
+frozen data = Delta's OWN 1m candles, 48 h per pick, all 1,049 picks (1,029 history + 20 real;
+`scripts/careful_dataset.py` + `careful_dataset_prevclose.py` for 28 picks with no trade by 00:02); three
+implementations (`careful_sim_a/b/c.py`: tested functions / spec-only / minute-by-minute bot state machine) agree on
+EVERY trade, all variants, both fills (`out/careful/compare.txt`); 10 hand-worked scenarios pass in all three
+(`careful_scenarios.py`). Results (`out/careful/report.txt`), strict .. lenient: per trade at $3,184 run 4 -$94 ..
+-$41 (Binance proxy said -$67 .. -$28: Delta is WORSE); re-sell A -$81 .. -$35 (2025 +$37 .. +$89, 2026 -$210 .. -$168).
+Accounts with the $1,000 floor: 20 real picks run 4 $5,702 .. $7,248, + re-sell $14,087 .. $17,497 (ESPORTS re-sell now
+held its full 24 h, +$5,648, which also blocks Nov 3); 2026 from Jan 1 run 4 $950 .. $825 (floor by May), + re-sell
+$800 .. $994; 22 monthly starts: run 4 ended under $1,000 in 22 .. 14, above $3,184 in 0 .. 2; + re-sell + monthly
+banking above $3,184 under $1,000 in 15 .. 12, above $3,184 in 1 .. 5. Earlier history numbers also cut every trade
+at 23:59 (1-day Binance files).
+
 **ACCOUNT-SIM CORRECTION (2026-11-15, late):** every run-4 ACCOUNT number before `scripts/run4_account.py` took the
 day's picks in list order and let the second pick trade after the first closed; the bot (correctly) trades only the
 pick that FILLS FIRST and cancels the other, and places nothing while a trade is open. Per-trade numbers were not
 affected. Corrected (two independent account implementations agree to the cent, `out/run4_account.txt`), final rules
 from $3,184, strict .. lenient: 20 real picks $5,702 .. $7,248; 2026 to Nov 14 $110 .. $700; full history $43 .. $84;
 21 starts under $1,000: 20 .. 15. 75% margin, best-ranked pick only: real $7,088 .. $7,125; 2026 $34 .. $50.
+With a +$2,000 monthly profit stop (owner's manual habit, `run4_account.CAP`, `out/run4_cap2000.txt`): real $5,702 ..
+$6,630; 2026 $158 .. $782; history $43 .. $84 -- it only binds in Mar 2026 and Nov 2026; the losing months are untouched.
+HISTORY DATA: Delta's pick list (1,022 of 1,029 picks have a Binance match) but BINANCE 1m candles as the price path;
+on the 20 real picks Binance vs Delta 1m give the same outcome 16/20, totals +$1,631 vs +$1,494 strict
+(`out/run4_delta_vs_binance.txt`) -- the proxy is, if anything, slightly kinder than Delta.
+Delta's panel has NO picks 2026-01-01..14 (and smaller gaps, e.g. 2025-10-16..24). Trace of Jan 2026
+(`scripts/run4_month_trace.py`): XAI +$500, BERA -$1,222, ARC -$833 (stopped the minute after the fill), then off.
+Full stops never fall 1% first (by construction); 177 of 618 fills, median 6 min to the stop, 71 never traded below
+the entry. Break-even after a 0.75/0.5/0.25% fall loses MORE (cuts targets 153 -> 136/118/101) (`out/run4_stop_anatomy.txt`).
+LONG the breakout instead (owner: "why not buy the coin when it moves up?", mirrored rules, two implementations agree,
+`out/run4_long_breakout.txt`): +5% buy stop, per trade on $3,184: real -$6,934 .. -$3,975, history -$167k .. -$86k
+(4x worse than the short); +7.5%: -$134k .. -$71k. CLOSED: these coins mean-revert after a spike, they don't run.
+RE-SELL after a full stop (owner: "when SL hits we sell again?", `scripts/run4_resell.py`, `out/run4_resell.txt`), one
+re-entry per pick: +5% above the stop fill / +2.25% / at market. Re-entries lose on the history in all three (-$21.6k ..
+-$16.0k, -$17.2k .. -$13.6k, -$38.0k .. -$29.4k per trade on $3,184). R1 looks better on the 20 real picks only
+because of one trade (ESPORTS 11-02 re-sell +$521); 2026 account $19 .. $607 vs $110 .. $700 as built. CLOSED.
+CATCH THE FALL after a stop (owner: "why not catch that falling spike?", `out/run4_catch_fall.txt`): stopped coins DO
+settle (after the stop a further +5.5% median, then a 13.9% median fall from that top before 24:00, 69% end the day
+under the stop price) but a market sell Y% off the running high loses on the history for Y = 1/2/3/5% (re-entry P&L
+-$47.9k .. -$15.3k per trade on $3,184): the first Y% dip is usually not the top -- it rallies 2.25% and stops again
+(70-80 stops vs 28-43 targets of ~177). CLOSED.
+MIDWAY (sell 7.5/10/15% off the high, or back below our stop / entry price; `out/run4_catch_midway.txt`): from every
+such point the next move is a coin flip -- it falls 1.8% before rising 2.25% only 40-49% of the time (break-even needs
+~56% before costs); every variant's re-entries lose on the history. CLOSED.
+RE-SELL SEARCH with its OWN stop/target (owner: "when is yours to find out"; `scripts/run4_resell_search.py`, checked by
+`run4_resell_search_check.py`): 350 settings (when x stop x target), risk-sized, in R; chosen on 2025 (91 events),
+judged on 2026 + real (86). Train-best (5% off the high, stop +2.25%, hold 24 h): +0.53 R on 2025 -> +0.07 .. +0.14 R
+on test (43% chance <= 0); by half-year +1.01 / +0.22 / +0.13 / -0.01 R -- fading to nothing. "30 min after, stop 3%
+above the high, target 12%" (picked seeing the test, so optimistic) +0.16 R test, last half-year -0.14 R. Not proven;
+at most a PAPER candidate. Lesson vs the earlier re-sell tests: run 4's 1.8% target is what killed them.
+On the 20 real picks (`out/run4_resell_real.txt`): 2 full stops. A: EVAA 11-01 -1 R (-$748 at run-4 size), ESPORTS
+11-02 +9.1 R (+$5,872; held to 24 h, 0.01858 -> 0.01441); B: +1.65 R, +0.65 R. Two events -- no evidence either way.
+Run 4 + re-sell A as one account (`scripts/run4_resell_account.py`, `out/run4_resell_account.txt`), from $3,184,
+strict .. lenient: 20 real picks $15,498 .. $19,262 (cap on or off: it never fires there; ESPORTS re-sell +$6,073);
+2026 cap ON $772 .. $2,985, cap OFF $47 .. $47 (Jan alone -$3,042 strict, 19 trades); history cap ON $43 .. $354,
+OFF $40 .. $41. The 2-stops loss cap must stay.
+Re-sell as a CUSHION (`out/run4_resell_cushion.txt`): it loses again on 54-80% of stop-losses (A: 69%); A's average
+-0.71 R per stop-loss comes from ~1 in 5 huge wins. SKIP FILTERS at full size (`scripts/run4_skip_filter.py`, 72 rules
+on fill time / rise speed / prev_change / atrp / wick / turnover, train 2025 test 2026): "improvements" in totals are
+just trading less; per KEPT trade the best are -$25 .. +$44 on test, none clearly beats random skipping. CLOSED.
+BANK PROFITS monthly above $3,184 (`out/run4_bank_profits.txt`): history total $652 .. $1,163 vs $43 .. $128; 2026
+unchanged ($110 .. $700, it never got ahead to bank). It protects gains already made; it cannot cushion losses.
 
-**RUN 4 BUILT (2026-11-15), NOT DEPLOYED:** `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Option A: a 2.5 s watcher tops up the margin right after a fill (shared lock with the 30 s pass; once per position). As built: history -$71.5 (strict) .. -$33.8 (lenient) per trade, 3/604 liquidations strict; 20 real picks +$1,494 .. +$2,196 (`out/run4_final_numbers.txt`). Target/lock now SCALE with the balance (owner: "Scale can be kept, cap is no"); 2026 from $3,184: $847 .. $2,125; 82 trades of 482 picks (342 skipped by the hard stop). Trail 0.8% after the lock added (bot-moved, not Delta's native trail); 20 real picks with the final rules as an account: $3,184 -> $2,589 (strict) .. $3,307 (lenient), Nov stopped after EVAA + ESPORTS (`out/run4_final_rules_real_trades.txt`). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
+**SPIKE SELL (run 4) BUILT (2026-11-15), NOT DEPLOYED:** (name: owner 2026-11-15, "Spike Sell"; run number stays 4) `live/spike_live.py` (rules `docs/fade_live_spike_prereg.md`) replaces rule A for the real account via `fade_live.from_env`; paper accounts unchanged. Owner-approved additions: last-traded stop trigger (`bracket_stop_trigger_method` now also sent), 25% extra isolated margin after the fill, STOP_FILL logging. New client calls `edit_stop_price` (PUT /v2/orders) and `add_position_margin` (POST /v2/positions/change_margin, never resent). `RUN_START_USD = 3184` (host DELTABOT_EQUITY still 1500). Option A: a 2.5 s watcher tops up the margin right after a fill (shared lock with the 30 s pass; once per position). As built: history -$71.5 (strict) .. -$33.8 (lenient) per trade, 3/604 liquidations strict; 20 real picks +$1,494 .. +$2,196 (`out/run4_final_numbers.txt`). Target/lock now SCALE with the balance (owner: "Scale can be kept, cap is no"); 2026 from $3,184: $847 .. $2,125; 82 trades of 482 picks (342 skipped by the hard stop). Trail 0.8% after the lock added (bot-moved, not Delta's native trail); 20 real picks with the final rules as an account: $3,184 -> $2,589 (strict) .. $3,307 (lenient), Nov stopped after EVAA + ESPORTS (`out/run4_final_rules_real_trades.txt`). Go-live: merge, deploy, then the probe (`fade-live-probe`, owner's yes) must PASS. The real account is HALTED (manual SOPH trade 2026-11-14, -$609.26, wallet $3,184.13 after a deposit); run 4's first pass begins a new run from the wallet.
 
 **20x SPIKE VERSION — CHOSEN BY THE OWNER 2026-11-15 FOR THE NEXT REAL BOT; numbers verified twice.** Rule: rule A's
 two picks; a resting limit sell 5% above the 00:03 close (valid to 24:00, fills when a 1m high trades 0.05% through);

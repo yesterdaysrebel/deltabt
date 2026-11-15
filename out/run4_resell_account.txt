@@ -1,0 +1,96 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+CROSS-CHECK: every re-sell's $ = its independently verified R x planned loss (asserted in the run).
+
+20 REAL PICKS, run 4 + re-sell A, loss cap OFF, STRICT:
+   2026-10-29 EVAAUSD      sell    TARGET in 01:46 out 01:47        +500   balance    3,684
+   2026-10-30 BEATUSD      sell    TARGET in 15:25 out 15:37        +579   balance    4,263
+   2026-10-31 AINUSD       sell    LOCKED in 00:16 out 00:18        -705   balance    3,558
+   2026-11-01 AINUSD       sell    TARGET in 01:34 out 01:50        +559   balance    4,118
+   2026-11-02 ESPORTSUSD   sell    STOP   in 00:05 out 00:06        -800   balance    3,317
+   2026-11-02 ESPORTSUSD   RE-SELL TIME   in 00:10 out 00:00+1d   +6,073   balance    9,390
+   2026-11-03 ARIAUSD      sell    LOCKED in 01:56 out 02:01        +507   balance    9,897
+   2026-11-04 AIOUSD       sell    TARGET in 05:26 out 05:27      +1,555   balance   11,452
+   2026-11-09 AIOTUSD      sell    LOCKED in 08:18 out 08:20        +621   balance   12,072
+   2026-11-10 PIEVERSEUSD  sell    TARGET in 00:52 out 00:57      +1,897   balance   13,969
+   2026-11-11 ARIAUSD      sell    LOCKED in 04:55 out 05:00        +632   balance   14,601
+   2026-11-13 HANAUSD      sell    LOCKED in 07:06 out 07:26        +565   balance   15,166
+   2026-11-14 SOPHUSD      sell    LOCKED in 09:49 out 09:50        +332   balance   15,498
+
+20 REAL PICKS, run 4 + re-sell A, loss cap OFF, LENIENT:
+   2026-10-29 EVAAUSD      sell    TARGET in 01:46 out 01:47        +500   balance    3,684
+   2026-10-30 BEATUSD      sell    TARGET in 15:25 out 15:37        +579   balance    4,263
+   2026-10-31 AINUSD       sell    LOCKED in 00:16 out 00:18        +227   balance    4,491
+   2026-11-01 AINUSD       sell    TARGET in 01:34 out 01:50        +706   balance    5,196
+   2026-11-02 ESPORTSUSD   sell    STOP   in 00:05 out 00:06        -960   balance    4,236
+   2026-11-02 ESPORTSUSD   RE-SELL TIME   in 00:10 out 00:00+1d   +7,390   balance   11,626
+   2026-11-03 ARIAUSD      sell    LOCKED in 01:56 out 02:01        +630   balance   12,256
+   2026-11-04 AIOUSD       sell    TARGET in 05:26 out 05:27      +1,926   balance   14,182
+   2026-11-09 AIOTUSD      sell    LOCKED in 08:18 out 08:20        +773   balance   14,955
+   2026-11-10 PIEVERSEUSD  sell    TARGET in 00:52 out 00:57      +2,350   balance   17,305
+   2026-11-11 ARIAUSD      sell    LOCKED in 04:55 out 05:00        +948   balance   18,253
+   2026-11-13 HANAUSD      sell    LOCKED in 07:06 out 07:26        +678   balance   18,930
+   2026-11-14 SOPHUSD      sell    LOCKED in 09:49 out 09:50        +332   balance   19,262
+
+20 REAL PICKS, run 4 + re-sell A, loss cap ON, STRICT:
+   2026-10-29 EVAAUSD      sell    TARGET in 01:46 out 01:47        +500   balance    3,684
+   2026-10-30 BEATUSD      sell    TARGET in 15:25 out 15:37        +579   balance    4,263
+   2026-10-31 AINUSD       sell    LOCKED in 00:16 out 00:18        -705   balance    3,558
+   2026-11-01 AINUSD       sell    TARGET in 01:34 out 01:50        +559   balance    4,118
+   2026-11-02 ESPORTSUSD   sell    STOP   in 00:05 out 00:06        -800   balance    3,317
+   2026-11-02 ESPORTSUSD   RE-SELL TIME   in 00:10 out 00:00+1d   +6,073   balance    9,390
+   2026-11-03 ARIAUSD      sell    LOCKED in 01:56 out 02:01        +507   balance    9,897
+   2026-11-04 AIOUSD       sell    TARGET in 05:26 out 05:27      +1,555   balance   11,452
+   2026-11-09 AIOTUSD      sell    LOCKED in 08:18 out 08:20        +621   balance   12,072
+   2026-11-10 PIEVERSEUSD  sell    TARGET in 00:52 out 00:57      +1,897   balance   13,969
+   2026-11-11 ARIAUSD      sell    LOCKED in 04:55 out 05:00        +632   balance   14,601
+   2026-11-13 HANAUSD      sell    LOCKED in 07:06 out 07:26        +565   balance   15,166
+   2026-11-14 SOPHUSD      sell    LOCKED in 09:49 out 09:50        +332   balance   15,498
+
+20 REAL PICKS, run 4 + re-sell A, loss cap ON, LENIENT:
+   2026-10-29 EVAAUSD      sell    TARGET in 01:46 out 01:47        +500   balance    3,684
+   2026-10-30 BEATUSD      sell    TARGET in 15:25 out 15:37        +579   balance    4,263
+   2026-10-31 AINUSD       sell    LOCKED in 00:16 out 00:18        +227   balance    4,491
+   2026-11-01 AINUSD       sell    TARGET in 01:34 out 01:50        +706   balance    5,196
+   2026-11-02 ESPORTSUSD   sell    STOP   in 00:05 out 00:06        -960   balance    4,236
+   2026-11-02 ESPORTSUSD   RE-SELL TIME   in 00:10 out 00:00+1d   +7,390   balance   11,626
+   2026-11-03 ARIAUSD      sell    LOCKED in 01:56 out 02:01        +630   balance   12,256
+   2026-11-04 AIOUSD       sell    TARGET in 05:26 out 05:27      +1,926   balance   14,182
+   2026-11-09 AIOTUSD      sell    LOCKED in 08:18 out 08:20        +773   balance   14,955
+   2026-11-10 PIEVERSEUSD  sell    TARGET in 00:52 out 00:57      +2,350   balance   17,305
+   2026-11-11 ARIAUSD      sell    LOCKED in 04:55 out 05:00        +948   balance   18,253
+   2026-11-13 HANAUSD      sell    LOCKED in 07:06 out 07:26        +678   balance   18,930
+   2026-11-14 SOPHUSD      sell    LOCKED in 09:49 out 09:50        +332   balance   19,262
+
+From $3,184, end balance (lowest on the way), STRICT .. LENIENT:
+                                           |         20 real picks |              2026 to Nov 14 |              history + real
+  run 4 as built, loss cap ON              |  5,702 ..  7,248 (low 3,184) |    110 ..    700 (low    64) |     43 ..    128 (low    43)
+  run 4 as built, loss cap OFF             |  5,702 ..  7,248 (low 3,184) |     18 ..     49 (low    18) |     48 ..     43 (low    48)
+  run 4 + re-sell A, loss cap ON           | 15,498 .. 19,262 (low 3,184) |    772 ..  2,985 (low   143) |     43 ..    354 (low    43)
+  run 4 + re-sell A, loss cap OFF          | 15,498 .. 19,262 (low 3,184) |     47 ..     47 (low    47) |     40 ..     41 (low    40)
+
+  2026 month by month, run 4 + re-sell A, loss cap OFF, STRICT:
+    2026-01 start   3,184 trades 19 (re-sells 6) P&L   -3,042 end     142
+    2026-02 start     142 trades 18 (re-sells 2) P&L      -47 end      95
+    2026-03 start      95 trades 32 (re-sells 7) P&L      +27 end     123
+    2026-04 start     123 trades 27 (re-sells 6) P&L     +213 end     336
+    2026-05 start     336 trades 12 (re-sells 4) P&L     -288 end      47
+    2026-06 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-07 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-08 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-09 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-10 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-11 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+
+  2026 month by month, run 4 + re-sell A, loss cap OFF, LENIENT:
+    2026-01 start   3,184 trades 19 (re-sells 6) P&L   -2,896 end     288
+    2026-02 start     288 trades 18 (re-sells 2) P&L      -67 end     221
+    2026-03 start     221 trades 32 (re-sells 7) P&L     +154 end     375
+    2026-04 start     375 trades 27 (re-sells 6) P&L     +972 end   1,348
+    2026-05 start   1,348 trades 31 (re-sells 6) P&L   -1,184 end     164
+    2026-06 start     164 trades 27 (re-sells 5) P&L     +233 end     397
+    2026-07 start     397 trades 22 (re-sells 6) P&L     -350 end      47
+    2026-08 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-09 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-10 start      47 trades  0 (re-sells 0) P&L       +0 end      47
+    2026-11 start      47 trades  0 (re-sells 0) P&L       +0 end      47

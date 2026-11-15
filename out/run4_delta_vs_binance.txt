@@ -1,0 +1,51 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Final run-4 rules, fixed $3,184 per trade, same 20 real picks: Delta 1m vs Binance 1m price path
+
+  STRICT
+    2026-10-29 EVAAUSD        EVAAUSDT           Delta TARGET     +500  | Binance TARGET     +500
+    2026-10-29 INITUSD        INITUSDT           Delta LOCKED     +109  | Binance LOCKED      +45
+    2026-10-30 BEATUSD        BEATUSDT           Delta TARGET     +500  | Binance TARGET     +500
+    2026-10-30 PARTIUSD       PARTIUSDT          Delta no fill          | Binance no fill
+    2026-10-31 AINUSD         AINUSDT            Delta LOCKED     -526  | Binance LOCKED     -481
+    2026-10-31 SOPHUSD        SOPHUSDT           Delta no fill          | Binance no fill
+    2026-11-01 AINUSD         AINUSDT            Delta TARGET     +500  | Binance LOCKED     +170
+    2026-11-01 EVAAUSD        EVAAUSDT           Delta STOP       -754  | Binance STOP       -754
+    2026-11-02 AINUSD         AINUSDT            Delta no fill          | Binance no fill
+    2026-11-02 ESPORTSUSD     ESPORTSUSDT        Delta STOP       -650  | Binance STOP       -650
+    2026-11-03 ARIAUSD        ARIAUSDT           Delta LOCKED     +170  | Binance LOCKED     +159
+    2026-11-04 AIOUSD         AIOUSDT            Delta TARGET     +500  | Binance TARGET     +500
+    2026-11-06 ARIAUSD        ARIAUSDT           Delta no fill          | Binance no fill
+    2026-11-07 AIOUSD         AIOUSDT            Delta no fill          | Binance no fill
+    2026-11-09 AIOTUSD        AIOTUSDT           Delta LOCKED     +170  | Binance TARGET     +500
+    2026-11-10 PIEVERSEUSD    PIEVERSEUSDT       Delta TARGET     +500  | Binance TARGET     +500
+    2026-11-11 ARIAUSD        ARIAUSDT           Delta LOCKED     +163  | Binance TARGET     +500
+    2026-11-12 ARIAUSD        ARIAUSDT           Delta no fill          | Binance no fill
+    2026-11-13 HANAUSD        HANAUSDT           Delta LOCKED     +141  | Binance LOCKED     +141
+    2026-11-14 SOPHUSD        SOPHUSDT           Delta LOCKED     +170  | Binance no Binance data
+    same outcome 16/20; total Delta $+1,494 vs Binance $+1,631
+
+  LENIENT
+    2026-10-29 EVAAUSD        EVAAUSDT           Delta TARGET     +500  | Binance TARGET     +500
+    2026-10-29 INITUSD        INITUSDT           Delta LOCKED     +109  | Binance LOCKED      +45
+    2026-10-30 BEATUSD        BEATUSDT           Delta TARGET     +500  | Binance TARGET     +500
+    2026-10-30 PARTIUSD       PARTIUSDT          Delta no fill          | Binance no fill
+    2026-10-31 AINUSD         AINUSDT            Delta LOCKED     +170  | Binance LOCKED     +170
+    2026-10-31 SOPHUSD        SOPHUSDT           Delta no fill          | Binance no fill
+    2026-11-01 AINUSD         AINUSDT            Delta TARGET     +500  | Binance LOCKED     +170
+    2026-11-01 EVAAUSD        EVAAUSDT           Delta STOP       -754  | Binance STOP       -754
+    2026-11-02 AINUSD         AINUSDT            Delta no fill          | Binance no fill
+    2026-11-02 ESPORTSUSD     ESPORTSUSDT        Delta STOP       -650  | Binance STOP       -650
+    2026-11-03 ARIAUSD        ARIAUSDT           Delta LOCKED     +170  | Binance LOCKED     +170
+    2026-11-04 AIOUSD         AIOUSDT            Delta TARGET     +500  | Binance TARGET     +500
+    2026-11-06 ARIAUSD        ARIAUSDT           Delta no fill          | Binance no fill
+    2026-11-07 AIOUSD         AIOUSDT            Delta no fill          | Binance no fill
+    2026-11-09 AIOTUSD        AIOTUSDT           Delta LOCKED     +170  | Binance TARGET     +500
+    2026-11-10 PIEVERSEUSD    PIEVERSEUSDT       Delta TARGET     +500  | Binance TARGET     +500
+    2026-11-11 ARIAUSD        ARIAUSDT           Delta LOCKED     +170  | Binance TARGET     +500
+    2026-11-12 ARIAUSD        ARIAUSDT           Delta no fill          | Binance no fill
+    2026-11-13 HANAUSD        HANAUSDT           Delta LOCKED     +141  | Binance LOCKED     +183
+    2026-11-14 SOPHUSD        SOPHUSDT           Delta LOCKED     +170  | Binance no Binance data
+    same outcome 16/20; total Delta $+2,196 vs Binance $+2,335
+
+History Delta picks 2025-01..2026-10: 1029; with a Binance match 1022; DROPPED 7 (1%)

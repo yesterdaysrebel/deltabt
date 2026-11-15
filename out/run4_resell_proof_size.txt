@@ -1,0 +1,5 @@
+re-sell A, all 169 events, STRICT: mean +0.30 R, std 2.66 R, median -1.00 R, win 30%, biggest +12.1 R; top 5 wins = +51.1 R of total +51.4 R
+events per month (both picks, every run-4 stop): 7.8
+  to show a true +0.5 R/trade is above 0 (95%, one-sided): ~77 events = ~10 months at this rate
+  to show a true +0.3 R/trade is above 0 (95%, one-sided): ~214 events = ~27 months at this rate
+  to show a true +0.2 R/trade is above 0 (95%, one-sided): ~480 events = ~61 months at this rate

@@ -1,0 +1,63 @@
+REAL PICKS 2026-10-29..11-14: FILTER + 3x + 30% MARGIN + SL just before liquidation + TP +30% ROE, from $1,640
+Delta 1m trade + MARK candles (liquidation on mark). 'real bot' = picks the real account takes (ATR stop <= 32.5%).
+
+ALL BOT PICKS, filter on (18 trades)
+  2026-10-29 EVAAUSD      funding  +0.278%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-29 INITUSD      funding  +0.472%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-30 BEATUSD      funding  +0.281%  24h   ROE  -14.1%  P&L $  -81.82
+  2026-10-31 AINUSD       funding  +0.361%  SL    ROE  -83.9%  P&L $ -465.00
+  2026-11-01 EVAAUSD      funding  +0.346%  TP    ROE  +29.4%  P&L $ +122.01
+  2026-11-02 AINUSD       funding  +0.153%  24h   ROE   +6.8%  P&L $  +30.58
+  2026-11-02 ESPORTSUSD   funding  +0.416%  TP    ROE  +29.4%  P&L $ +132.78
+  2026-11-03 EVAAUSD      funding  +0.243%  24h   ROE   +0.3%  P&L $   +1.59
+  2026-11-04 AIOUSD       funding  +0.064%  24h   ROE  -11.7%  P&L $  -58.55
+  2026-11-05 CAPUSD       funding  +0.404%  24h   ROE  -34.2%  P&L $ -165.47
+  2026-11-06 CAPUSD       funding  +0.523%  24h   ROE  +18.9%  P&L $  +81.77
+  2026-11-08 AINUSD       funding  +0.486%  TP    ROE  +29.4%  P&L $ +134.78
+  2026-11-09 AIOTUSD      funding  +0.140%  TP    ROE  +29.4%  P&L $ +146.67
+  2026-11-09 JCTUSD       funding  +1.168%  TP    ROE  +29.4%  P&L $ +146.67
+  2026-11-10 PIEVERSEUSD  funding  +0.283%  TP    ROE  +29.4%  P&L $ +172.56
+  2026-11-11 ARIAUSD      funding  +0.067%  SL    ROE  -87.2%  P&L $ -556.52
+  2026-11-12 AINUSD       funding  +0.568%  TP    ROE  +29.4%  P&L $ +138.68
+  2026-11-13 HANAUSD      funding  +0.098%  24h   ROE   -2.7%  P&L $  -13.68
+  END $1,696.49  | TP 9 SL 2 LIQ 0 24h 7
+
+REAL-ACCOUNT PICKS, filter on (12 trades)
+  2026-10-29 EVAAUSD      funding  +0.278%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-29 INITUSD      funding  +0.472%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-30 BEATUSD      funding  +0.281%  24h   ROE  -14.1%  P&L $  -81.82
+  2026-10-31 AINUSD       funding  +0.361%  SL    ROE  -83.9%  P&L $ -465.00
+  2026-11-01 EVAAUSD      funding  +0.346%  TP    ROE  +29.4%  P&L $ +122.01
+  2026-11-02 AINUSD       funding  +0.153%  24h   ROE   +6.8%  P&L $  +30.58
+  2026-11-02 ESPORTSUSD   funding  +0.416%  TP    ROE  +29.4%  P&L $ +132.78
+  2026-11-04 AIOUSD       funding  +0.064%  24h   ROE  -11.7%  P&L $  -58.49
+  2026-11-09 AIOTUSD      funding  +0.140%  TP    ROE  +29.4%  P&L $ +142.03
+  2026-11-10 PIEVERSEUSD  funding  +0.283%  TP    ROE  +29.4%  P&L $ +154.56
+  2026-11-11 ARIAUSD      funding  +0.067%  SL    ROE  -87.2%  P&L $ -498.48
+  2026-11-13 HANAUSD      funding  +0.098%  24h   ROE   -2.7%  P&L $  -11.26
+  END $1,396.34  | TP 6 SL 2 LIQ 0 24h 4
+
+REAL-ACCOUNT PICKS, no filter (20 trades)
+  2026-10-29 EVAAUSD      funding  +0.278%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-29 INITUSD      funding  +0.472%  TP    ROE  +29.4%  P&L $ +144.72
+  2026-10-30 BEATUSD      funding  +0.281%  24h   ROE  -14.1%  P&L $  -81.82
+  2026-10-30 PARTIUSD     funding  -1.007%  TP    ROE  +29.4%  P&L $ +170.26
+  2026-10-31 AINUSD       funding  +0.361%  SL    ROE  -83.9%  P&L $ -507.85
+  2026-10-31 SOPHUSD      funding  -2.082%  TP    ROE  +29.4%  P&L $ +178.07
+  2026-11-01 AINUSD       funding  -0.094%  LIQ   ROE -100.0%  P&L $ -506.43
+  2026-11-01 EVAAUSD      funding  +0.346%  TP    ROE  +29.4%  P&L $ +148.97
+  2026-11-02 AINUSD       funding  +0.153%  24h   ROE   +6.8%  P&L $  +27.04
+  2026-11-02 ESPORTSUSD   funding  +0.416%  TP    ROE  +29.4%  P&L $ +117.42
+  2026-11-03 ARIAUSD      funding  +0.018%  TP    ROE  +29.4%  P&L $ +130.17
+  2026-11-04 AIOUSD       funding  +0.064%  24h   ROE  -11.7%  P&L $  -56.29
+  2026-11-06 ARIAUSD      funding  -0.014%  TP    ROE  +29.4%  P&L $ +136.69
+  2026-11-07 AIOUSD       funding  +0.030%  24h   ROE   -8.0%  P&L $  -40.65
+  2026-11-09 AIOTUSD      funding  +0.140%  TP    ROE  +29.4%  P&L $ +145.16
+  2026-11-10 PIEVERSEUSD  funding  +0.283%  TP    ROE  +29.4%  P&L $ +157.97
+  2026-11-11 ARIAUSD      funding  +0.067%  SL    ROE  -87.2%  P&L $ -509.49
+  2026-11-12 ARIAUSD      funding  -0.018%  TP    ROE  +29.4%  P&L $ +126.96
+  2026-11-13 HANAUSD      funding  +0.098%  24h   ROE   -2.7%  P&L $  -12.52
+  2026-11-14 SOPHUSD      funding  +0.002%  TP    ROE  +29.4%  P&L $ +137.05
+  END $1,690.16  | TP 12 SL 2 LIQ 1 24h 5
+
+For comparison, the real account itself: run 3 started $1,661.84 on 11-09, now $1,534.98.

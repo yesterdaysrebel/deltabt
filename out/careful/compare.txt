@@ -1,0 +1,64 @@
+DATA: 1049 picks (1029 history, 20 real), 2025-01-15 .. 2026-11-14; with Delta candles 1049; none 0
+
+  run4                   STRICT : A 30 trades $836.48 | B 30 $836.48 | C 30 $836.48  -> AGREE
+  run4                   LENIENT: A 45 trades $854.46 | B 45 $854.46 | C 45 $854.46  -> AGREE
+  run4+resell            STRICT : A 41 trades $798.49 | B 41 $798.49 | C 41 $798.49  -> AGREE
+  run4+resell            LENIENT: A 44 trades $951.77 | B 44 $951.77 | C 44 $951.77  -> AGREE
+  run4+resell+bank       STRICT : A 30 trades $1,982.22 | B 30 $1,982.22 | C 30 $1,982.22  -> AGREE
+  run4+resell+bank       LENIENT: A 30 trades $3,280.02 | B 30 $3,280.02 | C 30 $3,280.02  -> AGREE
+  run4 no floor          STRICT : A 136 trades $46.18 | B 136 $46.18 | C 136 $46.18  -> AGREE
+  run4 no floor          LENIENT: A 152 trades $350.82 | B 152 $350.82 | C 152 $350.82  -> AGREE
+  run4+resell no floor   STRICT : A 95 trades $40.68 | B 95 $40.68 | C 95 $40.68  -> AGREE
+  run4+resell no floor   LENIENT: A 102 trades $49.50 | B 102 $49.50 | C 102 $49.50  -> AGREE
+
+ALL THREE IMPLEMENTATIONS AGREE on every trade, every variant, both fill models.
+
+From $3,184 on 2025-01-15. Floor $1,000 = the bot's STOPPED state (no refill).
+  variant                |  end (bank + wallet) strict .. lenient |    trades | outcomes (strict)
+  run4                   | $      836 .. $      854 (bank 0 .. 0) |   30 (0 re) | {'LOCKED': 13, 'STOP': 10, 'TARGET': 7}  under the floor from 2025-06-03
+  run4+resell            | $      798 .. $      952 (bank 0 .. 0) |   41 (7 re) | {'LOCKED': 13, 'STOP': 16, 'TARGET': 10, 'TIME': 2}  under the floor from 2025-09-01
+  run4+resell+bank       | $    1,982 .. $    3,280 (bank 1,174 .. 2,431) |   30 (5 re) | {'LOCKED': 11, 'STOP': 12, 'TARGET': 6, 'TIME': 1}  under the floor from 2025-07-06
+  run4 no floor          | $       46 .. $      351 (bank 0 .. 0) |  136 (0 re) | {'LOCKED': 58, 'STOP': 39, 'TARGET': 39}  under the floor from 2026-09-02
+  run4+resell no floor   | $       41 .. $       49 (bank 0 .. 0) |   95 (15 re) | {'LOCKED': 36, 'STOP': 34, 'TARGET': 22, 'TIME': 3}  under the floor from 2026-06-08
+
+  run4, STRICT, month by month:
+    2025-01 start    3,184 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L    -1,483 end    1,701
+    2025-02 start    1,701 trades 12 (re 0) T3 L9 S0 LIQ0 24h0  P&L    +2,052 end    3,753
+    2025-03 start    3,753 trades  7 (re 0) T3 L2 S2 LIQ0 24h0  P&L      +115 end    3,868
+    2025-04 start    3,868 trades  4 (re 0) T0 L2 S2 LIQ0 24h0  P&L    -1,676 end    2,192
+    2025-05 start    2,192 trades  3 (re 0) T1 L0 S2 LIQ0 24h0  P&L      -757 end    1,436
+    2025-06 start    1,436 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L      -599 end      836
+
+  run4, LENIENT, month by month:
+    2025-01 start    3,184 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L    -1,329 end    1,855
+    2025-02 start    1,855 trades 12 (re 0) T3 L9 S0 LIQ0 24h0  P&L    +2,510 end    4,365
+    2025-03 start    4,365 trades  7 (re 0) T3 L2 S2 LIQ0 24h0  P&L      +154 end    4,519
+    2025-04 start    4,519 trades  4 (re 0) T0 L2 S2 LIQ0 24h0  P&L    -1,598 end    2,921
+    2025-05 start    2,921 trades  3 (re 0) T1 L0 S2 LIQ0 24h0  P&L      -952 end    1,969
+    2025-06 start    1,969 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L      -822 end    1,147
+    2025-07 start    1,147 trades  7 (re 0) T3 L2 S2 LIQ0 24h0  P&L       -27 end    1,121
+    2025-08 start    1,121 trades  7 (re 0) T3 L2 S2 LIQ0 24h0  P&L        -1 end    1,119
+    2025-09 start    1,119 trades  1 (re 0) T0 L0 S1 LIQ0 24h0  P&L      -265 end      854
+
+  run4+resell, STRICT, month by month:
+    2025-01 start    3,184 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L    -1,483 end    1,701
+    2025-02 start    1,701 trades 12 (re 0) T3 L9 S0 LIQ0 24h0  P&L    +2,052 end    3,753
+    2025-03 start    3,753 trades  4 (re 1) T1 L1 S2 LIQ0 24h0  P&L    -1,134 end    2,619
+    2025-04 start    2,619 trades  4 (re 1) T0 L1 S2 LIQ0 24h1  P&L    +1,861 end    4,480
+    2025-05 start    4,480 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L    -1,930 end    2,550
+    2025-06 start    2,550 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L    -1,061 end    1,490
+    2025-07 start    1,490 trades  4 (re 1) T2 L0 S2 LIQ0 24h0  P&L      -352 end    1,138
+    2025-08 start    1,138 trades  9 (re 1) T4 L2 S2 LIQ0 24h1  P&L      +479 end    1,616
+    2025-09 start    1,616 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L      -818 end      798
+
+  run4+resell, LENIENT, month by month:
+    2025-01 start    3,184 trades  2 (re 0) T0 L0 S2 LIQ0 24h0  P&L    -1,329 end    1,855
+    2025-02 start    1,855 trades 12 (re 0) T3 L9 S0 LIQ0 24h0  P&L    +2,510 end    4,365
+    2025-03 start    4,365 trades  4 (re 1) T1 L1 S2 LIQ0 24h0  P&L    -1,174 end    3,190
+    2025-04 start    3,190 trades  4 (re 1) T0 L1 S2 LIQ0 24h1  P&L    +2,958 end    6,148
+    2025-05 start    6,148 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L    -2,540 end    3,608
+    2025-06 start    3,608 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L    -1,501 end    2,107
+    2025-07 start    2,107 trades  4 (re 1) T2 L0 S2 LIQ0 24h0  P&L      -459 end    1,648
+    2025-08 start    1,648 trades  9 (re 1) T4 L2 S2 LIQ0 24h1  P&L      +763 end    2,411
+    2025-09 start    2,411 trades  2 (re 1) T0 L0 S2 LIQ0 24h0  P&L    -1,003 end    1,408
+    2025-10 start    1,408 trades  3 (re 1) T1 L0 S2 LIQ0 24h0  P&L      -457 end      952

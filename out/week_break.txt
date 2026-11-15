@@ -1,0 +1,26 @@
+STOP AFTER A PROFIT, TAKE A WEEK OFF, START AGAIN. Delta picks 2025-01..2026-10, real fills, from $1,640
+
+QUICK at 20x, 50% margin, take at 5% fall
+  no break                                   trades    6 (skipped    0) -> account gone after 6 trades
+  after any winning day: 7 days off          trades    6 (skipped    0) -> account gone after 6 trades
+  after +20% since the restart: 7 days off   trades    6 (skipped    0) -> account gone after 6 trades
+  after any winning day: 3 days off          trades    6 (skipped    0) -> account gone after 6 trades
+
+QUICK at 20x, 50% margin, take at 2% fall
+  no break                                   trades    6 (skipped    0) -> account gone after 6 trades
+  after any winning day: 7 days off          trades    5 (skipped   25) -> account gone after 5 trades
+  after +20% since the restart: 7 days off   trades   16 (skipped   25) -> account gone after 16 trades
+  after any winning day: 3 days off          trades    6 (skipped    6) -> account gone after 6 trades
+
+the real bot today (rule A, ladder 10/5/3)
+  no break                                   trades 1022 (skipped    0) -> $  2,610  worst drop  69%
+  after any winning day: 7 days off          trades  230 (skipped  792) -> $  2,011  worst drop  55%
+  after +20% since the restart: 7 days off   trades  987 (skipped   35) -> $  3,558  worst drop  69%
+  after any winning day: 3 days off          trades  427 (skipped  595) -> $  1,496  worst drop  55%
+
+filter + 3x + 10% margin (the steady version)
+  no break                                   trades  324 (skipped    0) -> $  4,543  worst drop  29%
+  after any winning day: 7 days off          trades   95 (skipped  229) -> $  2,928  worst drop  23%
+  after +20% since the restart: 7 days off   trades  293 (skipped   31) -> $  5,188  worst drop  29%
+  after any winning day: 3 days off          trades  162 (skipped  162) -> $  5,492  worst drop  26%
+

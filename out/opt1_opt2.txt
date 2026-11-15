@@ -1,0 +1,19 @@
+RULE: 3x, SL just before liquidation (~28% up), TP +30% ROE (10% fall), else 24 h. Delta 2025-01..2026-10, from $1,640
+
+FILTER ON (324 trades)
+  margin  5% (stop costs ~ 4% of balance): 2025 end $ 1,949  end $  2,855  worst drop  15%  green months 19/22  worst month -11%
+  margin 10% (stop costs ~ 8% of balance): 2025 end $ 2,241  end $  4,543  worst drop  29%  green months 19/22  worst month -22%
+  margin 15% (stop costs ~12% of balance): 2025 end $ 2,490  end $  6,587  worst drop  42%  green months 17/22  worst month -31%
+  margin 20% (stop costs ~17% of balance): 2025 end $ 2,669  end $  8,667  worst drop  54%  green months 16/22  worst month -40%
+  margin 30% (stop costs ~25% of balance): 2025 end $ 2,734  end $ 10,997  worst drop  74%  green months 16/22  worst month -56%
+
+FILTER OFF (1,022 trades)
+  margin  5% (stop costs ~ 4% of balance): 2025 end $ 1,584  end $  4,328  worst drop  31%  green months 13/22  worst month -13%
+  margin 10% (stop costs ~ 8% of balance): 2025 end $ 1,326  end $  8,444  worst drop  57%  green months 13/22  worst month -25%
+  margin 15% (stop costs ~12% of balance): 2025 end $   954  end $ 11,946  worst drop  76%  green months 12/22  worst month -37%
+  margin 20% (stop costs ~17% of balance): 2025 end $   583  end $ 11,949  worst drop  89%  green months 12/22  worst month -48%
+  margin 30% (stop costs ~25% of balance): 2025 end $   125  end $  3,623  worst drop  98%  green months 12/22  worst month -67%
+
+REAL PICKS 2026-10-29..11-14 (the real account's universe: ATR stop <= 32.5%), Delta 1m + MARK
+  filter on  12 trades (TP 6 SL 2 LIQ 0 24h 4) -> margin 5%: $1,622 | 10%: $1,595 | 30%: $1,396
+  filter off 20 trades (TP 12 SL 2 LIQ 1 24h 5) -> margin 5%: $1,678 | 10%: $1,705 | 30%: $1,690

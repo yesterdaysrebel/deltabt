@@ -1,0 +1,28 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Full stops with time left in the day: 177
+  after the stop the coin went on up a further: median 5.5%, mean 12.9%, over 10% in 34%
+  from that top it fell back (low after the top, before 24:00): median 13.9%; at least 5% in 92%, at least 10% in 71%
+  at 24:00 vs the stop price: below it in 69% (median -4.6%)
+  -> it often DOES settle -- the question is whether a sell AFTER the top catches enough of it.
+
+Per trade on a fixed $3,184, STRICT .. LENIENT (re-entry sized on $3,184 too):
+  20 real picks:
+    run 4 as built         total $   +1,494 .. $   +2,196
+    sell 1% off the top    total $     -913 .. $     +804 | re-entries 2..2: 0..0 targets, 2..2 stops, re-entry P&L $-2,407 .. $-1,393
+    sell 2% off the top    total $     +796 .. $   +2,052 | re-entries 2..2: 0..1 targets, 1..1 stops, re-entry P&L $-698 .. $-145
+    sell 3% off the top    total $   +1,079 .. $   +3,197 | re-entries 2..2: 0..2 targets, 0..0 stops, re-entry P&L $-415 .. $+1,001
+    sell 5% off the top    total $     +384 .. $   +1,949 | re-entries 2..2: 0..1 targets, 1..1 stops, re-entry P&L $-1,110 .. $-247
+  full history + real:
+    run 4 as built         total $  -41,465 .. $  -17,238
+    sell 1% off the top    total $  -89,335 .. $  -40,536 | re-entries 177..177: 33..42 targets, 80..71 stops, re-entry P&L $-47,870 .. $-23,298
+    sell 2% off the top    total $  -81,455 .. $  -29,053 | re-entries 177..177: 28..43 targets, 73..59 stops, re-entry P&L $-39,990 .. $-11,815
+    sell 3% off the top    total $  -78,183 .. $  -35,602 | re-entries 177..177: 39..41 targets, 76..63 stops, re-entry P&L $-36,718 .. $-18,364
+    sell 5% off the top    total $  -77,650 .. $  -32,569 | re-entries 169..169: 32..38 targets, 70..59 stops, re-entry P&L $-36,185 .. $-15,331
+
+As an account from $3,184 (fill-first, 2-stops hard stop, scaling), STRICT .. LENIENT:
+   as built       : 20 real picks $5,702 .. $7,248 | 2026 to Nov 14 $110 .. $700 | history + real $43 .. $128
+   1% off the top : 20 real picks $1,808 .. $3,425 | 2026 to Nov 14 $30 .. $449 | history + real $46 .. $42
+   2% off the top : 20 real picks $2,650 .. $3,425 | 2026 to Nov 14 $45 .. $147 | history + real $41 .. $49
+   3% off the top : 20 real picks $5,063 .. $8,332 | 2026 to Nov 14 $47 .. $664 | history + real $46 .. $201
+   5% off the top : 20 real picks $5,063 .. $8,332 | 2026 to Nov 14 $50 .. $492 | history + real $49 .. $46

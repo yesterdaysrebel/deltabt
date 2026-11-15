@@ -1,0 +1,21 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+177 run-4 stop-losses (each about -1 R; at 49% margin x 20x on $3,184 one R is about $750)
+
+Each stop-loss + its re-sell, STRICT (lenient in brackets):
+  re-sell                                      |  none |     softens | wins back all | loses again |   avg per stop-loss
+  at once target 2%                            |     0 |  44% (44%) |     0% ( 0%) |  56% (56%) | -1.21 R (-1.14)
+  at once target 5%                            |     0 |  32% (32%) |    30% (30%) |  67% (67%) | -1.15 R (-1.06)
+  at once no target (24 h)                     |     0 |  23% (23%) |    21% (21%) |  76% (76%) | -1.02 R (-0.93)
+  3.0% off the high target 2%                  |     0 |  45% (45%) |     0% ( 0%) |  55% (55%) | -1.16 R (-1.12)
+  3.0% off the high target 5%                  |     0 |  30% (30%) |    27% (27%) |  68% (68%) | -1.18 R (-1.13)
+  3.0% off the high no target (24 h)           |     0 |  22% (22%) |    19% (19%) |  76% (76%) | -1.12 R (-1.06)
+  5.0% off the high target 2%                  |     8 |  46% (46%) |     0% ( 0%) |  54% (54%) | -1.14 R (-1.09)
+  5.0% off the high target 5%                  |     8 |  38% (38%) |    35% (35%) |  60% (60%) | -0.94 R (-0.89)
+  5.0% off the high no target (24 h)           |     8 |  30% (30%) |    23% (23%) |  69% (69%) | -0.71 R (-0.66)
+  10.0% off the high target 2%                 |    41 |  36% (36%) |     0% ( 0%) |  62% (62%) | -1.27 R (-1.21)
+  10.0% off the high target 5%                 |    41 |  24% (24%) |    22% (22%) |  73% (73%) | -1.29 R (-1.23)
+  10.0% off the high no target (24 h)          |    41 |  16% (16%) |    14% (14%) |  80% (80%) | -1.25 R (-1.18)
+
+  no re-sell at all: every stop-loss = -1.00 R
+  softens = the re-sell made money; wins back all = made >= 1 R; loses again = a second full stop

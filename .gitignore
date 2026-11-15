@@ -93,3 +93,8 @@ out/review_pack/
 out/fade_quick_full/*_*.json
 out/trend/
 out/wpr/
+
+# Careful-sim price cache: Delta's public 1m candles, ~320 MB, rebuilt by scripts/careful_dataset.py and
+# scripts/careful_dataset_prevclose.py (picks.csv, the ledgers and the reports ARE tracked).
+/out/careful/candles/
+/out/careful/dataset.npz

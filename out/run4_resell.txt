@@ -1,0 +1,44 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+CHECK PASSED: the general short reproduces run4_trailing.short on all first entries (strict+lenient) and the independent verify_independent.trade (strict).
+
+Per trade on a fixed $3,184 (no account effects), STRICT .. LENIENT:
+  20 real picks:
+    run 4 as built           total $   +1,494 .. $   +2,196
+    R1 re-sell +5% above     total $     +684 .. $   +1,943 | re-entries 2..2: 1..1 targets, 1..1 stops, re-entry P&L $-810 .. $-253
+    R2 re-sell +2.25% above  total $     -160 .. $     +792 | re-entries 2..2: 0..0 targets, 2..2 stops, re-entry P&L $-1,654 .. $-1,404
+    R3 re-sell at market     total $     -320 .. $     +804 | re-entries 2..2: 0..0 targets, 2..2 stops, re-entry P&L $-1,814 .. $-1,393
+  full history + real:
+    run 4 as built           total $  -41,465 .. $  -17,238
+    R1 re-sell +5% above     total $  -63,100 .. $  -33,281 | re-entries 92..95: 22..23 targets, 37..41 stops, re-entry P&L $-21,635 .. $-16,044
+    R2 re-sell +2.25% above  total $  -58,686 .. $  -30,841 | re-entries 128..131: 30..28 targets, 40..46 stops, re-entry P&L $-17,221 .. $-13,603
+    R3 re-sell at market     total $  -79,444 .. $  -46,589 | re-entries 177..177: 26..26 targets, 69..69 stops, re-entry P&L $-37,979 .. $-29,351
+
+As an account from $3,184 (fill-first, 2-stops hard stop, scaling), STRICT .. LENIENT:
+   as built: 20 real picks $5,702 .. $7,248 | 2026 to Nov 14 $110 .. $700 | history + real $43 .. $128
+   R1      : 20 real picks $6,586 .. $8,332 | 2026 to Nov 14 $19 .. $607 | history + real $49 .. $48
+   R2      : 20 real picks $2,386 .. $3,418 | 2026 to Nov 14 $22 .. $184 | history + real $46 .. $39
+   R3      : 20 real picks $2,650 .. $3,425 | 2026 to Nov 14 $51 .. $295 | history + real $49 .. $41
+
+  20 real picks, R1, STRICT, every trade:
+    2026-10-29 EVAAUSD      sell    TARGET     +500  balance    3,684
+    2026-10-30 BEATUSD      sell    TARGET     +579  balance    4,263
+    2026-10-31 AINUSD       sell    LOCKED     -705  balance    3,558
+    2026-11-01 AINUSD       sell    TARGET     +559  balance    4,118
+    2026-11-02 ESPORTSUSD   sell    STOP       -800  balance    3,317
+    2026-11-02 ESPORTSUSD   re-sell TARGET     +521  balance    3,839
+    2026-11-03 ARIAUSD      sell    LOCKED     +205  balance    4,044
+    2026-11-04 AIOUSD       sell    TARGET     +635  balance    4,679
+    2026-11-09 AIOTUSD      sell    LOCKED     +250  balance    4,928
+    2026-11-10 PIEVERSEUSD  sell    TARGET     +774  balance    5,703
+    2026-11-11 ARIAUSD      sell    LOCKED     +290  balance    5,993
+    2026-11-13 HANAUSD      sell    LOCKED     +261  balance    6,254
+    2026-11-14 SOPHUSD      sell    LOCKED     +332  balance    6,586
+
+  20 real picks, R3, STRICT, every trade:
+    2026-10-29 EVAAUSD      sell    TARGET     +500  balance    3,684
+    2026-10-30 BEATUSD      sell    TARGET     +579  balance    4,263
+    2026-10-31 AINUSD       sell    LOCKED     -705  balance    3,558
+    2026-11-01 AINUSD       sell    TARGET     +559  balance    4,118
+    2026-11-02 ESPORTSUSD   sell    STOP       -800  balance    3,317
+    2026-11-02 ESPORTSUSD   re-sell STOP       -667  balance    2,650

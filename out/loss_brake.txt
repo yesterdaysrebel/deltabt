@@ -1,0 +1,19 @@
+LOSS-STREAK BRAKES on filter + 3x + SL near liquidation + TP +30% ROE. Delta 2025-01..2026-10, from $1,640
+
+MARGIN 30% per trade
+  no brake                                               end $ 10,997  worst drop  74%  trades skipped   0
+  pause rest of month after 1 SL                         end $  1,306  worst drop  77%  trades skipped 148
+  pause rest of month after 2 SLs                        end $  7,514  worst drop  58%  trades skipped  51
+  pause 7 days after an SL                               end $  6,244  worst drop  75%  trades skipped  68
+  pause 14 days after an SL                              end $    955  worst drop  83%  trades skipped 128
+  2 SLs without a winning day between -> pause 14 days   end $  8,419  worst drop  64%  trades skipped  24
+  after an SL drop to 10% margin until a winning trade   end $  8,695  worst drop  80%  trades skipped   0
+
+MARGIN 10% per trade
+  no brake                                               end $  4,543  worst drop  29%  trades skipped   0
+  pause rest of month after 1 SL                         end $  1,888  worst drop  35%  trades skipped 148
+  pause rest of month after 2 SLs                        end $  3,712  worst drop  21%  trades skipped  51
+  pause 7 days after an SL                               end $  3,416  worst drop  30%  trades skipped  68
+  pause 14 days after an SL                              end $  1,741  worst drop  39%  trades skipped 128
+  2 SLs without a winning day between -> pause 14 days   end $  3,964  worst drop  23%  trades skipped  24
+

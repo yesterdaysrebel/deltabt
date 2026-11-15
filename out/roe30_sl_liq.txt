@@ -1,0 +1,17 @@
+SL at 90% of the way to liquidation, TP at +30% ROE (price fall 30%/lev), else 24 h. Delta 2025-01..2026-10,
+real 1m paths, fees + spread. Returns are ROE (on the margin). Account from $1,640, margin per trade as shown.
+
+FUNDING FILTER ON
+   3x  TP fall 10.0%  SL rise 27.7% | n  324 TP  45% SL   8% LIQ  1% 24h  46% | win  65% (need ~ 74%) | avg ROE  +3.69% (2025 +2.6, 2026 +4.6) | margin 10%: $ 4,543 ( 29%) | 30%: $10,997 ( 74%) | 50%: $ 4,130 ( 96%)
+   5x  TP fall  6.0%  SL rise 15.8% | n  324 TP  58% SL  16% LIQ  1% 24h  24% | win  67% (need ~ 73%) | avg ROE  +0.48% (2025 +0.2, 2026 +0.7) | margin 10%: $ 1,434 ( 63%) | 30%: $   149 ( 99%) | 50%: $     0 (100%)
+  10x  TP fall  3.0%  SL rise  6.8% | n  324 TP  71% SL  24% LIQ  2% 24h   3% | win  71% (need ~ 71%) | avg ROE  +0.90% (2025 +3.6, 2026 -1.3) | margin 10%: $ 1,592 ( 75%) | 30%: $   169 (100%) | 50%: $     0 (100%)
+  15x  TP fall  2.0%  SL rise  3.8% | n  323 TP  65% SL  28% LIQ  6% 24h   0% | win  65% (need ~ 69%) | avg ROE  -5.40% (2025 -4.5, 2026 -6.2) | margin 10%: $   199 ( 90%) | 30%: $     0 (100%) | 50%: $     0 (100%)
+  20x  TP fall  1.5%  SL rise  2.2% | n  323 TP  59% SL  31% LIQ 10% 24h   0% | win  59% (need ~ 65%) | avg ROE  -9.68% (2025 -2.8, 2026 -15.4) | margin 10%: $    49 ( 97%) | 30%: $     0 (100%) | 50%: $     0 (100%)
+
+ALL PICKS
+   3x  TP fall 10.0%  SL rise 27.7% | n 1022 TP  35% SL   7% LIQ  0% 24h  57% | win  64% (need ~ 74%) | avg ROE  +2.18% (2025 +0.1, 2026 +4.7) | margin 10%: $ 8,444 ( 57%) | 30%: $ 3,623 ( 98%) | 50%: $     0 (100%)
+   5x  TP fall  6.0%  SL rise 15.8% | n 1022 TP  55% SL  13% LIQ  1% 24h  31% | win  67% (need ~ 73%) | avg ROE  +1.88% (2025 +0.7, 2026 +3.3) | margin 10%: $ 4,582 ( 64%) | 30%: $    71 (100%) | 50%: $     0 (100%)
+  10x  TP fall  3.0%  SL rise  6.8% | n 1022 TP  67% SL  25% LIQ  2% 24h   6% | win  68% (need ~ 71%) | avg ROE  -1.71% (2025 -2.2, 2026 -1.1) | margin 10%: $    94 ( 97%) | 30%: $     0 (100%) | 50%: $     0 (100%)
+  15x  TP fall  2.0%  SL rise  3.8% | n 1020 TP  65% SL  28% LIQ  6% 24h   1% | win  65% (need ~ 69%) | avg ROE  -5.34% (2025 -6.9, 2026 -3.5) | margin 10%: $     2 (100%) | 30%: $     0 (100%) | 50%: $     0 (100%)
+  20x  TP fall  1.5%  SL rise  2.2% | n 1020 TP  60% SL  31% LIQ  8% 24h   0% | win  60% (need ~ 65%) | avg ROE  -8.33% (2025 -9.1, 2026 -7.4) | margin 10%: $     0 (100%) | 30%: $     0 (100%) | 50%: $     0 (100%)
+

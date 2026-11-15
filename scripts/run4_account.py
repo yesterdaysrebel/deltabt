@@ -27,6 +27,7 @@ import run4_trailing as T  # noqa: E402
 import verify_independent as V  # noqa: E402
 
 TARGET, LOCK, EXTRA, TRAIL, LIMIT = 500.0, 200.0, 0.25, 0.008, 2
+CAP = None        # monthly profit stop: no new entries for the rest of the month once the month is up this much ($)
 
 
 def trade_a(p, bal, margin, lenient):
@@ -45,9 +46,10 @@ def account_a(paths, margin, lenient, first_only, start=C.START, log=None):
     for day in sorted(days):
         m = day.strftime("%Y-%m")
         if m != month:
-            month, stops = m, 0
+            month, stops, m_start = m, 0, bal
         t0 = int(day.timestamp()) // 60
-        if bal < 50 or stops >= LIMIT or (busy_until is not None and busy_until > t0 + 2):
+        capped = CAP is not None and bal - m_start >= CAP
+        if bal < 50 or stops >= LIMIT or capped or (busy_until is not None and busy_until > t0 + 2):
             if log is not None:
                 log.setdefault(m, dict(start=bal, trades=0, pnl=0.0, TARGET=0, LOCKED=0, STOP=0, LIQ=0, h24=0))
             continue
@@ -90,8 +92,10 @@ def account_b(paths, margin, lenient, first_only, start=C.START):
     balance, lowest, open_until, cur_month, full_stops = start, start, -1, "", 0
     for d in sorted(by_day):
         if d.strftime("%Y-%m") != cur_month:
-            cur_month, full_stops = d.strftime("%Y-%m"), 0
+            cur_month, full_stops, month_open = d.strftime("%Y-%m"), 0, balance
         day_min = int(d.timestamp()) // 60
+        if CAP is not None and balance >= month_open + CAP:
+            continue
         if balance < 50 or full_stops >= LIMIT or open_until > day_min + 2:
             continue
         cands = sorted(by_day[d])[:1] if first_only else sorted(by_day[d])
