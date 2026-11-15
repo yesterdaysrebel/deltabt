@@ -41,7 +41,7 @@ import math
 import time
 
 from live import fade_live as L
-from live.fade_live import DAY, MAX_DIST, _ts, event, fee, fill_price, filled, to_tick
+from live.fade_live import DAY, MAX_DIST, _ts, event, fill_price, filled, to_tick
 
 log = logging.getLogger(__name__)
 
@@ -129,14 +129,42 @@ class SpikeLive(L.LiveFade):
     run_version = RUN_VERSION
     #: TIME and LOCK are the bot's own exits; a LIQUIDATION (a jump past the stop, a tested risk of this rule) counts as
     #: a full stop for the month and does not HALT -- the backtest kept trading after one (prereg rule 7).
-    planned_exits = ("TIME", "LOCK", "LIQUIDATION")
+    #: DOUBLE_FILL: the other pick's resting sell filled before its cancel landed -- bought back at once (one at a time).
+    planned_exits = ("TIME", "LOCK", "LIQUIDATION", "DOUBLE_FILL")
 
     def __init__(self, client, *, candles=None, **kw):
         super().__init__(client, **kw)
         self.start_usd = max(self.start_usd, RUN_START_USD)
         self._candles = candles                        # (symbol, start, end) -> [{"time","low","close"}]; None = public API
+        self._public = None                            # the public candle client, made once
         self._product_extra: dict[str, dict] = {}
         self._mutex = asyncio.Lock()                    # the 30 s pass and the fast watcher never act at the same time
+        self._schema_done = False
+
+    async def _schema(self, con) -> None:
+        """The run's extra columns, once per process (not an ALTER TABLE lock every 2.5 s)."""
+        if not self._schema_done:
+            await con.execute(SCHEMA)
+            self._schema_done = True
+
+    @staticmethod
+    def _ours(r) -> bool:
+        """A row of THIS run (run 3's rows carry no run number): only these get the extra margin, the break-even
+        move, the trail, the 24-h-after-the-fill exit, and count toward the month's stops."""
+        try:
+            return json.loads(r["detail"] or "{}").get("run") == RUN_VERSION
+        except (TypeError, ValueError):
+            return False
+
+    async def _stand_down(self, con) -> str | None:
+        """Why no entry may fill into a new position now (then resting sells are cancelled), or None."""
+        from live.guards import kill_switch_engaged
+        if not self.entries:
+            return "entries are off"
+        if kill_switch_engaged(self.kill_switch_path):
+            return "kill switch engaged"
+        st = await con.fetchval("SELECT status FROM fade_live_state WHERE id = 1")
+        return f"the account is {st}" if st in ("HALTED", "STOPPED", "OFF") else None
 
     # -- venue reads ---------------------------------------------------------------------------------------------
     def product(self, symbol: str) -> dict:
@@ -158,11 +186,13 @@ class SpikeLive(L.LiveFade):
     def candles(self, symbol: str, start: int, end: int) -> list[dict]:
         if self._candles is not None:
             return self._candles(symbol, start, end)
-        from deltabt.data.client import DeltaClient
-        return DeltaClient(per_second=2.0).candles(symbol, "1m", start, end, drop_forming=False) or []
+        if self._public is None:
+            from deltabt.data.client import DeltaClient
+            self._public = DeltaClient(per_second=2.0)
+        return self._public.candles(symbol, "1m", start, end, drop_forming=False) or []
 
-    def last_price(self, symbol: str) -> float:
-        t = self.client.get_ticker(symbol)
+    def last_price(self, symbol: str, ticker: dict | None = None) -> float:
+        t = self.client.get_ticker(symbol) if ticker is None else ticker
         for k in ("close", "mark_price"):
             try:
                 v = float(t.get(k))
@@ -188,15 +218,18 @@ class SpikeLive(L.LiveFade):
         that is still without its extra margin. Returns how many rows it looked at. Never raises."""
         async with self._mutex:
             try:
-                await con.execute(SCHEMA)
+                await self._schema(con)
                 rows = await con.fetch("SELECT id FROM fade_live_positions WHERE status = 'RESTING' "
                                        "OR (status = 'OPEN' AND extra_margin IS NULL AND entry_time IS NOT NULL) ORDER BY id")
                 for x in rows:
-                    r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", x["id"])
-                    if r["status"] == "RESTING":
-                        await self._resting(con, r, now)
-                    elif r["status"] == "OPEN" and r["extra_margin"] is None and self.entries:
-                        await self._add_extra(con, r, now)
+                    try:                                 # one row that fails must not keep the watcher from the next
+                        r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", x["id"])
+                        if r["status"] == "RESTING":
+                            await self._resting(con, r, now)
+                        elif r["status"] == "OPEN" and r["extra_margin"] is None and self._ours(r):
+                            await self._add_extra(con, r, now)     # protective: also when entries are off
+                    except Exception:                    # noqa: BLE001 -- the 30 s pass records failures and halts
+                        log.exception("spike fast watcher: row %s failed", x["id"])
                 return len(rows)
             except Exception:                            # noqa: BLE001 -- the 30 s pass records and halts; this only helps
                 log.exception("spike fast watcher pass failed")
@@ -213,83 +246,237 @@ class SpikeLive(L.LiveFade):
             await asyncio.sleep(poll)
 
     async def _reconcile(self, con, now: float) -> None:
-        await con.execute(SCHEMA)
+        await self._schema(con)
+        first: Exception | None = None
         for rid in [x["id"] for x in await con.fetch(
                 "SELECT id FROM fade_live_positions WHERE status IN ('SENDING', 'RESTING') ORDER BY id")]:
             r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", rid)   # a fill may have settled it
-            if r["status"] in ("SENDING", "RESTING"):
-                await self._resting(con, r, now)
-        await super()._reconcile(con, now)
+            if r["status"] in ("SENDING", "RESTING") and self._ours(r):                     # run 3's rows: its own rule
+                try:
+                    await self._resting(con, r, now)
+                except Exception as exc:                 # noqa: BLE001 -- one row must not cost the others their pass
+                    first = first or exc
+        await super()._reconcile(con, now)               # the open position's stop, strangers, closes at Delta: always
+        if first is not None:
+            raise first
 
-    async def _resting(self, con, r, now: float) -> None:
-        """A resting entry (or one whose send was not observed): filled -> OPEN; past 24:00 -> cancelled."""
+    async def _sent_unknown(self, con, r, now: float) -> None:
+        """This run's entries REST (GTC): a SENDING row is settled by `_resting` -- found (by its id or among the open
+        orders) -> RESTING / filled; a short held on the coin -> filled; found nowhere for 2 minutes -> FAILED. Run 3's
+        IOC rule would mark it FAILED at once, while the sell may still rest."""
+        if not self._ours(r):
+            await super()._sent_unknown(con, r, now)
+
+    async def _other_trade(self, con, r) -> str | None:
+        """The coin that makes `r` surplus: a position open now, or the day's other pick having already filled (the
+        first fill is the day's one trade, even after it has closed)."""
+        return await con.fetchval(
+            "SELECT symbol FROM fade_live_positions WHERE id <> $1 AND (status = 'OPEN' OR (day = $2 AND entry_time IS NOT NULL)) "
+            "ORDER BY id LIMIT 1", r["id"], r["day"])
+
+    async def _find(self, r) -> tuple[dict | None, bool]:
+        """(the entry order as Delta has it, sure). Asked two ways: by its client id, then among the product's OPEN
+        orders (a resting sell is there even when the by-id lookup misses it). (None, True) = Delta answered both
+        and has no such order resting; (None, False) = a read failed, nothing may be concluded."""
         from live.client import VenueError
+        sure = True
         try:
             o = await asyncio.to_thread(self.client.get_order_by_client_id, r["entry_cid"])
-        except VenueError as exc:
-            if r["status"] == "SENDING":
-                await self.set_state(con, "HALTED", f"{r['symbol']} entry outcome unknown: {exc}")
-            return
+        except VenueError:
+            o, sure = None, False
+        if o is not None:
+            return o, True
+        try:
+            for x in await asyncio.to_thread(self.client.get_open_orders, r["product_id"]):
+                if x.get("client_order_id") == r["entry_cid"]:
+                    return x, True
+        except VenueError:
+            return None, False
+        return None, sure
+
+    async def _from_position(self, r) -> dict | None:
+        """When the order cannot be found: the position itself. A short held on the coin = the order filled (a fill
+        row is made from the position: its size and entry price; the fee is not known). None = flat."""
+        pos = await asyncio.to_thread(self.client.get_position, r["product_id"])
+        from live.reconcile import _signed
+        n = abs(_signed(pos)) if pos else 0
+        if not n:
+            return None
+        return {"id": r["order_id"], "size": n, "unfilled_size": 0, "average_fill_price": pos.get("entry_price"),
+                "paid_commission": "0", "state": "closed", "from_position": True}
+
+    async def _cancel(self, oid, product_id) -> None:
+        """Cancel, where 'Delta refuses: the order is already gone (filled or cancelled)' is an answer, not a failure:
+        what became of it is read afterwards."""
+        from live.client import VenueRejected
+        try:
+            await asyncio.to_thread(self.client.cancel_order, int(oid), product_id)
+        except VenueRejected as exc:
+            msg = str(exc).lower()
+            if exc.status not in (400, 404) or not any(k in msg for k in ("not_found", "not found", "already", "closed", "cancel")):
+                raise                                    # refused for another reason (auth, schema): a real failure
+
+    async def _after_cancel(self, r) -> dict | None:
+        """What the entry order became once its cancel was sent: Delta's row for it; if Delta no longer shows it, the
+        position decides (a short held = it filled; flat = cancelled, nothing filled). None = a read failed: nothing
+        is concluded and the next pass asks again."""
+        o, sure = await self._find(r)
+        if o is not None:
+            return o
+        if not sure:
+            return None
+        return await self._from_position(r) or {"size": 0, "unfilled_size": 0, "state": "cancelled"}
+
+    async def _resting(self, con, r, now: float, o: dict | None = None) -> None:
+        """A resting entry (or one whose send was not observed): filled -> OPEN; past 24:00, or once the day's trade
+        exists, or while the account may not enter -> cancelled. `o` is the order row when the caller already holds it
+        (place_order's own reply: no read-after-write lookup that could miss it)."""
         if o is None:
-            if r["status"] == "SENDING":
-                await con.execute("UPDATE fade_live_positions SET status = 'FAILED', skip_reason = $2 WHERE id = $1",
-                                  r["id"], "the entry never reached Delta")
-            return
+            o, sure = await self._find(r)
+            if o is None and not sure:
+                return                                   # Delta could not be read: nothing is concluded this pass
+            if o is None:
+                o = await self._from_position(r)         # not resting: did it fill?
+            if o is None and r["status"] == "SENDING":
+                sent = json.loads(r["detail"] or "{}").get("sent_at")
+                if sent is not None and now - float(sent) < 120:
+                    return                               # just sent: give Delta's lists time to show it
+                await con.execute("UPDATE fade_live_positions SET status = 'FAILED', skip_reason = $2 WHERE id = $1", r["id"],
+                                  "the entry is not at Delta: not found by its id, not among the open orders, no position")
+                return
+            if o is None:
+                # A sell we SAW resting that Delta no longer shows and that left no position. Its lists can lag or miss:
+                # nothing is concluded for 2 minutes, then it is cancelled by the id from the send (harmless if it is
+                # gone, decisive if it is not) and written off.
+                since = json.loads(r["detail"] or "{}").get("missing_since")
+                if since is None:
+                    await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb "
+                                      "WHERE id = $1", r["id"], json.dumps({"missing_since": int(now)}))
+                    return
+                if now - float(since) < 120:
+                    return
+                if r["order_id"] is not None:
+                    await self._cancel(r["order_id"], r["product_id"])
+                o = await self._from_position(r)         # one last look: did it fill meanwhile?
+                if o is None:
+                    await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1", r["id"],
+                                      "the resting sell was not at Delta for 2 minutes: cancelled by its id, nothing filled")
+                    return
+        oid = o.get("id") if o.get("id") is not None else r["order_id"]   # the id Delta gave at the send
         state = str(o.get("state") or "").lower()
-        n = filled(o)
-        if n > 0:
-            if state in ("open", "pending") and o.get("id") is not None:
-                await asyncio.to_thread(self.client.cancel_order, int(o["id"]), r["product_id"])   # the unfilled rest
+        if filled(o) > 0:
+            if state in ("open", "pending") and oid is not None:
+                await self._cancel(oid, r["product_id"])                  # the unfilled rest
+                again = await self._after_cancel(r)                       # more may have filled before the cancel landed
+                if again is None or filled(again) < filled(o):
+                    return                               # the final size is not known yet: the next look reads it
+                o = again
             await self._filled(con, r, o, now)
             return
-        day_end = r["day"].timestamp() + DAY
+        other = await self._other_trade(con, r)
+        stand_down = await self._stand_down(con)         # read now: a halt earlier in this very pass counts
+        why = ("no 5% spike by 24:00 UTC: the resting sell was cancelled" if now >= r["day"].timestamp() + DAY else
+               f"{other} filled first: one position at a time" if other else
+               f"resting sell cancelled: {stand_down}" if stand_down else None)
         if state in ("cancelled", "closed", "rejected"):
-            await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1",
-                              r["id"], f"entry {state} at Delta without a fill: {o.get('cancellation_reason') or ''}"[:300])
+            await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1", r["id"],
+                              (why or f"entry {state} at Delta without a fill: {o.get('cancellation_reason') or ''}")[:300])
             return
-        await con.execute("UPDATE fade_live_positions SET status = 'RESTING', order_id = $2 WHERE id = $1 AND status <> 'RESTING'",
-                          r["id"], int(o["id"]) if o.get("id") is not None else None)
-        if now >= day_end:
-            await asyncio.to_thread(self.client.cancel_order, int(o["id"]), r["product_id"])
-            await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1",
-                              r["id"], "no 5% spike by 24:00 UTC: the resting sell was cancelled")
+        await con.execute("UPDATE fade_live_positions SET status = 'RESTING', order_id = $2 WHERE id = $1 "
+                          "AND (status <> 'RESTING' OR order_id IS NULL)", r["id"], int(oid) if oid is not None else None)
+        if not why or oid is None:
+            return
+        await self._cancel(oid, r["product_id"])
+        again = await self._after_cancel(r)
+        if again is None or str(again.get("state") or "").lower() in ("open", "pending") and filled(again) == 0:
+            return                                       # not confirmed gone yet: still RESTING, the next pass asks again
+        if filled(again) > 0:                            # it filled in the moment before the cancel
+            await self._filled(con, r, again, now)
+            return
+        await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1", r["id"], why)
 
     async def _filled(self, con, r, o: dict, now: float) -> None:
-        # the other pick's resting order goes first: one position at a time, and its margin is needed for the extra
-        for x in await con.fetch("SELECT * FROM fade_live_positions WHERE status IN ('RESTING', 'SENDING') AND id <> $1", r["id"]):
-            if x["order_id"] is not None:
-                await asyncio.to_thread(self.client.cancel_order, int(x["order_id"]), x["product_id"])
-            await con.execute("UPDATE fade_live_positions SET status = 'SKIPPED', skip_reason = $2 WHERE id = $1",
-                              x["id"], f"{r['symbol']} filled first: one position at a time")
-        await self._opened(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"]), o, now)
+        """A resting sell filled. If the day's trade already exists this is a DOUBLE FILL (both picks spiked before the
+        cancel landed): recorded and bought back at once -- one position at a time. Otherwise it is the trade: the
+        other pick's order is cancelled FIRST (one call, so it cannot fill while this one is checked), then this one
+        is recorded (its stop and margin checked) and its extra margin added, then the other order is read back."""
+        other = await self._other_trade(con, r)
+        others = await con.fetch("SELECT * FROM fade_live_positions WHERE status IN ('RESTING', 'SENDING') AND id <> $1", r["id"])
+        if not other:
+            for x in others:
+                if x["order_id"] is not None:
+                    try:
+                        await self._cancel(x["order_id"], x["product_id"])
+                    except Exception:                    # noqa: BLE001 -- settled below / on the next pass
+                        log.exception("spike %s: the other resting order could not be cancelled yet", x["symbol"])
+        # recorded at the FILL's own time when Delta states it: a stop that fired before the bot first saw the fill is
+        # then still this position's close (not an order "from before it opened"), and the fill minute is the true one
+        await self._opened(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"]), o,
+                           self._fill_time(r, o, now))
         row = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
-        if row["status"] != "OPEN":
-            return                                       # bought back (unprotected / margin): run 3's rules HALTed it
-        await self._add_extra(con, row, now)
+        if row["status"] == "OPEN" and other:
+            await event(con, "DOUBLE_FILL", r["symbol"], {"already_traded": other, "contracts": filled(o)})
+            await self._close(con, row, now, "DOUBLE_FILL", f"{other} had filled first: one position at a time")
+            return
+        if row["status"] == "OPEN":
+            try:
+                await self._add_extra(con, row, now)
+            except Exception:                            # noqa: BLE001 -- retried by the watcher and the next pass
+                log.exception("spike %s: the extra margin could not be added yet", r["symbol"])
+        for x in others:                                 # what became of the other order (cancelled, or a double fill)
+            try:
+                await self._resting(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", x["id"]), now)
+            except Exception:                            # noqa: BLE001 -- the next pass tries again
+                log.exception("spike %s: the other resting order could not be settled yet", x["symbol"])
+
+    @staticmethod
+    def _fill_time(r, o: dict, now: float) -> float:
+        """When the order filled, by Delta's stamp (`updated_at` of a filled order), if it lies inside the order's own
+        day and not in the future; else the time of this look."""
+        from live.ledger import parse_venue_time
+        at = parse_venue_time(o.get("updated_at")) if not o.get("from_position") else None
+        return float(at) if at is not None and r["day"].timestamp() <= at <= now else now
+
+    async def _check_margin(self, con, row_id: int, now: float) -> bool:
+        """Run 3's isolated-margin check; `margin_ok` is recorded only when it PASSED (the base marks that it looked
+        before it has a verdict)."""
+        ok = await super()._check_margin(con, row_id, now)
+        if ok:
+            await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb WHERE id = $1",
+                              row_id, json.dumps({"margin_ok": int(now)}))
+        return ok
 
     async def _add_extra(self, con, r, now: float) -> None:
         from live.client import AmbiguousWrite, VenueError
         r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
-        if r["extra_margin"] is not None or r["status"] != "OPEN":
-            return                                       # already added (or no longer open): never twice
+        if r["extra_margin"] is not None or r["status"] != "OPEN" or not self._ours(r):
+            return                                       # already added (or no longer open, or not this run's): never twice
         if r["detail"] and '"extra_margin_tried"' in r["detail"]:
             return                                       # refused or unclear once: logged, not retried blindly
-        await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb WHERE id = $1",
-                          r["id"], json.dumps({"extra_margin_tried": int(now)}))
+        first = await con.fetchval("SELECT id FROM fade_live_positions WHERE status = 'OPEN' ORDER BY entry_time, id LIMIT 1")
+        if first != r["id"]:
+            return                                       # a second open position (a double fill being closed): never topped up
+        if not r["detail"] or '"margin_ok"' not in r["detail"]:
+            # run 3's isolated-margin check has not PASSED yet (a failed read at the fill): it goes first, here and now
+            if not await self._check_margin(con, r["id"], now):
+                return                                   # not isolated as planned: bought back and HALTED
         want = round(EXTRA_MARGIN * float(r["balance_before"]), 2)
+        # read BEFORE the attempt is recorded: a failed read here costs nothing and the next look tries again
         before = await asyncio.to_thread(self.margined_position, r["product_id"])
         try:
             m0 = float(before.get("margin"))
         except (TypeError, ValueError):
             m0 = None
+        await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb WHERE id = $1",
+                          r["id"], json.dumps({"extra_margin_tried": int(now)}))
         try:
             got = await asyncio.to_thread(self.client.add_position_margin, r["product_id"], want)
         except AmbiguousWrite as exc:
-            after = await asyncio.to_thread(self.margined_position, r["product_id"])
             try:
+                after = await asyncio.to_thread(self.margined_position, r["product_id"])
                 landed = m0 is not None and float(after.get("margin")) >= m0 + 0.9 * want
-            except (TypeError, ValueError):
-                landed = False
+            except Exception:                            # noqa: BLE001 -- the read-back failed too: unclear, logged, not resent
+                after, landed = {}, False
             await event(con, "EXTRA_MARGIN_UNCLEAR", r["symbol"], {"want": want, "landed": landed, "error": str(exc)[:300]})
             got = after if landed else None
         except VenueError as exc:
@@ -304,45 +491,75 @@ class SpikeLive(L.LiveFade):
         await event(con, "EXTRA_MARGIN", r["symbol"], {"added": want, "liquidation_price": got.get("liquidation_price")})
 
     async def _exits(self, con, now: float) -> None:
-        for r in await con.fetch("SELECT * FROM fade_live_positions WHERE status = 'OPEN' ORDER BY id"):
+        await self._schema(con)
+        mine = 0
+        for r in await con.fetch("SELECT * FROM fade_live_positions WHERE status = 'OPEN' ORDER BY entry_time, id"):
+            if not self._ours(r):                        # a run-3 position still open: its own rule (24 h after its day)
+                if r["day"].timestamp() <= now - DAY - L.EXIT_AFTER:
+                    await self._close(con, r, now, "TIME", "24 h exit")
+                continue
+            mine += 1
+            if mine > 1:                                 # a second position still open (a double fill whose buy-back
+                await event(con, "DOUBLE_FILL", r["symbol"], {"still_open": True})   # failed): closed on every pass until gone
+                await self._close(con, r, now + 1, "DOUBLE_FILL", "a second position: one at a time")   # +1: new order ids
+                continue
             if r["entry_time"] is not None and r["entry_time"].timestamp() <= now - DAY:
                 await self._close(con, r, now, "TIME", "24 h after the fill")
-            elif r["lock_price"] is None and r["entry_price"]:
+                continue
+            if r["extra_margin"] is None:                # the watcher's job, done here too if it has not landed
+                await self._add_extra(con, r, now)
+                r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
+                if r["status"] != "OPEN":
+                    continue                             # the margin check bought it back
+            if r["lock_price"] is None and r["entry_price"]:
                 await self._lock(con, r, now)
             elif r["entry_price"]:
                 await self._trail(con, r, now)
 
-    async def _lock(self, con, r, now: float) -> None:
-        from live.client import VenueError
-        e = float(r["entry_price"])
+    async def _lows_since_fill(self, r, now: float) -> list[float]:
+        """The 1m lows after the fill minute (the fill minute itself is not used, as in the backtest)."""
         start = int(r["entry_time"].timestamp()) // 60 * 60
         bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
-        lows = [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
+        return [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
+
+    async def _move_stop(self, r, price, tick) -> str | None:
+        """Move the resting stop to `price` and read it back. None when it reads back at the new price, else why not
+        (nothing is recorded by the caller then: the next pass tries again)."""
+        try:
+            so = await asyncio.to_thread(self.stop_order, r["product_id"])
+            if so is None or so.get("id") is None:
+                return "no resting stop order to move"
+            await asyncio.to_thread(self.client.edit_stop_price, int(so["id"]), r["product_id"], price)
+            moved = await asyncio.to_thread(self.stop_order, r["product_id"])
+            if moved is None or abs(float(moved.get("stop_price") or 0) - float(price)) > float(tick) * 1.5:
+                return "the stop does not read back at the new price"
+            return None
+        except Exception as exc:                         # noqa: BLE001
+            return f"{type(exc).__name__}: {exc}"
+
+    async def _lock(self, con, r, now: float) -> None:
+        """The break-even move. `lock_price` is written only once the stop HAS moved (or the position was bought back
+        at market by this rule): a failure anywhere leaves the row as it was and the next pass tries again."""
+        e = float(r["entry_price"])
+        lows = await self._lows_since_fill(r, now)
         notional = e * r["contracts"] * r["contract_value"]
         if not lows or notional <= 0 or min(lows) > activation_price(e, notional, float(r["balance_before"])):
             return                                       # the best point has not netted +$30.61 x scale yet
         prod = await asyncio.to_thread(self.product, r["symbol"])
         lp = to_tick(lock_price(e, notional, float(r["balance_before"])), prod["tick"], up=True)
         last = await asyncio.to_thread(self.last_price, r["symbol"])
-        await con.execute("UPDATE fade_live_positions SET lock_price = $2 WHERE id = $1", r["id"], float(lp))
-        if last <= 0 or last >= float(lp):
+        if last > 0 and last >= float(lp):               # (no price this pass: never bought back blind -- the stop is still moved)
             await event(con, "LOCK_AT_MARKET", r["symbol"], {"lock": float(lp), "last": last})
-            fresh = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
-            await self._close(con, fresh, now, "LOCK", "the price was already back at the break-even level")
+            await self._close(con, r, now, "LOCK", "the price was already back at the break-even level")
+            # only if THIS buy-back closed it: a stop that got there first stays a full stop (lock_price NULL)
+            await con.execute("UPDATE fade_live_positions SET lock_price = $2 WHERE id = $1 AND status = 'CLOSED' "
+                              "AND exit_reason = 'LOCK'", r["id"], float(lp))
             return
-        so = await asyncio.to_thread(self.stop_order, r["product_id"])
-        try:
-            if so is None or so.get("id") is None:
-                raise VenueError("no resting stop order to move")
-            await asyncio.to_thread(self.client.edit_stop_price, int(so["id"]), r["product_id"], lp)
-            moved = await asyncio.to_thread(self.stop_order, r["product_id"])
-            ok = moved is not None and abs(float(moved.get("stop_price") or 0) - float(lp)) <= float(prod["tick"]) * 1.5
-        except (VenueError, TypeError, ValueError) as exc:
-            ok = False
-            await event(con, "LOCK_FAILED", r["symbol"], {"lock": float(lp), "error": str(exc)[:300]})
-        if not ok:
-            await con.execute("UPDATE fade_live_positions SET lock_price = NULL WHERE id = $1", r["id"])   # retried next pass
+        err = await self._move_stop(r, lp, prod["tick"])
+        if err:
+            await event(con, "LOCK_FAILED", r["symbol"], {"lock": float(lp), "error": err[:300]})
             return
+        await con.execute("UPDATE fade_live_positions SET lock_price = $2 WHERE id = $1", r["id"], float(lp))
         await event(con, "LOCK_MOVED", r["symbol"], {"stop_from": r["stop_price"], "stop_to": float(lp), "last": last})
         log.warning("spike %s: stop moved to %s (break-even)", r["symbol"], lp)
 
@@ -350,35 +567,25 @@ class SpikeLive(L.LiveFade):
         """After the break-even move: move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter
         (lower) than the stop now; if the last price is already at or above it, buy back at once ("LOCK"), as the
         backtest."""
-        from live.client import VenueError
-        start = int(r["entry_time"].timestamp()) // 60 * 60
-        bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
-        lows = [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
+        lows = await self._lows_since_fill(r, now)
         if not lows:
             return
         prod = await asyncio.to_thread(self.product, r["symbol"])
         current = float(r["trail_price"] or r["lock_price"])
         new = to_tick(min(lows) * (1 + TRAIL), prod["tick"], up=True)
         if float(new) >= current - float(prod["tick"]) * 0.5:
-            return                                       # not tighter: the lock (or the last trail) stays
+            return                                       # not tighter: the break-even stop (or the last trail) stays
         last = await asyncio.to_thread(self.last_price, r["symbol"])
-        if last <= 0 or last >= float(new):
+        if last > 0 and last >= float(new):              # (no price this pass: never bought back blind -- the stop is still moved)
             await event(con, "TRAIL_AT_MARKET", r["symbol"], {"trail": float(new), "last": last})
             await self._close(con, r, now, "LOCK", "the price was already back above the trailing level")
             return
-        so = await asyncio.to_thread(self.stop_order, r["product_id"])
-        try:
-            if so is None or so.get("id") is None:
-                raise VenueError("no resting stop order to move")
-            await asyncio.to_thread(self.client.edit_stop_price, int(so["id"]), r["product_id"], new)
-            moved = await asyncio.to_thread(self.stop_order, r["product_id"])
-            ok = moved is not None and abs(float(moved.get("stop_price") or 0) - float(new)) <= float(prod["tick"]) * 1.5
-        except (VenueError, TypeError, ValueError) as exc:
-            ok = False
-            await event(con, "TRAIL_FAILED", r["symbol"], {"trail": float(new), "error": str(exc)[:300]})
-        if ok:
-            await con.execute("UPDATE fade_live_positions SET trail_price = $2 WHERE id = $1", r["id"], float(new))
-            await event(con, "TRAIL_MOVED", r["symbol"], {"stop_from": current, "stop_to": float(new), "last": last})
+        err = await self._move_stop(r, new, prod["tick"])
+        if err:
+            await event(con, "TRAIL_FAILED", r["symbol"], {"trail": float(new), "error": err[:300]})
+            return
+        await con.execute("UPDATE fade_live_positions SET trail_price = $2 WHERE id = $1", r["id"], float(new))
+        await event(con, "TRAIL_MOVED", r["symbol"], {"stop_from": current, "stop_to": float(new), "last": last})
 
     async def _closed_at_venue(self, con, r, now: float) -> None:
         await super()._closed_at_venue(con, r, now)
@@ -394,13 +601,13 @@ class SpikeLive(L.LiveFade):
         month = _ts(now).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return int(await con.fetchval(
             "SELECT count(*) FROM fade_live_positions WHERE status = 'CLOSED' AND exit_reason IN ('STOP_LOSS', 'LIQUIDATION') "
-            "AND lock_price IS NULL AND exit_time >= $1", month) or 0)
+            "AND lock_price IS NULL AND exit_time >= $1 AND detail->>'run' = $2", month, str(RUN_VERSION)) or 0)
 
     async def _enter_one(self, con, day: int, p, now: float) -> None:
         from live.client import AmbiguousWrite, VenueError, VenueRejected
         from live.fade import K_STOP
         from live.orders import OrderRequest, OrderType, Side, StopTriggerMethod, TimeInForce, client_order_id
-        await con.execute(SCHEMA)
+        await self._schema(con)
         sym = p["symbol"]
         bal = await asyncio.to_thread(self.balance)
         if bal < L.FLOOR_USD:
@@ -424,7 +631,7 @@ class SpikeLive(L.LiveFade):
         t = await asyncio.to_thread(self.client.get_ticker, sym)
         q = t.get("quotes") or {}
         bid = float(q.get("best_bid") or 0)
-        ref = await asyncio.to_thread(self.last_price, sym)
+        ref = self.last_price(sym, t)                     # the same ticker read: the last traded price
         if ref <= 0 or bid <= 0:
             await self._skip(con, day, p, "no last price or bid")
             return
@@ -454,7 +661,7 @@ class SpikeLive(L.LiveFade):
             "entry_cid, detail) VALUES ($1,$2,$3,'SENDING',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id",
             _ts(day), sym, p["rank"], prod["id"], prod["cv"], n, lev, bal, p["entry_price"], ref,
             float(limit), float(stop), None, round(n * prod["cv"] * (float(stop) - float(limit)) / bal, 4), cid,
-            json.dumps({"bid": bid, "run": RUN_VERSION, "notional": round(notional, 2)}))
+            json.dumps({"bid": bid, "run": RUN_VERSION, "notional": round(notional, 2), "sent_at": int(now)}))
         order = OrderRequest(product_id=prod["id"], size=n, side=Side.SELL, order_type=OrderType.LIMIT,
                              client_order_id=cid, limit_price=limit, time_in_force=TimeInForce.GTC, post_only=True,
                              bracket_stop_loss_price=stop,     # no take-profit: break-even, then the 5% trail
@@ -467,11 +674,12 @@ class SpikeLive(L.LiveFade):
             await event(con, "REJECTED", sym, {"error": str(exc)[:400]})
             return
         except (AmbiguousWrite, VenueError) as exc:
-            await self.set_state(con, "HALTED", f"{sym} entry outcome unknown: {exc}")
-            return                                       # left SENDING: _resting asks again
+            await self.set_state(con, "HALTED", f"{sym} entry outcome unknown ({exc}): the bot looks for it at Delta and "
+                                 "cancels it while halted -- check Delta's open orders too, then fade-live-resume")
+            return                                       # left SENDING: _resting finds it (or writes it off after 2 min)
         log.warning("spike %s: resting sell x%d at %s (stop %s, no target, %dx)", sym, n, limit, stop, lev)
-        await self._resting(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id), now)
-        _ = (o, fee, fill_price, time)                   # the reply is read again by client order id in _resting
+        # settled from Delta's own reply: a lookup right after the write could miss an order that IS resting
+        await self._resting(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id), now, o=o)
 
 
 # ============================================================ operator command
@@ -520,7 +728,7 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
         rc = 1
     if o1.get("id") is not None:
         client.cancel_order(int(o1["id"]), p["id"])
-        print(f"   cancelled: {client.get_order_by_client_id(cid1).get('state')}")
+        print(f"   cancelled: {(client.get_order_by_client_id(cid1) or {}).get('state')}")
     # 2. one contract sold with a last-traded stop
     cid2 = client_order_id("spike-probe", symbol, str(int(time.time())), "sell")
     stop = to_tick(bid * 1.20, p["tick"], up=True)
@@ -529,6 +737,9 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
                                          time_in_force=TimeInForce.IOC, bracket_stop_loss_price=stop,
                                          stop_trigger_method=StopTriggerMethod.LAST_TRADED, note="spike probe sell"))
     print(f"2. sold {filled(o2)} at {fill_price(o2)}")
+    if not filled(o2):
+        print("   !!! nothing sold: the stop, the stop edit and the margin top-up were NOT tested")
+        rc = 1
     try:
         if filled(o2):
             ok = acct.wait_protected(p["id"])
@@ -558,6 +769,8 @@ def probe(symbol: str = "XRPUSD", env: dict | None = None) -> int:
                 rc = 1
             bad = margin_problem(before, fill_price(o2) or bid, 1, p["cv"], 2)
             print(f"   isolated before the top-up: {'YES' if not bad else 'NO -- ' + bad}")
+            if bad:
+                rc = 1                                   # not isolated margin: the gate before the first real order
     finally:
         row, left = acct.buy_back(symbol, client_order_id("spike-probe", cid2, "exit"))
         n = acct.cancel_leftovers(p["id"])

@@ -75,6 +75,58 @@ drops; the three recent weeks were a good stretch. The owner chose to run it kno
     (`LOCK_MOVED` / `LOCK_AT_MARKET` / `LOCK_FAILED`), every trail move (`TRAIL_MOVED` / `TRAIL_AT_MARKET` /
     `TRAIL_FAILED`), every margin top-up (`EXTRA_MARGIN*`).
 
+## When Delta or the network misbehaves (fixed 2026-11-15 after four code-review passes; each has a test)
+These are not trading rules; they are what the bot does so that the rules above hold when a call fails.
+* **Both picks fill before a cancel lands:** the first fill is the day's trade; the other is recorded and **bought back
+  at once** ("DOUBLE_FILL", planned, no halt), on that pass or any later one, and never gets extra margin. The other
+  pick's order is cancelled before the fill is even checked, so this needs both to fill within moments.
+* **The day's first fill is final:** once a pick has filled, the other pick's order is cancelled even after the trade
+  has closed (one trade a day, as tested).
+* **An entry order the bot cannot find** is looked for three ways — by its client id, among the coin's open orders,
+  and as a position on the coin. Found resting → tracked; a short held → recorded as the fill; found nowhere for
+  2 minutes → written off (a just-sent order) or cancelled by the id from the send and written off (one seen resting).
+  It is never assumed absent on one failed lookup, and never left resting unwatched.
+* **A lost reply on the entry order** HALTs the account (the owner looks, `fade-live-resume`); while halted the bot
+  finds the order and cancels it.
+* **Resting sells are cancelled** whenever the account may not enter: HALTED, STOPPED, the kill switch, entries off.
+  A fill that lands first is still recorded, protected and managed.
+* **A fill is recorded at Delta's own fill time**, so a stop that fires seconds after the fill — before the bot has
+  seen it — is still booked as that position's stop (and counts toward the month's two).
+* **Partial fill:** the rest is cancelled and the final size read again before the position is recorded.
+* **Extra margin:** only after the isolated-margin check has PASSED; a failed read before the top-up costs nothing
+  and the next look (2.5 s watcher or 30 s pass) tries again; refused or unclear once → logged, never resent.
+* **Break-even and trail moves** are recorded only once the stop reads back at the new price; any failure leaves the
+  row as it was and the next pass tries again. With no last price the stop is still moved; the bot never buys back
+  blind. A stop that fires during a break-even buy-back stays a full stop.
+* **A cancel Delta refuses because the order is already gone** is an answer, not an error; any other refusal is a
+  failed pass (counted, halts after 10).
+* **Only this run's rows** get the extra margin, the moves and the 24-h-after-the-fill exit, and count toward the
+  month's stops (run 3's stop of 2026-11-11 does not). `fade-live-capital` works on this run; it refuses while a
+  sell rests.
+* **The probe** fails (not passes) if nothing sold or the position is not on isolated margin.
+
+## How the bot itself was tested (not only the rule)
+`scripts/replay_bot.py` runs the REAL bot code (`live/spike_live.py` on `live/fade_live.py` and PostgreSQL) minute by
+minute against a simulated Delta driven by Delta's own historical 1m prices, and compares every trade with the
+research rule; `scripts/replay_battery.py` is the battery (results: `out/careful/replay_battery.txt`).
+On the final code (2026-11-15):
+* **Clean runs** (full history and 22 monthly starts, strict and lenient; 44 runs, 268,044 bot passes): 4,458 bot
+  trades, **4,441 identical** to the research rule (coin, fill minute, exit minute, exit kind, P&L); the full history
+  matches trade for trade: **$1,801.05 (strict) .. $3,889.83 (lenient)**. The 17 others are two trades on coins whose
+  20x is capped at $10,000 of position: the bot must use a whole-number leverage and holds a few % less.
+* **Real tick and contract sizes** (the bot rounds prices and contracts): 157 .. 165 of 171 identical, wallet $1,895 ..
+  $4,042; one trade exits a few minutes apart on a rounding tie.
+* **A pass every minute while orders rest:** identical.
+* **Faults** (64 runs, ~19,800 injected faults, ~30,800 bot restarts, 10,064 trades): read timeouts, lost replies
+  before and after Delta acted, refused top-ups, failed stop edits, order-lookup misses, cancels Delta refuses,
+  restarts mid-trade. **0 halts, 0 passes with a position and no stop, never two positions, margin never added
+  twice, nothing left open.** Trades then differ from the fault-free list by a pass here and there (end wallet from
+  -$1,961 to +$5,684 around it); restarts alone change nothing.
+* **A lost reply on the entry order** (4 runs): HALTED as designed, nothing left open or resting.
+* NOT covered by the replay: both picks filling in the same minute never happened in the history (covered by unit
+  tests only); a stop inside the fill minute (the research rule starts the minute after; one unit test).
+Tests: `tests/live/test_spike_live.py` 42 (24 of them for the review findings); tests/live + tests/live_exec 2,910 passed.
+
 ## Before the first order
 1. Merge the PR (no `user_data` change: the image deploy rolls the bot; the run 3 → 4 switch happens at the first pass).
 2. **Probe** (`python -m live fade-live-probe XRPUSD`, owner's yes): proves the post-only resting sell, the last-traded

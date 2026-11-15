@@ -82,10 +82,14 @@ class SpikeDelta(FakeDelta):
             return row
         return super().place_order(order)
 
-    def fill_resting(self, cid, n=None, price=None):
-        """The resting sell fills (n contracts, default all) at its limit; the bracket legs appear."""
+    def fill_resting(self, cid, n=None, price=None, at=None):
+        """The resting sell fills (n contracts, default all) at its limit; the bracket legs appear. `at` (epoch s)
+        stamps the fill as Delta does (`updated_at`)."""
         rest = self.resting[cid]
         row, p = rest["row"], rest["payload"]
+        if at is not None:
+            from tests.live.test_fade_live import _iso
+            row["updated_at"] = _iso(at)
         n = row["size"] if n is None else n
         pid = p["product_id"]
         px = float(price or p["limit_price"])
@@ -107,6 +111,10 @@ class SpikeDelta(FakeDelta):
         for rest in self.resting.values():
             if rest["row"]["id"] == oid and rest["row"]["state"] == "open":
                 rest["row"]["state"] = "cancelled"
+
+    def get_open_orders(self, pid=None):
+        """Orders resting on the book (Delta: states=open) -- the entry sells; never the bracket legs."""
+        return [dict(r["row"]) for r in self.resting.values() if r["row"]["state"] == "open" and pid in (None, r["row"]["product_id"])]
 
     def edit_stop_price(self, oid, pid, stop_price):
         self.edits.append((oid, pid, str(stop_price)))
@@ -509,5 +517,575 @@ async def test_the_trail_buys_back_at_market_when_the_price_already_bounced_abov
         x = (await _rows(con))["XUSD"]
         assert (x["status"], x["exit_reason"]) == ("CLOSED", "LOCK") and fake.pos[1] == 0
         assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+# ============================================================ hardening after the code review (2026-11-15)
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_both_picks_filling_before_the_cancel_lands_keeps_one_and_buys_the_other_back():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))                                # both spike inside the same few seconds
+        fake.fill_resting(_cid(fake, 2))
+        await acct.step(con, D0 + 600)
+        rows = await _rows(con)
+        assert rows["XUSD"]["status"] == "OPEN"                         # the better-ranked fill is the trade
+        assert (rows["YUSD"]["status"], rows["YUSD"]["exit_reason"]) == ("CLOSED", "DOUBLE_FILL")
+        assert fake.pos[2] == 0 and fake.pos[1] < 0                     # one position at a time, at Delta too
+        assert [e["kind"] for e in await _events(con, "DOUBLE_FILL")] == ["DOUBLE_FILL"]
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # the trade still got its extra margin
+        assert (await _state(con))["status"] == "RUNNING"               # planned: no halt
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_failed_read_before_the_top_up_does_not_cost_the_extra_margin():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    real, calls = fake.get_positions, {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] == 2:                                             # 1 = run 3's margin check; 2 = the top-up's own read
+            raise ConnectionError("venue down")
+        return real()
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.get_positions = flaky
+        await acct.fast(con, D0 + 125)                                  # the read fails: nothing sent, nothing recorded
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["extra_margin"] is None and "extra_margin_tried" not in (x["detail"] or "")
+        assert fake.margin_added == []
+        await acct.fast(con, D0 + 128)                                  # the next look adds it
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
+        assert (await _rows(con))["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_watcher_waits_for_the_margin_check_before_adding_margin():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.fail["get_positions"] = 1                                  # run 3's isolated-margin check cannot read
+        await acct.fast(con, D0 + 125)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and "venue_position" not in (x["detail"] or "")
+        assert fake.margin_added == []                                  # an unchecked position is NOT topped up
+        await acct.fast(con, D0 + 128)                                  # the next look completes the check FIRST, then tops up
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and "venue_position" in x["detail"] and fake.margin_added == [(1, round(0.051 * 3184, 2))]
+        assert (await _state(con))["status"] == "RUNNING"               # not bought back as "MARGIN", not halted
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_break_even_move_that_fails_is_not_recorded_and_is_retried():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05}
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        await acct.step(con, D0 + 300)
+        lows["low"] = 1.05 * 0.99
+        fake.book["XUSD"] = (1.04, 1.041, 1.04)
+        real, state = acct.stop_order, {"fail": True}
+
+        def flaky(pid):
+            if state["fail"]:
+                state["fail"] = False
+                raise ConnectionError("venue down")
+            return real(pid)
+        acct.stop_order = flaky
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["lock_price"] is None and not fake.edits       # failed: NOT marked as moved
+        assert [e["kind"] for e in await _events(con) if e["kind"] in LOCK_EVENTS] == ["LOCK_FAILED"]
+        await acct.step(con, D0 + 900)
+        x = (await _rows(con))["XUSD"]
+        assert x["lock_price"] is not None and float(fake.edits[-1][2]) == x["lock_price"]
+        assert [e["kind"] for e in await _events(con) if e["kind"] in LOCK_EVENTS] == ["LOCK_FAILED", "LOCK_MOVED"]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_no_last_price_never_triggers_a_blind_buy_back():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05 * 0.99, "close": 1.04}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        acct.last_price = lambda sym, ticker=None: 0.0                  # Delta's ticker has no price on these passes
+        await acct.step(con, D0 + 150)
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and fake.pos[1] < 0                # still short: nothing bought back blind ...
+        assert x["lock_price"] is not None and float(fake.edits[-1][2]) == x["lock_price"]   # ... but the stop IS moved
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_entry_is_settled_from_deltas_reply_not_from_a_lookup_that_can_miss():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    real = fake.get_order_by_client_id
+    try:
+        fake.get_order_by_client_id = lambda cid: None                  # read-after-write lag: "not found"
+        await acct.step(con, D0 + 120)
+        rows = await _rows(con)
+        assert {s: r["status"] for s, r in rows.items()} == {"XUSD": "RESTING", "YUSD": "RESTING"}   # not FAILED
+        assert all(r["order_id"] is not None for r in rows.values())
+        fake.get_order_by_client_id = real
+        await acct.step(con, D0 + DAY + 5)                              # so both are still cancelled at 24:00
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values())
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_an_entry_whose_reply_was_lost_is_found_among_the_open_orders_and_cancelled_while_halted():
+    import live.client as C
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    real = fake.place_order
+
+    def lost(order):
+        real(order)                                                     # Delta took the order ...
+        raise C.AmbiguousWrite("timeout")                               # ... and the reply never came
+    try:
+        fake.place_order = lost
+        fake.get_order_by_client_id = lambda cid: None                  # and the lookup by client id misses it
+        await acct.step(con, D0 + 120)
+        assert (await _state(con))["status"] == "HALTED"                # the owner must look (run 3's rule, kept)
+        assert (await _rows(con))["XUSD"]["status"] == "SENDING"
+        await acct.step(con, D0 + 150)                                  # the bot finds it among Delta's OPEN orders ...
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "SKIPPED" and "HALTED" in x["skip_reason"]   # ... and cancels it: nothing rests unwatched
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values()) and not fake.pos
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_an_entry_that_never_reached_delta_is_written_off_only_after_delta_has_had_time_to_show_it():
+    import live.client as C
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+
+    def never_arrives(order):
+        raise C.AmbiguousWrite("connection reset")                      # nothing reached Delta
+    try:
+        fake.place_order = never_arrives
+        await acct.step(con, D0 + 120)
+        await acct.step(con, D0 + 150)                                  # 30 s later: too soon to conclude
+        assert (await _rows(con))["XUSD"]["status"] == "SENDING"
+        await acct.step(con, D0 + 300)                                  # 3 min later: by id, open orders, position -- nothing
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "FAILED" and "not at Delta" in x["skip_reason"]
+        assert (await _state(con))["status"] == "HALTED"                # still the owner's call to resume
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_cancel_delta_refuses_because_the_order_is_already_gone_is_not_a_failure():
+    import live.client as C
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        row = fake.resting[_cid(fake, 1)]["row"]
+
+        def gone(oid, pid):
+            row["state"] = "cancelled"                                  # somebody cancelled it at Delta by hand
+            raise C.VenueRejected(404, "/v2/orders", {"error": {"code": "open_order_not_found"}})
+        fake.cancel_order = gone
+        await acct.step(con, D0 + DAY + 5)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "SKIPPED" and (await _state(con))["status"] == "RUNNING"
+        assert not [e for e in await _events(con, "ERROR")]             # the pass did not fail
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_second_position_whose_buy_back_failed_is_closed_on_the_next_pass_and_never_topped_up():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    real, state = acct.buy_back, {"fail": True}
+
+    def flaky(symbol, cid_base):
+        if state["fail"]:
+            state["fail"] = False
+            raise ConnectionError("venue down")
+        return real(symbol, cid_base)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 2))
+        acct.buy_back = flaky
+        await acct.step(con, D0 + 150)                                  # YUSD's double-fill buy-back fails once ...
+        await acct.fast(con, D0 + 153)
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # only the trade is topped up, never the surplus one
+        await acct.step(con, D0 + 180)                                  # ... and the exits close it (same pass or the next)
+        rows = await _rows(con)
+        assert (rows["YUSD"]["status"], rows["YUSD"]["exit_reason"]) == ("CLOSED", "DOUBLE_FILL") and fake.pos[2] == 0
+        assert rows["XUSD"]["status"] == "OPEN" and (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_extra_margin_only_after_the_isolated_margin_check_has_passed():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0, margin="cross")                   # NOT isolated: the fill must be bought back
+    acct = _acct(fake)
+    real, state = acct.buy_back, {"fail": True}
+
+    def flaky(symbol, cid_base):
+        if state["fail"]:
+            state["fail"] = False
+            raise ConnectionError("venue down")
+        return real(symbol, cid_base)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        acct.buy_back = flaky
+        await acct.fast(con, D0 + 125)                                  # the check FAILS, and its buy-back hits a venue blip
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and "venue_position" in x["detail"] and "margin_ok" not in x["detail"]
+        await acct.fast(con, D0 + 128)                                  # no top-up for a position that failed the gate:
+        assert fake.margin_added == []                                  # the check runs again and buys it back
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "MARGIN") and (await _state(con))["status"] == "HALTED"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_partial_fill_is_read_again_after_the_rest_is_cancelled():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        cid = _cid(fake, 1)
+        row = fake.resting[cid]["row"]
+        third = row["size"] // 3
+        fake.fill_resting(cid, n=third)
+        real = fake.cancel_order
+
+        def more_fills_then_cancel(oid, pid):
+            if oid == row["id"] and row["unfilled_size"] == row["size"] - third:
+                row["unfilled_size"] = row["size"] - 2 * third          # another third fills before the cancel lands
+                fake.pos[1] -= third
+            real(oid, pid)
+        fake.cancel_order = more_fills_then_cancel
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["contracts"] == 2 * third == -fake.pos[1]      # what Delta really holds
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_resting_sells_are_cancelled_when_the_account_halts_or_the_kill_switch_is_on(tmp_path):
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        await acct.set_state(con, "HALTED", "the owner must look at something")
+        await acct.step(con, D0 + 150)
+        rows = await _rows(con)
+        assert {s: (r["status"], r["skip_reason"][:36]) for s, r in rows.items()} == {
+            "XUSD": ("SKIPPED", "resting sell cancelled: the account "), "YUSD": ("SKIPPED", "resting sell cancelled: the account ")}
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values()) and not fake.pos
+    finally:
+        await con.close()
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        switch = tmp_path / "kill"
+        switch.write_text("stop")
+        acct.kill_switch_path = str(switch)
+        await acct.step(con, D0 + 150)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "SKIPPED" and "kill switch" in x["skip_reason"]
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values())
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_fill_that_lands_while_halted_is_still_recorded_and_protected():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        await acct.set_state(con, "HALTED", "the owner must look at something")
+        fake.fill_resting(_cid(fake, 1))                                # it fills before the bot could cancel it
+        await acct.step(con, D0 + 150)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and fake.pos[1] < 0                # ours, with its stop and its exits
+        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_run_3s_stops_do_not_count_toward_this_runs_month_and_its_rows_are_left_alone():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        import datetime as dt
+        ts = dt.datetime.fromtimestamp(D0 + 500, dt.timezone.utc)
+        await con.execute(                                              # run 3's stop this month: no run number in detail
+            "INSERT INTO fade_live_positions (day, symbol, rank, status, exit_reason, exit_time, entry_time, detail) "
+            "VALUES ($1, 'OLDUSD', 1, 'CLOSED', 'STOP_LOSS', $1, $1, '{\"ask\": 1.0}')", ts)
+        assert await acct.month_stops(con, D0 + 3600) == 0
+        assert acct._ours({"detail": '{"run": 4}'}) and not acct._ours({"detail": '{"ask": 1.0}'}) and not acct._ours({"detail": None})
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_capital_command_works_on_this_run():
+    from live import fade_live as L
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)                                  # run 4 begins; one sell rests
+        rc, msg = await L.record_capital(con, acct, D0 + 200)
+        assert rc == 1 and "rest" in msg                                # not while an entry rests
+        await acct.step(con, D0 + DAY + 5)                              # cancelled at 24:00: flat
+        rc, msg = await L.record_capital(con, acct, D0 + DAY + 60)
+        assert rc == 0, msg                                             # run 4's own row is accepted
+        old = L.LiveFade(fake, risk_pct=0.10, start_usd=3184)
+        rc, msg = await L.record_capital(con, old, D0 + DAY + 90)
+        assert rc == 1 and "no run of this version" in msg              # which is why the command must build SpikeLive
+        import inspect
+        assert L.account_class() is S.SpikeLive and "account_class()" in inspect.getsource(L.capital)
+        assert "account_class()" in inspect.getsource(L.from_env)       # one factory: the bot and the command agree
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_fill_bought_back_as_unprotected_also_cancels_the_other_resting_sell():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.pending = [o for o in fake.pending if o["product_id"] != 1]    # Delta attached no stop to the fill
+        await acct.step(con, D0 + 150)
+        rows = await _rows(con)
+        assert (rows["XUSD"]["status"], rows["XUSD"]["exit_reason"]) == ("CLOSED", "UNPROTECTED")
+        assert (await _state(con))["status"] == "HALTED"
+        assert rows["YUSD"]["status"] == "SKIPPED"                      # not left to fill on a halted account
+        assert fake.resting[_cid(fake, 2)]["row"]["state"] == "cancelled" and not any(fake.pos.values())
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_one_resting_row_that_cannot_be_settled_does_not_stop_the_open_positions_checks():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0), ("YUSD", 2, 0.12, 2.0)))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        y_id = fake.resting[_cid(fake, 2)]["row"]["id"]
+        real = fake.cancel_order
+
+        def stuck(oid, pid):
+            if oid == y_id:
+                raise ConnectionError("venue down")                     # YUSD's cancel keeps failing
+            real(oid, pid)
+        fake.cancel_order = stuck
+        fake.fill_resting(_cid(fake, 1))
+        await acct.step(con, D0 + 150)
+        assert (await _rows(con))["XUSD"]["status"] == "OPEN" and fake.margin_added   # the trade is whole regardless
+        fake.fire_stop("XUSD", 1.0760, at=D0 + 200)
+        await acct.step(con, D0 + 240)                                  # YUSD still fails -- XUSD's close is still read
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "STOP_LOSS")
+        fake.cancel_order = real
+        await acct.step(con, D0 + 270)                                  # and YUSD is cancelled once Delta answers
+        assert fake.resting[_cid(fake, 2)]["row"]["state"] == "cancelled"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_stop_that_fires_during_the_break_even_buy_back_stays_a_full_stop():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05 * 0.99, "close": 1.08}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        await acct.fast(con, D0 + 125)
+
+        def spike_through_the_stop(sym, ticker=None):                   # between the pass's reconcile and the move:
+            if fake.pos.get(1):
+                fake.fire_stop("XUSD", 1.0760, at=D0 + 200)             # the ORIGINAL stop fires at Delta
+            return 1.08
+        acct.last_price = spike_through_the_stop
+        await acct.step(con, D0 + 240)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "STOP_LOSS") and x["lock_price"] is None
+        assert await acct.month_stops(con, D0 + 3600) == 1              # counted toward the month's two
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_resting_sell_the_lookup_cannot_find_is_still_cancelled_at_midnight_by_its_order_id():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        assert (await _rows(con))["XUSD"]["order_id"] is not None
+        fake.get_order_by_client_id = lambda cid: None                  # Delta's lookup by client id finds nothing
+        await acct.step(con, D0 + DAY + 5)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "SKIPPED" and "24:00" in x["skip_reason"]
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values())   # cancelled by the id from the send
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_run_3s_unconfirmed_entry_keeps_run_3s_rule():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        import datetime as dt
+        await con.execute("INSERT INTO fade_live_positions (day, symbol, rank, status, product_id, entry_cid, detail) "
+                          "VALUES ($1, 'OLDUSD', 1, 'SENDING', 2, 'old-ioc-entry', '{\"ask\": 1.0}')",
+                          dt.datetime.fromtimestamp(D0 - DAY, dt.timezone.utc))
+        await acct.step(con, D0 + 150)
+        old = await con.fetchrow("SELECT status, skip_reason FROM fade_live_positions WHERE symbol = 'OLDUSD'")
+        assert (old["status"], old["skip_reason"]) == ("FAILED", "the entry never filled at Delta")   # IOC: gone
+        assert (await _state(con))["status"] == "RUNNING"               # no "may be resting" halt for an IOC order
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_stop_that_fires_before_the_bot_has_seen_the_fill_is_still_recorded_as_that_stop():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1), at=D0 + 200)                   # filled at 00:03:20 ...
+        fake.fire_stop("XUSD", 1.0760, at=D0 + 201)                     # ... and stopped a second later
+        await acct.step(con, D0 + 230)                                  # the bot's first look comes after both
+        await acct.step(con, D0 + 260)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "STOP_LOSS"), (x["status"], x["exit_reason"])
+        assert int(x["entry_time"].timestamp()) == D0 + 200             # Delta's fill time, not the bot's look
+        assert await acct.month_stops(con, D0 + 3600) == 1 and (await _state(con))["status"] in ("RUNNING", "HALTED")
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_cancel_refused_for_another_reason_is_a_failure_not_already_gone():
+    import live.client as C
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+
+        def unauthorised(oid, pid):
+            raise C.VenueRejected(401, "/v2/orders", {"error": {"code": "expired_signature"}})
+        fake.cancel_order = unauthorised
+        await acct.step(con, D0 + DAY + 5)
+        assert (await _rows(con))["XUSD"]["status"] == "RESTING"        # NOT written off: the sell is still live
+        assert [e["kind"] for e in await _events(con, "ERROR")] == ["ERROR"]   # and the pass is counted as failed
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_a_resting_sell_delta_stops_showing_is_given_two_minutes_then_cancelled_by_its_id():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        await acct.step(con, D0 + 120)
+        fake.get_order_by_client_id = lambda cid: None                  # Delta's lists stop showing the order
+        fake.get_open_orders = lambda pid=None: []
+        await acct.step(con, D0 + 150)
+        await acct.step(con, D0 + 180)
+        assert (await _rows(con))["XUSD"]["status"] == "RESTING"        # no conclusion on a first (or a quick second) miss
+        assert all(r["row"]["state"] == "open" for r in fake.resting.values())
+        await acct.step(con, D0 + 300)                                  # 2 minutes on: cancelled by the id from the send
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "SKIPPED" and "cancelled by its id" in x["skip_reason"]
+        assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values())   # nothing left resting unwatched
     finally:
         await con.close()

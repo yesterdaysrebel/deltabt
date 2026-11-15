@@ -380,12 +380,27 @@ just trading less; per KEPT trade the best are -$25 .. +$44 on test, none clearl
 BANK PROFITS monthly above $3,184 (`out/run4_bank_profits.txt`): history total $652 .. $1,163 vs $43 .. $128; 2026
 unchanged ($110 .. $700, it never got ahead to bank). It protects gains already made; it cannot cushion losses.
 
+**BOT REPLAY + FOUR CODE REVIEWS (owner 2026-11-15: "run the simulation as well so that all the complicated pieces are
+tested", "run code reviews as well"):** `scripts/replay_bot.py` = the REAL bot (`SpikeLive` + PostgreSQL) minute by
+minute against a simulated Delta (`ReplayDelta`) on the careful dataset, compared trade by trade with the research
+rule; `scripts/replay_battery.py` = the battery (needs DELTABOT_TEST_DSN; one scratch db `replay_N` per worker;
+`out/careful/replay_battery.txt`). Final code: 44 clean runs, 4,441 of 4,458 trades identical (full history $1,801.05 ..
+$3,889.83 = the research numbers; the 17 others = whole-number leverage on $10k-capped coins); 64 fault runs (~19.8k
+faults, ~30.8k restarts) with 0 halts / 0 unprotected passes / never two positions / nothing left open. Four
+`/code-review high` passes found real failure-path bugs, all fixed with tests (list: prereg "When Delta or the
+network misbehaves"): break-even move marked done though it failed; extra margin forfeited by one failed read; resting
+sells not cancelled on HALT; double fill unmanaged; a stop seconds after the fill booked as UNKNOWN_EXIT (entry_time is
+now Delta's fill time); `fade-live-capital` built run 3's class (now `fade_live.account_class()`); base
+`_reconcile`'s SENDING branch is now the overridable `_sent_unknown`. Left as is (review, low risk while the account
+starts flat): run ownership is read from `detail->>'run'` (no run_version column on positions). tests/live +
+live_exec: 2,910 passed.
+
 **SPIKE SELL AS IT WILL RUN (owner 2026-11-15: "I suggest we deploy with 10% margin", exit "C approved") -- BUILT, NOT
 DEPLOYED:** `live/spike_live.py`: TRADE_MARGIN 0.10, EXTRA_MARGIN 0.051, NO take-profit order (target_price NULL),
 stop +2.25% LTP; once a 1m low nets +$30.61 x balance/$3,184 (`BREAKEVEN_AFTER_USD` = 150 x 10/49, ~0.6% fall) the
 stop moves to break-even (`LOCK_USD` 0; lock_price column / LOCK_* events keep their names), then `TRAIL` 5% above the
 lowest low; 24 h exit; month off after 2 full stops (not after the move); $1,000 floor. Tested numbers and the
-replaced first version: `docs/fade_live_spike_prereg.md`. tests/live + live_exec: 2,886 passed (PG tests need
+replaced first version: `docs/fade_live_spike_prereg.md`. (PG tests need
 DELTABOT_TEST_DSN -> the local `deltabt-testpg` container on network dtnet). Go-live is the owner's: merge PR #168,
 deploy, then the probe (owner's yes) must PASS. The text below describes the FIRST version (49%, $500 target).
 
