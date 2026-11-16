@@ -1,0 +1,46 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Run-4 fills: TRAIN 2025 320 (stops 91), TEST 2026 + real 298 (stops 86)
+Feature data missing: prev_change 14, atrp 14, prev2_change 14, wick 14, prev_turnover 14
+
+Stops vs the rest, median of each feature (TRAIN | TEST):
+   fill_min       stops        293 rest        256 | stops      175.5 rest      130.5
+   rise5          stops    0.01367 rest    0.01585 | stops    0.02078 rest    0.02124
+   rise15         stops    0.02578 rest    0.02444 | stops    0.02704 rest    0.03372
+   rise60         stops    0.04538 rest    0.04483 | stops    0.04496 rest    0.04993
+   prev_change    stops     0.1653 rest     0.1563 | stops     0.2229 rest     0.2601
+   atrp           stops     0.1009 rest     0.1042 | stops     0.0905 rest    0.09335
+   prev2_change   stops     0.0269 rest    0.01684 | stops    0.01658 rest    0.02826
+   wick           stops     0.2715 rest     0.2491 | stops     0.1923 rest     0.1759
+   prev_turnover  stops  3.638e+06 rest  3.079e+06 | stops  4.617e+06 rest    4.9e+06
+
+No filter: TRAIN $-24,056 .. $-14,003 | TEST $-17,409 .. $-3,235 (STRICT .. LENIENT)
+
+72 skip rules tried; 69 improve TRAIN. Top 10 on TRAIN, and on the unseen TEST:
+  skip wick above 0.1035 (train 20% cut): TRAIN  +27,062 (skips 256 trades, 79 stops) | TEST  +15,139 ..   +5,365 (skips 209: 63 stops, 61 targets)
+  skip prev_change below 0.2901 (train 80% cut): TRAIN  +26,257 (skips 256 trades, 76 stops) | TEST  +14,590 ..   +8,732 (skips 172: 55 stops, 44 targets)
+  skip wick above 0.192 (train 40% cut): TRAIN  +24,516 (skips 192 trades, 60 stops) | TEST   +9,980 ..   +5,608 (skips 133: 42 stops, 39 targets)
+  skip prev_turnover above 9.457e+05 (train 20% cut): TRAIN  +23,868 (skips 256 trades, 77 stops) | TEST  +12,826 ..   +2,539 (skips 237: 69 stops, 72 targets)
+  skip atrp below 0.129 (train 80% cut): TRAIN  +22,901 (skips 256 trades, 77 stops) | TEST  +13,045 ..   +2,843 (skips 236: 69 stops, 73 targets)
+  skip prev_change below 0.1864 (train 60% cut): TRAIN  +22,864 (skips 192 trades, 57 stops) | TEST  +12,082 ..   +7,962 (skips 89: 31 stops, 19 targets)
+  skip prev2_change below 0.0781 (train 80% cut): TRAIN  +21,846 (skips 256 trades, 72 stops) | TEST  +18,163 ..   +7,827 (skips 204: 64 stops, 61 targets)
+  skip atrp below 0.1117 (train 60% cut): TRAIN  +21,041 (skips 192 trades, 61 stops) | TEST   +9,036 ..     -182 (skips 195: 55 stops, 62 targets)
+  skip rise5 below 0.0312 (train 80% cut): TRAIN  +20,434 (skips 256 trades, 73 stops) | TEST  +16,496 ..   +6,519 (skips 220: 65 stops, 56 targets)
+  skip fill_min above 69.6 (train 20% cut): TRAIN  +19,946 (skips 256 trades, 71 stops) | TEST   +8,299 ..   -1,387 (skips 210: 58 stops, 64 targets)
+
+All 72 rules on TEST (STRICT): 70 improve; median +9,050
+
+FAIR TEST -- average $ per trade the filter KEEPS (a skipped trade is $0, not a gain):
+   no filter: TRAIN -75 .. -44  |  TEST -58 .. -11  per trade
+   top 10 by TRAIN avg per kept trade (STRICT), then TEST; 'random' = TEST avg when the same number of trades
+   are kept at random (10,000 draws): how often random does at least as well
+   keep unless wick above 0.1035: TRAIN   +47/trade | TEST kept  89:   -25 ..   +24/trade; random as good 26%
+   keep unless prev_change below 0.2901: TRAIN   +34/trade | TEST kept 126:   -22 ..   +44/trade; random as good 18%
+   keep unless wick above 0.192: TRAIN    +4/trade | TEST kept 165:   -45 ..   +14/trade; random as good 32%
+   keep unless prev_turnover above 9.457e+05: TRAIN    -3/trade | TEST kept  61:   -75 ..   -11/trade; random as good 61%
+   keep unless prev_change below 0.1864: TRAIN    -9/trade | TEST kept 209:   -25 ..   +23/trade; random as good 6%
+   keep unless atrp below 0.129: TRAIN   -18/trade | TEST kept  62:   -70 ..    -6/trade; random as good 58%
+   keep unless atrp below 0.1117: TRAIN   -24/trade | TEST kept 103:   -81 ..   -33/trade; random as good 70%
+   keep unless rise5 below 0.01293: TRAIN   -31/trade | TEST kept 216:   -27 ..   +22/trade; random as good 6%
+   keep unless prev2_change below 0.0781: TRAIN   -35/trade | TEST kept  94:    +8 ..   +49/trade; random as good 8%
+   keep unless wick above 0.3029: TRAIN   -35/trade | TEST kept 229:   -37 ..   +16/trade; random as good 12%

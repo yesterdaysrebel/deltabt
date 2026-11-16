@@ -1,0 +1,60 @@
+CHECKS PASSED: Q1 and Q2 agree on every trade (all periods, both fills, with / without month-off, fixed size); per-pick results equal the earlier function.
+
+ACCOUNTS from $3,184, end balance STRICT .. LENIENT (floor $1,000; month-off after 2 stops unless noted):
+                                             |        full history |     2026 from Jan 1 |       20 real picks
+  Spike Sell as built ($500 target, lock, trail) |      836 ..      854 |      950 ..      825 |    5,702 ..    7,248
+  QUICK BOOK (first close netting >= $50)    |      828 ..      763 |      995 ..      810 |    7,140 ..    7,140
+  QUICK BOOK, no month-off                   |      850 ..      788 |      966 ..      912 |    7,140 ..    7,140
+
+22 MONTHLY STARTS (each run to Nov 14 2026), end balance, STRICT .. LENIENT:
+  Spike Sell as built        median    846 ..    975 | under $1,000: 22 .. 14 of 22 | above $3,184:  0 ..  2 of 22 | best     996 ..   4,619
+  QUICK BOOK                 median    917 ..  1,616 | under $1,000: 20 .. 11 of 22 | above $3,184:  1 .. 10 of 22 | best   3,209 ..  14,430
+  QUICK BOOK, no month-off   median    841 ..    950 | under $1,000: 22 .. 17 of 22 | above $3,184:  0 ..  4 of 22 | best     966 ..  10,350
+
+EVERY TRADE at a fixed $3,184 size (no month-off, no floor), STRICT: 459 trades, total $-19,321, avg $-42; {'BOOKED': 341, 'LIQ': 3, 'STOP': 115}; avg booked $+246, avg stop $-876; minutes to book: median 2
+   months up 8 of 23; best +2,902, worst -6,668  (Spike Sell as built: total -$40,700, 5 of 23 months up)
+
+EVERY TRADE at a fixed $3,184 size (no month-off, no floor), LENIENT: 459 trades, total $-4,829, avg $-11; {'BOOKED': 341, 'STOP': 118}; avg booked $+246, avg stop $-753; minutes to book: median 2
+
+QUICK BOOK account, full history, STRICT, month by month:
+   2025-01 start   3,184 trades  3 booked  1 stops 2 24h 0  P&L   -1,420 end   1,764
+   2025-02 start   1,764 trades 12 booked 12 stops 0 24h 0  P&L   +1,273 end   3,037
+   2025-03 start   3,037 trades  7 booked  5 stops 2 24h 0  P&L     -747 end   2,290
+   2025-04 start   2,290 trades  4 booked  2 stops 2 24h 0  P&L     -987 end   1,304
+   2025-05 start   1,304 trades  4 booked  2 stops 2 24h 0  P&L     -476 end     828
+
+QUICK BOOK account, full history, LENIENT, month by month:
+   2025-01 start   3,184 trades  3 booked  1 stops 2 24h 0  P&L   -1,295 end   1,889
+   2025-02 start   1,889 trades 12 booked 12 stops 0 24h 0  P&L   +1,363 end   3,251
+   2025-03 start   3,251 trades  7 booked  5 stops 2 24h 0  P&L     -799 end   2,452
+   2025-04 start   2,452 trades  4 booked  2 stops 2 24h 0  P&L     -896 end   1,556
+   2025-05 start   1,556 trades  4 booked  2 stops 2 24h 0  P&L     -556 end   1,000
+   2025-06 start   1,000 trades  1 booked  0 stops 1 24h 0  P&L     -237 end     763
+
+20 REAL PICKS, QUICK BOOK, STRICT:
+   2026-10-29 EVAAUSD      BOOKED held    1 min    +1,483  balance    4,667
+   2026-10-30 BEATUSD      BOOKED held    1 min      +181  balance    4,848
+   2026-10-31 AINUSD       BOOKED held    1 min      +453  balance    5,301
+   2026-11-01 AINUSD       BOOKED held   13 min      +223  balance    5,524
+   2026-11-02 ESPORTSUSD   STOP   held    1 min    -1,006  balance    4,518
+   2026-11-03 ARIAUSD      BOOKED held    1 min      +247  balance    4,765
+   2026-11-04 AIOUSD       BOOKED held    1 min      +567  balance    5,332
+   2026-11-09 AIOTUSD      BOOKED held    1 min      +526  balance    5,858
+   2026-11-10 PIEVERSEUSD  BOOKED held    1 min      +670  balance    6,528
+   2026-11-11 ARIAUSD      BOOKED held    1 min      +161  balance    6,690
+   2026-11-13 HANAUSD      BOOKED held   14 min      +118  balance    6,808
+   2026-11-14 SOPHUSD      BOOKED held    1 min      +332  balance    7,140
+
+20 REAL PICKS, QUICK BOOK, LENIENT:
+   2026-10-29 EVAAUSD      BOOKED held    1 min    +1,483  balance    4,667
+   2026-10-30 BEATUSD      BOOKED held    1 min      +181  balance    4,848
+   2026-10-31 AINUSD       BOOKED held    1 min      +453  balance    5,301
+   2026-11-01 AINUSD       BOOKED held   13 min      +223  balance    5,524
+   2026-11-02 ESPORTSUSD   STOP   held    1 min    -1,006  balance    4,518
+   2026-11-03 ARIAUSD      BOOKED held    1 min      +247  balance    4,765
+   2026-11-04 AIOUSD       BOOKED held    1 min      +567  balance    5,332
+   2026-11-09 AIOTUSD      BOOKED held    1 min      +526  balance    5,858
+   2026-11-10 PIEVERSEUSD  BOOKED held    1 min      +670  balance    6,528
+   2026-11-11 ARIAUSD      BOOKED held    1 min      +161  balance    6,690
+   2026-11-13 HANAUSD      BOOKED held   14 min      +118  balance    6,808
+   2026-11-14 SOPHUSD      BOOKED held    1 min      +332  balance    7,140

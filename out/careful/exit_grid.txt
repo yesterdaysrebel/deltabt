@@ -1,0 +1,56 @@
+CHECK PASSED: two implementations agree on every trade of all 48 exit designs, both fills.
+
+Per pick at a fixed $3,184, avg $ per trade STRICT .. LENIENT. TRAIN = 2025 (321 fills), TEST = 2026 + real (296).
+  exit                                                     |           TRAIN |            TEST | TEST: stops, win rate, avg win, avg stop (strict)
+  stop +1.00%, target +$500     , lock+trail               |   -108 ..   -51 |   -120 ..   -38 |  48% stops,  48% win,   +287,    -516
+  stop +1.00%, target 3% fall   , lock+trail               |   -103 ..   -34 |   -111 ..   -24 |  48% stops,  48% win,   +305,    -516
+  stop +1.00%, target 5% fall   , lock+trail               |   -106 ..   -35 |   -102 ..   -13 |  48% stops,  48% win,   +324,    -516
+  stop +1.00%, target 8% fall   , lock+trail               |   -105 ..   -32 |    -99 ..   -10 |  48% stops,  48% win,   +331,    -516
+  stop +1.00%, target 12% fall  , lock+trail               |   -105 ..   -33 |   -104 ..    -9 |  48% stops,  48% win,   +320,    -516
+  stop +1.00%, target none, 24 h, lock+trail               |   -105 ..   -33 |   -104 ..    -9 |  48% stops,  48% win,   +320,    -516
+  stop +1.50%, target +$500     , lock+trail               |   -100 ..   -52 |   -100 ..   -33 |  39% stops,  57% win,   +287,    -661
+  stop +1.50%, target 3% fall   , lock+trail               |    -93 ..   -33 |    -89 ..   -15 |  39% stops,  57% win,   +305,    -661
+  stop +1.50%, target 5% fall   , lock+trail               |    -99 ..   -36 |    -77 ..    -1 |  39% stops,  57% win,   +327,    -661
+  stop +1.50%, target 8% fall   , lock+trail               |    -98 ..   -33 |    -71 ..    +5 |  39% stops,  57% win,   +338,    -661
+  stop +1.50%, target 12% fall  , lock+trail               |    -98 ..   -34 |    -77 ..    +7 |  39% stops,  57% win,   +327,    -661
+  stop +1.50%, target none, 24 h, lock+trail               |    -98 ..   -34 |    -77 ..    +7 |  39% stops,  57% win,   +327,    -661
+  stop +2.25%, target +$500     , lock+trail               |    -94 ..   -49 |    -94 ..   -32 |  30% stops,  65% win,   +289,    -907  <- as built
+  stop +2.25%, target 3% fall   , lock+trail               |    -88 ..   -28 |    -84 ..   -14 |  30% stops,  65% win,   +305,    -907
+  stop +2.25%, target 5% fall   , lock+trail               |    -92 ..   -30 |    -75 ..    -3 |  30% stops,  65% win,   +325,    -907
+  stop +2.25%, target 8% fall   , lock+trail               |    -92 ..   -28 |    -70 ..    +2 |  30% stops,  65% win,   +332,    -907
+  stop +2.25%, target 12% fall  , lock+trail               |    -92 ..   -28 |    -77 ..    +4 |  30% stops,  65% win,   +322,    -907
+  stop +2.25%, target none, 24 h, lock+trail               |    -92 ..   -28 |    -77 ..    +4 |  30% stops,  65% win,   +322,    -907
+  stop +3.00%, target +$500     , lock+trail               |    -66 ..   -30 |   -117 ..   -60 |  27% stops,  69% win,   +285,   -1134
+  stop +3.00%, target 3% fall   , lock+trail               |    -61 ..   -12 |   -106 ..   -40 |  27% stops,  68% win,   +303,   -1134
+  stop +3.00%, target 5% fall   , lock+trail               |    -67 ..   -15 |    -97 ..   -30 |  27% stops,  68% win,   +320,   -1134
+  stop +3.00%, target 8% fall   , lock+trail               |    -66 ..   -12 |    -92 ..   -25 |  27% stops,  68% win,   +327,   -1134
+  stop +3.00%, target 12% fall  , lock+trail               |    -66 ..   -12 |    -99 ..   -23 |  27% stops,  68% win,   +318,   -1134
+  stop +3.00%, target none, 24 h, lock+trail               |    -66 ..   -12 |    -99 ..   -23 |  27% stops,  68% win,   +318,   -1134
+  stop +1.00%, target +$500     , no lock                  |   -122 ..   -68 |   -127 ..   -48 |  63% stops,  37% win,   +500,    -497
+  stop +1.00%, target 3% fall   , no lock                  |   -134 ..   -72 |   -142 ..   -47 |  74% stops,  26% win,   +876,    -500
+  stop +1.00%, target 5% fall   , no lock                  |   -144 ..   -80 |   -139 ..   -40 |  82% stops,  18% win,  +1484,    -493
+  stop +1.00%, target 8% fall   , no lock                  |   -130 ..   -64 |   -110 ..    -4 |  86% stops,  14% win,  +2354,    -495
+  stop +1.00%, target 12% fall  , no lock                  |   -149 ..   -81 |    -93 ..   +18 |  89% stops,  11% win,  +3233,    -496
+  stop +1.00%, target none, 24 h, no lock                  |   -157 ..   -88 |    -47 ..   +64 |  92% stops,   8% win,  +4791,    -494
+  stop +1.50%, target +$500     , no lock                  |    -95 ..   -52 |   -107 ..   -46 |  53% stops,  47% win,   +500,    -638
+  stop +1.50%, target 3% fall   , no lock                  |   -136 ..   -83 |   -119 ..   -41 |  66% stops,  34% win,   +877,    -642
+  stop +1.50%, target 5% fall   , no lock                  |   -140 ..   -86 |   -112 ..   -29 |  75% stops,  25% win,  +1485,    -635
+  stop +1.50%, target 8% fall   , no lock                  |   -101 ..   -43 |    -89 ..    +8 |  81% stops,  19% win,  +2340,    -643
+  stop +1.50%, target 12% fall  , no lock                  |   -132 ..   -70 |    -21 ..   +80 |  84% stops,  16% win,  +3203,    -645
+  stop +1.50%, target none, 24 h, no lock                  |   -135 ..   -72 |    +27 ..  +142 |  88% stops,  12% win,  +4805,    -656
+  stop +2.25%, target +$500     , no lock                  |    -94 ..   -54 |    -89 ..   -37 |  43% stops,  57% win,   +500,    -873
+  stop +2.25%, target 3% fall   , no lock                  |   -135 ..   -88 |    -62 ..    +7 |  53% stops,  47% win,   +877,    -882
+  stop +2.25%, target 5% fall   , no lock                  |   -149 ..   -96 |    -65 ..   +11 |  66% stops,  34% win,  +1486,    -868
+  stop +2.25%, target 8% fall   , no lock                  |   -165 ..  -103 |    -39 ..   +56 |  74% stops,  26% win,  +2318,    -883
+  stop +2.25%, target 12% fall  , no lock                  |   -185 ..  -121 |    +25 ..  +125 |  78% stops,  22% win,  +3183,    -881
+  stop +2.25%, target none, 24 h, no lock                  |   -191 ..  -126 |    +33 ..  +148 |  82% stops,  18% win,  +4375,    -892
+  stop +3.00%, target +$500     , no lock                  |    -50 ..   -26 |   -104 ..   -55 |  38% stops,  62% win,   +500,   -1112
+  stop +3.00%, target 3% fall   , no lock                  |    -91 ..   -58 |    -39 ..   +26 |  46% stops,  54% win,   +877,   -1122
+  stop +3.00%, target 5% fall   , no lock                  |    -82 ..   -40 |    -38 ..   +38 |  58% stops,  41% win,  +1486,   -1111
+  stop +3.00%, target 8% fall   , no lock                  |    -52 ..    -6 |    -40 ..   +51 |  68% stops,  31% win,  +2297,   -1114
+  stop +3.00%, target 12% fall  , no lock                  |    -54 ..    -7 |     -5 ..   +96 |  73% stops,  27% win,  +3049,   -1120
+  stop +3.00%, target none, 24 h, no lock                  |    -75 ..   -26 |    -31 ..   +87 |  78% stops,  21% win,  +4031,   -1132
+
+designs positive on TRAIN strict: 0 of 48; of those positive on TEST strict: 0, TEST lenient: 0
+BEST ON TRAIN (strict): stop +3.00%, target +$500     , no lock: TRAIN -50 .. -26 -> TEST -104 .. -55
+best on TEST (hindsight, do not trust): stop +2.25%, target none, 24 h, no lock: TRAIN -191 .. -126, TEST +33 .. +148

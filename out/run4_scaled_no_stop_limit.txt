@@ -1,0 +1,39 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+SELF-CHECK PASSED (no-limit, fixed $ equals run4_pause_rules 'no hard stop' to the cent)
+
+RUN 4 AS NOW BUILT (scaled target and lock, no profit cap): WITH vs WITHOUT the 2-stops/month limit, from $3,184
+
+STRICT: 2026 month by month (P&L -> end, targets/locked/stops)
+  month                  WITH the 2-stops limit                      WITHOUT the limit
+  2026-01    -1,299 ->  1,885 ( 4 tr: 2T 0L 2S)    -2,456 ->    728 (16 tr: 6T 3L 7S 0LIQ)
+  2026-02      -723 ->  1,162 ( 5 tr: 0T 3L 2S)      -580 ->    148 (19 tr: 2T 10L 7S 0LIQ)
+  2026-03    +2,029 ->  3,192 (18 tr: 9T 7L 2S)       -34 ->    114 (27 tr: 9T 11L 7S 0LIQ)
+  2026-04      +969 ->  4,161 (10 tr: 5T 3L 2S)        +2 ->    116 (24 tr: 11T 7L 6S 0LIQ)
+  2026-05      -181 ->  3,980 ( 9 tr: 3T 4L 2S)       -50 ->     66 (30 tr: 9T 13L 8S 0LIQ)
+  2026-06      -985 ->  2,995 ( 7 tr: 1T 4L 2S)       -17 ->     49 ( 1 tr: 0T 0L 1S 0LIQ)
+  2026-07      -660 ->  2,335 ( 5 tr: 2T 1L 2S)        +0 ->     49 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-08      +936 ->  3,271 (16 tr: 5T 9L 2S)        +0 ->     49 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-09    -1,404 ->  1,867 ( 2 tr: 0T 0L 2S)        +0 ->     49 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-10      -613 ->  1,255 ( 3 tr: 1T 0L 2S)        +0 ->     49 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-11      -407 ->    847 ( 3 tr: 1T 0L 2S)        +0 ->     49 ( 0 tr: 0T 0L 0S 0LIQ)
+  END               847 (lowest 847)                          49 (lowest 49); trades 82 vs 117
+
+LENIENT: 2026 month by month (P&L -> end, targets/locked/stops)
+  month                  WITH the 2-stops limit                      WITHOUT the limit
+  2026-01      -700 ->  2,484 ( 4 tr: 2T 0L 2S)    -1,923 ->  1,261 (16 tr: 6T 3L 7S 0LIQ)
+  2026-02      -839 ->  1,645 ( 5 tr: 0T 3L 2S)      -863 ->    397 (19 tr: 2T 10L 7S 0LIQ)
+  2026-03    +2,985 ->  4,630 (18 tr: 9T 7L 2S)       -42 ->    355 (27 tr: 9T 11L 7S 0LIQ)
+  2026-04    +1,467 ->  6,097 (10 tr: 5T 3L 2S)       +64 ->    419 (24 tr: 11T 7L 6S 0LIQ)
+  2026-05      +504 ->  6,601 ( 9 tr: 3T 4L 2S)      -105 ->    315 (30 tr: 9T 13L 8S 0LIQ)
+  2026-06    -1,408 ->  5,193 ( 7 tr: 1T 4L 2S)       -31 ->    284 (26 tr: 7T 13L 6S 0LIQ)
+  2026-07      -893 ->  4,300 ( 5 tr: 2T 1L 2S)      -165 ->    119 (22 tr: 6T 8L 8S 0LIQ)
+  2026-08    +3,339 ->  7,639 (16 tr: 5T 9L 2S)       -79 ->     40 (28 tr: 6T 13L 9S 0LIQ)
+  2026-09    -3,120 ->  4,519 ( 2 tr: 0T 0L 2S)        +0 ->     40 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-10    -1,473 ->  3,046 ( 3 tr: 1T 0L 2S)        +0 ->     40 ( 0 tr: 0T 0L 0S 0LIQ)
+  2026-11      -922 ->  2,125 ( 3 tr: 1T 0L 2S)        +0 ->     40 ( 0 tr: 0T 0L 0S 0LIQ)
+  END             2,125 (lowest 1,645)                          40 (lowest 40); trades 82 vs 192
+
+FULL HISTORY and 21 MONTHLY STARTS (STRICT .. LENIENT)
+  WITH the 2-stops limit  : history end $38 .. $235 | starts under $1,000 12 .. 8/21 | ahead after 3 mo 3 .. 5/21 | median after 12 mo $587 .. $1,447 | median lowest $820 .. $1,360
+  WITHOUT the limit       : history end $46 .. $49 | starts under $1,000 21 .. 20/21 | ahead after 3 mo 0 .. 4/21 | median after 12 mo $44 .. $46 | median lowest $44 .. $47

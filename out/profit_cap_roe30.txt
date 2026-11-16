@@ -1,0 +1,21 @@
+MONTHLY PROFIT CAP on filter + 3x + SL near liquidation + TP +30% ROE. Delta 2025-01..2026-10, from $1,640
+Once the month's profit reaches the cap: no new trades until the 1st.
+
+MARGIN 30%
+  no cap                           end $ 10,997  worst drop  74%  skipped   0  months capped  0 
+  cap $1,000                       end $ 12,160  worst drop  69%  skipped 114  months capped 10 ['2025-07', '2025-12', '2026-02', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10']
+  cap $2,000                       end $ 15,467  worst drop  74%  skipped  40  months capped  5 ['2026-04', '2026-06', '2026-08', '2026-09', '2026-10']
+  cap $3,000                       end $ 10,833  worst drop  74%  skipped   2  months capped  1 ['2026-10']
+  cap +30%                         end $ 11,038  worst drop  78%  skipped  62  months capped 10 ['2025-01', '2025-06', '2025-12', '2026-02', '2026-04', '2026-05', '2026-06', '2026-08', '2026-09', '2026-10']
+  cap +50%                         end $ 10,840  worst drop  70%  skipped  22  months capped  3 ['2025-12', '2026-02', '2026-04']
+  cap $2,000 + pause after 2 SLs   end $  2,869  worst drop  66%  skipped  82  months capped  0 
+
+MARGIN 10%
+  no cap                           end $  4,543  worst drop  29%  skipped   0  months capped  0 
+  cap $1,000                       end $  4,543  worst drop  29%  skipped   0  months capped  0 
+  cap $2,000                       end $  4,543  worst drop  29%  skipped   0  months capped  0 
+  cap $3,000                       end $  4,543  worst drop  29%  skipped   0  months capped  0 
+  cap +30%                         end $  5,261  worst drop  29%  skipped   8  months capped  2 ['2026-02', '2026-04']
+  cap +50%                         end $  4,543  worst drop  29%  skipped   0  months capped  0 
+  cap $2,000 + pause after 2 SLs   end $  2,649  worst drop  24%  skipped  82  months capped  0 
+

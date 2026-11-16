@@ -1,0 +1,6 @@
+WHERE THE EARLIER 'NEAR BREAKEVEN' CAME FROM: history, 604 fills, each trade alone on $3,184 (spike +5%, 50%, 20x, $500, lock $200)
+
+  stop fill at stop                  | stop move old (bug)  | target  34% locked  34% stop  31% | avg $  -8.3/trade, full stop avg $-769
+  stop fill at stop                  | stop move corrected  | target  25% locked  45% stop  29% | avg $ -36.7/trade, full stop avg $-769
+  stop fill worse of stop and close  | stop move old (bug)  | target  34% locked  34% stop  31% | avg $ -74.0/trade, full stop avg $-842
+  stop fill worse of stop and close  | stop move corrected  | target  25% locked  45% stop  29% | avg $ -71.1/trade, full stop avg $-844

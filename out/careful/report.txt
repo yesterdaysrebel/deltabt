@@ -1,0 +1,67 @@
+Every number below: A, B and C agree (asserted).
+
+PER TRADE at a fixed $3,184 (every pick that fills; no account effects), A == B asserted:
+  STRICT : run 4 617 fills {'LIQ': 5, 'LOCKED': 266, 'STOP': 185, 'TARGET': 161}  total $-58,121  avg $-94/trade | 2025 avg $-94, 2026 avg $-94
+           re-sell A 175 re-sells {'LIQ': 3, 'STOP': 140, 'TIME': 32}  total $-14,259  avg $-81 | 2025 avg $+37, 2026 avg $-210
+  LENIENT: run 4 617 fills {'LOCKED': 266, 'STOP': 190, 'TARGET': 161}  total $-25,171  avg $-41/trade | 2025 avg $-49, 2026 avg $-32
+           re-sell A 175 re-sells {'STOP': 143, 'TIME': 32}  total $-6,061  avg $-35 | 2025 avg $+89, 2026 avg $-168
+
+ACCOUNTS from $3,184, end = bank + wallet, STRICT .. LENIENT (floor $1,000 = bot STOPPED, no refill):
+  variant            |       20 real picks |     2026 from Jan 1 |  22 monthly starts: median end | ended under $1,000 | ended above $3,184
+  run4               |   5,702 ..   7,248 |     950 ..     825 |          846 ..     975 | 22 .. 14 of 22     |  0 ..  2 of 22
+  run4+resell        |  14,087 ..  17,497 |     800 ..     994 |          859 ..     942 | 22 .. 20 of 22     |  0 ..  2 of 22
+  run4+resell+bank   |  13,126 ..  14,146 |     800 ..     994 |          879 ..     990 | 15 .. 12 of 22     |  1 ..  5 of 22
+
+  2026 from Jan 1, run4, STRICT:
+    2026-01 start   3,184 trades  3 (re 0) T0 L1 S2  P&L   -1,526 end   1,658
+    2026-02 start   1,658 trades  5 (re 0) T0 L3 S2  P&L     -582 end   1,076
+    2026-03 start   1,076 trades 17 (re 0) T6 L9 S2  P&L     +975 end   2,052
+    2026-04 start   2,052 trades  3 (re 0) T0 L1 S2  P&L     -807 end   1,245
+    2026-05 start   1,245 trades  1 (re 0) T0 L0 S1  P&L     -295 end     950
+
+  2026 from Jan 1, run4, LENIENT:
+    2026-01 start   3,184 trades  3 (re 0) T0 L1 S2  P&L   -1,316 end   1,868
+    2026-02 start   1,868 trades  5 (re 0) T0 L3 S2  P&L     -610 end   1,259
+    2026-03 start   1,259 trades 17 (re 0) T6 L9 S2  P&L   +1,261 end   2,519
+    2026-04 start   2,519 trades  3 (re 0) T0 L1 S2  P&L     -973 end   1,546
+    2026-05 start   1,546 trades  3 (re 0) T0 L1 S2  P&L     -721 end     825
+
+  2026 from Jan 1, run4+resell, STRICT:
+    2026-01 start   3,184 trades  3 (re 1) T0 L1 S2  P&L   -1,522 end   1,662
+    2026-02 start   1,662 trades  5 (re 0) T0 L3 S2  P&L     -583 end   1,079
+    2026-03 start   1,079 trades 12 (re 1) T4 L6 S2  P&L     +237 end   1,316
+    2026-04 start   1,316 trades  3 (re 1) T0 L1 S2  P&L     -516 end     800
+
+  2026 from Jan 1, run4+resell, LENIENT:
+    2026-01 start   3,184 trades  3 (re 1) T0 L1 S2  P&L   -1,311 end   1,873
+    2026-02 start   1,873 trades  5 (re 0) T0 L3 S2  P&L     -611 end   1,262
+    2026-03 start   1,262 trades 12 (re 1) T4 L6 S2  P&L     +354 end   1,615
+    2026-04 start   1,615 trades  3 (re 1) T0 L1 S2  P&L     -622 end     994
+
+  20 real picks, run4+resell, STRICT:
+    2026-10-29 EVAAUSD      sell   TARGET     +500  balance    3,684
+    2026-10-30 BEATUSD      sell   TARGET     +579  balance    4,263
+    2026-10-31 AINUSD       sell   LOCKED     -705  balance    3,558
+    2026-11-01 AINUSD       sell   TARGET     +559  balance    4,118
+    2026-11-02 ESPORTSUSD   sell   STOP       -800  balance    3,317
+    2026-11-02 ESPORTSUSD   resell TIME     +5,648  balance    8,965
+    2026-11-04 AIOUSD       sell   TARGET   +1,409  balance   10,374
+    2026-11-09 AIOTUSD      sell   LOCKED     +561  balance   10,935
+    2026-11-10 PIEVERSEUSD  sell   TARGET   +1,718  balance   12,653
+    2026-11-11 ARIAUSD      sell   LOCKED     +582  balance   13,235
+    2026-11-13 HANAUSD      sell   LOCKED     +520  balance   13,755
+    2026-11-14 SOPHUSD      sell   LOCKED     +332  balance   14,087
+
+  20 real picks, run4+resell, LENIENT:
+    2026-10-29 EVAAUSD      sell   TARGET     +500  balance    3,684
+    2026-10-30 BEATUSD      sell   TARGET     +579  balance    4,263
+    2026-10-31 AINUSD       sell   LOCKED     +227  balance    4,491
+    2026-11-01 AINUSD       sell   TARGET     +706  balance    5,196
+    2026-11-02 ESPORTSUSD   sell   STOP       -960  balance    4,236
+    2026-11-02 ESPORTSUSD   resell TIME     +6,873  balance   11,109
+    2026-11-04 AIOUSD       sell   TARGET   +1,745  balance   12,854
+    2026-11-09 AIOTUSD      sell   LOCKED     +699  balance   13,553
+    2026-11-10 PIEVERSEUSD  sell   TARGET   +2,129  balance   15,683
+    2026-11-11 ARIAUSD      sell   LOCKED     +857  balance   16,539
+    2026-11-13 HANAUSD      sell   LOCKED     +625  balance   17,165
+    2026-11-14 SOPHUSD      sell   LOCKED     +332  balance   17,497

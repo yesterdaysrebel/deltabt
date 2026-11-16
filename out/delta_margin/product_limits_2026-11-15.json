@@ -1,0 +1,110 @@
+{
+ "EVAAUSD": {
+  "cv": 1.0,
+  "limit": 295000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "INITUSD": {
+  "cv": 10.0,
+  "limit": 281000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "BEATUSD": {
+  "cv": 10.0,
+  "limit": 92000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "PARTIUSD": {
+  "cv": 100.0,
+  "limit": 62000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "AINUSD": {
+  "cv": 100.0,
+  "limit": 63000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "SOPHUSD": {
+  "cv": 100.0,
+  "limit": 202000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "ESPORTSUSD": {
+  "cv": 100.0,
+  "limit": 75000,
+  "max_lev_notional": 10000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 5e-05,
+  "mms": 2.5e-05
+ },
+ "ARIAUSD": {
+  "cv": 10.0,
+  "limit": 376000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "AIOUSD": {
+  "cv": 100.0,
+  "limit": 25000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "AIOTUSD": {
+  "cv": 100.0,
+  "limit": 40000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ },
+ "PIEVERSEUSD": {
+  "cv": 10.0,
+  "limit": 26000,
+  "max_lev_notional": 10000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 5e-05,
+  "mms": 2.5e-05
+ },
+ "HANAUSD": {
+  "cv": 100.0,
+  "limit": 93000,
+  "max_lev_notional": 50000.0,
+  "im": 5.0,
+  "mm": 2.5,
+  "ims": 1e-05,
+  "mms": 5e-06
+ }
+}

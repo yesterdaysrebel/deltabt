@@ -1,0 +1,36 @@
+%R(140) BAND CROSS, target = the other band. LARGE COINS: BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX, LINK, LTC
+Binance perp candles 2021-01..2026-10, costs 0.15% round trip. By year: 2021 2022 2023 2024 2025 2026
+
+5m (10 coins)
+  stop range both                    n 105634 (1761/coin/yr) target  35% stop  61% time   4% win  37% | stop 0.96% hold  33 bars | -0.283R (-0.265%/trade) | 2024-26 -0.292R t -47.86 | -0.239 -0.244 -0.344 -0.288 -0.287 -0.303  fail
+  stop range sell only               n  52535 ( 876/coin/yr) target  35% stop  60% time   4% win  37% | stop 0.94% hold  34 bars | -0.268R (-0.266%/trade) | 2024-26 -0.281R t -32.18 | -0.228 -0.208 -0.328 -0.281 -0.280 -0.282  fail
+  stop range buy only                n  53099 ( 885/coin/yr) target  34% stop  62% time   4% win  36% | stop 0.97% hold  33 bars | -0.299R (-0.264%/trade) | 2024-26 -0.303R t -35.50 | -0.249 -0.280 -0.361 -0.296 -0.294 -0.323  fail
+  stop 2atr  both                    n 131775 (2196/coin/yr) target  28% stop  70% time   2% win  29% | stop 0.67% hold  21 bars | -0.416R (-0.251%/trade) | 2024-26 -0.442R t -65.55 | -0.302 -0.348 -0.521 -0.413 -0.436 -0.484  fail
+  stop 2atr  sell only               n  67103 (1118/coin/yr) target  28% stop  70% time   2% win  29% | stop 0.64% hold  20 bars | -0.412R (-0.249%/trade) | 2024-26 -0.442R t -45.32 | -0.308 -0.325 -0.512 -0.419 -0.439 -0.476  fail
+  stop 2atr  buy only                n  64672 (1078/coin/yr) target  28% stop  70% time   2% win  30% | stop 0.71% hold  21 bars | -0.421R (-0.253%/trade) | 2024-26 -0.442R t -47.54 | -0.297 -0.371 -0.532 -0.407 -0.434 -0.493  fail
+  stop 4atr  both                    n  86064 (1434/coin/yr) target  42% stop  50% time   8% win  44% | stop 1.39% hold  48 bars | -0.219R (-0.271%/trade) | 2024-26 -0.225R t -40.55 | -0.177 -0.178 -0.285 -0.220 -0.225 -0.232  fail
+  stop 4atr  sell only               n  43688 ( 728/coin/yr) target  42% stop  50% time   8% win  44% | stop 1.32% hold  47 bars | -0.211R (-0.275%/trade) | 2024-26 -0.220R t -27.49 | -0.179 -0.150 -0.276 -0.218 -0.226 -0.216  fail
+  stop 4atr  buy only                n  42376 ( 706/coin/yr) target  42% stop  50% time   8% win  45% | stop 1.46% hold  49 bars | -0.228R (-0.268%/trade) | 2024-26 -0.231R t -29.95 | -0.174 -0.206 -0.294 -0.222 -0.224 -0.248  fail
+
+15m (10 coins)
+  stop range both                    n  35305 ( 588/coin/yr) target  33% stop  62% time   4% win  36% | stop 1.64% hold  32 bars | -0.228R (-0.349%/trade) | 2024-26 -0.234R t -21.88 | -0.216 -0.214 -0.239 -0.286 -0.202 -0.210  fail
+  stop range sell only               n  17654 ( 294/coin/yr) target  34% stop  62% time   4% win  36% | stop 1.60% hold  33 bars | -0.215R (-0.384%/trade) | 2024-26 -0.217R t -14.11 | -0.250 -0.133 -0.252 -0.264 -0.190 -0.191  fail
+  stop range buy only                n  17651 ( 294/coin/yr) target  33% stop  63% time   4% win  35% | stop 1.68% hold  31 bars | -0.242R (-0.314%/trade) | 2024-26 -0.251R t -16.82 | -0.180 -0.286 -0.224 -0.306 -0.214 -0.229  fail
+  stop 2atr  both                    n  42402 ( 707/coin/yr) target  28% stop  70% time   2% win  29% | stop 1.22% hold  22 bars | -0.292R (-0.332%/trade) | 2024-26 -0.307R t -26.60 | -0.253 -0.251 -0.329 -0.356 -0.272 -0.291  fail
+  stop 2atr  sell only               n  21606 ( 360/coin/yr) target  27% stop  70% time   2% win  29% | stop 1.16% hold  22 bars | -0.288R (-0.353%/trade) | 2024-26 -0.306R t -18.42 | -0.301 -0.169 -0.336 -0.354 -0.274 -0.283  fail
+  stop 2atr  buy only                n  20796 ( 347/coin/yr) target  28% stop  70% time   3% win  29% | stop 1.28% hold  23 bars | -0.295R (-0.310%/trade) | 2024-26 -0.309R t -19.22 | -0.196 -0.325 -0.320 -0.358 -0.269 -0.300  fail
+  stop 4atr  both                    n  27936 ( 466/coin/yr) target  41% stop  51% time   8% win  44% | stop 2.50% hold  49 bars | -0.164R (-0.370%/trade) | 2024-26 -0.169R t -17.72 | -0.156 -0.147 -0.173 -0.210 -0.149 -0.144  fail
+  stop 4atr  sell only               n  14178 ( 236/coin/yr) target  41% stop  51% time   8% win  45% | stop 2.37% hold  49 bars | -0.161R (-0.420%/trade) | 2024-26 -0.161R t -11.76 | -0.193 -0.093 -0.193 -0.203 -0.155 -0.115  fail
+  stop 4atr  buy only                n  13758 ( 229/coin/yr) target  41% stop  50% time   8% win  44% | stop 2.62% hold  50 bars | -0.166R (-0.319%/trade) | 2024-26 -0.177R t -13.32 | -0.114 -0.196 -0.149 -0.218 -0.143 -0.171  fail
+
+1h (10 coins)
+  stop range both                    n   8533 ( 142/coin/yr) target  33% stop  62% time   5% win  36% | stop 3.36% hold  33 bars | -0.156R (-0.571%/trade) | 2024-26 -0.117R t -5.08 | -0.210 -0.127 -0.248 -0.199 -0.100 -0.038  fail
+  stop range sell only               n   4414 (  74/coin/yr) target  32% stop  64% time   4% win  35% | stop 3.35% hold  32 bars | -0.167R (-0.771%/trade) | 2024-26 -0.077R t -2.27 | -0.317 -0.035 -0.345 -0.214 -0.032 +0.055  fail
+  stop range buy only                n   4119 (  69/coin/yr) target  33% stop  61% time   6% win  37% | stop 3.37% hold  35 bars | -0.144R (-0.357%/trade) | 2024-26 -0.155R t -4.99 | -0.053 -0.205 -0.116 -0.183 -0.160 -0.119  fail
+  stop 2atr  both                    n  10139 ( 169/coin/yr) target  27% stop  70% time   3% win  30% | stop 2.51% hold  23 bars | -0.194R (-0.506%/trade) | 2024-26 -0.162R t -6.58 | -0.198 -0.151 -0.330 -0.222 -0.159 -0.096  fail
+  stop 2atr  sell only               n   5230 (  87/coin/yr) target  27% stop  71% time   2% win  29% | stop 2.49% hold  23 bars | -0.206R (-0.672%/trade) | 2024-26 -0.130R t -3.61 | -0.304 -0.063 -0.419 -0.252 -0.128 +0.040  fail
+  stop 2atr  buy only                n   4909 (  82/coin/yr) target  28% stop  69% time   3% win  30% | stop 2.53% hold  24 bars | -0.182R (-0.330%/trade) | 2024-26 -0.193R t -5.74 | -0.038 -0.224 -0.215 -0.187 -0.187 -0.206  fail
+  stop 4atr  both                    n   6810 ( 114/coin/yr) target  40% stop  51% time   9% win  44% | stop 5.14% hold  49 bars | -0.123R (-0.695%/trade) | 2024-26 -0.087R t -4.37 | -0.173 -0.103 -0.203 -0.152 -0.090 -0.005  fail
+  stop 4atr  sell only               n   3504 (  58/coin/yr) target  39% stop  52% time   8% win  43% | stop 5.06% hold  47 bars | -0.130R (-0.992%/trade) | 2024-26 -0.067R t -2.33 | -0.268 +0.008 -0.270 -0.180 -0.043 +0.057  fail
+  stop 4atr  buy only                n   3306 (  55/coin/yr) target  40% stop  49% time  10% win  45% | stop 5.24% hold  51 bars | -0.116R (-0.380%/trade) | 2024-26 -0.107R t -3.90 | -0.032 -0.192 -0.120 -0.119 -0.134 -0.061  fail
+

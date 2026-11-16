@@ -1,0 +1,18 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+CHECK PASSED: an independent implementation gives the same R (to 0.0001 R) on every re-sell for both settings.
+
+5.0% off the high  stop +2.25%            no target (24 h)  (TRAIN-BEST), STRICT:
+   2025 H1         n  34  avg +1.01 R  win 47%  total  +34.2 R
+   2025 H2         n  53  avg +0.22 R  win 28%  total  +11.8 R
+   2026 H1         n  43  avg +0.13 R  win 30%  total   +5.8 R
+   2026 H2 + real  n  39  avg -0.01 R  win 15%  total   -0.3 R
+   TEST avg +0.07 R, 95% range -0.44 .. +0.64 R; chance the true average is <= 0: 43%
+
+30 min after       stop 3% above the high target 12%  (a good TRAIN setting), STRICT:
+   2025 H1         n  35  avg +0.52 R  win 63%  total  +18.4 R
+   2025 H2         n  56  avg +0.12 R  win 50%  total   +6.5 R
+   2026 H1         n  46  avg +0.41 R  win 59%  total  +19.0 R
+   2026 H2 + real  n  40  avg -0.14 R  win 38%  total   -5.6 R
+   TEST avg +0.16 R, 95% range -0.11 .. +0.43 R; chance the true average is <= 0: 13%
+

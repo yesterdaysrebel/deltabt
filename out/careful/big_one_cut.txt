@@ -1,0 +1,14 @@
+75% margin, +$1,000 target, top pick only. Average $ per trade at a fixed $3,184, STRICT .. LENIENT.
+   early cut                          |            2025 |     2026 + real | all strict: +$1,000 reached, cut/stopped, liquidated | avg loss
+   stop 2.25% (as tested)             |   -297 ..  -208 |   -151 ..   -32 |   48%,   50%,  10                   | $-1,348
+   stop 1.0%                          |   -249 ..  -145 |   -266 ..   -93 |   29%,   70%,   7                   | $-761
+   stop 1.5%                          |   -261 ..  -177 |   -245 ..   -99 |   37%,   61%,   7                   | $-981
+   cut on a close 0.5% against        |   -185 ..  -153 |   -178 ..   -93 |   30%,   68%,   8                   | $-692
+   cut on a close 1.0% against        |   -216 ..  -180 |   -209 ..  -117 |   37%,   61%,   8                   | $-925
+   cut on a close 1.5% against        |   -250 ..  -203 |   -216 ..  -110 |   43%,   55%,   9                   | $-1,147
+   cut if losing after 2 min          |   -160 ..  -130 |   -215 ..  -129 |   23%,   75%,   8                   | $-532
+   cut if losing after 5 min          |   -176 ..  -136 |   -163 ..   -64 |   28%,   69%,   9                   | $-633
+   cut if losing after 10 min         |   -182 ..  -135 |   -125 ..   -24 |   33%,   65%,   9                   | $-719
+   cut if losing after 30 min         |   -232 ..  -167 |   -163 ..   -51 |   40%,   58%,   9                   | $-985
+
+   two implementations agreed on every trade of every version.

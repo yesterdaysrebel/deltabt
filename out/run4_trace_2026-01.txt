@@ -1,0 +1,39 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+2026-01, STRICT stop fills, start balance $3,184.00 (the 2026 account from $3,184)
+
+2026-01-15  picks BERAUSD, BLURUSD: neither spiked 5% -> both orders cancelled at 24:00
+2026-01-16  picks AIOUSD, TOWNSUSD: neither spiked 5% -> both orders cancelled at 24:00
+2026-01-17  picks XAIUSD, HANAUSD
+   SOLD XAIUSD at 0.0222915 (00:23 UTC; 00:02 price 0.02123 +5%); HANAUSD order cancelled
+   size $30,472 position = 19.5x on $1,560 margin, +$796 extra margin after the fill
+   target 0.021899 (net +$500) | stop 0.0227931 (+2.25%) | liquidation 0.0234311 (+5.11%)
+   fell 1% at 00:31 -> stop moved to 0.0221184 (net +$200), then trailed 0.8% above the low 0.02201
+   EXIT 00:32: take-profit hit at 0.021899
+   P&L $+500.27  -> balance $3,684.27   (full stops this month: 0)
+2026-01-18  picks RAREUSD, BERAUSD
+   SOLD BERAUSD at 0.85596 (01:07 UTC; 00:02 price 0.8152 +5%); RAREUSD order cancelled
+   size $35,260 position = 19.5x on $1,805 margin, +$921 extra margin after the fill
+   target 0.840888 (net +$579) | stop 0.875219 (+2.25%) | liquidation 0.899719 (+5.11%)
+   EXIT 01:15: stop hit at 0.884584 (stop 0.875219; that minute high 0.8888, close 0.8837)
+   P&L $-1,222.00  -> balance $2,462.27   (full stops this month: 1)
+2026-01-19  picks MEUSD, ARCUSD
+   SOLD ARCUSD at 0.050043 (00:03 UTC; 00:02 price 0.04766 +5%); MEUSD order cancelled
+   size $23,565 position = 19.5x on $1,207 margin, +$616 extra margin after the fill
+   target 0.0491618 (net +$387) | stop 0.051169 (+2.25%) | liquidation 0.0526013 (+5.11%)
+   EXIT 00:04: stop hit at 0.0517517 (stop 0.051169; that minute high 0.05259, close 0.0517)
+   P&L $-833.29  -> balance $1,628.98   (full stops this month: 2)
+2026-01-20  picks ARCUSD, BERAUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-21  picks HANAUSD, ARCUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-22  picks HANAUSD, PIPPINUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-23  picks ZROUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-24  picks MMTUSD, VVVUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-25  picks ORDERUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-26  picks AUCTIONUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-27  picks VVVUSD, JTOUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-28  picks PIPPINUSD, HYPEUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-29  picks WLDUSD, JTOUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-30  picks ZROUSD, AINUSD: SKIPPED (hard stop: 2 full stops this month)
+2026-01-31  picks INITUSD, AINUSD: SKIPPED (hard stop: 2 full stops this month)
+
+Month P&L $-1,555.02; end balance $1,628.98

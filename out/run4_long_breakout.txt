@@ -1,0 +1,45 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+CHECK PASSED: two independent long implementations agree on every trade (strict and lenient).
+
+Per trade on a fixed $3,184, STRICT .. LENIENT. SHORT = run 4 as built (sell the spike), LONG = buy the breakout.
+
+  20 real picks:
+    SHORT +5% (run 4)      fills   14 | targets    5 | full stops    2 (liq 0) | total $    +1,494 .. $    +2,196
+    LONG  +5% breakout     fills   14 | targets    1 | full stops    7 (liq 1) | total $    -6,934 .. $    -3,975
+    LONG  +7.5% breakout   fills    9 | targets    3 | full stops    4 (liq 0) | total $    -1,764 .. $      -898
+
+  full history + real:
+    SHORT +5% (run 4)      fills  618 | targets  153 | full stops  177 (liq 3) | total $   -41,465 .. $   -17,238
+    LONG  +5% breakout     fills  620 | targets   95 | full stops  277 (liq 8) | total $  -167,349 .. $   -86,316
+    LONG  +7.5% breakout   fills  483 | targets   85 | full stops  217 (liq 7) | total $  -133,645 .. $   -70,623
+
+As an account from $3,184 (fill-first, 2-stops hard stop, target/lock scale with the balance), STRICT .. LENIENT:
+   LONG +5.0%: 20 real picks $360 .. $1,295 | 2026 to Nov 14 $46 .. $112 | full history $15 .. $43
+   LONG +7.5%: 20 real picks $1,227 .. $1,472 | 2026 to Nov 14 $43 .. $53 | full history $48 .. $48
+
+  LONG +5%, 2026 month by month, STRICT:
+    2026-01 start   3,184 trades  6 (2T 2L 2S) P&L     -578 end   2,606
+    2026-02 start   2,606 trades  3 (0T 1L 2S) P&L   -1,125 end   1,481
+    2026-03 start   1,481 trades  2 (0T 0L 2S) P&L     -629 end     852
+    2026-04 start     852 trades  5 (1T 2L 2S) P&L     -211 end     640
+    2026-05 start     640 trades  5 (2T 1L 2S) P&L     -215 end     425
+    2026-06 start     425 trades  4 (0T 2L 2S) P&L     -166 end     259
+    2026-07 start     259 trades  2 (0T 0L 2S) P&L     -107 end     152
+    2026-08 start     152 trades  3 (1T 0L 2S) P&L      -60 end      92
+    2026-09 start      92 trades  8 (2T 4L 2S) P&L      -11 end      81
+    2026-10 start      81 trades  7 (1T 4L 2S) P&L      -24 end      57
+    2026-11 start      57 trades  3 (0T 2L 1S) P&L      -11 end      46
+
+  LONG +5%, 2026 month by month, LENIENT:
+    2026-01 start   3,184 trades  6 (2T 2L 2S) P&L     -626 end   2,558
+    2026-02 start   2,558 trades  3 (0T 1L 2S) P&L   -1,068 end   1,490
+    2026-03 start   1,490 trades  2 (0T 0L 2S) P&L     -616 end     874
+    2026-04 start     874 trades  5 (1T 2L 2S) P&L     -217 end     657
+    2026-05 start     657 trades  5 (2T 1L 2S) P&L     -114 end     543
+    2026-06 start     543 trades  4 (0T 2L 2S) P&L     -187 end     356
+    2026-07 start     356 trades  4 (1T 1L 2S) P&L     -107 end     250
+    2026-08 start     250 trades  3 (1T 0L 2S) P&L      -80 end     170
+    2026-09 start     170 trades  8 (3T 3L 2S) P&L      +13 end     183
+    2026-10 start     183 trades  7 (2T 3L 2S) P&L      -21 end     161
+    2026-11 start     161 trades  4 (1T 1L 2S) P&L      -49 end     112

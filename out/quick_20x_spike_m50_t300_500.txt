@@ -1,0 +1,33 @@
+Traceback (most recent call last):
+  File "<stdin>", line 44, in <module>
+ValueError: Unknown format code 'd' for object of type 'float'
+50% MARGIN ($1,592 of $3,184), 20x (position ~$31,094), SELL THE SPIKE: limit +5% above the 00:03 price,
+stop +2.25% from the fill; after a 1% fall the stop moves to lock +$200 after costs (0.81% below the fill); else 24 h.
+
+===== TARGET +$300 (a 1.08% fall from the fill) =====
+A) THE 20 REAL PICKS, trade by trade, fixed balance
+  day    coin        00:03 px    sell at filled     target       stop  result closed     P&L
+  10-29  EVAA          1.4457    1.51799  01:46    1.50152    1.55214  TARGET  01:47    +300
+  10-29  INIT         0.22213   0.233237  10:55   0.230706   0.238484  TARGET  11:10    +300
+  10-30  BEAT          0.1036    0.10878  15:25     0.1076   0.111228  TARGET  15:34    +300
+  10-30  PARTI        0.05955  0.0625275   never rose 5%: no trade
+  10-31  AIN          0.18024   0.189252  00:16   0.187199    0.19351  TARGET  00:17    +300
+  10-31  SOPH        0.002171 0.00227955   never rose 5%: no trade
+  11-01  AIN          0.23585   0.247643  01:34   0.244956   0.253214  TARGET  01:50    +300
+  11-01  EVAA          1.4197    1.49069  07:05    1.47451    1.52423    STOP  07:06    -769
+  11-02  AIN          0.29032   0.304836   never rose 5%: no trade
+  11-02  ESPORTS      0.01701  0.0178605  00:05  0.0176386  0.0182624    STOP  00:06    -661
+  11-03  ARIA         0.11557   0.121349  01:56   0.120032   0.124079  TARGET  02:03    +300
+  11-04  AIO          0.03607  0.0378735  05:26  0.0374626  0.0387257  TARGET  05:27    +300
+  11-06  ARIA         0.15877   0.166709   never rose 5%: no trade
+  11-07  AIO          0.04214   0.044247   never rose 5%: no trade
+  11-09  AIOT         0.16522   0.173481  08:18   0.171599   0.177384  TARGET  08:19    +300
+  11-10  PIEVERSE      2.0299    2.13139  00:52    2.10491    2.17935  TARGET  00:53    +300
+  11-11  ARIA         0.21747   0.228344  04:55   0.225866   0.233481  LOCKED  05:01    +169
+  11-12  ARIA         0.22704   0.238392   never rose 5%: no trade
+  11-13  HANA          0.0175   0.018375  07:06  0.0181757  0.0187884  TARGET  07:26    +300
+  11-14  SOPH        0.001791 0.00188055  09:49 0.00186015 0.00192286  LOCKED  09:53    +169
+  {'TARGET': 10, 'none': 6, 'STOP': 2, 'LOCKED': 2} -> total $+1,908
+
+B) FULL HISTORY, 1,022 picks, 604 filled, each trade alone: target 58%, locked 12%, stop 30%, 24h 0% | avg $-42.4/trade, total $-25,614
+  month    trades target locked  stop      P&L

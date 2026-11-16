@@ -92,3 +92,11 @@ out/review_pack/
 # research caches (2026-11-12): Delta 1m candles for the QUICK replay, Binance 1h candles for the trend research
 out/fade_quick_full/*_*.json
 out/trend/
+out/wpr/
+
+# Careful-sim price cache: Delta's public 1m candles, ~320 MB, rebuilt by scripts/careful_dataset.py and
+# scripts/careful_dataset_prevclose.py (picks.csv, the ledgers and the reports ARE tracked).
+/out/careful/candles/
+/out/careful/dataset.npz
+/out/careful/mark.npz
+/out/careful/btc.npz

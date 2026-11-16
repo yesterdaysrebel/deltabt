@@ -1,0 +1,20 @@
+50% margin, 20x (~$31,094 position on $3,184), sell the spike +5%, stop +2.25%, lock +$200 after a 1% fall
+
+TARGET +$300: real picks 14 trades -> T 10 L 2 S 2, total $+1,908
+  history 604 trades: target 58% locked 12% stop 30% | avg $-42.4/trade, total $-25,614 | 2025 $-14,273, 2026 $-11,340 | green months 7/22
+  by month: 25-01 -3,076  25-02 +2,100  25-03 -2,514  25-04 -2,721  25-05 +2,101  25-06 +2,531  25-07 -6,540  25-08 -2,683  25-09 -8,405  25-10 -3,283  25-11 +4,408  25-12 +3,808  26-01 -3,283  26-02 -1,745  26-03 +1,255  26-04 -845  26-05 -491  26-06 +993  26-07 -2,422  26-08 -1,952  26-09 -845  26-10 -2,006
+  account from $3,184, one position at a time, real picks: end $4,803 (lowest $2,830)
+  account from $3,184, one position at a time, history from Jan 2025: end $1,570 (lowest $257)
+
+TARGET +$400: real picks 14 trades -> T 8 L 4 S 2, total $+2,447
+  history 604 trades: target 43% locked 26% stop 31% | avg $-20.3/trade, total $-12,289 | 2025 $-8,473, 2026 $-3,817 | green months 10/22
+  by month: 25-01 -3,168  25-02 +2,077  25-03 -1,675  25-04 -1,844  25-05 +2,386  25-06 +2,847  25-07 -5,732  25-08 -2,106  25-09 -7,859  25-10 -3,106  25-11 +5,385  25-12 +4,324  26-01 -2,614  26-02 -1,568  26-03 +2,201  26-04 +294  26-05 +33  26-06 +1,032  26-07 -2,075  26-08 -675  26-09 +694  26-10 -1,137
+  account from $3,184, one position at a time, real picks: end $5,561 (lowest $2,999)
+  account from $3,184, one position at a time, history from Jan 2025: end $1,592 (lowest $281)
+
+TARGET +$500: real picks 14 trades -> T 7 L 5 S 2, total $+2,916
+  history 604 trades: target 34% locked 34% stop 31% | avg $-8.2/trade, total $-4,946 | 2025 $-5,227, 2026 $+281 | green months 10/22
+  by month: 25-01 -3,199  25-02 +1,916  25-03 -1,845  25-04 -1,914  25-05 +3,255  25-06 +3,285  25-07 -5,525  25-08 -2,660  25-09 -6,989  25-10 -2,406  25-11 +6,224  25-12 +4,632  26-01 -2,145  26-02 -1,860  26-03 +2,809  26-04 +1,032  26-05 +740  26-06 +2,206  26-07 -1,737  26-08 -529  26-09 +563  26-10 -799
+  account from $3,184, one position at a time, real picks: end $6,420 (lowest $3,184)
+  account from $3,184, one position at a time, history from Jan 2025: end $1,541 (lowest $312)
+

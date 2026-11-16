@@ -390,8 +390,8 @@ if __name__ == "__main__":
     # this dispatch all along; the live one was written to the same shape and
     # this was the piece that got left out.
     if len(sys.argv) > 1 and sys.argv[1] == "fade-live-probe":
-        # ONE real contract through the real account's order shape (docs/fade_live_prereg.md step 3).
-        from live.fade_live import probe
+        # ONE real contract through the real account's order shapes: Spike Sell, run 4 (docs/fade_live_spike_prereg.md).
+        from live.spike_live import probe
         sys.exit(probe(*sys.argv[2:3]))
     if len(sys.argv) > 1 and sys.argv[1] == "fade-live-resume":
         from live.fade_live import resume

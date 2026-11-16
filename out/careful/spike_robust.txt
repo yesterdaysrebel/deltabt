@@ -1,0 +1,56 @@
+TESTS MEANT TO BREAK THE SPIKE FADE (sell 5% above the 00:02 close, stop 10%, out after 8 h). Before fees, % of the position.
+
+BASE   STRICT    617 trades  win  56%  avg win  +7.36%  avg loss  -7.47%  mean +0.823%  t +2.14
+       LENIENT   617 trades  win  56%  avg win  +7.36%  avg loss  -7.04%  mean +1.010%  t +2.75      (1049 picks, 617 filled; equal to spike_flip_back.trade on every trade)
+
+1  CONTROLS on the same picks (STRICT, market sell 0.1% worse, same 10% stop and 8 h clock)
+   random minute  20980 trades  win  52%  avg win  +4.68%  avg loss  -5.27%  mean -0.074%  t -0.63
+   at the open     1049 trades  win  53%  avg win  +6.06%  avg loss  -6.26%  mean +0.212%  t +0.75
+   no spike         432 trades  win  83%  avg win  +6.52%  avg loss  -1.20%  mean +5.218%  t +13.96
+   the rule         617 trades  win  56%  avg win  +7.36%  avg loss  -7.47%  mean +0.823%  t +2.14
+
+2  MARKET: a BTC short over exactly the same windows
+   BTC short       617 trades  win  50%  avg win  +0.70%  avg loss  -0.70%  mean -0.002%  t -0.04
+   the trade moves 1.10x with BTC (correlation +0.12); with the market's share taken out:
+   what is left    617 trades  win  56%  avg win  +7.22%  avg loss  -7.33%  mean +0.825%  t +2.15
+
+3  WHERE the result sits (STRICT)
+   2025                     321 trades  win  57%  avg win  +6.01%  avg loss  -6.63%  mean +0.576%  t +1.26
+   2026                     296 trades  win  55%  avg win  +8.88%  avg loss  -8.33%  mean +1.091%  t +1.73
+   2025 H1                  138 trades  win  57%  avg win  +5.26%  avg loss  -5.11%  mean +0.750%  t +1.31
+   2025 H2                  183 trades  win  57%  avg win  +6.57%  avg loss  -7.80%  mean +0.445%  t +0.65
+   2026 H1                  160 trades  win  59%  avg win  +7.91%  avg loss  -7.79%  mean +1.431%  t +1.91
+   2026 H2                  136 trades  win  50%  avg win +10.23%  avg loss  -8.85%  mean +0.691%  t +0.65
+   pick 1                   376 trades  win  52%  avg win  +8.46%  avg loss  -7.80%  mean +0.677%  t +1.23
+   pick 2                   241 trades  win  62%  avg win  +5.91%  avg loss  -6.82%  mean +1.052%  t +2.12
+   history picks            603 trades  win  56%  avg win  +7.37%  avg loss  -7.45%  mean +0.881%  t +2.27
+   paper runner's picks      14 trades  -
+   filled 00:03-06:00       407 trades  win  57%  avg win  +8.27%  avg loss  -8.12%  mean +1.145%  t +2.24
+   filled later             210 trades  win  55%  avg win  +5.54%  avg loss  -6.26%  mean +0.199%  t +0.35
+   months: 14 up, 9 down of 23; best +168%, worst -92% (sum of trade returns); last 6 months: 26-06 -17% 26-07 -4% 26-08 -92% 26-09 +168% 26-10 +68% 26-11 -46%
+   without the 5 best days:     608 trades  win  55%  avg win  +6.94%  avg loss  -7.46%  mean +0.522%  t +1.43
+   without the 5 worst days:    608 trades  win  57%  avg win  +7.36%  avg loss  -7.16%  mean +1.081%  t +2.92
+   resampling days 2,000 times: mean per trade 5%..95% = +0.199% .. +1.444%; zero or worse in 1.5% of resamples
+
+4  NEIGHBOURS (STRICT mean % per trade; trades in brackets for the 8 h row)
+   clock 6 h                 stop 8%           stop 10%           stop 12%           stop 15%
+   entry +3%          +0.803% (772)      +0.776% (772)      +0.813% (772)      +0.894% (772)
+   entry +5%          +0.640% (617)      +0.782% (617)      +0.726% (617)      +0.923% (617)
+   entry +7%          +0.833% (508)      +0.838% (508)      +1.012% (508)      +1.031% (508)
+   entry +10%         +0.375% (356)      +0.591% (356)      +0.656% (356)      +0.812% (356)
+   clock 8 h                 stop 8%           stop 10%           stop 12%           stop 15%
+   entry +3%          +0.809% (772)      +0.732% (772)      +0.830% (772)      +0.964% (772)
+   entry +5%          +0.650% (617)      +0.823% (617)      +0.851% (617)      +1.050% (617)
+   entry +7%          +0.956% (508)      +1.080% (508)      +1.281% (508)      +1.299% (508)
+   entry +10%         +0.704% (356)      +0.879% (356)      +0.867% (356)      +1.023% (356)
+   clock 10 h                 stop 8%           stop 10%           stop 12%           stop 15%
+   entry +3%          +0.766% (772)      +0.770% (772)      +0.900% (772)      +1.023% (772)
+   entry +5%          +0.658% (617)      +0.848% (617)      +0.847% (617)      +1.016% (617)
+   entry +7%          +1.018% (508)      +1.115% (508)      +1.274% (508)      +1.259% (508)
+   entry +10%         +0.597% (356)      +0.785% (356)      +0.820% (356)      +0.967% (356)
+   clock 12 h                 stop 8%           stop 10%           stop 12%           stop 15%
+   entry +3%          +0.772% (772)      +0.795% (772)      +0.952% (772)      +1.047% (772)
+   entry +5%          +0.664% (617)      +0.913% (617)      +0.919% (617)      +1.096% (617)
+   entry +7%          +1.027% (508)      +1.106% (508)      +1.317% (508)      +1.253% (508)
+   entry +10%         +0.899% (356)      +1.040% (356)      +1.069% (356)      +1.345% (356)
+   64 of 64 neighbours positive; range +0.375% .. +1.345%; the chosen cell (+5%, 10%, 8 h) +0.823%

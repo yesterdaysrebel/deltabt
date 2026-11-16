@@ -1,0 +1,20 @@
+THE SAME RULE ON THE FULL HISTORY: 20x, 50% of $1,640 as margin, take +$500 after fees, STOP ALWAYS BEFORE LIQUIDATION
+Delta picks 2025-01..2026-10 (the real account's universe), 1m paths. Fixed size each trade (no compounding).
+
+entry at the 00:03 close (as the bot)
+  stop +2.25% (fill 0.1% past) | TP  38% SL  61% 24h  1% | avg $ -68.1/trade | total $  -69,648 (2025 $-48,834, 2026 $-20,814) | green months 5/22 | running total first below -$1,640 after 13 trades
+  stop +2.25% (fill 0.3% past) | TP  38% SL  61% 24h  1% | avg $ -88.7/trade | total $  -90,670 (2025 $-60,679, 2026 $-29,991) | green months 4/22 | running total first below -$1,640 after 13 trades
+  stop +2.00% (fill 0.1% past) | TP  35% SL  64% 24h  1% | avg $ -68.6/trade | total $  -70,155 (2025 $-46,627, 2026 $-23,528) | green months 3/22 | running total first below -$1,640 after 41 trades
+  stop +2.00% (fill 0.3% past) | TP  35% SL  64% 24h  1% | avg $ -90.1/trade | total $  -92,129 (2025 $-58,911, 2026 $-33,218) | green months 3/22 | running total first below -$1,640 after 13 trades
+  stop +1.50% (fill 0.1% past) | TP  27% SL  72% 24h  0% | avg $ -76.3/trade | total $  -78,000 (2025 $-49,754, 2026 $-28,246) | green months 1/22 | running total first below -$1,640 after 33 trades
+  stop +1.50% (fill 0.3% past) | TP  27% SL  72% 24h  0% | avg $-100.4/trade | total $ -102,581 (2025 $-63,510, 2026 $-39,071) | green months 0/22 | running total first below -$1,640 after 31 trades
+
+entry at the 00:00 open (as the replay above)
+  stop +2.25% (fill 0.1% past) | TP  39% SL  60% 24h  1% | avg $ -58.8/trade | total $  -60,139 (2025 $-30,318, 2026 $-29,822) | green months 6/22 | running total first below -$1,640 after 74 trades
+  stop +2.25% (fill 0.3% past) | TP  39% SL  60% 24h  1% | avg $ -79.1/trade | total $  -80,826 (2025 $-41,491, 2026 $-39,334) | green months 5/22 | running total first below -$1,640 after 71 trades
+  stop +2.00% (fill 0.1% past) | TP  36% SL  63% 24h  1% | avg $ -58.0/trade | total $  -59,298 (2025 $-30,687, 2026 $-28,610) | green months 5/22 | running total first below -$1,640 after 71 trades
+  stop +2.00% (fill 0.3% past) | TP  36% SL  63% 24h  1% | avg $ -79.1/trade | total $  -80,871 (2025 $-42,369, 2026 $-38,502) | green months 5/22 | running total first below -$1,640 after 61 trades
+  stop +1.50% (fill 0.1% past) | TP  30% SL  69% 24h  0% | avg $ -53.3/trade | total $  -54,520 (2025 $-27,901, 2026 $-26,619) | green months 4/22 | running total first below -$1,640 after 75 trades
+  stop +1.50% (fill 0.3% past) | TP  30% SL  69% 24h  0% | avg $ -76.4/trade | total $  -78,119 (2025 $-40,725, 2026 $-37,395) | green months 2/22 | running total first below -$1,640 after 67 trades
+
+recent 17 days for comparison (20 trades): stop +2.25% -> TP 50%, total +$812

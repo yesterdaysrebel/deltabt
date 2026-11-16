@@ -1,0 +1,8 @@
+DOES MORE CAPITAL FIX IT? Same rule (20x, 50% margin, +$500 target after fees, stop +2.25%), FIXED position size
+per trade (no compounding), all 1,022 Delta picks 2025-01..2026-10, entry at the 00:03 close.
+
+ capital  position fall for $500 target hit  needed a stop costs  avg/trade      2025      2026  median time to target
+   1,640    16,016         3.32%        37%     45%          409      -69.3   -48,871   -21,987                 62 min
+   3,184    31,094         1.81%        54%     61%          794      -95.1   -69,416   -27,791                 22 min
+   5,000    48,828         1.22%        64%     71%        1,247     -118.5   -72,642   -48,486                 13 min
+  10,000    50,000         1.20%        65%     72%        1,277     -123.9   -76,893   -49,721                 12 min

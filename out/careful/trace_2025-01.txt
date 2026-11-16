@@ -1,0 +1,72 @@
+SPIKE SELL, 2025-01, STRICT stop fills, from $3,184 -- A, B and C agree on every trade.
+Rules: sell limit 5% above the 00:02 price; 49% of balance margin at up to 20x; +25% extra margin after the fill;
+stop +2.25%; target nets +$500 x balance/$3,184; after a 1% fall the stop locks +$200 x scale, then trails 0.8%
+above the low; out 24 h after the fill; off for the month after 2 full stops; stop below $1,000 balance.
+
+2025-01-15  picks #1 LDOUSD, #2 PNUTUSD
+   00:02 price 1.8375 -> SELL LIMIT 1.92938; FILLED 15 Jan 16:18 UTC (15 Jan 21:48 IST) (1m high 1.94)
+   other order: PNUTUSD limit 0.651315 never reached -> cancelled at 24:00
+   size: $30,472 position = 15,794 contracts (contract value 1.0), 19.5x on $1,560 margin, +$796 extra
+   stop 1.97279 (+2.25%) | target 1.8954 (net +$500) | lock level 1.9144 (net +$200) after a fall to 1.91008 | liquidation 2.02801 (+5.11%)
+   EXIT STOP 15 Jan 16:39 UTC (15 Jan 22:09 IST)  [1m high 1.9805 low 1.9805 close 1.9805]
+   P&L $-875.72 -> balance $2,308.28   (full stops this month: 1)
+2025-01-16  picks #1 XRPUSD, #2 WIFUSD
+   00:02 price 3.107 -> SELL LIMIT 3.26235; FILLED 16 Jan 12:26 UTC (16 Jan 17:56 IST) (1m high 3.2706)
+   other order: WIFUSD limit 1.85861 never reached -> cancelled at 24:00
+   size: $22,091 position = 6,772 contracts (contract value 1.0), 19.5x on $1,131 margin, +$577 extra
+   stop 3.33575 (+2.25%) | target 3.2049 (net +$362) | lock level 3.23702 (net +$145) after a fall to 3.22973 | liquidation 3.42913 (+5.11%)
+   EXIT STOP 16 Jan 12:58 UTC (16 Jan 18:28 IST)  [1m high 3.3475 low 3.3117 close 3.3447]
+   P&L $-607.08 -> balance $1,701.20   (full stops this month: 2)
+2025-01-17  picks #1 HBARUSD, #2 LTCUSD: SKIPPED -- 2 full stops this month
+2025-01-18  picks #1 POPCATUSD, #2 SAGAUSD: SKIPPED -- 2 full stops this month
+2025-01-19  picks #1 SOLUSD, #2 JTOUSD: SKIPPED -- 2 full stops this month
+2025-01-20  picks #1 ONDOUSD, #2 LINKUSD: SKIPPED -- 2 full stops this month
+2025-01-21  picks #1 LDOUSD, #2 AAVEUSD: SKIPPED -- 2 full stops this month
+2025-01-22  picks #1 WLDUSD: SKIPPED -- 2 full stops this month
+2025-01-24  picks #1 ETCUSD: SKIPPED -- 2 full stops this month
+2025-01-25  picks #1 HIVEUSD, #2 LDOUSD: SKIPPED -- 2 full stops this month
+2025-01-26  picks #1 MOVEUSD: SKIPPED -- 2 full stops this month
+2025-01-27  picks #1 PENGUUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-28  picks #1 SUIUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-29  picks #1 MOVEUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-30  picks #1 JTOUSD: SKIPPED -- 2 full stops this month
+2025-01-31  picks #1 USUALUSD, #2 JASMYUSD: SKIPPED -- 2 full stops this month
+
+2025-01 end balance $1,701.20 (-1,482.80)
+
+SPIKE SELL, 2025-01, LENIENT stop fills, from $3,184 -- A, B and C agree on every trade.
+Rules: sell limit 5% above the 00:02 price; 49% of balance margin at up to 20x; +25% extra margin after the fill;
+stop +2.25%; target nets +$500 x balance/$3,184; after a 1% fall the stop locks +$200 x scale, then trails 0.8%
+above the low; out 24 h after the fill; off for the month after 2 full stops; stop below $1,000 balance.
+
+2025-01-15  picks #1 LDOUSD, #2 PNUTUSD
+   00:02 price 1.8375 -> SELL LIMIT 1.92938; FILLED 15 Jan 16:18 UTC (15 Jan 21:48 IST) (1m high 1.94)
+   other order: PNUTUSD limit 0.651315 never reached -> cancelled at 24:00
+   size: $30,472 position = 15,794 contracts (contract value 1.0), 19.5x on $1,560 margin, +$796 extra
+   stop 1.97279 (+2.25%) | target 1.8954 (net +$500) | lock level 1.9144 (net +$200) after a fall to 1.91008 | liquidation 2.02801 (+5.11%)
+   EXIT STOP 15 Jan 16:39 UTC (15 Jan 22:09 IST)  [1m high 1.9805 low 1.9805 close 1.9805]
+   P&L $-753.70 -> balance $2,430.30   (full stops this month: 1)
+2025-01-16  picks #1 XRPUSD, #2 WIFUSD
+   00:02 price 3.107 -> SELL LIMIT 3.26235; FILLED 16 Jan 12:26 UTC (16 Jan 17:56 IST) (1m high 3.2706)
+   other order: WIFUSD limit 1.85861 never reached -> cancelled at 24:00
+   size: $23,259 position = 7,129 contracts (contract value 1.0), 19.5x on $1,191 margin, +$608 extra
+   stop 3.33575 (+2.25%) | target 3.2049 (net +$382) | lock level 3.23702 (net +$153) after a fall to 3.22973 | liquidation 3.42913 (+5.11%)
+   EXIT STOP 16 Jan 12:58 UTC (16 Jan 18:28 IST)  [1m high 3.3475 low 3.3117 close 3.3447]
+   P&L $-575.29 -> balance $1,855.01   (full stops this month: 2)
+2025-01-17  picks #1 HBARUSD, #2 LTCUSD: SKIPPED -- 2 full stops this month
+2025-01-18  picks #1 POPCATUSD, #2 SAGAUSD: SKIPPED -- 2 full stops this month
+2025-01-19  picks #1 SOLUSD, #2 JTOUSD: SKIPPED -- 2 full stops this month
+2025-01-20  picks #1 ONDOUSD, #2 LINKUSD: SKIPPED -- 2 full stops this month
+2025-01-21  picks #1 LDOUSD, #2 AAVEUSD: SKIPPED -- 2 full stops this month
+2025-01-22  picks #1 WLDUSD: SKIPPED -- 2 full stops this month
+2025-01-24  picks #1 ETCUSD: SKIPPED -- 2 full stops this month
+2025-01-25  picks #1 HIVEUSD, #2 LDOUSD: SKIPPED -- 2 full stops this month
+2025-01-26  picks #1 MOVEUSD: SKIPPED -- 2 full stops this month
+2025-01-27  picks #1 PENGUUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-28  picks #1 SUIUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-29  picks #1 MOVEUSD, #2 TAOUSD: SKIPPED -- 2 full stops this month
+2025-01-30  picks #1 JTOUSD: SKIPPED -- 2 full stops this month
+2025-01-31  picks #1 USUALUSD, #2 JASMYUSD: SKIPPED -- 2 full stops this month
+
+2025-01 end balance $1,855.01 (-1,328.99)
+

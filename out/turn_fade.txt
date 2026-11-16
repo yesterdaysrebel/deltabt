@@ -1,0 +1,62 @@
+FADE A SHARP MOVE ONCE IT HAS TURNED -- the pre-registered test (docs/turn_fade_prereg.md). Target 1.5%, stop 1%, out in 15 min. Before fees unless said.
+
+===== LIQUID days, PRIMARY rule
+   U + O pooled     EXACT          2418 trades  win  41%  avg win +1.31%  avg loss -0.97%  mean -0.0427%  t -1.73
+                    longs          1140 trades  win  42%  avg win +1.33%  avg loss -0.98%  mean -0.0176%  t -0.52
+                    shorts         1278 trades  win  40%  avg win +1.30%  avg loss -0.97%  mean -0.0651%  t -1.71
+                    MID            2418 trades  win  40%  avg win +1.31%  avg loss -1.02%  mean -0.0886%  t -3.38
+                    STRICT         2418 trades  win  37%  avg win +1.29%  avg loss -1.39%  mean -0.3904%  t -8.00
+                    real fees      2418 trades  win  40%  avg win +1.27%  avg loss -1.02%  mean -0.1017%  t -3.82
+                    random        13983 trades  win  45%  avg win +1.02%  avg loss -0.83%  mean +0.0089%  t +1.06
+                    plain fade     6870 trades  win  44%  avg win +1.23%  avg loss -0.93%  mean +0.0138%  t +1.04
+   U  2026-08..11   EXACT          1959 trades  win  41%  avg win +1.31%  avg loss -0.98%  mean -0.0374%  t -1.31
+   O  2026-03..07   EXACT           459 trades  win  39%  avg win +1.33%  avg loss -0.96%  mean -0.0652%  t -1.37
+
+===== LIQUID days, SECONDARY rule
+   U + O pooled     EXACT          8364 trades  win  45%  avg win +1.01%  avg loss -0.85%  mean -0.0092%  t -0.84
+                    longs          3957 trades  win  46%  avg win +1.01%  avg loss -0.84%  mean +0.0055%  t +0.36
+                    shorts         4407 trades  win  45%  avg win +1.00%  avg loss -0.85%  mean -0.0223%  t -1.28
+                    MID            8364 trades  win  44%  avg win +1.00%  avg loss -0.89%  mean -0.0485%  t -4.06
+                    STRICT         8364 trades  win  41%  avg win +0.98%  avg loss -1.14%  mean -0.2653%  t -9.56
+                    real fees      8364 trades  win  44%  avg win +0.98%  avg loss -0.89%  mean -0.0682%  t -5.70
+                    random        50236 trades  win  46%  avg win +0.81%  avg loss -0.69%  mean -0.0022%  t -0.57
+                    plain fade     6870 trades  win  44%  avg win +1.23%  avg loss -0.93%  mean +0.0138%  t +1.04
+   U  2026-08..11   EXACT          6424 trades  win  45%  avg win +1.03%  avg loss -0.86%  mean -0.0077%  t -0.59
+   O  2026-03..07   EXACT          1940 trades  win  46%  avg win +0.91%  avg loss -0.80%  mean -0.0139%  t -0.73
+
+===== ALL days, PRIMARY rule
+   U + O pooled     EXACT          4821 trades  win  43%  avg win +1.24%  avg loss -0.97%  mean -0.0219%  t -1.33
+                    longs          2230 trades  win  43%  avg win +1.23%  avg loss -0.97%  mean -0.0233%  t -0.97
+                    shorts         2591 trades  win  43%  avg win +1.24%  avg loss -0.96%  mean -0.0206%  t -0.83
+                    MID            4821 trades  win  42%  avg win +1.23%  avg loss -1.01%  mean -0.0673%  t -3.83
+                    STRICT         4821 trades  win  40%  avg win +1.20%  avg loss -1.36%  mean -0.3439%  t -9.44
+                    real fees      4821 trades  win  42%  avg win +1.19%  avg loss -1.02%  mean -0.0809%  t -4.53
+                    random        27663 trades  win  46%  avg win +0.94%  avg loss -0.79%  mean +0.0005%  t +0.08
+                    plain fade    17717 trades  win  46%  avg win +1.11%  avg loss -0.91%  mean +0.0174%  t +2.00
+   U  2026-08..11   EXACT          3263 trades  win  43%  avg win +1.25%  avg loss -0.97%  mean -0.0199%  t -0.98
+   O  2026-03..07   EXACT          1558 trades  win  43%  avg win +1.20%  avg loss -0.97%  mean -0.0260%  t -0.93
+
+===== ALL days, SECONDARY rule
+   U + O pooled     EXACT         21873 trades  win  47%  avg win +0.91%  avg loss -0.81%  mean -0.0050%  t -0.70
+                    longs         10143 trades  win  46%  avg win +0.90%  avg loss -0.80%  mean -0.0113%  t -1.02
+                    shorts        11730 trades  win  47%  avg win +0.92%  avg loss -0.82%  mean +0.0004%  t +0.04
+                    MID           21873 trades  win  46%  avg win +0.90%  avg loss -0.85%  mean -0.0421%  t -5.39
+                    STRICT        21873 trades  win  43%  avg win +0.88%  avg loss -1.05%  mean -0.2274%  t -13.49
+                    real fees     21873 trades  win  45%  avg win +0.88%  avg loss -0.85%  mean -0.0640%  t -8.00
+                    random       111356 trades  win  47%  avg win +0.77%  avg loss -0.68%  mean +0.0005%  t +0.19
+                    plain fade    17717 trades  win  46%  avg win +1.11%  avg loss -0.91%  mean +0.0174%  t +2.00
+   U  2026-08..11   EXACT         13147 trades  win  47%  avg win +0.93%  avg loss -0.82%  mean +0.0019%  t +0.19
+   O  2026-03..07   EXACT          8726 trades  win  47%  avg win +0.87%  avg loss -0.80%  mean -0.0155%  t -1.51
+
+===== A  the owner's own coin-days (reference only, where the idea comes from)
+   PRIMARY      EXACT    3327 trades  win  38%  avg win +1.37%  avg loss -0.97%  mean -0.0709%  t -2.87
+                random  21613 trades  win  43%  avg win +1.18%  avg loss -0.90%  mean -0.0042%  t -0.55
+   SECONDARY    EXACT    9739 trades  win  43%  avg win +1.19%  avg loss -0.91%  mean -0.0029%  t -0.23
+                random  55051 trades  win  43%  avg win +1.12%  avg loss -0.87%  mean -0.0054%  t -1.09
+   PLAIN FADE   EXACT    9345 trades  win  44%  avg win +1.28%  avg loss -0.94%  mean +0.0343%  t +2.62
+
+   FAIL  EXACT mean > 0 with t >= 2
+   FAIL  EXACT > 0 on U and on O
+   FAIL  MID mean > 0
+   FAIL  beats random and the plain fade
+VERDICT (LIQUID, PRIMARY): FAIL

@@ -1,0 +1,41 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Run 4 (final rules, fixed $3,184) on the 20 real picks -- the full stops are the re-sell events:
+
+  2026-10-29 EVAAUSD      TARGET    +500  (sold 01:46, out 01:47)
+  2026-10-29 INITUSD      LOCKED    +109  (sold 10:55, out 11:10)
+  2026-10-30 BEATUSD      TARGET    +500  (sold 15:25, out 15:37)
+  2026-10-31 AINUSD       LOCKED    -526  (sold 00:16, out 00:18)
+  2026-11-01 AINUSD       TARGET    +500  (sold 01:34, out 01:50)
+  2026-11-01 EVAAUSD      STOP      -754  (sold 07:05, out 07:06)
+  2026-11-02 ESPORTSUSD   STOP      -650  (sold 00:05, out 00:06)
+  2026-11-03 ARIAUSD      LOCKED    +170  (sold 01:56, out 02:01)
+  2026-11-04 AIOUSD       TARGET    +500  (sold 05:26, out 05:27)
+  2026-11-09 AIOTUSD      LOCKED    +170  (sold 08:18, out 08:21)
+  2026-11-10 PIEVERSEUSD  TARGET    +500  (sold 00:52, out 00:55)
+  2026-11-11 ARIAUSD      LOCKED    +163  (sold 04:55, out 05:00)
+  2026-11-13 HANAUSD      LOCKED    +141  (sold 07:06, out 07:26)
+  2026-11-14 SOPHUSD      LOCKED    +170  (sold 09:49, out 09:51)
+
+2 full stops -> 2 re-sell chances.
+
+RE-SELL A (5% off the high, stop +2.25%, hold 24 h)
+  2026-11-01 EVAAUSD: first sell 1.49069, stopped 07:06; high of the day after the stop 1.7325 (07:32), 24:00 close 1.2251
+     STRICT : re-sell 07:11 at 1.63009 (high so far 1.7176) | stop 1.66677 (+2.2%) target none | out 07:14 STOP at 1.66843 | -1.00 R = $-748 at run-4 size, $-300 risking $300
+     LENIENT: re-sell 07:11 at 1.63009 (high so far 1.7176) | stop 1.66677 (+2.2%) target none | out 07:14 STOP at 1.66843 | -1.00 R = $-748 at run-4 size, $-300 risking $300
+  2026-11-02 ESPORTSUSD: first sell 0.0178605, stopped 00:06; high of the day after the stop 0.02012 (00:09), 24:00 close 0.01457
+     STRICT : re-sell 00:10 at 0.0185814 (high so far 0.02012) | stop 0.0189995 (+2.2%) target none | out 00:00+1d TIME at 0.0144144 | +9.11 R = $+5,872 at run-4 size, $+2,733 risking $300
+     LENIENT: re-sell 00:10 at 0.0185814 (high so far 0.02012) | stop 0.0189995 (+2.2%) target none | out 00:00+1d TIME at 0.0144144 | +9.11 R = $+5,872 at run-4 size, $+2,733 risking $300
+  TOTAL re-sells: STRICT $+5,125 (run-4 size) / $+2,432 (risk $300); LENIENT $+5,125 / $+2,432
+
+RE-SELL B (30 min after, stop 3% above the high, target 12%)
+  2026-11-01 EVAAUSD: first sell 1.49069, stopped 07:06; high of the day after the stop 1.7325 (07:32), 24:00 close 1.2251
+     STRICT : re-sell 07:36 at 1.66783 (high so far 1.7325) | stop 1.78448 (+7.0%) target 1.46769 | out 07:55 TARGET at 1.46769 | +1.65 R = $+3,628 at run-4 size, $+496 risking $300
+     LENIENT: re-sell 07:36 at 1.66783 (high so far 1.7325) | stop 1.78448 (+7.0%) target 1.46769 | out 07:55 TARGET at 1.46769 | +1.65 R = $+3,628 at run-4 size, $+496 risking $300
+  2026-11-02 ESPORTSUSD: first sell 0.0178605, stopped 00:06; high of the day after the stop 0.02012 (00:09), 24:00 close 0.01457
+     STRICT : re-sell 00:36 at 0.0175324 (high so far 0.02012) | stop 0.0207236 (+18.2%) target 0.0154286 | out 03:57 TARGET at 0.0154286 | +0.65 R = $+3,130 at run-4 size, $+194 risking $300
+     LENIENT: re-sell 00:36 at 0.0175324 (high so far 0.02012) | stop 0.0207236 (+18.2%) target 0.0154286 | out 03:57 TARGET at 0.0154286 | +0.65 R = $+3,130 at run-4 size, $+194 risking $300
+  TOTAL re-sells: STRICT $+6,758 (run-4 size) / $+690 (risk $300); LENIENT $+6,758 / $+690
+
+Note B's stop can sit >5% above its sell: at run-4 size (20x) that is past the liquidation price even with the
+25% extra margin, so B only works risk-sized (lower leverage); its run-4-size $ is shown for comparison only.

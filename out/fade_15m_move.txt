@@ -1,0 +1,28 @@
+FADE A SHARP 15-MINUTE MOVE, OUT WITHIN MINUTES -- before fees. A = the owner's coin-days (source of the idea), U and O = untouched checks.
+
+===== A  the owner's own coin-days: 18,175 fades of a 15-minute move of 1%+   (mean % of the position, share in profit, t by day)
+15-min move  trades |      out after 5 min       |      out after 10 min      |      out after 15 min      |      out after 30 min      |      out after 60 min      | after 10 min with 0.05% slippage a side
+1%-2%         13156 |  -0.001%  50% t -0.10 |  +0.003%  51% t +0.24 |  +0.013%  51% t +0.83 |  +0.010%  52% t +0.39 |  -0.044%  51% t -1.09 | -0.097%   (10 min: avg win +0.96%, avg loss -1.00%; fades of up-moves -0.044%, of down-moves +0.053%)
+2%-3%          2510 |  -0.028%  49% t -0.76 |  -0.023%  51% t -0.40 |  -0.031%  51% t -0.51 |  -0.075%  50% t -0.90 |  -0.095%  52% t -0.80 | -0.123%   (10 min: avg win +1.47%, avg loss -1.59%; fades of up-moves -0.085%, of down-moves +0.048%)
+3%-5%          1575 |  -0.069%  50% t -1.27 |  -0.030%  52% t -0.44 |  -0.110%  52% t -1.35 |  -0.202%  52% t -1.61 |  -0.173%  52% t -0.91 | -0.130%   (10 min: avg win +1.82%, avg loss -2.06%; fades of up-moves -0.099%, of down-moves +0.048%)
+5%+             934 |  +0.009%  51% t +0.07 |  -0.288%  49% t -1.45 |  -0.524%  48% t -1.91 |  -0.599%  49% t -1.73 |  -0.812%  49% t -1.85 | -0.388%   (10 min: avg win +3.29%, avg loss -3.79%; fades of up-moves -0.493%, of down-moves -0.085%)
+2%+            5019 |  -0.034%  50% t -1.09 |  -0.074%  51% t -1.47 |  -0.147%  51% t -2.10 |  -0.212%  51% t -2.17 |  -0.253%  52% t -1.63 | -0.174%   (10 min: avg win +1.91%, avg loss -2.16%; fades of up-moves -0.162%, of down-moves +0.022%)
+1%+           18175 |  -0.010%  50% t -0.85 |  -0.018%  51% t -0.97 |  -0.031%  51% t -1.33 |  -0.052%  51% t -1.65 |  -0.101%  51% t -1.82 | -0.118%   (10 min: avg win +1.23%, avg loss -1.32%; fades of up-moves -0.077%, of down-moves +0.045%)
+
+===== U  30 most-traded perps, 2026-08..11, liquid days: 12,183 fades of a 15-minute move of 1%+   (mean % of the position, share in profit, t by day)
+15-min move  trades |      out after 5 min       |      out after 10 min      |      out after 15 min      |      out after 30 min      |      out after 60 min      | after 10 min with 0.05% slippage a side
+1%-2%          9365 |  +0.010%  54% t +0.86 |  -0.006%  53% t -0.39 |  -0.007%  53% t -0.38 |  -0.026%  53% t -0.86 |  +0.023%  53% t +0.56 | -0.106%   (10 min: avg win +0.83%, avg loss -0.96%; fades of up-moves -0.046%, of down-moves +0.035%)
+2%-3%          1307 |  -0.105%  52% t -1.91 |  -0.153%  52% t -2.30 |  -0.142%  51% t -1.93 |  -0.054%  51% t -0.48 |  -0.226%  51% t -1.51 | -0.253%   (10 min: avg win +1.33%, avg loss -1.75%; fades of up-moves -0.169%, of down-moves -0.136%)
+3%-5%           857 |  -0.012%  51% t -0.15 |  -0.028%  49% t -0.20 |  -0.080%  48% t -0.55 |  -0.175%  50% t -0.93 |  -0.544%  48% t -1.72 | -0.128%   (10 min: avg win +2.13%, avg loss -2.09%; fades of up-moves -0.297%, of down-moves +0.344%)
+5%+             654 |  +0.171%  52% t +1.16 |  +0.285%  55% t +1.81 |  +0.007%  52% t +0.03 |  +0.274%  54% t +1.03 |  +0.662%  56% t +1.68 | +0.185%   (10 min: avg win +3.33%, avg loss -3.47%; fades of up-moves +0.463%, of down-moves +0.086%)
+2%+            2818 |  -0.013%  52% t -0.28 |  -0.013%  52% t -0.20 |  -0.089%  50% t -1.28 |  -0.015%  51% t -0.17 |  -0.117%  51% t -0.67 | -0.113%   (10 min: avg win +2.05%, avg loss -2.23%; fades of up-moves -0.068%, of down-moves +0.050%)
+1%+           12183 |  +0.005%  53% t +0.38 |  -0.008%  53% t -0.38 |  -0.026%  52% t -1.15 |  -0.023%  52% t -0.71 |  -0.010%  52% t -0.16 | -0.108%   (10 min: avg win +1.11%, avg loss -1.26%; fades of up-moves -0.051%, of down-moves +0.038%)
+
+===== O  the same coins, 2026-03..07, liquid days: 4,145 fades of a 15-minute move of 1%+   (mean % of the position, share in profit, t by day)
+15-min move  trades |      out after 5 min       |      out after 10 min      |      out after 15 min      |      out after 30 min      |      out after 60 min      | after 10 min with 0.05% slippage a side
+1%-2%          3492 |  -0.000%  53% t -0.02 |  -0.023%  52% t -1.29 |  -0.035%  52% t -1.47 |  -0.034%  52% t -0.92 |  +0.017%  54% t +0.35 | -0.123%   (10 min: avg win +0.64%, avg loss -0.74%; fades of up-moves -0.031%, of down-moves -0.014%)
+2%-3%           340 |  -0.071%  52% t -0.80 |  -0.128%  51% t -1.12 |  -0.072%  55% t -0.62 |  -0.208%  52% t -1.15 |  -0.315%  52% t -0.89 | -0.228%   (10 min: avg win +1.27%, avg loss -1.58%; fades of up-moves -0.200%, of down-moves -0.051%)
+3%-5%           204 |  +0.014%  54% t +0.11 |  -0.202%  51% t -1.08 |  -0.410%  47% t -1.39 |  -0.962%  48% t -1.70 |  -0.523%  50% t -0.84 | -0.302%   (10 min: avg win +1.70%, avg loss -2.22%; fades of up-moves -0.356%, of down-moves -0.044%)
+5%+             109 |  +0.147%  57% t +0.83 |  +0.036%  56% t +0.05 |  +0.633%  57% t +0.73 |  +1.169%  60% t +1.63 |  +1.453%  55% t +1.64 | -0.064%   (10 min: avg win +3.21%, avg loss -4.00%; fades of up-moves -0.110%, of down-moves +0.215%)
+2%+             653 |  -0.008%  53% t -0.11 |  -0.123%  52% t -0.97 |  -0.060%  53% t -0.38 |  -0.214%  52% t -1.15 |  -0.085%  52% t -0.38 | -0.223%   (10 min: avg win +1.75%, avg loss -2.15%; fades of up-moves -0.231%, of down-moves -0.007%)
+1%+            4145 |  -0.002%  53% t -0.08 |  -0.038%  52% t -1.59 |  -0.039%  52% t -1.16 |  -0.062%  52% t -1.50 |  +0.001%  53% t +0.02 | -0.138%   (10 min: avg win +0.82%, avg loss -0.96%; fades of up-moves -0.062%, of down-moves -0.013%)

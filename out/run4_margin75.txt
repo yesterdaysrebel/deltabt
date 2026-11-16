@@ -1,0 +1,40 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+RANKS LOADED for every pick (1058).
+CROSS-CHECK PASSED: 75% margin, 618 trades identical in both simulators.
+
+  49% margin on $3,184: position $30,472; +$500 target = a 1.76% fall; a full stop costs about $737
+  75% margin on $3,184: position $46,641; +$500 target = a 1.19% fall; a full stop costs about $1,129
+
+From $3,184; STRICT .. LENIENT stop fills
+
+  variant                                |     20 real picks |    2026 to Nov 14 |     history end | starts <$1k |    median 12 mo |  median minutes to target (2026)
+  (a) 75%, first pick only (placeable)   |   7,088 ..   7,125 |      34 ..      50 |     37 ..     34 |   21 .. 19 |     66 ..    511 |             1 .. 2
+  (b) 75%, both picks (NOT placeable)    |   1,652 ..   2,421 |      38 ..      43 |     38 ..     42 |   20 .. 19 |     86 ..    347 |             2 .. 2
+  (c) 49%, both picks (as built)         |   2,223 ..   2,835 |     216 ..     409 |     42 ..    106 |   19 .. 16 |    543 ..  1,420 |             2 .. 2
+
+2026 MONTH BY MONTH, (a) 75% first pick only vs (c) 49% as built  [P&L -> end, targets/locked/stops]
+  STRICT
+    2026-01  (a)  -1,997 ->  1,187 (3T 0L 2S)    (c)  -1,317 ->  1,867 (2T 1L 2S)
+    2026-02  (a)    -579 ->    609 (1T 3L 2S)    (c)    -716 ->  1,151 (0T 3L 2S)
+    2026-03  (a)    +959 ->  1,568 (12T 2L 2S)    (c)  +2,463 ->  3,614 (10T 8L 2S)
+    2026-04  (a)    -796 ->    772 (2T 0L 2S)    (c)    -865 ->  2,749 (2T 2L 2S)
+    2026-05  (a)    -452 ->    321 (1T 0L 2S)    (c)    -987 ->  1,762 (1T 1L 2S)
+    2026-06  (a)     -52 ->    268 (5T 1L 2S)    (c)    -340 ->  1,422 (1T 5L 2S)
+    2026-07  (a)    -129 ->    139 (4T 0L 2S)    (c)    -313 ->  1,109 (2T 1L 2S)
+    2026-08  (a)     -51 ->     88 (3T 0L 2S)    (c)    -273 ->    836 (1T 2L 2S)
+    2026-09  (a)     -53 ->     34 (0T 0L 2S)    (c)    -359 ->    477 (0T 0L 2S)
+    2026-10  (a)      +0 ->     34 (0T 0L 0S)    (c)    -157 ->    321 (1T 0L 2S)
+    2026-11  (a)      +0 ->     34 (0T 0L 0S)    (c)    -105 ->    216 (1T 0L 2S)
+  LENIENT
+    2026-01  (a)  -1,136 ->  2,048 (3T 0L 2S)    (c)    -737 ->  2,447 (2T 1L 2S)
+    2026-02  (a)    -949 ->  1,099 (1T 3L 2S)    (c)    -826 ->  1,620 (0T 3L 2S)
+    2026-03  (a)  +1,836 ->  2,935 (12T 2L 2S)    (c)  +3,634 ->  5,254 (10T 8L 2S)
+    2026-04  (a)  -1,337 ->  1,598 (2T 0L 2S)    (c)  -1,027 ->  4,227 (2T 2L 2S)
+    2026-05  (a)    -846 ->    752 (1T 0L 2S)    (c)  -1,331 ->  2,895 (1T 1L 2S)
+    2026-06  (a)     -87 ->    665 (5T 1L 2S)    (c)    -478 ->  2,417 (1T 5L 2S)
+    2026-07  (a)    -180 ->    485 (4T 0L 2S)    (c)    -431 ->  1,986 (2T 1L 2S)
+    2026-08  (a)    -179 ->    305 (3T 0L 2S)    (c)    -441 ->  1,545 (1T 2L 2S)
+    2026-09  (a)    -181 ->    124 (0T 0L 2S)    (c)    -645 ->    900 (0T 0L 2S)
+    2026-10  (a)     -57 ->     68 (2T 0L 2S)    (c)    -293 ->    607 (1T 0L 2S)
+    2026-11  (a)     -18 ->     50 (1T 0L 1S)    (c)    -198 ->    409 (1T 0L 2S)

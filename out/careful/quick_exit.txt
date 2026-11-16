@@ -1,0 +1,19 @@
+CHECK PASSED: the time exits equal the wide-stop functions (two implementations) on every non-liquidated trade.
+
+Average $ per trade at a fixed $3,184, STRICT .. LENIENT. As built: 2025 -94 .. -49, 2026 -94 .. -32.
+  exit                                         |           2025 |    2026 + real | 2026 strict: in profit, stopped, avg win, avg loss
+  buy back 1 min after the fill                |   -75 ..   -65 |   -65 ..   -41 |  41%,   9%,  +295,   -314
+  buy back 2 min after the fill                |   -59 ..   -48 |   -60 ..   -28 |  45%,  11%,  +340,   -386
+  buy back 3 min after the fill                |   -83 ..   -67 |   -52 ..   -13 |  46%,  14%,  +391,   -423
+  buy back 5 min after the fill                |   -68 ..   -50 |   -53 ..    -6 |  49%,  20%,  +444,   -524
+  buy back 10 min after the fill               |   -74 ..   -54 |   -45 ..    +6 |  48%,  26%,  +534,   -579
+  buy back 15 min after the fill               |   -87 ..   -62 |   -57 ..    -3 |  45%,  32%,  +640,   -634
+  buy back 30 min after the fill               |   -82 ..   -49 |   -26 ..   +37 |  43%,  41%,  +909,   -728
+  buy back 60 min after the fill               |  -110 ..   -69 |   -59 ..    +7 |  35%,  54%, +1273,   -781
+  buy back at the first close netting >= $0    |   -70 ..   -49 |   -41 ..    -4 |  77%,  23%,  +219,   -911
+  buy back at the first close netting >= $25   |   -68 ..   -44 |   -46 ..    -8 |  75%,  25%,  +241,   -904
+  buy back at the first close netting >= $50   |   -62 ..   -36 |   -35 ..    +5 |  74%,  26%,  +276,   -903
+  buy back at the first close netting >= $100  |   -72 ..   -44 |   -34 ..    +7 |  71%,  29%,  +318,   -892
+  buy back at the first close netting >= $200  |   -87 ..   -52 |   -31 ..   +17 |  67%,  33%,  +392,   -897
+
+exits profitable in BOTH 2025 and 2026 (strict): 0 of 13

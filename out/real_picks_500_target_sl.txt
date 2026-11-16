@@ -1,0 +1,29 @@
+REAL PICKS 2026-10-29..11-14 (20 trades), 20x, 50% of $1,640 as margin (position ~$16,400), take +$500 after fees
+(a 3.25% fall). THE STOP ALWAYS FIRES BEFORE LIQUIDATION (20x liquidation is ~+2.5%). Fill 0.1% past the stop.
+
+day    coin      |          STOP +2.25% |          STOP +2.00% |          STOP +1.50% |          STOP +1.00%
+10-29  EVAA      |    TP  00:35 $  +500 |    TP  00:35 $  +500 |    TP  00:35 $  +500 |    TP  00:35 $  +500
+10-29  INIT      |    TP  00:25 $  +500 |    TP  00:25 $  +500 |    TP  00:25 $  +500 |    TP  00:25 $  +500
+10-30  BEAT      |    TP  00:18 $  +500 |    SL  00:02 $  -378 |    SL  00:02 $  -296 |    SL  00:02 $  -213
+10-30  PARTI     |    TP  00:21 $  +500 |    TP  00:21 $  +500 |    SL  00:05 $  -296 |    SL  00:00 $  -213
+10-31  AIN       |    SL  00:16 $  -419 |    SL  00:16 $  -378 |    SL  00:15 $  -296 |    SL  00:15 $  -213
+10-31  SOPH      |    SL  00:22 $  -419 |    SL  00:20 $  -378 |    SL  00:19 $  -296 |    SL  00:00 $  -213
+11-01  AIN       |    SL  00:49 $  -419 |    SL  00:31 $  -378 |    SL  00:17 $  -296 |    SL  00:17 $  -213
+11-01  EVAA      |    TP  00:17 $  +500 |    TP  00:17 $  +500 |    SL  00:10 $  -296 |    SL  00:10 $  -213
+11-02  AIN       |    TP  03:07 $  +500 |    TP  03:07 $  +500 |    TP  03:07 $  +500 |    SL  00:54 $  -213
+11-02  ESPORTS   |    SL  00:00 $  -419 |    SL  00:00 $  -378 |    SL  00:00 $  -296 |    SL  00:00 $  -213
+11-03  ARIA      |    SL  01:22 $  -419 |    SL  01:22 $  -378 |    SL  01:19 $  -296 |    SL  01:18 $  -213
+11-04  AIO       |    TP  00:26 $  +500 |    TP  00:26 $  +500 |    TP  00:26 $  +500 |    SL  00:11 $  -213
+11-06  ARIA      |    TP  00:48 $  +500 |    TP  00:48 $  +500 |    SL  00:16 $  -296 |    SL  00:16 $  -213
+11-07  AIO       |    SL  00:11 $  -419 |    SL  00:07 $  -378 |    SL  00:07 $  -296 |    SL  00:06 $  -213
+11-09  AIOT      |    SL  00:09 $  -419 |    SL  00:02 $  -378 |    SL  00:01 $  -296 |    SL  00:01 $  -213
+11-10  PIEVERSE  |    SL  00:09 $  -419 |    SL  00:09 $  -378 |    SL  00:07 $  -296 |    SL  00:05 $  -213
+11-11  ARIA      |    SL  01:38 $  -419 |    SL  00:21 $  -378 |    SL  00:12 $  -296 |    SL  00:09 $  -213
+11-12  ARIA      |    SL  00:05 $  -419 |    SL  00:05 $  -378 |    SL  00:05 $  -296 |    SL  00:05 $  -213
+11-13  HANA      |    TP  03:22 $  +500 |    TP  03:22 $  +500 |    TP  03:22 $  +500 |    SL  00:46 $  -213
+11-14  SOPH      |    TP  00:33 $  +500 |    TP  00:33 $  +500 |    TP  00:33 $  +500 |    TP  00:33 $  +500
+
+STOP +2.25%: {'TP': 10, 'SL': 10} | each stop costs ~$419 | TOTAL $+812 | lowest running total $-188 | with 0.3% slippage on stops: total $+477
+STOP +2.00%: {'TP': 9, 'SL': 11} | each stop costs ~$378 | TOTAL $+345 | lowest running total $-655 | with 0.3% slippage on stops: total $-23
+STOP +1.50%: {'TP': 6, 'SL': 14} | each stop costs ~$296 | TOTAL $-1,138 | lowest running total $-2,138 | with 0.3% slippage on stops: total $-1,604
+STOP +1.00%: {'TP': 3, 'SL': 17} | each stop costs ~$213 | TOTAL $-2,129 | lowest running total $-2,629 | with 0.3% slippage on stops: total $-2,692

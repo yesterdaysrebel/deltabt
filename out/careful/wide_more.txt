@@ -1,0 +1,24 @@
+previous-day funding known for 603 of 617 trades; negative in 50%
+
+FUNDING FILTER, R per trade STRICT .. LENIENT (kept trades only):
+  no filter                        | 2025: 321 trades +0.043 .. +0.070 | 2026+real: 296 trades +0.069 .. +0.091 | all: 617 trades +0.055 .. +0.080 | all t +1.2; 2026 random-skip as good 28%
+  skip if D-1 funding < 0          | 2025: 134 trades +0.158 .. +0.169 | 2026+real: 176 trades +0.075 .. +0.096 | all: 310 trades +0.111 .. +0.127 | all t +1.6; 2026 random-skip as good 46%
+  skip if D-1 funding < -0.1%      | 2025: 169 trades +0.153 .. +0.162 | 2026+real: 199 trades +0.103 .. +0.123 | all: 368 trades +0.126 .. +0.141 | all t +2.0; 2026 random-skip as good 27%
+  keep only D-1 funding >= +0.05%  | 2025:  92 trades +0.152 .. +0.161 | 2026+real: 117 trades +0.061 .. +0.087 | all: 209 trades +0.101 .. +0.120 | all t +1.1; 2026 random-skip as good 53%
+
+ACCOUNT from $3,184 (2025-01-15 .. 2026-11-14), compounding, no month-off, floor $1,000. STRICT .. LENIENT:
+                                     |           end balance | max drawdown |          lowest | 22 starts (strict): median end, worst end, under $1,000, above start
+  all trades             risk 2.0% ($ 64) |    6,068 ..    7,376 |  38% ..  36% |  3,096 ..  3,117 |   4,709,  3,264,  0, 22 of 22
+  all trades             risk 3.0% ($ 96) |    7,475 ..   10,050 |  53% ..  49% |  2,959 ..  3,084 |   5,334,  3,280,  0, 22 of 22
+  all trades             risk 5.0% ($159) |    9,134 ..   15,109 |  73% ..  70% |  2,533 ..  2,945 |   5,612,  3,267,  0, 22 of 22
+  all trades             risk 7.5% ($239) |    7,935 ..   17,229 |  88% ..  85% |  1,858 ..  2,372 |   4,752,    963,  7, 14 of 22
+  skip D-1 funding < 0   risk 2.0% ($ 64) |    5,866 ..    6,462 |  21% ..  20% |  3,117 ..  3,117 |   4,463,  2,998,  0, 21 of 22
+  skip D-1 funding < 0   risk 3.0% ($ 96) |    7,496 ..    8,680 |  30% ..  28% |  3,083 ..  3,084 |   5,107,  2,899,  0, 21 of 22
+  skip D-1 funding < 0   risk 5.0% ($159) |   10,909 ..   14,000 |  47% ..  44% |  3,016 ..  3,017 |   6,268,  2,693,  0, 21 of 22
+  skip D-1 funding < 0   risk 7.5% ($239) |   14,177 ..   20,818 |  64% ..  60% |  2,933 ..  2,933 |   6,959,  2,426,  0, 20 of 22
+
+PER MONTH at a FIXED risk (no compounding), all trades, STRICT .. LENIENT:
+   R per month: mean +1.49 .. +2.16, median +2.04 .. +2.73, worst -10.6 .. -9.8, best +18.5 .. +18.6; winning months 14 .. 14 of 23
+   risking $95 a trade (position $929): average $+141 .. $+205 a month, worst month $-1,004 .. $-931
+   risking $160 a trade (position $1,565): average $+238 .. $+345 a month, worst month $-1,690 .. $-1,568
+   risking $750 a trade (position $7,335): average $+1,117 .. $+1,619 a month, worst month $-7,923 .. $-7,352

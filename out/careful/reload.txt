@@ -1,0 +1,121 @@
+Every number: A, B and C agree trade by trade (asserted).  Net = end balance - $3,184 - reloads.
+
+FULL HISTORY from 2025-01-15
+  run4                     trades  30.. 45 | reloads  0.. 0 = $      0 .. $      0 | end $    836 .. $    854 | NET $  -2,348 .. $  -2,330 | worst $  -2,348 .. $  -2,330
+  run4 reload monthly      trades 152..152 | reloads 14.. 9 = $ 13,040 .. $  6,698 | end $  5,079 .. $  5,089 | NET $ -11,145 .. $  -4,793 | worst $ -13,272 .. $  -6,930
+  run4 reload at 2 stops   trades 459..459 | reloads 49..38 = $ 54,158 .. $ 32,783 | end $  6,771 .. $  8,572 | NET $ -50,571 .. $ -27,395 | worst $ -54,158 .. $ -32,783
+
+2026 from Jan 1
+  run4                     trades  29.. 31 | reloads  0.. 0 = $      0 .. $      0 | end $    950 .. $    825 | NET $  -2,234 .. $  -2,359 | worst $  -2,234 .. $  -2,359
+  run4 reload monthly      trades  76.. 76 | reloads  7.. 5 = $  8,504 .. $  4,162 | end $  5,079 .. $  5,089 | NET $  -6,609 .. $  -2,257 | worst $  -8,736 .. $  -4,394
+  run4 reload at 2 stops   trades 222..222 | reloads 24..19 = $ 29,189 .. $ 17,466 | end $  6,771 .. $  8,572 | NET $ -25,602 .. $ -12,078 | worst $ -29,189 .. $ -17,466
+
+20 REAL PICKS
+  run4                     trades  12.. 12 | reloads  0.. 0 = $      0 .. $      0 | end $  5,702 .. $  7,248 | NET $  +2,518 .. $  +4,064 | worst $      +0 .. $      +0
+  run4 reload monthly      trades  12.. 12 | reloads  0.. 0 = $      0 .. $      0 | end $  5,702 .. $  7,248 | NET $  +2,518 .. $  +4,064 | worst $      +0 .. $      +0
+  run4 reload at 2 stops   trades  12.. 12 | reloads  0.. 0 = $      0 .. $      0 | end $  5,702 .. $  7,248 | NET $  +2,518 .. $  +4,064 | worst $      +0 .. $      +0
+
+22 MONTHLY STARTS (2025-01 .. 2026-10, each run to Nov 14 2026): NET, STRICT .. LENIENT
+  run4                     median $  -2,338 .. $  -2,209 | made money  0 ..  2 of 22 | worst $  -2,832 .. $  -2,376 | best $  -2,188 .. $  +1,435
+  run4 reload monthly      median $  -6,293 .. $  -1,862 | made money  0 ..  4 of 22 | worst $ -11,501 .. $  -5,703 | best $    -360 .. $  +1,626
+  run4 reload at 2 stops   median $ -26,412 .. $ -11,983 | made money  0 ..  4 of 22 | worst $ -51,091 .. $ -29,389 | best $  -1,387 .. $  +2,585
+
+  run4 reload monthly, full history, STRICT, month by month:
+    2025-01 trades  2 T0 L0 S2 P&L   -1,483 | reloaded $     0 (total $      0) | balance   1,701 | net so far $  -1,483
+    2025-02 trades 12 T3 L9 S0 P&L   +3,838 | reloaded $ 1,483 (total $  1,483) | balance   7,022 | net so far $  +2,355
+    2025-03 trades  7 T2 L3 S2 P&L     -254 | reloaded $     0 (total $  1,483) | balance   6,768 | net so far $  +2,101
+    2025-04 trades  4 T0 L2 S2 P&L   -2,883 | reloaded $     0 (total $  1,483) | balance   3,885 | net so far $    -782
+    2025-05 trades  3 T1 L0 S2 P&L   -1,341 | reloaded $     0 (total $  1,483) | balance   2,544 | net so far $  -2,123
+    2025-06 trades  2 T0 L0 S2 P&L   -1,329 | reloaded $   640 (total $  2,123) | balance   1,855 | net so far $  -3,452
+    2025-07 trades  7 T3 L2 S2 P&L     -302 | reloaded $ 1,329 (total $  3,452) | balance   2,882 | net so far $  -3,754
+    2025-08 trades  7 T3 L2 S2 P&L      -84 | reloaded $   302 (total $  3,754) | balance   3,100 | net so far $  -3,838
+    2025-09 trades  2 T0 L0 S2 P&L   -1,329 | reloaded $    84 (total $  3,838) | balance   1,855 | net so far $  -5,167
+    2025-10 trades  4 T2 L0 S2 P&L     -700 | reloaded $ 1,329 (total $  5,167) | balance   2,484 | net so far $  -5,867
+    2025-11 trades 19 T6 L12 S1 P&L   +4,552 | reloaded $   700 (total $  5,867) | balance   7,736 | net so far $  -1,315
+    2025-12 trades  7 T1 L4 S2 P&L   -2,021 | reloaded $     0 (total $  5,867) | balance   5,715 | net so far $  -3,336
+    2026-01 trades  3 T0 L1 S2 P&L   -2,726 | reloaded $     0 (total $  5,867) | balance   2,989 | net so far $  -6,062
+    2026-02 trades  5 T0 L3 S2 P&L   -1,117 | reloaded $   195 (total $  6,062) | balance   2,067 | net so far $  -7,180
+    2026-03 trades 17 T6 L9 S2 P&L   +3,017 | reloaded $ 1,117 (total $  7,180) | balance   6,201 | net so far $  -4,163
+    2026-04 trades  3 T0 L1 S2 P&L   -2,419 | reloaded $     0 (total $  7,180) | balance   3,782 | net so far $  -6,582
+    2026-05 trades  3 T0 L1 S2 P&L   -1,936 | reloaded $     0 (total $  7,180) | balance   1,846 | net so far $  -8,517
+    2026-06 trades 17 T7 L8 S2 P&L     +928 | reloaded $ 1,338 (total $  8,517) | balance   4,112 | net so far $  -7,589
+    2026-07 trades  5 T2 L1 S2 P&L   -1,205 | reloaded $     0 (total $  8,517) | balance   2,907 | net so far $  -8,794
+    2026-08 trades  5 T2 L1 S2 P&L     -626 | reloaded $   277 (total $  8,794) | balance   2,558 | net so far $  -9,421
+    2026-09 trades  2 T0 L0 S2 P&L   -1,365 | reloaded $   626 (total $  9,421) | balance   1,819 | net so far $ -10,786
+    2026-10 trades  7 T2 L3 S2 P&L   -2,255 | reloaded $ 1,365 (total $ 10,786) | balance     929 | net so far $ -13,040
+    2026-11 trades  9 T3 L5 S1 P&L   +1,895 | reloaded $ 2,255 (total $ 13,040) | balance   5,079 | net so far $ -11,145
+
+  run4 reload monthly, full history, LENIENT, month by month:
+    2025-01 trades  2 T0 L0 S2 P&L   -1,329 | reloaded $     0 (total $      0) | balance   1,855 | net so far $  -1,329
+    2025-02 trades 12 T3 L9 S0 P&L   +4,307 | reloaded $ 1,329 (total $  1,329) | balance   7,491 | net so far $  +2,978
+    2025-03 trades  7 T2 L3 S2 P&L      -30 | reloaded $     0 (total $  1,329) | balance   7,461 | net so far $  +2,948
+    2025-04 trades  4 T0 L2 S2 P&L   -2,545 | reloaded $     0 (total $  1,329) | balance   4,917 | net so far $    +404
+    2025-05 trades  3 T1 L0 S2 P&L   -1,602 | reloaded $     0 (total $  1,329) | balance   3,315 | net so far $  -1,198
+    2025-06 trades  2 T0 L0 S2 P&L   -1,383 | reloaded $     0 (total $  1,329) | balance   1,931 | net so far $  -2,582
+    2025-07 trades  7 T3 L2 S2 P&L      -74 | reloaded $ 1,253 (total $  2,582) | balance   3,110 | net so far $  -2,656
+    2025-08 trades  7 T3 L2 S2 P&L       +0 | reloaded $    74 (total $  2,656) | balance   3,184 | net so far $  -2,656
+    2025-09 trades  2 T0 L0 S2 P&L   -1,329 | reloaded $     0 (total $  2,656) | balance   1,855 | net so far $  -3,985
+    2025-10 trades  4 T2 L0 S2 P&L     -700 | reloaded $ 1,329 (total $  3,985) | balance   2,484 | net so far $  -4,685
+    2025-11 trades 19 T6 L12 S1 P&L   +5,862 | reloaded $   700 (total $  4,685) | balance   9,046 | net so far $  +1,178
+    2025-12 trades  7 T1 L4 S2 P&L   -1,614 | reloaded $     0 (total $  4,685) | balance   7,432 | net so far $    -437
+    2026-01 trades  3 T0 L1 S2 P&L   -3,011 | reloaded $     0 (total $  4,685) | balance   4,421 | net so far $  -3,448
+    2026-02 trades  5 T0 L3 S2 P&L   -1,443 | reloaded $     0 (total $  4,685) | balance   2,979 | net so far $  -4,890
+    2026-03 trades 17 T6 L9 S2 P&L   +3,335 | reloaded $   205 (total $  4,890) | balance   6,519 | net so far $  -1,556
+    2026-04 trades  3 T0 L1 S2 P&L   -2,483 | reloaded $     0 (total $  4,890) | balance   4,035 | net so far $  -4,039
+    2026-05 trades  3 T0 L1 S2 P&L   -1,882 | reloaded $     0 (total $  4,890) | balance   2,154 | net so far $  -5,920
+    2026-06 trades 17 T7 L8 S2 P&L   +4,064 | reloaded $ 1,030 (total $  5,920) | balance   7,248 | net so far $  -1,857
+    2026-07 trades  5 T1 L2 S2 P&L   -1,545 | reloaded $     0 (total $  5,920) | balance   5,703 | net so far $  -3,401
+    2026-08 trades  5 T2 L1 S2 P&L   -1,093 | reloaded $     0 (total $  5,920) | balance   4,610 | net so far $  -4,495
+    2026-09 trades  2 T0 L0 S2 P&L   -1,924 | reloaded $     0 (total $  5,920) | balance   2,686 | net so far $  -6,419
+    2026-10 trades  7 T2 L3 S2 P&L     -279 | reloaded $   498 (total $  6,419) | balance   2,905 | net so far $  -6,698
+    2026-11 trades  9 T3 L5 S1 P&L   +1,905 | reloaded $   279 (total $  6,698) | balance   5,089 | net so far $  -4,793
+
+  run4 reload at 2 stops, full history, STRICT, month by month:
+    2025-01 trades 11 T2 L5 S4 P&L     -867 | reloaded $ 2,762 (total $  2,762) | balance   5,079 | net so far $    -867
+    2025-02 trades 12 T3 L9 S0 P&L   +6,046 | reloaded $     0 (total $  2,762) | balance  11,125 | net so far $  +5,179
+    2025-03 trades 17 T5 L8 S4 P&L     +493 | reloaded $     0 (total $  2,762) | balance  11,619 | net so far $  +5,672
+    2025-04 trades 23 T3 L11 S9 P&L  -10,175 | reloaded $ 1,634 (total $  4,397) | balance   3,078 | net so far $  -4,503
+    2025-05 trades 23 T5 L12 S6 P&L   -1,607 | reloaded $ 1,787 (total $  6,183) | balance   3,258 | net so far $  -6,110
+    2025-06 trades 20 T2 L15 S3 P&L   +1,090 | reloaded $ 1,286 (total $  7,469) | balance   5,633 | net so far $  -5,020
+    2025-07 trades 25 T7 L6 S12 P&L   -6,901 | reloaded $ 4,627 (total $ 12,097) | balance   3,359 | net so far $ -11,921
+    2025-08 trades 21 T5 L7 S9 P&L   -5,182 | reloaded $ 4,489 (total $ 16,586) | balance   2,667 | net so far $ -17,103
+    2025-09 trades 26 T7 L7 S12 P&L   -5,985 | reloaded $ 6,672 (total $ 23,258) | balance   3,354 | net so far $ -23,088
+    2025-10 trades 17 T4 L7 S6 P&L   -2,633 | reloaded $ 2,463 (total $ 25,721) | balance   3,184 | net so far $ -25,721
+    2025-11 trades 19 T6 L12 S1 P&L   +4,552 | reloaded $     0 (total $ 25,721) | balance   7,736 | net so far $ -21,169
+    2025-12 trades 23 T5 L13 S5 P&L   -3,106 | reloaded $     0 (total $ 25,721) | balance   4,630 | net so far $ -24,275
+    2026-01 trades 13 T4 L3 S6 P&L   -3,694 | reloaded $ 2,548 (total $ 28,269) | balance   3,483 | net so far $ -27,969
+    2026-02 trades 16 T1 L9 S6 P&L   -3,235 | reloaded $ 2,969 (total $ 31,238) | balance   3,217 | net so far $ -31,205
+    2026-03 trades 26 T6 L14 S6 P&L     -638 | reloaded $   604 (total $ 31,842) | balance   3,184 | net so far $ -31,842
+    2026-04 trades 21 T6 L6 S9 P&L   -4,739 | reloaded $ 5,285 (total $ 37,127) | balance   3,730 | net so far $ -36,581
+    2026-05 trades 25 T5 L12 S8 P&L   -3,919 | reloaded $ 3,585 (total $ 40,713) | balance   3,396 | net so far $ -40,500
+    2026-06 trades 22 T7 L11 S4 P&L   -2,376 | reloaded $ 2,164 (total $ 42,877) | balance   3,184 | net so far $ -42,877
+    2026-07 trades 19 T6 L7 S6 P&L   -2,197 | reloaded $ 2,197 (total $ 45,073) | balance   3,184 | net so far $ -45,073
+    2026-08 trades 28 T7 L14 S7 P&L   -1,624 | reloaded $ 1,401 (total $ 46,474) | balance   2,961 | net so far $ -46,697
+    2026-09 trades 24 T9 L7 S8 P&L   -1,664 | reloaded $ 3,048 (total $ 49,522) | balance   4,345 | net so far $ -48,361
+    2026-10 trades 19 T5 L8 S6 P&L   -4,776 | reloaded $ 4,636 (total $ 54,158) | balance   4,205 | net so far $ -53,137
+    2026-11 trades  9 T3 L5 S1 P&L   +2,566 | reloaded $     0 (total $ 54,158) | balance   6,771 | net so far $ -50,571
+
+  run4 reload at 2 stops, full history, LENIENT, month by month:
+    2025-01 trades 11 T2 L5 S4 P&L     -511 | reloaded $ 2,559 (total $  2,559) | balance   5,232 | net so far $    -511
+    2025-02 trades 12 T3 L9 S0 P&L   +7,073 | reloaded $     0 (total $  2,559) | balance  12,305 | net so far $  +6,562
+    2025-03 trades 17 T5 L8 S4 P&L   +3,496 | reloaded $     0 (total $  2,559) | balance  15,801 | net so far $ +10,058
+    2025-04 trades 23 T3 L11 S9 P&L  -11,757 | reloaded $     0 (total $  2,559) | balance   4,044 | net so far $  -1,699
+    2025-05 trades 23 T5 L12 S6 P&L     -951 | reloaded $   768 (total $  3,327) | balance   3,861 | net so far $  -2,650
+    2025-06 trades 20 T2 L15 S3 P&L   +1,902 | reloaded $   935 (total $  4,261) | balance   6,698 | net so far $    -748
+    2025-07 trades 25 T7 L6 S12 P&L   -6,453 | reloaded $ 3,115 (total $  7,376) | balance   3,359 | net so far $  -7,201
+    2025-08 trades 21 T5 L7 S9 P&L   -3,549 | reloaded $ 2,873 (total $ 10,249) | balance   2,683 | net so far $ -10,750
+    2025-09 trades 26 T7 L7 S12 P&L   -4,721 | reloaded $ 5,392 (total $ 15,641) | balance   3,354 | net so far $ -15,471
+    2025-10 trades 17 T4 L7 S6 P&L   -2,083 | reloaded $ 1,913 (total $ 17,554) | balance   3,184 | net so far $ -17,554
+    2025-11 trades 19 T6 L12 S1 P&L   +5,862 | reloaded $     0 (total $ 17,554) | balance   9,046 | net so far $ -11,692
+    2025-12 trades 23 T5 L13 S5 P&L   -1,071 | reloaded $     0 (total $ 17,554) | balance   7,975 | net so far $ -12,763
+    2026-01 trades 13 T4 L3 S6 P&L   -4,706 | reloaded $   407 (total $ 17,961) | balance   3,677 | net so far $ -17,469
+    2026-02 trades 16 T1 L9 S6 P&L   -3,084 | reloaded $ 2,625 (total $ 20,586) | balance   3,217 | net so far $ -20,553
+    2026-03 trades 26 T6 L14 S6 P&L     -287 | reloaded $   253 (total $ 20,839) | balance   3,184 | net so far $ -20,839
+    2026-04 trades 21 T6 L6 S9 P&L   -3,531 | reloaded $ 4,133 (total $ 24,973) | balance   3,787 | net so far $ -24,370
+    2026-05 trades 25 T5 L12 S8 P&L   -3,078 | reloaded $ 2,824 (total $ 27,797) | balance   3,533 | net so far $ -27,448
+    2026-06 trades 22 T7 L11 S4 P&L   +2,245 | reloaded $     0 (total $ 27,797) | balance   5,778 | net so far $ -25,203
+    2026-07 trades 19 T5 L8 S6 P&L   -2,379 | reloaded $     0 (total $ 27,797) | balance   3,399 | net so far $ -27,582
+    2026-08 trades 28 T7 L14 S7 P&L     -910 | reloaded $   473 (total $ 28,270) | balance   2,962 | net so far $ -28,492
+    2026-09 trades 24 T8 L8 S8 P&L   -1,248 | reloaded $ 2,261 (total $ 30,531) | balance   3,975 | net so far $ -29,740
+    2026-10 trades 19 T5 L8 S6 P&L     -921 | reloaded $ 2,252 (total $ 32,783) | balance   5,306 | net so far $ -30,661
+    2026-11 trades  9 T3 L5 S1 P&L   +3,266 | reloaded $     0 (total $ 32,783) | balance   8,572 | net so far $ -27,395

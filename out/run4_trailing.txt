@@ -1,0 +1,17 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+SELF-CHECK PASSED: with no trail and no early breakeven this simulator equals clean_compare.short trade by trade.
+
+RUN 4 (scaled, 2-stops/month limit, extra margin) from $3,184; STRICT .. LENIENT
+
+  variant                                |     20 real picks |  2026 (to Nov 14) |     history end | starts <$1k |       med 12 mo | 2026 outcomes (strict): target / locked / breakeven / STOP
+  as built (lock at 1%, no trail)        |   2,589 ..   3,307 |     847 ..   2,125 |     38 ..    235 |   12 ..  8 |    587 ..  1,447 |         29 /     31 /         0 /   22
+  A: trail 0.5% after the lock           |   2,436 ..   3,159 |     713 ..   1,758 |     37 ..    219 |   13 ..  8 |    478 ..  1,236 |         26 /     34 /         0 /   22
+  A: trail 0.8% after the lock           |   2,589 ..   3,307 |     871 ..   2,241 |     37 ..    245 |   12 ..  8 |    607 ..  1,508 |         29 /     31 /         0 /   22
+  A: trail 1.0% after the lock           |   2,589 ..   3,307 |     847 ..   2,151 |     38 ..    238 |   12 ..  8 |    588 ..  1,447 |         29 /     31 /         0 /   22
+  B: breakeven after 0.5%, lock at 1%    |   1,732 ..   2,280 |      39 ..     360 |     49 ..    132 |   21 .. 12 |    127 ..    549 |         27 /     20 /        36 /   20
+  C: breakeven 0.5% + trail 0.8%         |   1,732 ..   2,280 |      41 ..     373 |     47 ..    135 |   21 .. 12 |    131 ..    542 |         27 /     20 /        36 /   20
+
+  2026 month by month, C: breakeven 0.5% + trail 0.8%, STRICT: 01 -1,664->1,520  02 -758->762  03 +116->878  04 +106->984  05 -340->644  06 -137->507  07 -169->339  08 +12->351  09 -150->200  10 -159->41  11 +0->41
+
+  2026 month by month, C: breakeven 0.5% + trail 0.8%, LENIENT: 01 -1,362->1,822  02 -842->979  03 +400->1,379  04 +319->1,699  05 -262->1,437  06 +227->1,664  07 -494->1,170  08 +600->1,770  09 -739->1,031  10 -385->647  11 -274->373

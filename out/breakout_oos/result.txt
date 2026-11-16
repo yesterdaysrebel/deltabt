@@ -1,0 +1,35 @@
+%R BREAKOUT WITH A 3-TO-1 BRACKET -- the pre-registered confirmation run (docs/breakout_3r_prereg.md)
+data: 30 coins, 2026-03-01..07-31, 5,594,272 one-minute bars, 615 of 3,917 coin-days kept (liquid, not in data A or B). Before fees unless said.
+
+===== stop 2% / target 6%   (JUDGED)
+   EXACT, all            1198 trades  win  38%  avg win +3.15%  avg loss -1.82%  mean +0.0459%  t +0.57   hold: median 540 min; target 13% stop 54% 24h 33%
+   EXACT, first half      530 trades  win  43%  avg win +2.84%  avg loss -1.77%  mean +0.1966%  t +1.73
+   EXACT, second half     668 trades  win  34%  avg win +3.47%  avg loss -1.86%  mean -0.0736%  t -0.66
+   signal longs           607 trades  win  36%  avg win +3.21%  avg loss -1.83%  mean -0.0153%  t -0.13
+   random longs          3112 trades  win  35%  avg win +3.27%  avg loss -1.80%  mean -0.0164%  t -0.15
+   signal shorts          591 trades  win  39%  avg win +3.10%  avg loss -1.82%  mean +0.1088%  t +0.81
+   random shorts         3103 trades  win  37%  avg win +3.20%  avg loss -1.81%  mean +0.0326%  t +0.31
+   MID fills             1200 trades  win  37%  avg win +3.13%  avg loss -1.85%  mean -0.0112%  t -0.14
+   STRICT fills          1213 trades  win  35%  avg win +3.15%  avg loss -2.02%  mean -0.2229%  t -2.65
+   EXACT, real fees      1198 trades  win  36%  avg win +3.17%  avg loss -1.89%  mean -0.0595%  t -0.74
+   coins with 30+ trades: 8, positive on 5
+
+===== stop 1% / target 3%   (secondary)
+   EXACT, all            2324 trades  win  28%  avg win +2.48%  avg loss -0.99%  mean -0.0192%  t -0.45   hold: median 98 min; target 21% stop 70% 24h 9%
+   EXACT, first half     1004 trades  win  30%  avg win +2.39%  avg loss -0.98%  mean +0.0449%  t +0.67
+   EXACT, second half    1320 trades  win  26%  avg win +2.56%  avg loss -1.00%  mean -0.0679%  t -1.24
+   signal longs          1196 trades  win  27%  avg win +2.52%  avg loss -0.99%  mean -0.0531%  t -0.86
+   random longs          5976 trades  win  27%  avg win +2.48%  avg loss -0.99%  mean -0.0475%  t -1.12
+   signal shorts         1128 trades  win  29%  avg win +2.44%  avg loss -0.99%  mean +0.0169%  t +0.24
+   random shorts         6066 trades  win  29%  avg win +2.51%  avg loss -0.99%  mean +0.0398%  t +0.74
+   MID fills             2344 trades  win  27%  avg win +2.47%  avg loss -1.04%  mean -0.0815%  t -1.88
+   STRICT fills          2336 trades  win  26%  avg win +2.47%  avg loss -1.20%  mean -0.2464%  t -4.48
+   EXACT, real fees      2324 trades  win  28%  avg win +2.43%  avg loss -1.09%  mean -0.1168%  t -2.64
+   coins with 30+ trades: 12, positive on 5
+
+   FAIL  EXACT mean > 0 with t >= 2
+   FAIL  EXACT mean > 0 in each half
+   FAIL  MID mean > 0
+   PASS  signal longs > random longs
+   PASS  signal shorts > random shorts
+VERDICT: FAIL

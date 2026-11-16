@@ -1,0 +1,18 @@
+10% margin a trade (ladder 10 -> 5 -> 3%), from $3,184; position = L x margin.
+
+    L  stop                               exit                    | trades  liquidated  full stop  break-even  24 h | avg $/trade at $3,184 | end balance  worst drop  floor
+   3x  rule's 2x ATR (liq. first if closer) hold 24 h               |  1022        0%        15%         0%     84% |      +1.43           | $    4,033      47%   never
+   3x  rule's 2x ATR (liq. first if closer) at +0.25R: to break-even|  1022        0%         9%        35%     55% |      +0.64           | $    3,500      48%   never
+   3x  rule's 2x ATR (liq. first if closer) at +0.5R: to break-even |  1022        0%        13%        11%     76% |      +1.49           | $    4,228      50%   never
+   3x  rule's 2x ATR (liq. first if closer) at +1R: to break-even   |  1022        0%        15%         1%     84% |      +1.34           | $    3,940      48%   never
+
+  10x  rule's 2x ATR (liq. first if closer) hold 24 h               |   123       45%         0%         0%     55% |     -28.03           | $      994      64%   2025-04-23
+  10x  rule's 2x ATR (liq. first if closer) at +0.25R: to break-even|   119       39%         0%        22%     39% |     -29.18           | $      984      66%   2025-04-21
+  10x  rule's 2x ATR (liq. first if closer) at +0.5R: to break-even |   121       42%         0%         3%     55% |     -27.87           | $      995      65%   2025-04-22
+  10x  rule's 2x ATR (liq. first if closer) at +1R: to break-even   |   129       45%         0%         1%     54% |     -27.94           | $      945      66%   2025-04-26
+  10x  tightened to half the liq. distance hold 24 h               |   200        0%        68%         0%     31% |     -17.27           | $    1,000      66%   2025-06-05
+  10x  tightened to half the liq. distance at +0.25R: to break-even|   859        0%        19%        75%      6% |      -3.98           | $      999      71%   2026-07-22
+  10x  tightened to half the liq. distance at +0.5R: to break-even |   864        0%        31%        56%     12% |      -3.69           | $      995      75%   2026-07-26
+  10x  tightened to half the liq. distance at +1R: to break-even   |   284        0%        54%        23%     23% |     -11.93           | $      987      73%   2025-07-20
+
+CHECK PASSED: loop and vectorised trades agree on every trade of every account.

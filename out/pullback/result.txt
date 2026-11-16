@@ -1,0 +1,25 @@
+1m PULLBACK INSIDE A 5m TREND -- the pre-registered test (docs/pullback_5m_trend_prereg.md)
+data: 30 coins, 4,385,840 one-minute bars, 3,066 coin-days; dropped 2,335 for flat minutes, 122 already in data A or B
+universe: BTCUSD ETHUSD SOLUSD EVAAUSD AKEUSD RAREUSD ARIAUSD XRPUSD INITUSD SOPHUSD JCTUSD ZECUSD TACUSD UNIUSD DOGEUSD AAVEUSD VVVUSD FFUSD BNBUSD BLESSUSD AINUSD PIEVERSEUSD ASTERUSD AVAXUSD BTWUSD BCHUSD KITEUSD LINKUSD LTCUSD HYPEUSD
+
+== STRICT
+   all                    2977 trades  mean -0.2784%  t -10.24  win  25%  reached the band ahead  35%   median hold 18 min
+   2026-08-01..09-22      1252 trades  mean -0.2544%  t  -7.32  win  24%  reached the band ahead  36%
+   2026-09-23..11-15      1725 trades  mean -0.2957%  t  -7.70  win  26%  reached the band ahead  34%
+   longs                  1473 trades  mean -0.3116%  t  -7.60  win  24%  reached the band ahead  34%
+   shorts                 1504 trades  mean -0.2458%  t  -6.68  win  25%  reached the band ahead  36%
+   coins with 30+ trades: 13, positive on 0 (0%)
+== LENIENT
+   all                    3020 trades  mean -0.1488%  t  -5.87  win  33%  reached the band ahead  35%   median hold 18 min
+   2026-08-01..09-22      1271 trades  mean -0.1245%  t  -4.02  win  33%  reached the band ahead  36%
+   2026-09-23..11-15      1749 trades  mean -0.1665%  t  -4.49  win  33%  reached the band ahead  34%
+   longs                  1490 trades  mean -0.1818%  t  -4.62  win  32%  reached the band ahead  33%
+   shorts                 1530 trades  mean -0.1167%  t  -3.44  win  34%  reached the band ahead  36%
+   coins with 30+ trades: 13, positive on 0 (0%)
+
+   FAIL  STRICT mean > 0
+   FAIL  t >= 2 by day (STRICT)
+   FAIL  STRICT > 0 in both halves
+   FAIL  STRICT > 0 on 60%+ of coins
+   FAIL  longs and shorts each > 0 under LENIENT
+VERDICT: FAIL   (LENIENT mean <= 0: dead, nothing is tuned)

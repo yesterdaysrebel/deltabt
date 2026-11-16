@@ -330,6 +330,11 @@ class LiveFade:
     """The real account. `client` is a live.client.LiveClient on prod (a fake in tests). Its venue
     methods are synchronous and are called through asyncio.to_thread."""
 
+    #: The run this class trades (a subclass with other rules is another run: live/spike_live.py is run 4, Spike Sell).
+    run_version = RUN_VERSION
+    #: The bot's own buy-backs that are the plan working (any other reason HALTs the account).
+    planned_exits: tuple[str, ...] = ("TIME",)
+
     def __init__(self, client, *, risk_pct: float, start_usd: float, kill_switch_path: str | None = None,
                  protect_wait: float = PROTECT_WAIT, sleep=time.sleep, entries: bool = True):
         self.client = client
@@ -483,10 +488,10 @@ class LiveFade:
         row = await con.fetchrow("SELECT status, run_version FROM fade_live_state WHERE id = 1")
         if not self.entries:
             return row["status"] if row else "OFF"
-        if row is None or row["run_version"] != RUN_VERSION:
+        if row is None or row["run_version"] != self.run_version:
             return await self._begin(con, time.time() if now is None else now)
         if row["status"] == "HALTED" and await con.fetchval(
-                "SELECT reason LIKE $1 FROM fade_live_state WHERE id = 1", f"run {RUN_VERSION} cannot start%"):
+                "SELECT reason LIKE $1 FROM fade_live_state WHERE id = 1", f"run {self.run_version} cannot start%"):
             return await self._begin(con, time.time() if now is None else now)   # the owner may have topped up
         if row["status"] == "OFF":
             await con.execute("UPDATE fade_live_state SET status = 'RUNNING', reason = 'entries back on', at = now() "
@@ -502,17 +507,17 @@ class LiveFade:
         prev = await con.fetchrow("SELECT reason FROM fade_live_state WHERE id = 1")
         top = WRONG_ACCOUNT_RATIO * self.start_usd
         if FLOOR_USD <= bal <= top:
-            status, reason = "RUNNING", f"run {RUN_VERSION} started at ${bal:.2f}"
+            status, reason = "RUNNING", f"run {self.run_version} started at ${bal:.2f}"
         else:
-            status, reason = "HALTED", (f"run {RUN_VERSION} cannot start: wallet ${bal:.2f} is outside "
+            status, reason = "HALTED", (f"run {self.run_version} cannot start: wallet ${bal:.2f} is outside "
                                         f"${FLOOR_USD:.0f}-${top:.0f} (not the sub-account, or not funded)")
         await con.execute(
             "INSERT INTO fade_live_state (id, status, reason, at, balance, balance_at, high_water, run_version, "
             "added_usd) VALUES (1, $1, $2, now(), $3, $4, $3, $5, 0) ON CONFLICT (id) DO UPDATE SET status = $1, "
             "reason = $2, at = now(), balance = $3, balance_at = $4, high_water = $3, run_version = $5, added_usd = 0",
-            status, reason, bal, _ts(now - 0.001), RUN_VERSION)   # read before this pass's own trades
+            status, reason, bal, _ts(now - 0.001), self.run_version)   # read before this pass's own trades
         if status == "RUNNING" or prev is None or prev["reason"] != reason:
-            await event(con, "NEW_RUN", None, {"version": RUN_VERSION, "balance": bal, "status": status, "reason": reason})
+            await event(con, "NEW_RUN", None, {"version": self.run_version, "balance": bal, "status": status, "reason": reason})
             log.warning("fade live: %s", reason)
         return status
 
@@ -628,10 +633,12 @@ class LiveFade:
                           "high_water = GREATEST(COALESCE(high_water, $1), $1) WHERE id = 1", bal, _ts(now))
 
     async def _reconcile(self, con, now: float) -> None:
-        from live.client import VenueError
         from live.reconcile import _signed
         rows = await con.fetch("SELECT * FROM fade_live_positions WHERE status IN ('SENDING', 'OPEN') ORDER BY id")
-        ours = {int(r["product_id"]) for r in rows if r["product_id"] is not None}
+        # a RESTING entry (run 4) can fill between two reads of one pass: its coin is ours too, not a stranger's
+        ours = {int(r["product_id"]) for r in await con.fetch(
+            "SELECT product_id FROM fade_live_positions WHERE status IN ('SENDING', 'OPEN', 'RESTING') "
+            "AND product_id IS NOT NULL")}
         for v in await asyncio.to_thread(self.client.get_positions):
             size = _signed(v)
             try:
@@ -643,17 +650,7 @@ class LiveFade:
                                      "at Delta this bot has no record of; not touched")
         for r in rows:
             if r["status"] == "SENDING":
-                # Sent, outcome never seen (a crash or an ambiguous write): ask by client order id.
-                try:
-                    o = await asyncio.to_thread(self.client.get_order_by_client_id, r["entry_cid"])
-                except VenueError as exc:
-                    await self.set_state(con, "HALTED", f"{r['symbol']} entry outcome unknown: {exc}")
-                    continue
-                if filled(o):
-                    await self._opened(con, r, o, now)
-                else:
-                    await con.execute("UPDATE fade_live_positions SET status = 'FAILED', skip_reason = $2 "
-                                      "WHERE id = $1", r["id"], "the entry never filled at Delta")
+                await self._sent_unknown(con, r, now)
                 continue
             if await asyncio.to_thread(self.venue_size, r["product_id"]) != 0:
                 if r["flat_since"] is not None:
@@ -664,6 +661,21 @@ class LiveFade:
                     await self._check_margin(con, r["id"], now)  # the check after the fill did not complete
                 continue
             await self._closed_at_venue(con, r, now)
+
+    async def _sent_unknown(self, con, r, now: float) -> None:
+        """An entry that was sent and whose outcome was never seen (a crash or an ambiguous write): ask by client
+        order id. Rule A's entry is IOC: not filled means gone. (A run whose entries REST overrides this.)"""
+        from live.client import VenueError
+        try:
+            o = await asyncio.to_thread(self.client.get_order_by_client_id, r["entry_cid"])
+        except VenueError as exc:
+            await self.set_state(con, "HALTED", f"{r['symbol']} entry outcome unknown: {exc}")
+            return
+        if filled(o):
+            await self._opened(con, r, o, now)
+        else:
+            await con.execute("UPDATE fade_live_positions SET status = 'FAILED', skip_reason = $2 "
+                              "WHERE id = $1", r["id"], "the entry never filled at Delta")
 
     async def _closed_at_venue(self, con, r, now: float) -> None:
         """Flat at Delta while we hold it OPEN: its stop, its take-profit (or a liquidation) closed it."""
@@ -694,7 +706,7 @@ class LiveFade:
         await asyncio.to_thread(self.cancel_leftovers, r["product_id"])
         await event(con, "CLOSED_AT_DELTA", r["symbol"], facts)
         log.warning("fade live %s closed at Delta: %s, %s", r["symbol"], reason, pnl)
-        if reason not in BRACKET_EXITS + ("TIME",):
+        if reason not in BRACKET_EXITS + self.planned_exits:
             await self.set_state(con, "HALTED", f"{r['symbol']} closed at Delta by {reason}, not its bracket")
 
     async def _close(self, con, r, now: float, reason: str, why: str) -> None:
@@ -718,7 +730,7 @@ class LiveFade:
             "UPDATE fade_live_positions SET status = 'CLOSED', exit_time = $2, exit_price = $3, exit_fee = $4, "
             "exit_reason = $5, pnl = $6, r = $7 WHERE id = $1", r["id"], _ts(now), ex, fee(row), reason, pnl, rr)
         log.warning("fade live %s closed (%s) at %s: %s", r["symbol"], reason, ex, pnl)
-        if reason != "TIME":
+        if reason not in self.planned_exits:
             await self.set_state(con, "HALTED", f"{r['symbol']} closed by the bot: {why}")
 
     async def _exits(self, con, now: float) -> None:
@@ -910,6 +922,14 @@ def _num_env(src, name: str, default: float) -> float:
         return default
 
 
+def account_class():
+    """The class of the run the bot trades -- ONE place, so the bot (`from_env`) and the operator commands
+    (`fade-live-capital`) can never disagree about the run. Spike Sell (run 4) replaced run 3's rule A (owner
+    2026-11-15, docs/fade_live_spike_prereg.md)."""
+    from live.spike_live import SpikeLive
+    return SpikeLive
+
+
 def from_env(env: dict | None = None) -> tuple[LiveFade | None, str]:
     """(the account, "on") if this process may trade; (an EXITS-ONLY account, why entries are off) if it has
     prod keys but may not trade; (None, why) without prod keys. Makes no venue call: a Delta outage at
@@ -919,8 +939,10 @@ def from_env(env: dict | None = None) -> tuple[LiveFade | None, str]:
         return None, why
     from live.config import client_from_env
     src = os.environ if env is None else env
-    acct = LiveFade(client_from_env(src), risk_pct=_num_env(src, "DELTABOT_RISK_PER_TRADE", 0.0),
-                    start_usd=_num_env(src, "DELTABOT_EQUITY", 1500.0), entries=ok)
+    # Spike Sell (run 4) replaces run 3's rule A (owner 2026-11-15, "decommission rule A"; docs/fade_live_spike_prereg.md).
+    # Run 3's open positions, if any, are still reconciled and bought back by the same machinery.
+    acct = account_class()(client_from_env(src), risk_pct=_num_env(src, "DELTABOT_RISK_PER_TRADE", 0.0),
+                           start_usd=_num_env(src, "DELTABOT_EQUITY", 1500.0), entries=ok)
     if ok:
         log.warning("FADE LIVE ACCOUNT ON (prod): real orders, up to %.0f%% risk, floor $%.0f",
                     100 * acct.risk_pct, FLOOR_USD)
@@ -1050,11 +1072,11 @@ async def record_capital(con, acct: LiveFade, now: float, reset: bool = False) -
     did since. STOPPED + a refill to >= REFILL_MIN_USD within REFILL_BUDGET_USD: the run starts again with
     the high-water mark at the new balance (the ladder back at 10%). Otherwise the mark moves by the same
     dollars. Deposits count against the refill budget; withdrawals do not give it back."""
-    if await con.fetchval("SELECT count(*) FROM fade_live_positions WHERE status IN ('SENDING', 'OPEN')"):
-        return 1, "positions are open: run this after their 24 h exit, when the account is flat"
+    if await con.fetchval("SELECT count(*) FROM fade_live_positions WHERE status IN ('SENDING', 'OPEN', 'RESTING')"):
+        return 1, "positions are open (or entries rest): run this after their exit, when the account is flat"
     st = await con.fetchrow("SELECT status, reason, balance, balance_at, high_water, added_usd, run_version "
                             "FROM fade_live_state WHERE id = 1")
-    if st is None or st["run_version"] != RUN_VERSION or st["balance"] is None:
+    if st is None or st["run_version"] != acct.run_version or st["balance"] is None:
         return 1, "no run of this version has started: nothing to record against"
     if HALT_NOTE in (st["reason"] or ""):
         return 1, (f"something HALTED while the run was stopped -- look first: {st['reason']}; then "
@@ -1105,8 +1127,8 @@ async def capital(database_url: str, env: dict | None = None) -> int:
     from app.persistence.db_auth import connect_kwargs
     from live.config import client_from_env
     src = os.environ if env is None else env
-    acct = LiveFade(client_from_env(src), risk_pct=_num_env(src, "DELTABOT_RISK_PER_TRADE", 0.0),
-                    start_usd=_num_env(src, "DELTABOT_EQUITY", 1500.0))
+    acct = account_class()(client_from_env(src), risk_pct=_num_env(src, "DELTABOT_RISK_PER_TRADE", 0.0),
+                           start_usd=_num_env(src, "DELTABOT_EQUITY", 1500.0))
     con = await asyncpg.connect(**connect_kwargs(database_url))
     try:
         rc, msg = await record_capital(con, acct, time.time(), reset="--reset" in sys.argv)

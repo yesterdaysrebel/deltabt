@@ -1,0 +1,29 @@
+EVERY PICK THE REAL ACCOUNT'S RULE TOOK, 2026-10-29..11-14 (20 trades), replayed at max leverage with 50% of
+$1,640 as margin and a +$500 take-profit (after fees). Delta 1m prices; liquidation on the MARK price.
+Fixed size every trade (no compounding) so each trade is comparable. Times are UTC after 00:00.
+
+day    coin       lev fall for $500 |                NO STOP |               STOP +1% |               STOP +2%
+10-29  EVAA       20x         3.25% |   TP   00:35 $    +500 |   TP   00:35 $    +500 |   TP   00:35 $    +500
+10-29  INIT       20x         3.25% |   TP   00:25 $    +500 |   TP   00:25 $    +500 |   TP   00:25 $    +500
+10-30  BEAT       20x         3.25% |   TP   00:18 $    +500 |   SL   00:02 $    -290 |   SL   00:02 $    -361
+10-30  PARTI      20x         3.25% |   TP   00:21 $    +500 |   SL   00:00 $    -197 |   TP   00:21 $    +500
+10-31  AIN        20x         3.25% |   LIQ  00:16 $    -820 |   SL   00:15 $    -239 |   LIQ  00:16 $    -820
+10-31  SOPH       20x         3.25% |   LIQ  00:22 $    -820 |   SL   00:00 $    -197 |   SL   00:20 $    -361
+11-01  AIN        20x         3.25% |   LIQ  00:52 $    -820 |   SL   00:17 $    -299 |   SL   00:31 $    -361
+11-01  EVAA       20x         3.25% |   TP   00:17 $    +500 |   SL   00:10 $    -197 |   TP   00:17 $    +500
+11-02  AIN        20x         3.25% |   TP   03:07 $    +500 |   SL   00:54 $    -197 |   TP   03:07 $    +500
+11-02  ESPORTS    20x         3.25% |   LIQ  00:00 $    -820 |   LIQ  00:00 $    -820 |   LIQ  00:00 $    -820
+11-03  ARIA       20x         3.25% |   LIQ  01:23 $    -820 |   SL   01:18 $    -197 |   SL   01:22 $    -376
+11-04  AIO        20x         3.25% |   TP   00:26 $    +500 |   SL   00:11 $    -205 |   TP   00:26 $    +500
+11-06  ARIA       20x         3.25% |   TP   00:48 $    +500 |   SL   00:16 $    -243 |   TP   00:48 $    +500
+11-07  AIO        20x         3.25% |   TP   03:04 $    +500 |   SL   00:06 $    -228 |   SL   00:07 $    -392
+11-09  AIOT       20x         3.25% |   LIQ  00:09 $    -820 |   SL   00:01 $    -348 |   SL   00:02 $    -361
+11-10  PIEVERSE   20x         3.25% |   LIQ  00:09 $    -820 |   SL   00:05 $    -197 |   LIQ  00:09 $    -820
+11-11  ARIA       20x         3.25% |   LIQ  01:38 $    -820 |   SL   00:09 $    -266 |   SL   00:21 $    -380
+11-12  ARIA       20x         3.25% |   LIQ  00:05 $    -820 |   LIQ  00:05 $    -820 |   LIQ  00:05 $    -820
+11-13  HANA       20x         3.25% |   TP   03:22 $    +500 |   SL   00:46 $    -212 |   TP   03:22 $    +500
+11-14  SOPH       20x         3.25% |   TP   00:33 $    +500 |   TP   00:33 $    +500 |   TP   00:33 $    +500
+
+NO STOP  : {'TP': 11, 'LIQ': 9} | total $-1,880 | lowest point of the running total $-2,880 (account is $1,640) | biggest slide $-4,880
+STOP +1% : {'TP': 3, 'SL': 15, 'LIQ': 2} | total $-3,650 | lowest point of the running total $-4,150 (account is $1,640) | biggest slide $-5,150
+STOP +2% : {'TP': 9, 'SL': 7, 'LIQ': 4} | total $-1,371 | lowest point of the running total $-2,371 (account is $1,640) | biggest slide $-3,510

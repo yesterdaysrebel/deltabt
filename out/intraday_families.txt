@@ -1,0 +1,53 @@
+SEVEN INTRADAY FAMILIES -- docs/intraday_families_prereg.md. DEV 2026-03..07, TEST 2026-08..11, liquid days, before fees.
+coins loaded: 30; liquid coin-days: 1414; mark data: yes
+
+===== F1 LEAD-LAG: 27 variants (each also mirrored)
+   DEV BTC 0.5% in 5 min, hold 3                     407 trades  mean -0.1028%  t -1.83   | TEST    817  mean +0.0062%  t +0.17
+   DEV BTC 0.3% in 5 min, hold 30                   1421 trades  mean +0.1088%  t +1.44   | TEST   1850  mean +0.0783%  t +0.98
+   DEV BTC 0.3% in 3 min, hold 10                   1065 trades  mean -0.0462%  t -0.83   | TEST   1557  mean +0.0292%  t +0.55
+   DEV BTC 0.3% in 3 min, hold 3                    1218 trades  mean -0.0162%  t -0.78   | TEST   2024  mean -0.0363%  t -1.54
+   CHOSEN on DEV: BTC 0.5% in 5 min, hold 3 MIRRORED (DEV mean +0.1028%, t +1.83)
+   TEST: 817 trades  win 49%  avg win +0.68%  avg loss -0.66%  mean -0.0062%  t -0.17  halves -0.0016% / -0.0081%  after fees -0.1242%   -> FAIL
+
+===== F2 LAST vs FAIR: 9 variants (each also mirrored)
+   DEV gap 0.4%, hold 30                            1380 trades  mean +0.2981%  t +1.92   | TEST   2721  mean -0.1830%  t -1.58
+   DEV gap 0.4%, hold 3                             4398 trades  mean +0.0704%  t +1.87   | TEST   6748  mean -0.0370%  t -0.94
+   DEV gap 0.2%, hold 3                            12950 trades  mean +0.0148%  t +1.41   | TEST  23259  mean -0.0163%  t -1.42
+   DEV gap 0.1%, hold 10                            9905 trades  mean -0.0240%  t -1.39   | TEST  26841  mean +0.0152%  t +1.06
+   CHOSEN on DEV: gap 0.4%, hold 30 as stated (DEV mean +0.2981%, t +1.92)
+   TEST: 2721 trades  win 49%  avg win +3.75%  avg loss -4.02%  mean -0.1830%  t -1.58  halves -0.3365% / -0.1045%  after fees -0.3010%   -> FAIL
+
+===== F3 VOLUME CLIMAX: 6 variants (each also mirrored)
+   DEV move 1.0%, hold 15 (fade)                     207 trades  mean -0.3636%  t -1.03   | TEST    385  mean +0.0225%  t +0.09
+   DEV move 0.5%, hold 60 (fade)                     494 trades  mean -0.2178%  t -1.03   | TEST    700  mean -0.0667%  t -0.36
+   DEV move 0.5%, hold 15 (fade)                     527 trades  mean -0.1379%  t -0.89   | TEST    754  mean +0.0578%  t +0.50
+   DEV move 0.5%, hold 5 (fade)                      546 trades  mean -0.0444%  t -0.63   | TEST    787  mean +0.1096%  t +1.32
+   CHOSEN on DEV: move 1.0%, hold 15 (fade) MIRRORED (DEV mean +0.3636%, t +1.03)
+   TEST: 385 trades  win 46%  avg win +2.58%  avg loss -2.22%  mean -0.0225%  t -0.09  halves -0.1476% / +0.0466%  after fees -0.1405%   -> FAIL
+
+===== F4 HOURLY CROSS-SECTION: 2 variants (each also mirrored)
+   no variant with 200 DEV trades
+
+===== F5 SQUEEZE BREAKOUT: 3 variants (each also mirrored)
+   DEV hold 240 (follow)                            2620 trades  mean -0.1010%  t -1.65   | TEST   2750  mean -0.1987%  t -1.92
+   DEV hold 15 (follow)                             5933 trades  mean -0.0099%  t -0.95   | TEST   6172  mean -0.0191%  t -1.20
+   DEV hold 60 (follow)                             5933 trades  mean -0.0079%  t -0.29   | TEST   6168  mean -0.0228%  t -0.80
+   CHOSEN on DEV: hold 240 (follow) MIRRORED (DEV mean +0.1010%, t +1.65)
+   TEST: 2750 trades  win 54%  avg win +2.22%  avg loss -2.21%  mean +0.1987%  t +1.92  halves +0.2244% / +0.1784%  after fees +0.0807%   -> FAIL
+
+===== F6 YESTERDAY'S HIGH / LOW: 3 variants (each also mirrored)
+   DEV hold 60 (follow)                              554 trades  mean +0.0486%  t +0.31   | TEST    547  mean +0.0890%  t +0.40
+   DEV hold 15 (follow)                              554 trades  mean -0.0186%  t -0.24   | TEST    547  mean +0.0678%  t +0.42
+   DEV hold 240 (follow)                             554 trades  mean -0.0314%  t -0.18   | TEST    547  mean +0.2386%  t +0.65
+   CHOSEN on DEV: hold 60 (follow) as stated (DEV mean +0.0486%, t +0.31)
+   TEST: 547 trades  win 47%  avg win +2.13%  avg loss -1.71%  mean +0.0890%  t +0.40  halves +0.3187% / -0.0932%  after fees -0.0290%   -> FAIL
+
+===== F7 HOUR OF DAY: 24 variants (each also mirrored)
+   DEV 13:00 UTC (long)                              682 trades  mean -0.2338%  t -2.73   | TEST    730  mean +0.0334%  t +0.24
+   DEV 03:00 UTC (long)                              678 trades  mean +0.1456%  t +1.75   | TEST    721  mean -0.1397%  t -0.89
+   DEV 09:00 UTC (long)                              682 trades  mean +0.1363%  t +1.67   | TEST    729  mean +0.1451%  t +0.94
+   DEV 21:00 UTC (long)                              658 trades  mean +0.1164%  t +1.59   | TEST    691  mean +0.1379%  t +1.48
+   CHOSEN on DEV: 13:00 UTC (long) MIRRORED (DEV mean +0.2338%, t +2.73)
+   TEST: 730 trades  win 51%  avg win +1.37%  avg loss -1.49%  mean -0.0334%  t -0.24  halves -0.2285% / +0.1190%  after fees -0.1514%   -> FAIL
+
+PASSED before fees: none

@@ -1,0 +1,8 @@
+CORRECTED stop move (a real buy-stop must sit above the market; if the price is back above the lock level when the
+bot moves it, it fires at once at the market). Rule: spike +5%, 50% margin, 20x, +$500, stop +2.25% -> +$200 lock
+after a 1% fall, off for the month after 2 full stops. Stop fills: worse of stop and the minute's close, +0.1%.
+
+REAL PICKS Oct 29 - Nov 14: $3,184 -> $2,452 (lowest $2,452) {'TARGET': 3, 'LOCKED': 2, 'STOP': 2, 'skip': 7}
+HISTORY from Jan 2025:      $3,184 -> $87 (lowest $87) {'TARGET': 3, 'LOCKED': 46, 'STOP': 23, 'skip': 243}
+21 MONTHLY STARTS: fell under $1,000 in 12; above $3,184 after 3 months in 3; median after 3 mo $1,564, 6 mo $971, 12 mo $502
+EACH TRADE ALONE (history, 604 fills): target 25% locked 45% stop 29% | avg $-71.1/trade; a full stop avg $-844, worst $-1,592

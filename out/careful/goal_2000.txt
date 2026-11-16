@@ -1,0 +1,14 @@
+From $3,184 on each of 615 pick days (2025-01-15 .. 2026-11-14): run until +$2,000 (stop for good) or under $1,000 (the bot stops).
+
+75% margin, +$1,000 target, week off after a win, STRICT : reached +$2,000 first in 204 starts (34% of those that ended), hit the floor first in 396 (66%); still neither by Nov 14: 15
+     days to +$2,000: median 10, fastest 8, slowest 89
+     days to the floor: median 12, fastest 0
+75% margin, +$1,000 target, week off after a win, LENIENT: reached +$2,000 first in 216 starts (36% of those that ended), hit the floor first in 385 (64%); still neither by Nov 14: 14
+     days to +$2,000: median 10, fastest 8, slowest 89
+     days to the floor: median 14, fastest 2
+
+exit C at 10% margin (as approved), STRICT : reached +$2,000 first in 86 starts (100% of those that ended), hit the floor first in 0 (0%); still neither by Nov 14: 529
+     days to +$2,000: median 74, fastest 13, slowest 203
+exit C at 10% margin (as approved), LENIENT: reached +$2,000 first in 338 starts (100% of those that ended), hit the floor first in 0 (0%); still neither by Nov 14: 277
+     days to +$2,000: median 215, fastest 9, slowest 543
+

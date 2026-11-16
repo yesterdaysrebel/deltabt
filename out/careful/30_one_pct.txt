@@ -1,0 +1,11 @@
+30% margin + 15.3% extra, take-profit at a 1% fall, stop 2.25%, 24 h; top pick only. STRICT / LENIENT.
+
+STRICT  per trade at $3,184: 381 trades; 1% fall first 67%, stopped 33% (liquidated 4), 24 h 0; avg win $+163, avg stop $-548; break-even needs 77% wins; avg per trade $-72 (90% range -103 .. -43)
+   every day (bot rules) : full history -> $983 (lowest $983, 22 trades, months up 1 of 6, avg month $-367) | 2026 from Jan 1 -> $982 | 22 monthly starts: median $939, under $1,000 20, above $3,184 1
+   one trade a month     : full history -> $963 (lowest $963, 17 trades, months up 8 of 17, avg month $-131) | 2026 from Jan 1 -> $1,576 | 22 monthly starts: median $1,490, under $1,000 5, above $3,184 1
+
+LENIENT per trade at $3,184: 381 trades; 1% fall first 67%, stopped 33% (liquidated 0), 24 h 0; avg win $+163, avg stop $-460; break-even needs 74% wins; avg per trade $-43 (90% range -69 .. -19)
+   every day (bot rules) : full history -> $978 (lowest $978, 30 trades, months up 1 of 8, avg month $-276) | 2026 from Jan 1 -> $901 | 22 monthly starts: median $979, under $1,000 13, above $3,184 2
+   one trade a month     : full history -> $995 (lowest $995, 18 trades, months up 8 of 18, avg month $-122) | 2026 from Jan 1 -> $1,600 | 22 monthly starts: median $1,513, under $1,000 5, above $3,184 1
+
+CHECK PASSED: p1 and p2 agree on every trade of every account.

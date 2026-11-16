@@ -1,0 +1,17 @@
+SAME STOP (+2.25%), BIGGER TARGET. 20x, 50% of $3,184 as margin = $31,094 position, fixed size each trade.
+
+A) FULL HISTORY: 1,022 Delta picks 2025-01..2026-10, entry at the 00:03 close
+ target fall needed target hit stop hit  24h  needed  avg/trade      2025      2026 green months
+    500       1.81%        54%      46%   0%     61%      -95.1   -69,416   -27,791         4/22
+    750       2.61%        44%      56%   1%     51%     -116.1   -79,124   -39,489         6/22
+  1,000       3.42%        36%      63%   1%     44%     -137.9   -98,174   -42,742         4/22
+  1,500       5.02%        25%      72%   3%     35%     -178.3  -120,065   -62,167         2/22
+  2,000       6.63%        20%      76%   4%     28%     -180.8  -119,493   -65,320         2/22
+  3,000       9.85%        12%      79%   8%     21%     -172.5  -127,522   -48,813         6/22
+
+B) THE 20 REAL PICKS 2026-10-29..11-14 (entry at the bots' 00:00 price), fixed size
+  target $500: 12 targets, 8 stops, 0 at 24 h -> total $-352
+  target $750: 10 targets, 10 stops, 0 at 24 h -> total $-440
+  target $1,000: 10 targets, 10 stops, 0 at 24 h -> total $+2,060
+  target $1,500: 10 targets, 10 stops, 0 at 24 h -> total $+7,060
+  target $2,000: 9 targets, 11 stops, 0 at 24 h -> total $+9,266

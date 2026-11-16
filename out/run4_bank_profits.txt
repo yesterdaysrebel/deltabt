@@ -1,0 +1,35 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Run 4 as built, from $3,184; month-by-month runs (no carry-over), STRICT .. LENIENT. Total = bank + wallet:
+
+  20 real picks            no banking $  5,702 .. $  7,248 | BANK monthly $  5,454 .. $  6,396 (banked $2,270 .. $3,212, wallet $3,184 .. $3,184)
+  2026 to Nov 14           no banking $    110 .. $    700 | BANK monthly $    110 .. $    700 (banked $0 .. $0, wallet $110 .. $700)
+  history 2025-01 .. now   no banking $     43 .. $    128 | BANK monthly $    652 .. $  1,163 (banked $604 .. $1,068, wallet $48 .. $96)
+
+  21 monthly starts with banking: total under $1,000 at the end in 15 .. 9
+
+  2026 with banking, STRICT:
+    2026-01 wallet   3,184 ->   1,629   bank       0   total   1,629
+    2026-02 wallet   1,629 ->   1,005   bank       0   total   1,005
+    2026-03 wallet   1,005 ->   2,135   bank       0   total   2,135
+    2026-04 wallet   2,135 ->   1,479   bank       0   total   1,479
+    2026-05 wallet   1,479 ->     819   bank       0   total     819
+    2026-06 wallet     819 ->     691   bank       0   total     691
+    2026-07 wallet     691 ->     466   bank       0   total     466
+    2026-08 wallet     466 ->     351   bank       0   total     351
+    2026-09 wallet     351 ->     201   bank       0   total     201
+    2026-10 wallet     201 ->      72   bank       0   total      72
+    2026-11 wallet      72 ->     110   bank       0   total     110
+
+  2026 with banking, LENIENT:
+    2026-01 wallet   3,184 ->   2,146   bank       0   total   2,146
+    2026-02 wallet   2,146 ->   1,422   bank       0   total   1,422
+    2026-03 wallet   1,422 ->   3,064   bank       0   total   3,064
+    2026-04 wallet   3,064 ->   2,238   bank       0   total   2,238
+    2026-05 wallet   2,238 ->   1,325   bank       0   total   1,325
+    2026-06 wallet   1,325 ->   1,123   bank       0   total   1,123
+    2026-07 wallet   1,123 ->     923   bank       0   total     923
+    2026-08 wallet     923 ->     718   bank       0   total     718
+    2026-09 wallet     718 ->     418   bank       0   total     418
+    2026-10 wallet     418 ->     461   bank       0   total     461
+    2026-11 wallet     461 ->     700   bank       0   total     700

@@ -1,0 +1,58 @@
+CHECK PASSED: implementations A (vectorised) and B (live.options_paper.leg_pnl) agree on every leg, all three settlements.
+legs with a strike: 2680; with Delta's settlement_price: 2680 (state expired 2680)
+settlement payout Delta vs perp-12:00 stand-in: median |diff| $0.0000/leg, mean $0.0170, max $0.77; same in/out-of-the-money on 98.8% of legs
+
+=== sold at 0.9 x mark ===
+ S00 lab's 00:00 price
+   BUILD 2025                     n  702 | win  74% | mean  +13.80 bps (t +1.63) | avg win  +89.6 avg loss  -201.2 | worst    -989 bps
+   TEST 2026 (to 10-27)           n  600 | win  76% | mean  +24.35 bps (t +3.35) | avg win  +74.6 avg loss  -137.6 | worst   -1577 bps
+   PAPER period 10-28..11-15      n   38 | win  71% | mean  -17.41 bps (t -0.42) | avg win  +78.5 avg loss  -252.8 | worst    -617 bps
+   ALL                            n 1340 | win  75% | mean  +17.64 bps (t +3.14) | avg win  +82.5 avg loss  -176.0 | worst   -1577 bps
+ S12 perp at 12:00
+   BUILD 2025                     n  702 | win  66% | mean  -15.46 bps (t -1.58) | avg win  +87.1 avg loss  -210.3 | worst   -1723 bps
+   TEST 2026 (to 10-27)           n  600 | win  64% | mean  -14.60 bps (t -1.68) | avg win  +69.1 avg loss  -163.3 | worst   -1801 bps
+   PAPER period 10-28..11-15      n   38 | win  61% | mean  -42.33 bps (t -1.18) | avg win  +61.8 avg loss  -202.1 | worst    -550 bps
+   ALL                            n 1340 | win  65% | mean  -15.84 bps (t -2.43) | avg win  +78.4 avg loss  -188.6 | worst   -1801 bps
+ DLT Delta settlement
+   BUILD 2025                     n  702 | win  64% | mean  -16.06 bps (t -1.64) | avg win  +88.1 avg loss  -204.3 | worst   -1703 bps
+   TEST 2026 (to 10-27)           n  600 | win  64% | mean  -13.95 bps (t -1.59) | avg win  +69.8 avg loss  -159.6 | worst   -1861 bps
+   PAPER period 10-28..11-15      n   38 | win  55% | mean  -38.19 bps (t -1.11) | avg win  +67.9 avg loss  -169.2 | worst    -547 bps
+   ALL                            n 1340 | win  64% | mean  -15.75 bps (t -2.41) | avg win  +79.4 avg loss  -182.9 | worst   -1861 bps
+   BTC BUILD 2025                 n  351 | win  68% | mean   -6.62 bps (t -0.92) | avg win  +57.2 avg loss  -139.2 | worst    -787 bps
+   BTC TEST 2026 (to 10-27)       n  300 | win  64% | mean  -11.13 bps (t -1.51) | avg win  +54.6 avg loss  -128.0 | worst   -1052 bps
+   ETH BUILD 2025                 n  351 | win  61% | mean  -25.51 bps (t -1.83) | avg win +122.1 avg loss  -258.9 | worst   -1703 bps
+   ETH TEST 2026 (to 10-27)       n  300 | win  63% | mean  -16.78 bps (t -1.52) | avg win  +85.1 avg loss  -190.3 | worst   -1861 bps
+
+=== sold at 1.0 x mark ===
+ S00 lab's 00:00 price
+   BUILD 2025                     n  702 | win  75% | mean  +27.07 bps (t +3.20) | avg win +101.1 avg loss  -194.1 | worst    -976 bps
+   TEST 2026 (to 10-27)           n  600 | win  78% | mean  +34.95 bps (t +4.79) | avg win  +83.1 avg loss  -135.9 | worst   -1571 bps
+   PAPER period 10-28..11-15      n   38 | win  71% | mean   -7.48 bps (t -0.18) | avg win  +89.1 avg loss  -244.6 | worst    -608 bps
+   ALL                            n 1340 | win  76% | mean  +29.62 bps (t +5.26) | avg win  +92.5 avg loss  -171.7 | worst   -1571 bps
+ S12 perp at 12:00
+   BUILD 2025                     n  702 | win  68% | mean   -2.19 bps (t -0.22) | avg win  +97.1 avg loss  -209.9 | worst   -1704 bps
+   TEST 2026 (to 10-27)           n  600 | win  66% | mean   -4.00 bps (t -0.46) | avg win  +77.3 avg loss  -159.5 | worst   -1795 bps
+   PAPER period 10-28..11-15      n   38 | win  61% | mean  -32.40 bps (t -0.90) | avg win  +72.1 avg loss  -192.7 | worst    -539 bps
+   ALL                            n 1340 | win  67% | mean   -3.86 bps (t -0.59) | avg win  +87.7 avg loss  -186.1 | worst   -1795 bps
+ DLT Delta settlement
+   BUILD 2025                     n  702 | win  67% | mean   -2.80 bps (t -0.29) | avg win  +97.0 avg loss  -207.5 | worst   -1684 bps
+   TEST 2026 (to 10-27)           n  600 | win  65% | mean   -3.35 bps (t -0.38) | avg win  +77.8 avg loss  -156.2 | worst   -1856 bps
+   PAPER period 10-28..11-15      n   38 | win  58% | mean  -28.26 bps (t -0.82) | avg win  +74.7 avg loss  -169.9 | worst    -535 bps
+   ALL                            n 1340 | win  66% | mean   -3.77 bps (t -0.58) | avg win  +87.9 avg loss  -182.7 | worst   -1856 bps
+
+=== sold at 0.8 x mark ===
+ S00 lab's 00:00 price
+   BUILD 2025                     n  702 | win  72% | mean   +0.54 bps (t +0.06) | avg win  +79.7 avg loss  -199.5 | worst   -1006 bps
+   TEST 2026 (to 10-27)           n  600 | win  74% | mean  +13.77 bps (t +1.90) | avg win  +66.7 avg loss  -135.6 | worst   -1583 bps
+   PAPER period 10-28..11-15      n   38 | win  71% | mean  -27.32 bps (t -0.66) | avg win  +67.9 avg loss  -261.0 | worst    -625 bps
+   ALL                            n 1340 | win  73% | mean   +5.67 bps (t +1.01) | avg win  +73.4 avg loss  -174.0 | worst   -1583 bps
+ S12 perp at 12:00
+   BUILD 2025                     n  702 | win  63% | mean  -28.72 bps (t -2.94) | avg win  +76.9 avg loss  -211.7 | worst   -1743 bps
+   TEST 2026 (to 10-27)           n  600 | win  62% | mean  -25.19 bps (t -2.89) | avg win  +60.7 avg loss  -167.3 | worst   -1807 bps
+   PAPER period 10-28..11-15      n   38 | win  58% | mean  -52.24 bps (t -1.46) | avg win  +54.3 avg loss  -198.7 | worst    -561 bps
+   ALL                            n 1340 | win  63% | mean  -27.80 bps (t -4.27) | avg win  +69.1 avg loss  -191.2 | worst   -1807 bps
+ DLT Delta settlement
+   BUILD 2025                     n  702 | win  62% | mean  -29.32 bps (t -3.00) | avg win  +77.8 avg loss  -207.0 | worst   -1723 bps
+   TEST 2026 (to 10-27)           n  600 | win  62% | mean  -24.54 bps (t -2.80) | avg win  +61.1 avg loss  -165.3 | worst   -1867 bps
+   PAPER period 10-28..11-15      n   38 | win  53% | mean  -48.10 bps (t -1.40) | avg win  +60.8 avg loss  -169.1 | worst    -558 bps
+   ALL                            n 1340 | win  62% | mean  -27.71 bps (t -4.25) | avg win  +69.9 avg loss  -187.1 | worst   -1867 bps

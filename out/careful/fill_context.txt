@@ -1,0 +1,35 @@
+Spike Sell fills: 2025 321 (stops 101), 2026 + real 296 (stops 89). No filter: 2025 $-94 .. $-49; 2026 $-94 .. $-32 per trade
+
+Median reading before the fill -- trades that STOPPED vs the rest:
+   vol5      2025: stops   +1.6710  rest   +1.3599 | 2026: stops   +1.4143  rest   +1.2485   (missing 38)
+   prem      2025: stops   -0.0002  rest   -0.0002 | 2026: stops   -0.0002  rest   -0.0002   (missing 0)
+   rv60      2025: stops   +0.0034  rest   +0.0035 | 2026: stops   +0.0047  rest   +0.0047   (missing 38)
+   range60   2025: stops   +0.0464  rest   +0.0450 | 2026: stops   +0.0519  rest   +0.0522   (missing 0)
+   run_low   2025: stops   +0.0795  rest   +0.0743 | 2026: stops   +0.0831  rest   +0.0814   (missing 0)
+   gap_high  2025: stops   +0.0022  rest   +0.0019 | 2026: stops   +0.0034  rest   +0.0038   (missing 0)
+   press30   2025: stops   +0.2000  rest   +0.2667 | 2026: stops   +0.1667  rest   +0.1053   (missing 0)
+   last1     2025: stops   -0.0048  rest   -0.0058 | 2026: stops   -0.0086  rest   -0.0094   (missing 0)
+   btc60     2025: stops   +0.0010  rest   +0.0009 | 2026: stops   +0.0001  rest   +0.0006   (missing 0)
+   btc_day   2025: stops   +0.0027  rest   +0.0017 | 2026: stops   +0.0001  rest   +0.0003   (missing 0)
+
+100 skip rules. Top 12 by the 2025 average per KEPT trade (strict), then the same rule on 2026 + real:
+   skip if last1     above -0.0125: 2025 keeps  65 avg   +17 | 2026 keeps 109 avg   -95 ..    -8, stops 29%; random as good 53%
+   skip if prem      above -0.0014: 2025 keeps  65 avg    -1 | 2026 keeps  52 avg  -229 ..  -145, stops 35%; random as good 96%
+   skip if run_low   below +0.1044: 2025 keeps  65 avg   -23 | 2026 keeps  79 avg  -105 ..   -27, stops 30%; random as good 57%
+   skip if run_low   above +0.0665: 2025 keeps 106 avg   -29 | 2026 keeps  87 avg  -123 ..   -86, stops 33%; random as good 70%
+   skip if btc_day   above -0.0001: 2025 keeps 106 avg   -33 | 2026 keeps 133 avg  -101 ..   -39, stops 32%; random as good 57%
+   skip if btc_day   above -0.0020: 2025 keeps  65 avg   -40 | 2026 keeps  74 avg  -129 ..   -61, stops 34%; random as good 72%
+   skip if vol5      below +2.8147: 2025 keeps  80 avg   -43 | 2026 keeps  68 avg  -136 ..   -65, stops 35%; random as good 74%
+   skip if btc_day   above +0.0018: 2025 keeps 161 avg   -44 | 2026 keeps 192 avg   -83 ..   -23, stops 29%; random as good 35%
+   skip if press30   below +0.2500: 2025 keeps 163 avg   -48 | 2026 keeps  92 avg  -125 ..   -80, stops 34%; random as good 72%
+   skip if prem      above -0.0008: 2025 keeps 106 avg   -49 | 2026 keeps  93 avg  -129 ..   -69, stops 31%; random as good 74%
+   skip if btc_day   above +0.0038: 2025 keeps 215 avg   -54 | 2026 keeps 219 avg  -101 ..   -33, stops 30%; random as good 63%
+   skip if last1     below -0.0020: 2025 keeps  65 avg   -55 | 2026 keeps  22 avg  -121 ..   -97, stops 36%; random as good 59%
+
+rules positive on 2025 (strict): 1 of 100; of those positive on 2026 (strict): 0
+all rules on 2026 (strict): positive 1 of 100; best $+24, median $-96 per kept trade
+
+COMBINED MODEL (all readings, fitted on 2025 to predict a stop), keeping the trades it calls safest:
+   safest 25%: 2025 keeps  81 avg $  +47 (stops 17%) | 2026 keeps  89 avg $  -94 .. $  -39 (stops 33%)
+   safest 50%: 2025 keeps 161 avg $  -24 (stops 24%) | 2026 keeps 161 avg $  -65 .. $   -2 (stops 27%)
+   safest 75%: 2025 keeps 241 avg $  -47 (stops 27%) | 2026 keeps 228 avg $  -90 .. $  -22 (stops 29%)

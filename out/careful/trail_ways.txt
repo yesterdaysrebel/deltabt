@@ -1,0 +1,36 @@
+CHECK PASSED: two implementations agree on every trade of all 27 trailing methods, both fills.
+
+Average $ per trade at a fixed $3,184 (617 fills), STRICT .. LENIENT.
+Baselines: Spike Sell as built -94 .. -49 / -94 .. -32; quick book (first close >= $50) -62 .. -41 / -46 .. -22.
+  trailing method                                |           2025 |    2026 + real | all strict: win rate, avg win, avg loss, over +$1,000
+  pct trail 0.5% from the fill                   |   -97 ..   -43 |   -83 ..   -25 |  35%,   +300,   -300,   2%
+  pct trail 1.0% from the fill                   |   -89 ..    -7 |  -112 ..   -20 |  34%,   +423,   -373,   3%
+  pct trail 1.5% from the fill                   |  -110 ..   -40 |  -134 ..   -31 |  34%,   +510,   -445,   5%
+  pct trail 3.0% from the fill                   |  -121 ..   -42 |  -110 ..   -14 |  33%,   +954,   -632,  11%
+  after +$50: break-even, then trail 1%          |  -100 ..   -19 |  -106 ..   -13 |  29%,   +426,   -324,   3%
+  after +$50: break-even, then trail 2%          |   -95 ..   -23 |   -90 ..    +2 |  21%,   +684,   -296,   5%
+  after +$50: break-even, then trail 3%          |   -84 ..   -13 |   -79 ..   +11 |  15%,  +1065,   -280,   6%
+  after +$50: break-even, then trail 5%          |   -63 ..    +5 |   -52 ..   +37 |  10%,  +1772,   -269,   6%
+  after +$150: break-even, then trail 1%         |   -97 ..   -20 |   -96 ..    -4 |  39%,   +420,   -428,   4%
+  after +$150: break-even, then trail 2%         |   -93 ..   -24 |   -86 ..    +8 |  26%,   +692,   -366,   6%
+  after +$150: break-even, then trail 3%         |   -72 ..    -3 |   -84 ..    +9 |  18%,  +1082,   -338,   7%
+  after +$150: break-even, then trail 5%         |   -52 ..   +12 |   -36 ..   +55 |  13%,  +1861,   -320,   8%
+  after +$300: break-even, then trail 1%         |   -97 ..   -25 |  -116 ..   -19 |  53%,   +386,   -661,   4%
+  after +$300: break-even, then trail 2%         |   -98 ..   -31 |  -100 ..    -2 |  34%,   +669,   -495,   8%
+  after +$300: break-even, then trail 3%         |   -74 ..    -9 |  -100 ..    -5 |  24%,  +1046,   -438,   9%
+  after +$300: break-even, then trail 5%         |   -70 ..    -8 |   -65 ..   +30 |  16%,  +1751,   -403,   9%
+  after +$50: break-even, then last 5-min high   |  -105 ..   -32 |   -84 ..    +5 |  24%,   +560,   -305,   4%
+  after +$50: break-even, then last 15-min high  |  -107 ..   -40 |   -62 ..   +20 |  17%,   +914,   -284,   5%
+  after +$50: break-even, then last 30-min high  |   -90 ..   -22 |   -58 ..   +31 |  14%,  +1149,   -278,   6%
+  after +$50: break-even, then last 60-min high  |   -83 ..   -17 |   +24 ..  +110 |  12%,  +1713,   -273,   6%
+  after +$50: break-even, then last 120-min high |   -92 ..   -24 |   -13 ..   +79 |  10%,  +1857,   -272,   5%
+  after +$50: break-even, then 5 x 1m range      |  -102 ..   -32 |   -40 ..   +51 |  17%,   +956,   -285,   5%
+  after +$50: break-even, then 10 x 1m range     |   -86 ..   -22 |   -31 ..   +55 |  14%,  +1300,   -277,   6%
+  after +$50: break-even, then 20 x 1m range     |   -70 ..    -6 |   -10 ..   +81 |  11%,  +1775,   -273,   5%
+  step ratchet $150                              |  -116 ..   -39 |   -86 ..    -5 |  44%,   +343,   -454,   3%
+  step ratchet $250                              |   -98 ..   -23 |  -107 ..   -10 |  38%,   +512,   -475,   4%
+  step ratchet $500                              |  -130 ..   -59 |  -112 ..   -15 |  27%,  +1021,   -548,   8%
+
+profitable in BOTH years (strict): 0 of 27; lenient: 2
+BEST ON 2025 (strict): after +$150: break-even, then trail 5%: 2025 -52 .. +12 -> 2026 -36 .. +55
+least bad over both years (strict): after +$50: break-even, then last 60-min high (-83 / +24); after +$50: break-even, then 20 x 1m range (-70 / -10); after +$150: break-even, then trail 5% (-52 / -36)

@@ -1,0 +1,40 @@
+HARD STOPS WITH A TARGET THAT SCALES WITH THE BALANCE (fixed fall), 20x, 50% margin, stop +2.25%, from $3,184
+
+         target (fall) hard stops | real picks Oct29-Nov14 | history from Jan 2025  lowest taken  hit | 21 monthly starts: under $500 up after 3 mo median 3 mo median 12 mo
+  $500 at start (1.8%)       none |                  2,160 |                    98      98    60  53% |                     20 of 21       1 of 21          83           81
+  $500 at start (1.8%)       week |                  4,072 |                    89      89    52  52% |                     19 of 21       2 of 21         222           64
+  $500 at start (1.8%)      month |                  4,566 |                    74      74    82  55% |                     13 of 21       6 of 21       1,247        1,047
+$1,000 at start (3.4%)       none |                  4,510 |                    63      63    47  36% |                     20 of 21       1 of 21          73           72
+$1,000 at start (3.4%)       week |                  4,910 |                    54      54    47  36% |                     20 of 21       1 of 21          94           91
+$1,000 at start (3.4%)      month |                  9,073 |                    79      79    23  26% |                     19 of 21       5 of 21         800          133
+$1,500 at start (5.0%)       none |                 12,694 |                    71      71    41  22% |                     21 of 21       0 of 21          77           76
+$1,500 at start (5.0%)       week |                  8,305 |                    72      72    45  24% |                     20 of 21       0 of 21          80           77
+$1,500 at start (5.0%)      month |                 13,268 |                    73      73    23  17% |                     19 of 21       3 of 21         769           79
+$2,000 at start (6.6%)       none |                 15,644 |                    95      95    37  16% |                     21 of 21       1 of 21          76           66
+$2,000 at start (6.6%)       week |                 11,721 |                    98      98    37  19% |                     20 of 21       1 of 21          78           76
+$2,000 at start (6.6%)      month |                 17,489 |                    69      69    19  11% |                     19 of 21       3 of 21         475           75
+
+MONTH BY MONTH: target = a 3.4% fall ($1,000 on the starting balance), hard stops per MONTH, from Jan 2025
+month      start taken targets stops skipped      P&L     end   why it stopped
+2025-01    3,184     6       3     3      22     -213   2,971   2 stops: off until next month
+2025-02    2,971     2       0     2      23   -1,481   1,489   2 stops: off until next month
+2025-03    1,489     4       1     3      33     -694     795   2 stops: off until next month
+2025-04      795     4       2     2      43      +40     836   2 stops: off until next month
+2025-05      836     2       0     2      53     -417     419   2 stops: off until next month
+2025-06      419     2       0     2      52     -209     210   2 stops: off until next month
+2025-07      210     2       0     2      58     -105     105   2 stops: off until next month
+2025-08      105     1       0     1      55      -26      79   balance under $100
+2025-09       79     0       0     0      57       +0      79   balance under $100
+2025-10       79     0       0     0      38       +0      79   balance under $100
+2025-11       79     0       0     0      49       +0      79   balance under $100
+2025-12       79     0       0     0      54       +0      79   balance under $100
+2026-01       79     0       0     0      31       +0      79   balance under $100
+2026-02       79     0       0     0      41       +0      79   balance under $100
+2026-03       79     0       0     0      47       +0      79   balance under $100
+2026-04       79     0       0     0      50       +0      79   balance under $100
+2026-05       79     0       0     0      60       +0      79   balance under $100
+2026-06       79     0       0     0      42       +0      79   balance under $100
+2026-07       79     0       0     0      42       +0      79   balance under $100
+2026-08       79     0       0     0      50       +0      79   balance under $100
+2026-09       79     0       0     0      52       +0      79   balance under $100
+2026-10       79     0       0     0      47       +0      79   balance under $100

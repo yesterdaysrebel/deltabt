@@ -1,0 +1,27 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+fills 618; full stops 177 (29%), total $-148,559 strict
+
+best move in our favour before the stop:
+   0.00% .. 0.25%:   98
+   0.25% .. 0.50%:   30
+   0.50% .. 0.75%:   21
+   0.75% .. 1.00%:   28
+   reached 1% (would have locked): 0  <- impossible by construction: those become LOCKED, not stops
+
+minutes from the fill to the stop:
+      1 ..    1 min:   48
+      2 ..    5 min:   37
+      6 ..   30 min:   65
+     31 ..  240 min:   27
+    241 .. 1440 min:    0
+
+median 6 min; stopped within 5 min of the fill: 48%
+never traded below the entry at all: 71
+
+Could an EARLIER stop move save them? Move the stop to break-even (net ~$0) after a smaller fall, then the
+same lock at 1% and trail; per trade on a fixed $3,184, history + 20 real picks, STRICT .. LENIENT:
+   none (as built)        total $  -41,465 .. $  -17,238 | targets 153..153 | full stops 177..177 | break-even exits 0..0
+   after a 0.75% fall     total $  -44,771 .. $  -18,093 | targets 136..136 | full stops 149..149 | break-even exits 119..119
+   after a 0.50% fall     total $  -52,916 .. $  -24,783 | targets 118..118 | full stops 128..128 | break-even exits 212..212
+   after a 0.25% fall     total $  -50,999 .. $  -26,529 | targets 101..101 | full stops 98..98 | break-even exits 295..295

@@ -1,0 +1,14 @@
+STRICT: 459 trades, total $-40,700
+  stop-losses 138 (30%): total $-119,715, average $-867, worst $-2,356
+  everything else 321: total $+79,015, average $+246 (targets 115 avg $+500, locked 206 avg $+104)
+  stop fill vs the stop price: median +0.17%, mean +0.86%, over +0.5% in 25%
+  stopped then back under the stop within 30 min: 86% of stops; minutes from fill to stop: median 10, under 5 min 36%
+  without the stops' slippage past the stop (fill AT the stop) the stops would total about $-101,757 vs $-119,715
+
+LENIENT: 459 trades, total $-18,224
+  stop-losses 138 (30%): total $-103,907, average $-753, worst $-754
+  everything else 321: total $+85,683, average $+267 (targets 115 avg $+500, locked 206 avg $+137)
+  stop fill vs the stop price: median +0.10%, mean +0.10%, over +0.5% in 0%
+  stopped then back under the stop within 30 min: 86% of stops; minutes from fill to stop: median 10, under 5 min 36%
+  without the stops' slippage past the stop (fill AT the stop) the stops would total about $-101,757 vs $-103,907
+

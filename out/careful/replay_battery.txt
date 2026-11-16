@@ -1,0 +1,86 @@
+SANITY PASSED: the replay's reference rule equals the research function on all 1234 trades (both fills).
+
+A. CLEAN RUNS -- every trade against the research rule
+   44 runs, 4458 bot trades, identical 4441, different 17; bot passes 268,044; halts 0; unprotected passes 0; two positions 0; wallet differences over $1: 11
+   A full history                     STRICT  bot 171 trades / reference 171: identical 171, different  0 | wallet $ 1,801.05 vs $ 1,801.05 | RUNNING | passes  11933 | unprotected 0, two positions 0, left open 0+0 OK
+   A full history                     LENIENT bot 171 trades / reference 171: identical 171, different  0 | wallet $ 3,889.83 vs $ 3,889.84 | RUNNING | passes  11933 | unprotected 0, two positions 0, left open 0+0 OK
+   A start 2025-07                    LENIENT bot 140 trades / reference 140: identical 139, different  1 | wallet $ 5,751.56 vs $ 5,765.36 | RUNNING | passes   8937 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (136, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 310.39918693165424, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(324.30557438564307), np.float64(5809.799802061445)))
+   A start 2025-09                    LENIENT bot 125 trades / reference 125: identical 124, different  1 | wallet $ 5,473.20 vs $ 5,487.73 | RUNNING | passes   7580 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (121, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 295.3763843789994, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(310.02077390549863), np.float64(5530.029150675792)))
+   A start 2025-10                    LENIENT bot 123 trades / reference 123: identical 122, different  1 | wallet $ 6,042.95 vs $ 6,055.87 | RUNNING | passes   7526 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (119, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 326.1251181918818, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(339.1339088913503), np.float64(6102.541979300637)))
+   A start 2025-11                    LENIENT bot 117 trades / reference 117: identical 115, different  2 | wallet $ 6,577.04 vs $ 6,573.52 | RUNNING | passes   6926 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (109, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -249.2905350460878, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-260.72599054195115), np.float64(5164.828568688222)))
+        DIFF (113, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 354.948201269159, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(365.2648467316592), np.float64(6624.188627627633)))
+   A start 2025-12                    LENIENT bot  98 trades / reference  98: identical  96, different  2 | wallet $ 6,357.15 vs $ 6,353.98 | RUNNING | passes   5424 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (90, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -240.95612930671348, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-252.7966500700495), np.float64(4991.370484187348)))
+        DIFF (94, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 343.08136237994916, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(354.22718406019396), np.float64(6402.948261104001)))
+   A start 2026-01                    LENIENT bot  91 trades / reference  91: identical  90, different  1 | wallet $ 6,058.50 vs $ 6,071.36 | RUNNING | passes   4920 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (87, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 326.9639384044248, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(339.92150915706935), np.float64(6118.157123758436)))
+   A start 2026-02                    LENIENT bot  87 trades / reference  87: identical  85, different  2 | wallet $ 6,732.02 vs $ 6,728.27 | RUNNING | passes   4850 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (79, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -255.16505392603915, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-266.28832891526235), np.float64(5287.120691225013)))
+        DIFF (83, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 363.3123814535167, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(373.0055342429138), np.float64(6780.127278301132)))
+   A start 2026-03                    LENIENT bot  82 trades / reference  82: identical  80, different  2 | wallet $ 7,476.49 vs $ 7,471.49 | RUNNING | passes   4659 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (74, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -283.38251800594645, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-292.70568623178553), np.float64(5874.830384625356)))
+        DIFF (78, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 403.4894025160493, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(409.74564081323996), np.float64(7529.074988157069)))
+   A start 2026-04                    LENIENT bot  64 trades / reference  64: identical  62, different  2 | wallet $ 6,510.94 vs $ 6,507.53 | RUNNING | passes   3397 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (56, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -246.78532297218712, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-258.347289432001), np.float64(5112.685445114623)))
+        DIFF (60, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 351.3812676408999, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(361.954060707114), np.float64(6557.688941564168)))
+   A start 2026-05                    LENIENT bot  61 trades / reference  61: identical  59, different  2 | wallet $ 7,219.38 vs $ 7,214.82 | RUNNING | passes   3293 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (53, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -273.6371993036168, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-283.63729061684387), np.float64(5671.799037207727)))
+        DIFF (57, (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', 389.6138099599605, 'CLOSED'), (datetime.date(2026, 11, 10), 'PIEVERSEUSD', 52, 102, 'TRAIL', np.float64(397.13790900498634), np.float64(7270.426615944307)))
+   A start 2026-06                    LENIENT bot  58 trades / reference  58: identical  57, different  1 | wallet $ 8,109.80 vs $ 8,103.65 | RUNNING | passes   3241 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (50, (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', -307.38707850039924, 'CLOSED'), (datetime.date(2026, 11, 2), 'ESPORTSUSD', 5, 6, 'STOP', np.float64(-314.80180815600784), np.float64(6375.166043004612)))
+
+B. REAL TICK AND CONTRACT SIZES
+   B real ticks, full history         STRICT  bot 171 trades / reference 171: identical 157, different 14 | wallet $ 1,894.65 vs $ 1,801.05 | RUNNING | passes  11919 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (62, (datetime.date(2025, 11, 12), 'AINUSD', 171, 180, 'TRAIL', -11.715774353999455, 'CLOSED'), (datetime.date(2025, 11, 12), 'AINUSD', 171, 194, 'STOP', np.float64(-68.07269885135302), np.float64(1341.0343474281437)))
+        DIFF (96, (datetime.date(2026, 3, 9), 'SIGNUSD', 195, 510, 'TRAIL', 45.29862004740022, 'CLOSED'), (datetime.date(2026, 3, 9), 'SIGNUSD', 195, 510, 'TRAIL', np.float64(43.061802335663494), np.float64(1491.4982970469084)))
+        DIFF (115, (datetime.date(2026, 6, 3), 'XANUSD', 134, 279, 'TRAIL', 71.98092800125399, 'CLOSED'), (datetime.date(2026, 6, 3), 'XANUSD', 134, 279, 'TRAIL', np.float64(68.52781540972798), np.float64(1119.5991993062794)))
+   B real ticks, full history         LENIENT bot 171 trades / reference 171: identical 165, different  6 | wallet $ 4,041.83 vs $ 3,889.84 | RUNNING | passes  11919 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (62, (datetime.date(2025, 11, 12), 'AINUSD', 171, 180, 'TRAIL', -15.335281877999288, 'CLOSED'), (datetime.date(2025, 11, 12), 'AINUSD', 171, 194, 'STOP', np.float64(-88.96185024672853), np.float64(1752.5512989008012)))
+        DIFF (122, (datetime.date(2026, 6, 13), 'TRUMPUSD', 69, 84, 'TRAIL', -5.0950228559993604, 'CLOSED'), (datetime.date(2026, 6, 13), 'TRUMPUSD', 69, 84, 'TRAIL', np.float64(-3.739537753064838), np.float64(1913.3972198831377)))
+        DIFF (142, (datetime.date(2026, 8, 8), 'SIRENUSD', 51, 55, 'TRAIL', -7.952747462475159, 'CLOSED'), (datetime.date(2026, 8, 8), 'SIRENUSD', 51, 55, 'TRAIL', np.float64(-6.780585684842642), np.float64(3469.400405952357)))
+
+C. A PASS EVERY MINUTE
+   C a pass every minute, 2026-08..11 STRICT  bot  36 trades / reference  36: identical  36, different  0 | wallet $ 3,259.90 vs $ 3,259.90 | RUNNING | passes  18188 | unprotected 0, two positions 0, left open 0+0 OK
+   C a pass every minute, 2026-08..11 LENIENT bot  36 trades / reference  36: identical  36, different  0 | wallet $ 4,061.04 vs $ 4,061.04 | RUNNING | passes  18188 | unprotected 0, two positions 0, left open 0+0 OK
+
+D. FAULTS AND RESTARTS
+   D1 read timeouts                         10 runs | faults injected  5039, restarts     0, bot passes 114,039 | trades  1645 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1645 (double fills 0, bought back at once: 0 events), extra margin landed on 1645; identical to the fault-free trade list: 0 of 10 runs; end wallet vs the fault-free run: -36, -589, +11, +22, -801, +817, +54, -955, +191, +145
+        bot events: ERROR 4870, LOCK_FAILED 28, STOPPED 1, TRAIL_FAILED 39
+   D2 lost / failed writes                  10 runs | faults injected  1668, restarts     0, bot passes 103,079 | trades  1474 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1474 (double fills 0, bought back at once: 0 events), extra margin landed on 1241; identical to the fault-free trade list: 0 of 10 runs; end wallet vs the fault-free run: -152, -343, -803, +1,319, +270, -1,078, -809, +338, -841, +184
+        bot events: ERROR 96, EXTRA_MARGIN_UNCLEAR 430, LOCK_FAILED 359, STOPPED 3, TRAIL_FAILED 656
+   D3 restart every few passes              10 runs | faults injected     0, restarts 13934, bot passes 119,330 | trades  1710 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1710 (double fills 0, bought back at once: 0 events), extra margin landed on 1710; identical to the fault-free trade list: 10 of 10 runs; end wallet vs the fault-free run: +0, +0, +0, +0, +0, +0, +0, +0, +0, +0
+        bot events: 
+   D4 everything at once                    10 runs | faults injected  6564, restarts  8502, bot passes 109,840 | trades  1546 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1546 (double fills 0, bought back at once: 0 events), extra margin landed on 1323; identical to the fault-free trade list: 0 of 10 runs; end wallet vs the fault-free run: +82, +2,544, -480, -1,009, -841, +216, +164, +598, +954, -205
+        bot events: ERROR 4777, EXTRA_MARGIN_UNCLEAR 411, LOCK_FAILED 412, STOPPED 1, TRAIL_FAILED 750
+   D5 margin top-up refused half the time    2 runs | faults injected    79, restarts     0, bot passes  15,042 | trades   178 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 178 (double fills 0, bought back at once: 0 events), extra margin landed on 99; identical to the fault-free trade list: 0 of 2 runs; end wallet vs the fault-free run: -802, -802
+        bot events: EXTRA_MARGIN_REFUSED 79, STOPPED 2
+   D6 order lookup misses 1 in 4            10 runs | faults injected     0, restarts     0, bot passes 119,330 | trades  1710 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1710 (double fills 0, bought back at once: 0 events), extra margin landed on 1710; identical to the fault-free trade list: 0 of 10 runs; end wallet vs the fault-free run: +0, +0, +0, +0, +0, +0, +0, +0, +0, +0
+        bot events: 
+   D7 both picks may fill in one minute      2 runs | faults injected     0, restarts     0, bot passes  23,866 | trades   342 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 342 (double fills 0, bought back at once: 0 events), extra margin landed on 342; identical to the fault-free trade list: 2 of 2 runs; end wallet vs the fault-free run: +0, +0
+        bot events: 
+   D8 everything + lookup misses + both picks may fill 10 runs | faults injected  6477, restarts  8358, bot passes 107,128 | trades  1459 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1459 (double fills 0, bought back at once: 0 events), extra margin landed on 1247; identical to the fault-free trade list: 0 of 10 runs; end wallet vs the fault-free run: -126, -80, -172, +361, -811, +5,684, +805, -237, -50, -1,514
+        bot events: ERROR 4670, EXTRA_MARGIN_UNCLEAR 376, LOCK_FAILED 388, STOPPED 1, TRAIL_FAILED 816
+
+E. LOST ENTRY REPLY (must halt, by design)
+   E lost entry reply, seed 0         STRICT  bot  14 trades / reference 171: identical  14, different 157 | wallet $ 2,739.17 vs $ 1,801.05 | HALTED  | passes   1857 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: SOLVUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open orde
+   E lost entry reply, seed 1         STRICT  bot   3 trades / reference 171: identical   3, different 168 | wallet $ 2,837.07 vs $ 1,801.05 | HALTED  | passes    153 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: TRXUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+   E lost entry reply, seed 2         STRICT  bot  10 trades / reference 171: identical  10, different 161 | wallet $ 2,850.95 vs $ 1,801.05 | HALTED  | passes   1627 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: ENAUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+   E lost entry reply, seed 3         STRICT  bot  49 trades / reference 171: identical  48, different 123 | wallet $ 1,696.12 vs $ 1,801.05 | HALTED  | passes   4459 | unprotected 0, two positions 0, left open 0+0 <<< | faults 2
+        HALT reason: BNBUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+
+Bot end wallet, full history from $3,184: $1,801.05 (strict) .. $3,889.83 (lenient)  [research account, 5.1% vs 5.102% extra margin and stops counted by pick day: $1,801 .. $3,890]

@@ -51,7 +51,10 @@ def test_from_env_makes_no_venue_call_and_is_exits_only_without_the_switch(monke
             raise AssertionError(f"from_env called the venue: {name}")
     monkeypatch.setattr(C, "client_from_env", lambda src: made.append(1) or NoVenue())
     acct, why = L.from_env(ON)
-    assert why == "on" and acct.entries and acct.risk_pct == 0.10 and acct.start_usd == 1500
+    from live.spike_live import RUN_START_USD, SpikeLive
+    # run 4 replaced rule A (2026-11-15): from_env builds it; its new-run wallet check uses the funded $3,184
+    assert why == "on" and acct.entries and acct.risk_pct == 0.10 and isinstance(acct, SpikeLive)
+    assert acct.start_usd == RUN_START_USD == 3184.0 and acct.run_version == 4
     acct, why = L.from_env(dict(ON, DELTABOT_DRY_RUN="1"))
     assert acct is not None and not acct.entries and why.startswith("exits only")
     assert L.from_env(dict(ON, DELTA_ENV="testnet")) == (None, "DELTA_ENV is not prod")

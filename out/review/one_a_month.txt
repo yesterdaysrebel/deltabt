@@ -1,0 +1,24 @@
+=== 75% margin, one trade a month, +$500 target, stop 2.25% ===
+  STRICT : 1 wins, 3 losses; end $518
+     2025-01 15 LDOUSD      STOP    -1,340 ->   1,844
+     2025-02 01 NEIROUSD    TARGET    +500 ->   2,344
+     2025-03 02 HBARUSD     STOP    -1,343 ->   1,001
+     2025-04 02 SPXUSD      STOP      -483 ->     518
+     2025-05 under $1,000 - stopped
+  LENIENT: 1 wins, 4 losses; end $656
+  5,000 random 12-month years, STRICT : up after a year 1%; under $1,000 94%; median end $802; average end $866; made $6,000 (=$500 x 12) 0.0%
+  5,000 random 12-month years, LENIENT: up after a year 1%; under $1,000 91%; median end $826; average end $936; made $6,000 (=$500 x 12) 0.0%
+
+=== 50% margin, one trade a month, +$500 target, stop 2.25% ===
+  STRICT : 1 wins, 4 losses; end $887
+  LENIENT: 1 wins, 5 losses; end $965
+  5,000 random 12-month years, STRICT : up after a year 2%; under $1,000 79%; median end $915; average end $1,110; made $6,000 (=$500 x 12) 0.0%
+  5,000 random 12-month years, LENIENT: up after a year 2%; under $1,000 71%; median end $925; average end $1,199; made $6,000 (=$500 x 12) 0.0%
+
+=== 10% margin, one trade a month, +$500 target, stop 2.25% ===
+  STRICT : 3 wins, 20 losses; end $1,855
+  LENIENT: 3 wins, 20 losses; end $2,019
+  5,000 random 12-month years, STRICT : up after a year 16%; under $1,000 0%; median end $2,292; average end $2,508; made $6,000 (=$500 x 12) 0.0%
+  5,000 random 12-month years, LENIENT: up after a year 21%; under $1,000 0%; median end $2,566; average end $2,644; made $6,000 (=$500 x 12) 0.0%
+
+CHECK PASSED: t1 and t2 agree on every month of every real account.

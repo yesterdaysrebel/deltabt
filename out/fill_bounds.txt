@@ -1,0 +1,10 @@
+THE RANGE: STRICT fill (worse of stop and minute close, as in every table today) vs LENIENT fill (stop price +0.1%).
+Spike +5%, 20x, lock +$200 after a 1% fall. Avg per trade on a fixed $3,184; account from $3,184 with the 2-stops/month hard stop.
+
+  version                                          | avg/trade STRICT  LENIENT | LIQ strict lenient | history end STRICT  LENIENT | real picks STRICT  LENIENT
+  50%, $500, stop 2.25%, no extra (your version)   |           -127.4    -36.6 |         57       0 |                 31      262 |             2,452    3,013
+  50%, $700, stop 2.25%, 25% extra                 |            -71.6    -29.4 |          3       0 |                 40      261 |             2,792    3,407
+  50%, $700, stop 1%, 25% extra                    |            -83.0    -21.7 |          2       0 |              1,190    3,492 |             2,792    3,781
+  50%, $1,000, stop 2.25%, no extra                |           -129.3    -29.0 |         57       0 |                 28      259 |             3,315    4,011
+  75%, $700, stop 2.25%, no extra                  |           -182.5    -49.8 |         57       0 |                 39       40 |             2,950    2,950
+  75%, $700, stop 2.25%, 20% extra                 |           -109.8    -49.8 |          8       0 |                 28       40 |             2,950    2,950

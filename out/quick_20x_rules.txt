@@ -1,0 +1,94 @@
+A) THE REAL PICKS 2026-10-29..11-14 FROM $3,184, WITH THE HARD STOPS (Delta 1m prices, entry at the bots' 00:00 price)
+
+  target $1,000, stops per week : 7 targets, 3 stops, 10 skipped -> $3,184 becomes $6,354 (lowest $3,184)
+  target $1,000, stops per month: 6 targets, 2 stops, 12 skipped -> $3,184 becomes $6,631 (lowest $3,184)
+  target $1,000, stops per none : 9 targets, 11 stops, 0 skipped -> $3,184 becomes $1,952 (lowest $952)
+  target $500, stops per week : 7 targets, 3 stops, 10 skipped -> $3,184 becomes $3,101 (lowest $3,101)
+  target $500, stops per month: 6 targets, 2 stops, 12 skipped -> $3,184 becomes $3,808 (lowest $3,184)
+  target $500, stops per none : 12 targets, 8 stops, 0 skipped -> $3,184 becomes $2,158 (lowest $1,158)
+
+  TRADE BY TRADE: target $1,000, hard stops per week
+  day        coin      balance contracts position      entry fall%     target       stop tgt hit stop hit   result     P&L
+  Thu 10-29  EVAA        3,184    21,521   31,094     1.4448  3.42    1.39544    1.47731   00:35    01:46   TARGET   +1000
+  Thu 10-29  INIT        3,184    13,876   31,094    0.22409  3.42   0.216435   0.229132   02:00    10:54   TARGET   +1000
+  Fri 10-30  BEAT        5,184    49,020   50,000      0.102  2.20   0.099756   0.104295   00:18    03:51   TARGET   +1000
+  Fri 10-30  PARTI       5,184     8,365   50,000    0.05977  2.20  0.0584551  0.0611148   00:18      -     TARGET   +1000
+  Sat 10-31  AIN         7,184                                                                              skipped (3 wins in a row: off until next week)
+  Sat 10-31  SOPH        7,184                                                                              skipped (3 wins in a row: off until next week)
+  Sun 11-01  AIN         7,184                                                                              skipped (3 wins in a row: off until next week)
+  Sun 11-01  EVAA        7,184                                                                              skipped (3 wins in a row: off until next week)
+  Mon 11-02  ESPORTS     7,184    28,852   50,000    0.01733  2.20  0.0169487  0.0177199   00:01    00:00     STOP   -1277
+  Mon 11-02  AIN         7,184     1,728   50,000    0.28942  2.20   0.283053   0.295932   03:05      -     TARGET   +1000
+  Tue 11-03  ARIA        6,907    43,156   50,000    0.11586  2.20   0.113311   0.118467   00:55    01:22   TARGET   +1000
+  Wed 11-04  AIO         7,907    13,785   50,000    0.03627  2.20  0.0354721  0.0370861   00:20    04:30   TARGET   +1000
+  Fri 11-06  ARIA        8,907                                                                              skipped (3 wins in a row: off until next week)
+  Sat 11-07  AIO         8,907                                                                              skipped (3 wins in a row: off until next week)
+  Mon 11-09  AIOT        8,907     3,075   50,000    0.16258  2.20   0.159003   0.166238   00:21    00:09     STOP   -1277
+  Tue 11-10  PIEVERSE    7,631     2,461   50,000     2.0318  2.20     1.9871    2.07752   01:03    00:09     STOP   -1277
+  Wed 11-11  ARIA        6,354                                                                              skipped (2 stops: off until next week)
+  Thu 11-12  ARIA        6,354                                                                              skipped (2 stops: off until next week)
+  Fri 11-13  HANA        6,354                                                                              skipped (2 stops: off until next week)
+  Sat 11-14  SOPH        6,354                                                                              skipped (2 stops: off until next week)
+  -> $6,354
+
+  TRADE BY TRADE: target $1,000, hard stops per month
+  day        coin      balance contracts position      entry fall%     target       stop tgt hit stop hit   result     P&L
+  Thu 10-29  EVAA        3,184    21,521   31,094     1.4448  3.42    1.39544    1.47731   00:35    01:46   TARGET   +1000
+  Thu 10-29  INIT        3,184    13,876   31,094    0.22409  3.42   0.216435   0.229132   02:00    10:54   TARGET   +1000
+  Fri 10-30  BEAT        5,184    49,020   50,000      0.102  2.20   0.099756   0.104295   00:18    03:51   TARGET   +1000
+  Fri 10-30  PARTI       5,184     8,365   50,000    0.05977  2.20  0.0584551  0.0611148   00:18      -     TARGET   +1000
+  Sat 10-31  AIN         7,184                                                                              skipped (3 wins in a row: off until next month)
+  Sat 10-31  SOPH        7,184                                                                              skipped (3 wins in a row: off until next month)
+  Sun 11-01  EVAA        7,184    35,061   50,000     1.4261  2.20    1.39473    1.45819   00:11    07:05   TARGET   +1000
+  Sun 11-01  AIN         7,184     2,136   50,000    0.23404  2.20   0.228891   0.239306   02:16    00:49     STOP   -1277
+  Mon 11-02  ESPORTS     6,907    28,852   50,000    0.01733  2.20  0.0169487  0.0177199   00:01    00:00     STOP   -1277
+  Mon 11-02  AIN         6,907     1,728   50,000    0.28942  2.20   0.283053   0.295932   03:05      -     TARGET   +1000
+  Tue 11-03  ARIA        6,631                                                                              skipped (2 stops: off until next month)
+  Wed 11-04  AIO         6,631                                                                              skipped (2 stops: off until next month)
+  Fri 11-06  ARIA        6,631                                                                              skipped (2 stops: off until next month)
+  Sat 11-07  AIO         6,631                                                                              skipped (2 stops: off until next month)
+  Mon 11-09  AIOT        6,631                                                                              skipped (2 stops: off until next month)
+  Tue 11-10  PIEVERSE    6,631                                                                              skipped (2 stops: off until next month)
+  Wed 11-11  ARIA        6,631                                                                              skipped (2 stops: off until next month)
+  Thu 11-12  ARIA        6,631                                                                              skipped (2 stops: off until next month)
+  Fri 11-13  HANA        6,631                                                                              skipped (2 stops: off until next month)
+  Sat 11-14  SOPH        6,631                                                                              skipped (2 stops: off until next month)
+  -> $6,631
+
+B) THE FULL HISTORY (Delta picks 2025-01..2026-10, entry at the 00:03 close) FROM $3,184, compounding
+
+   target hard stops | from Jan 2025: end  lowest trades  hit | started each month (21 starts): account under $500 above start after 3 mo median after 3 mo
+      500       none |                 89      89     47  36% |                                       21 of 21               0 of 21                81
+      500       week |                 53      53     55  51% |                                       20 of 21               1 of 21                74
+      500      month |                 99      99     23  35% |                                       18 of 21               5 of 21               800
+    1,000       none |                 99      99     41  15% |                                       20 of 21               2 of 21                78
+    1,000       week |                 97      97     34  21% |                                       20 of 21               0 of 21                78
+    1,000      month |                 93      93     21  19% |                                       18 of 21               5 of 21               524
+    1,500       none |                 98      98     45   9% |                                       21 of 21               0 of 21                88
+    1,500       week |                 78      78     36  17% |                                       20 of 21               1 of 21                89
+    1,500      month |                 54      54     22  14% |                                       16 of 21               4 of 21               524
+
+  MONTH BY MONTH: target $1,000, hard stops per month, from Jan 2025
+  month      start taken targets stops skipped      P&L     end
+  2025-01    3,184     6       3     3      22     -347   2,837
+  2025-02    2,837     2       0     2      23   -1,415   1,422
+  2025-03    1,422     4       1     3      33     -386   1,036
+  2025-04    1,036     3       0     2      44     -296     741
+  2025-05      741     2       0     2      53     -369     371
+  2025-06      371     2       0     2      52     -185     186
+  2025-07      186     2       0     2      58      -93      93
+  2025-08       93     0       0     0      56       +0      93
+  2025-09       93     0       0     0      57       +0      93
+  2025-10       93     0       0     0      38       +0      93
+  2025-11       93     0       0     0      49       +0      93
+  2025-12       93     0       0     0      54       +0      93
+  2026-01       93     0       0     0      31       +0      93
+  2026-02       93     0       0     0      41       +0      93
+  2026-03       93     0       0     0      47       +0      93
+  2026-04       93     0       0     0      50       +0      93
+  2026-05       93     0       0     0      60       +0      93
+  2026-06       93     0       0     0      42       +0      93
+  2026-07       93     0       0     0      42       +0      93
+  2026-08       93     0       0     0      50       +0      93
+  2026-09       93     0       0     0      52       +0      93
+  2026-10       93     0       0     0      47       +0      93

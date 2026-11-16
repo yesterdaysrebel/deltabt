@@ -1,0 +1,26 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+Run-4 full stops with time left: 177 -- TRAIN 2025: 91, TEST 2026 + real picks: 86
+
+350 settings tried. On TRAIN (STRICT) 276 have a positive average R.
+
+Top 10 on TRAIN 2025 (STRICT), and what each did on the unseen TEST (STRICT .. LENIENT):
+  setting                                                    |  train n  avg R  win |   test n  avg R strict..lenient  total R
+  5.0% off the high  stop +2.25%            no target (24 h) |   87  +0.53  36% |   82  +0.07 ..  +0.14     +5.4 ..  +11.6
+  5.0% off the high  stop +2.25%            target 12%       |   87  +0.36  36% |   82  +0.07 ..  +0.14     +5.6 ..  +11.7
+  at once            stop 3% above the high target 12%       |   91  +0.32  49% |   86  +0.03 ..  +0.10     +2.8 ..   +8.4
+  120 min after      stop 1% above the high no target (24 h) |   90  +0.32  53% |   86  -0.07 ..  -0.04     -5.9 ..   -3.1
+  30 min after       stop 3% above the high no target (24 h) |   91  +0.31  54% |   86  +0.12 ..  +0.13    +10.3 ..  +11.5
+  120 min after      stop 1% above the high target 12%       |   90  +0.30  53% |   86  +0.12 ..  +0.15    +10.6 ..  +13.3
+  5.0% off the high  stop +2.25%            target 8%        |   87  +0.28  38% |   82  -0.16 ..  -0.08    -13.0 ..   -6.9
+  at once            stop 3% above the high no target (24 h) |   91  +0.28  47% |   86  -0.04 ..  +0.03     -3.3 ..   +2.4
+  30 min after       stop 3% above the high target 12%       |   91  +0.27  55% |   86  +0.16 ..  +0.17    +13.4 ..  +14.5
+  5.0% off the high  stop 1% above the high no target (24 h) |   87  +0.27  57% |   82  -0.04 ..  -0.02     -3.7 ..   -1.9
+
+All 350 settings on TEST (STRICT): positive average R in 197; median +0.01 R
+
+TRAIN-BEST: 5.0% off the high  stop +2.25%            no target (24 h)
+   TRAIN 2025        STRICT : 87 re-sells, win 36%, avg +0.53 R, total +46.0 R  (= $+13,795 risking $300 a trade)
+   TRAIN 2025        LENIENT: 87 re-sells, win 36%, avg +0.56 R, total +48.9 R  (= $+14,661 risking $300 a trade)
+   TEST 2026 + real  STRICT : 82 re-sells, win 23%, avg +0.07 R, total +5.4 R  (= $+1,631 risking $300 a trade)
+   TEST 2026 + real  LENIENT: 82 re-sells, win 23%, avg +0.14 R, total +11.6 R  (= $+3,475 risking $300 a trade)

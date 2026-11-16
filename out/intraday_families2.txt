@@ -1,0 +1,45 @@
+FIVE MORE FAMILIES -- docs/intraday_families2_prereg.md. DEV 2026-03..07, TEST 2026-08..11, liquid days, before fees.
+
+===== H1 OPENING RANGE: 4 variants (each also mirrored)
+   DEV first 30 min, hold 360 (follow)                               679 trades  mean -0.2677%  t -1.55   | TEST    721  mean +0.0079%  t +0.02
+   DEV first 60 min, hold 120 (follow)                               682 trades  mean -0.3330%  t -1.42   | TEST    725  mean +0.1695%  t +0.80
+   DEV first 60 min, hold 360 (follow)                               682 trades  mean -0.4415%  t -0.99   | TEST    725  mean +0.3517%  t +0.95
+   DEV first 30 min, hold 120 (follow)                               679 trades  mean -0.0571%  t -0.45   | TEST    721  mean -0.1655%  t -0.82
+   CHOSEN on DEV: first 30 min, hold 360 (follow) MIRRORED (DEV mean +0.2677%, t +1.55)
+   TEST: 721 trades  win 52%  avg win +3.97%  avg loss -4.37%  mean -0.0079%  t -0.02  halves +0.0443% / -0.0488%  after fees -0.1259%   -> FAIL
+
+===== H2 FIRST PART PREDICTS THE REST: 4 variants (each also mirrored)
+   DEV 00:00 to 8 h, move >= 1%, hold 8 h (follow)                   276 trades  mean +0.1838%  t +0.33   | TEST    403  mean +0.6733%  t +0.79
+   DEV 00:00 to 8 h, move >= 0%, hold 8 h (follow)                   680 trades  mean +0.0260%  t +0.11   | TEST    728  mean +0.4290%  t +0.90
+   DEV 00:00 to 12 h, move >= 0%, hold 8 h (follow)                  682 trades  mean +0.0195%  t +0.08   | TEST    730  mean +0.2763%  t +0.71
+   DEV 00:00 to 12 h, move >= 1%, hold 8 h (follow)                  341 trades  mean -0.0023%  t -0.00   | TEST    437  mean +0.3108%  t +0.50
+   CHOSEN on DEV: 00:00 to 8 h, move >= 1%, hold 8 h (follow) as stated (DEV mean +0.1838%, t +0.33)
+   TEST: 403 trades  win 48%  avg win +7.63%  avg loss -5.85%  mean +0.6733%  t +0.79  halves -0.6036% / +1.6435%  after fees +0.5553%   -> FAIL
+
+===== H3 PAIRS: 6 variants (each also mirrored)
+   DEV z 2, hold 60 (sell rich / buy cheap)                         3834 trades  mean +0.0143%  t +4.03   | TEST   2641  mean +0.0102%  t +1.85
+   DEV z 2, hold 240 (sell rich / buy cheap)                        1974 trades  mean +0.0311%  t +3.21   | TEST   1356  mean +0.0142%  t +0.85
+   DEV z 3, hold 240 (sell rich / buy cheap)                         722 trades  mean +0.0436%  t +2.21   | TEST    564  mean +0.0535%  t +2.10
+   DEV z 3, hold 60 (sell rich / buy cheap)                         1167 trades  mean +0.0155%  t +1.71   | TEST    892  mean +0.0117%  t +0.75
+   DEV z 3, hold 720 (sell rich / buy cheap)                         553 trades  mean +0.0420%  t +1.33   | TEST    427  mean +0.0890%  t +1.61
+   CHOSEN on DEV: z 2, hold 60 (sell rich / buy cheap) as stated (DEV mean +0.0143%, t +4.03)
+   TEST: 2641 trades  win 55%  avg win +0.15%  avg loss -0.16%  mean +0.0102%  t +1.85  halves +0.0047% / +0.0151%  after fees -0.1078%   -> FAIL
+
+===== H4 MARKET BREADTH: 4 variants (each also mirrored)
+   DEV 90% of coins one way, hold 60 (follow)                       3006 trades  mean -0.0301%  t -1.48   | TEST   2169  mean -0.0076%  t -0.32
+   DEV 80% of coins one way, hold 60 (follow)                       4482 trades  mean -0.0210%  t -1.22   | TEST   4081  mean +0.0007%  t +0.04
+   DEV 90% of coins one way, hold 240 (follow)                      1440 trades  mean -0.0478%  t -0.97   | TEST   1070  mean +0.0238%  t +0.35
+   DEV 80% of coins one way, hold 240 (follow)                      1749 trades  mean -0.0039%  t -0.09   | TEST   1482  mean +0.0120%  t +0.28
+   CHOSEN on DEV: 90% of coins one way, hold 60 (follow) MIRRORED (DEV mean +0.0301%, t +1.48)
+   TEST: 2169 trades  win 53%  avg win +0.37%  avg loss -0.41%  mean +0.0076%  t +0.32  halves +0.0207% / -0.0027%  after fees -0.1104%   -> FAIL
+
+===== H5 SLOW LEAD-LAG: 8 variants (each also mirrored)
+   DEV BTC 1% in 1 h, hold 60, coin lagging (follow)                 209 trades  mean -0.2209%  t -0.90   | TEST    340  mean -0.4818%  t -1.48
+   DEV BTC 2% in 1 h, hold 240 (follow)                              143 trades  mean -0.3707%  t -0.88   | TEST    135  mean +0.3773%  t +0.38
+   DEV BTC 1% in 1 h, hold 240, coin lagging (follow)                168 trades  mean +0.5670%  t +0.78   | TEST    244  mean +0.3846%  t +0.59
+   DEV BTC 2% in 1 h, hold 60 (follow)                               174 trades  mean +0.1397%  t +0.60   | TEST    163  mean -0.1078%  t -0.28
+   DEV BTC 1% in 1 h, hold 240 (follow)                              762 trades  mean +0.0987%  t +0.52   | TEST    635  mean +0.2816%  t +0.90
+   CHOSEN on DEV: BTC 1% in 1 h, hold 60, coin lagging (follow) MIRRORED (DEV mean +0.2209%, t +0.90)
+   TEST: 340 trades  win 54%  avg win +3.45%  avg loss -2.94%  mean +0.4818%  t +1.48  halves -0.0515% / +0.6796%  after fees +0.3638%   -> FAIL
+
+PASSED before fees: none

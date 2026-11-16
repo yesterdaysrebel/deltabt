@@ -1,0 +1,30 @@
+CHECK PASSED: two implementations agree on every trade of all 23 entry designs, both fills.
+
+Per pick at a fixed $3,184, STRICT .. LENIENT. TRAIN = 2025, TEST = 2026 + real picks.
+  entry                                                      |       TRAIN n  avg/trade |       TEST n   avg/trade |          TEST total | TEST stops (strict)
+  limit +3.0%                                                |  409    -148 ..    -99 |  363    -121 ..    -63 |  -43,802 ..  -22,848 |  33%
+  limit +5.0%                                                |  321     -94 ..    -49 |  296     -94 ..    -32 |  -27,857 ..   -9,561 |  30%  <- as built
+  limit +7.5%                                                |  245     -72 ..    -11 |  230    -193 ..    -98 |  -44,411 ..  -22,456 |  36%
+  limit +10.0%                                               |  163    -156 ..    -75 |  193    -138 ..    -61 |  -26,694 ..  -11,755 |  34%
+  limit +15.0%                                               |   96    -201 ..    -80 |  119    -181 ..    -96 |  -21,511 ..  -11,421 |  40%
+  rev +5.0%, 1% off the high, stop +2.25%                    |  320    -178 ..   -132 |  298    -160 ..    -84 |  -47,540 ..  -25,080 |  34%
+  rev +5.0%, 1% off the high, stop above the high            |  316    -170 ..   -123 |  288    -175 ..    -97 |  -50,468 ..  -27,847 |  41%
+  rev +5.0%, 2% off the high, stop +2.25%                    |  318    -128 ..    -83 |  298    -137 ..    -74 |  -40,973 ..  -22,106 |  33%
+  rev +5.0%, 2% off the high, stop above the high            |  300    -139 ..    -99 |  277    -167 ..   -100 |  -46,292 ..  -27,686 |  31%
+  rev +5.0%, 3% off the high, stop +2.25%                    |  311    -170 ..   -121 |  297     -99 ..    -61 |  -29,381 ..  -18,098 |  33%
+  rev +5.0%, 3% off the high, stop above the high            |  221    -187 ..   -134 |  200     -88 ..    -51 |  -17,571 ..  -10,111 |  23%
+  rev +7.5%, 1% off the high, stop +2.25%                    |  247    -125 ..    -68 |  232    -192 ..   -132 |  -44,627 ..  -30,610 |  39%
+  rev +7.5%, 1% off the high, stop above the high            |  244    -131 ..    -74 |  219    -180 ..   -110 |  -39,440 ..  -24,087 |  43%
+  rev +7.5%, 2% off the high, stop +2.25%                    |  245    -114 ..    -73 |  232    -131 ..    -75 |  -30,381 ..  -17,393 |  34%
+  rev +7.5%, 2% off the high, stop above the high            |  224    -126 ..    -75 |  208    -123 ..    -58 |  -25,524 ..  -12,142 |  28%
+  rev +7.5%, 3% off the high, stop +2.25%                    |  241    -122 ..    -69 |  230     -91 ..    -47 |  -20,977 ..  -10,796 |  30%
+  rev +7.5%, 3% off the high, stop above the high            |  160    -153 ..    -82 |  136     -93 ..    -48 |  -12,676 ..   -6,461 |  21%
+  rev +10.0%, 1% off the high, stop +2.25%                   |  163    -149 ..    -91 |  193    -125 ..    -64 |  -24,190 ..  -12,329 |  33%
+  rev +10.0%, 1% off the high, stop above the high           |  158    -136 ..    -73 |  176    -130 ..    -69 |  -22,886 ..  -12,112 |  39%
+  rev +10.0%, 2% off the high, stop +2.25%                   |  162    -160 ..   -105 |  193    -236 ..   -149 |  -45,458 ..  -28,804 |  41%
+  rev +10.0%, 2% off the high, stop above the high           |  146    -187 ..   -126 |  167    -238 ..   -143 |  -39,764 ..  -23,814 |  35%
+  rev +10.0%, 3% off the high, stop +2.25%                   |  158    -172 ..   -112 |  193    -131 ..    -83 |  -25,187 ..  -16,044 |  33%
+  rev +10.0%, 3% off the high, stop above the high           |   96    -246 ..   -153 |  101     -95 ..    -41 |   -9,571 ..   -4,179 |  21%
+
+BEST ON TRAIN (strict): limit +7.5%: TRAIN -72 -> TEST -193 .. -98 per trade
+designs with a positive TRAIN average (strict): 0; of those positive on TEST (strict): 0

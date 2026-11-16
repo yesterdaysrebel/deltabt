@@ -1,0 +1,93 @@
+CHECKS PASSED: two implementations per exit agree on every trade (all margins, periods, fills); 49% reproduces the earlier results.
+
+ACCOUNTS from $3,184 (first fill wins, one at a time, month off after 2 full stops, floor $1,000). STRICT .. LENIENT.
+  exit                   margin | position |    full history end | deepest drop |    trades |   2026 from Jan 1 |     20 real picks
+  Spike Sell as built       10% | $  6,219 |    1,843 ..    2,811 |  55% ..  34% | 152 .. 152 |   2,182 ..   2,949 |   3,611 ..   3,779
+  Spike Sell as built       20% | $ 12,438 |      962 ..    2,121 |  76% ..  61% | 136 .. 152 |   1,321 ..   2,525 |   4,072 ..   4,471
+  Spike Sell as built       49% | $ 30,472 |      836 ..      854 |  83% ..  86% |  30 ..  45 |     950 ..     825 |   5,702 ..   7,248
+  Quick booking             10% | $  6,219 |    2,206 ..    2,830 |  47% ..  44% | 170 .. 170 |   3,197 ..   3,889 |   3,842 ..   3,842
+  Quick booking             20% | $ 12,438 |      965 ..      997 |  71% ..  71% | 111 .. 112 |   2,791 ..   4,308 |   4,586 ..   4,586
+  Quick booking             49% | $ 30,472 |      828 ..      763 |  76% ..  79% |  30 ..  31 |     995 ..     810 |   7,140 ..   7,140
+  Break-even + 5% trail     10% | $  6,219 |    1,801 ..    3,890 |  67% ..  53% | 171 .. 171 |   3,784 ..   6,071 |   4,055 ..   4,303
+  Break-even + 5% trail     20% | $ 12,438 |      917 ..      990 |  71% ..  70% |  47 ..  58 |   3,215 ..   8,532 |   4,926 ..   5,540
+  Break-even + 5% trail     49% | $ 30,472 |      774 ..      981 |  76% ..  69% |  22 ..  24 |     992 ..     872 |   7,356 ..   8,895
+
+22 MONTHLY STARTS at 10% margin (each run to Nov 14 2026), end balance STRICT .. LENIENT:
+  Spike Sell as built    median  2,246 ..  3,120 | worst  1,704 ..  2,528 | best  3,089 ..  3,623 | under $1,000:  0 ..  0 | above $3,184:  0 ..  9 of 22
+  Quick booking          median  3,089 ..  3,733 | worst  2,189 ..  2,777 | best  3,999 ..  4,814 | under $1,000:  0 ..  0 | above $3,184:  9 .. 16 of 22
+  Break-even + 5% trail  median  3,177 ..  5,345 | worst  1,801 ..  3,210 | best  5,236 ..  8,104 | under $1,000:  0 ..  0 | above $3,184: 11 .. 22 of 22
+
+  Spike Sell as built, 10% margin, full history, month by month (STRICT | LENIENT):
+    2025-01  trades  2 stops 2 P&L   -340 end  2,844 | trades  2 stops 2 P&L   -300 end  2,884
+    2025-02  trades 12 stops 0 P&L   +521 end  3,365 | trades 12 stops 0 P&L   +575 end  3,458
+    2025-03  trades  7 stops 2 P&L    +80 end  3,444 | trades  7 stops 2 P&L    +82 end  3,540
+    2025-04  trades  4 stops 2 P&L   -325 end  3,119 | trades  4 stops 2 P&L   -264 end  3,277
+    2025-05  trades  3 stops 2 P&L   -217 end  2,902 | trades  3 stops 2 P&L   -214 end  3,063
+    2025-06  trades  2 stops 2 P&L   -274 end  2,628 | trades  2 stops 2 P&L   -289 end  2,774
+    2025-07  trades  7 stops 2 P&L     -0 end  2,628 | trades  7 stops 2 P&L    +34 end  2,808
+    2025-08  trades  7 stops 2 P&L    +33 end  2,661 | trades  7 stops 2 P&L    +47 end  2,855
+    2025-09  trades  2 stops 2 P&L   -251 end  2,410 | trades  2 stops 2 P&L   -269 end  2,586
+    2025-10  trades  4 stops 2 P&L    -85 end  2,325 | trades  4 stops 2 P&L    -91 end  2,495
+    2025-11  trades 19 stops 1 P&L   +510 end  2,835 | trades 19 stops 1 P&L   +647 end  3,142
+    2025-12  trades  7 stops 2 P&L   -145 end  2,690 | trades  7 stops 2 P&L   -106 end  3,036
+    2026-01  trades  3 stops 2 P&L   -295 end  2,395 | trades  3 stops 2 P&L   -282 end  2,753
+    2026-02  trades  5 stops 2 P&L   -173 end  2,222 | trades  5 stops 2 P&L   -183 end  2,570
+    2026-03  trades 17 stops 2 P&L   +375 end  2,597 | trades 17 stops 2 P&L   +461 end  3,031
+    2026-04  trades  3 stops 2 P&L   -225 end  2,372 | trades  3 stops 2 P&L   -256 end  2,775
+    2026-05  trades  3 stops 2 P&L   -290 end  2,082 | trades  3 stops 2 P&L   -305 end  2,471
+    2026-06  trades 17 stops 2 P&L   +193 end  2,276 | trades 17 stops 2 P&L   +514 end  2,985
+    2026-07  trades  5 stops 2 P&L   -107 end  2,169 | trades  5 stops 2 P&L    -74 end  2,911
+    2026-08  trades  5 stops 2 P&L    -64 end  2,105 | trades  5 stops 2 P&L    -86 end  2,825
+    2026-09  trades  2 stops 2 P&L   -204 end  1,900 | trades  2 stops 2 P&L   -266 end  2,559
+    2026-10  trades  7 stops 2 P&L   -227 end  1,673 | trades  7 stops 2 P&L     -8 end  2,550
+    2026-11  trades  9 stops 1 P&L   +170 end  1,843 | trades  9 stops 1 P&L   +261 end  2,811
+
+  Quick booking, 10% margin, full history, month by month (STRICT | LENIENT):
+    2025-01  trades  3 stops 2 P&L   -321 end  2,863 | trades  3 stops 2 P&L   -290 end  2,894
+    2025-02  trades 12 stops 0 P&L   +346 end  3,209 | trades 12 stops 0 P&L   +350 end  3,244
+    2025-03  trades  7 stops 2 P&L   -140 end  3,069 | trades  7 stops 2 P&L   -142 end  3,102
+    2025-04  trades  4 stops 2 P&L   -287 end  2,782 | trades  4 stops 2 P&L   -242 end  2,861
+    2025-05  trades  4 stops 2 P&L   -215 end  2,567 | trades  4 stops 2 P&L   -216 end  2,645
+    2025-06  trades  4 stops 2 P&L   -212 end  2,354 | trades  4 stops 2 P&L   -209 end  2,436
+    2025-07  trades  7 stops 2 P&L    -70 end  2,285 | trades  7 stops 2 P&L    -43 end  2,392
+    2025-08  trades  7 stops 2 P&L   -118 end  2,166 | trades  7 stops 2 P&L   -114 end  2,279
+    2025-09  trades  2 stops 2 P&L   -204 end  1,962 | trades  2 stops 2 P&L   -215 end  2,064
+    2025-10  trades  5 stops 2 P&L    -78 end  1,884 | trades  5 stops 2 P&L    -82 end  1,981
+    2025-11  trades 19 stops 1 P&L   +378 end  2,262 | trades 19 stops 1 P&L   +398 end  2,379
+    2025-12  trades  7 stops 2 P&L    -66 end  2,197 | trades  7 stops 2 P&L    -62 end  2,317
+    2026-01  trades  4 stops 2 P&L   -157 end  2,039 | trades  4 stops 2 P&L   -166 end  2,151
+    2026-02  trades  5 stops 2 P&L   -153 end  1,887 | trades  5 stops 2 P&L   -149 end  2,002
+    2026-03  trades 17 stops 2 P&L   +226 end  2,113 | trades 17 stops 2 P&L   +250 end  2,252
+    2026-04  trades  3 stops 2 P&L   -174 end  1,939 | trades  3 stops 2 P&L   -186 end  2,066
+    2026-05  trades  2 stops 2 P&L   -183 end  1,756 | trades  2 stops 2 P&L   -195 end  1,871
+    2026-06  trades 17 stops 2 P&L   +578 end  2,334 | trades 17 stops 2 P&L   +696 end  2,567
+    2026-07  trades  5 stops 2 P&L    -80 end  2,254 | trades  5 stops 2 P&L    -29 end  2,538
+    2026-08  trades 18 stops 2 P&L   +343 end  2,597 | trades 18 stops 2 P&L   +396 end  2,934
+    2026-09  trades  2 stops 2 P&L   -252 end  2,345 | trades  2 stops 2 P&L   -277 end  2,657
+    2026-10  trades  7 stops 2 P&L   -289 end  2,056 | trades  7 stops 2 P&L    -19 end  2,638
+    2026-11  trades  9 stops 1 P&L   +149 end  2,206 | trades  9 stops 1 P&L   +192 end  2,830
+
+  Break-even + 5% trail, 10% margin, full history, month by month (STRICT | LENIENT):
+    2025-01  trades  2 stops 2 P&L   -340 end  2,844 | trades  2 stops 2 P&L   -300 end  2,884
+    2025-02  trades 11 stops 0 P&L    -77 end  2,767 | trades 11 stops 0 P&L    +67 end  2,951
+    2025-03  trades  7 stops 2 P&L    -66 end  2,700 | trades  7 stops 2 P&L    -32 end  2,919
+    2025-04  trades  4 stops 2 P&L   -319 end  2,381 | trades  4 stops 2 P&L   -285 end  2,633
+    2025-05  trades  3 stops 2 P&L   -243 end  2,138 | trades  3 stops 2 P&L   -253 end  2,380
+    2025-06  trades  4 stops 2 P&L   -272 end  1,866 | trades  4 stops 2 P&L   -233 end  2,147
+    2025-07  trades  8 stops 2 P&L   +281 end  2,147 | trades  8 stops 2 P&L   +369 end  2,516
+    2025-08  trades  7 stops 2 P&L   -272 end  1,875 | trades  7 stops 2 P&L   -259 end  2,257
+    2025-09  trades  2 stops 2 P&L   -177 end  1,699 | trades  2 stops 2 P&L   -213 end  2,044
+    2025-10  trades  6 stops 2 P&L   -218 end  1,480 | trades  6 stops 2 P&L   -161 end  1,883
+    2025-11  trades 19 stops 1 P&L    -23 end  1,457 | trades 19 stops 1 P&L    +65 end  1,948
+    2025-12  trades  7 stops 2 P&L    +58 end  1,515 | trades  7 stops 2 P&L    +91 end  2,039
+    2026-01  trades  4 stops 2 P&L   -148 end  1,367 | trades  4 stops 2 P&L   -199 end  1,839
+    2026-02  trades  5 stops 2 P&L   -144 end  1,224 | trades  5 stops 2 P&L   -183 end  1,656
+    2026-03  trades 18 stops 2 P&L   +160 end  1,383 | trades 18 stops 2 P&L   +246 end  1,902
+    2026-04  trades  3 stops 2 P&L   -136 end  1,248 | trades  3 stops 2 P&L   -187 end  1,715
+    2026-05  trades  3 stops 2 P&L   -152 end  1,095 | trades  3 stops 2 P&L   -188 end  1,527
+    2026-06  trades 17 stops 2 P&L   +570 end  1,666 | trades 17 stops 2 P&L +1,206 end  2,733
+    2026-07  trades  5 stops 2 P&L    +93 end  1,759 | trades  5 stops 2 P&L   +317 end  3,050
+    2026-08  trades 18 stops 2 P&L   +293 end  2,052 | trades 18 stops 2 P&L   +809 end  3,859
+    2026-09  trades  2 stops 2 P&L   -199 end  1,853 | trades  2 stops 2 P&L   -364 end  3,495
+    2026-10  trades  7 stops 2 P&L   -397 end  1,456 | trades  7 stops 2 P&L   -378 end  3,117
+    2026-11  trades  9 stops 1 P&L   +345 end  1,801 | trades  9 stops 1 P&L   +772 end  3,890

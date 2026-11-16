@@ -1,0 +1,190 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit; extra margin moves liquidation out and is lost with it.
+
+THE 20 REAL PICKS 2026-10-29..11-14 ONLY. Start $3,184. STRICT = worse of stop and the minute's close (+0.1%); LENIENT = stop price +0.1%.
+
+== your version: 50%, $500, stop 2.25%, no extra
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 01:46->01:47    +500 | TARGET 01:46->01:47    +500
+   10-29  INIT      | LOCKED 10:55->11:10    +111 | LOCKED 10:55->11:10    +111
+   10-30  BEAT      | TARGET 15:25->15:37    +500 | TARGET 15:25->15:37    +500
+   10-30  PARTI     |                no fill |                no fill
+   10-31  AIN       | LOCKED 00:16->00:18    -537 | LOCKED 00:16->00:18    +169
+   10-31  SOPH      |                no fill |                no fill
+   11-01  AIN       | TARGET 01:34->01:50    +500 | TARGET 01:34->01:50    +500
+   11-01  EVAA      |   STOP 07:05->07:06    -769 |   STOP 07:05->07:06    -769
+   11-02  AIN       |                no fill |                no fill
+   11-02  ESPORTS   |   STOP 00:05->00:06    -661 |   STOP 00:05->00:06    -661
+   11-03  ARIA      | LOCKED 01:56->02:01    +169 | LOCKED 01:56->02:01    +169
+   11-04  AIO       | TARGET 05:26->05:27    +500 | TARGET 05:26->05:27    +500
+   11-06  ARIA      |                no fill |                no fill
+   11-07  AIO       |                no fill |                no fill
+   11-09  AIOT      | LOCKED 08:18->08:21    +169 | LOCKED 08:18->08:21    +169
+   11-10  PIEVERSE  | TARGET 00:52->00:55    +500 | TARGET 00:52->00:55    +500
+   11-11  ARIA      | LOCKED 04:55->05:00    +167 | LOCKED 04:55->05:00    +169
+   11-12  ARIA      |                no fill |                no fill
+   11-13  HANA      | LOCKED 07:06->07:26    +143 | LOCKED 07:06->07:26    +143
+   11-14  SOPH      | LOCKED 09:49->09:51    +169 | LOCKED 09:49->09:51    +169
+   each trade on a fixed $3,184: STRICT {'TARGET': 5, 'LOCKED': 7, 'STOP': 2} total $+1,463 | LENIENT {'TARGET': 5, 'LOCKED': 7, 'STOP': 2} total $+2,172
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,452 LENIENT $3,013 | no hard stop STRICT $4,277 LENIENT $5,502
+
+== 50%, $700, stop 2.25%, 25% extra
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 01:46->01:47    +700 | TARGET 01:46->01:47    +700
+   10-29  INIT      | LOCKED 10:55->11:10    +111 | LOCKED 10:55->11:10    +111
+   10-30  BEAT      | TARGET 15:25->15:37    +700 | TARGET 15:25->15:37    +700
+   10-30  PARTI     |                no fill |                no fill
+   10-31  AIN       | LOCKED 00:16->00:18    -537 | LOCKED 00:16->00:18    +169
+   10-31  SOPH      |                no fill |                no fill
+   11-01  AIN       | TARGET 01:34->01:51    +700 | TARGET 01:34->01:51    +700
+   11-01  EVAA      |   STOP 07:05->07:06    -769 |   STOP 07:05->07:06    -769
+   11-02  AIN       |                no fill |                no fill
+   11-02  ESPORTS   |   STOP 00:05->00:06    -661 |   STOP 00:05->00:06    -661
+   11-03  ARIA      | LOCKED 01:56->02:01    +169 | LOCKED 01:56->02:01    +169
+   11-04  AIO       | LOCKED 05:26->05:28    +156 | LOCKED 05:26->05:28    +169
+   11-06  ARIA      |                no fill |                no fill
+   11-07  AIO       |                no fill |                no fill
+   11-09  AIOT      | LOCKED 08:18->08:21    +169 | LOCKED 08:18->08:21    +169
+   11-10  PIEVERSE  | TARGET 00:52->00:57    +700 | TARGET 00:52->00:57    +700
+   11-11  ARIA      | LOCKED 04:55->05:00    +167 | LOCKED 04:55->05:00    +169
+   11-12  ARIA      |                no fill |                no fill
+   11-13  HANA      | LOCKED 07:06->07:26    +143 | LOCKED 07:06->07:26    +143
+   11-14  SOPH      | LOCKED 09:49->09:51    +169 | LOCKED 09:49->09:51    +169
+   each trade on a fixed $3,184: STRICT {'TARGET': 4, 'LOCKED': 8, 'STOP': 2} total $+1,920 | LENIENT {'TARGET': 4, 'LOCKED': 8, 'STOP': 2} total $+2,642
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,792 LENIENT $3,407 | no hard stop STRICT $4,465 LENIENT $5,595
+
+== 50%, $700, stop 1%, 25% extra
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 01:46->01:47    +700 | TARGET 01:46->01:47    +700
+   10-29  INIT      | LOCKED 10:55->11:10    +111 | LOCKED 10:55->11:10    +111
+   10-30  BEAT      | TARGET 15:25->15:37    +700 | TARGET 15:25->15:37    +700
+   10-30  PARTI     |                no fill |                no fill
+   10-31  AIN       | LOCKED 00:16->00:18    -537 | LOCKED 00:16->00:18    +169
+   10-31  SOPH      |                no fill |                no fill
+   11-01  AIN       |   STOP 01:34->01:35    -380 |   STOP 01:34->01:35    -380
+   11-01  EVAA      |   STOP 07:05->07:06    -612 |   STOP 07:05->07:06    -380
+   11-02  AIN       |                no fill |                no fill
+   11-02  ESPORTS   |   STOP 00:05->00:06    -643 |   STOP 00:05->00:06    -326
+   11-03  ARIA      | LOCKED 01:56->02:01    +169 | LOCKED 01:56->02:01    +169
+   11-04  AIO       | LOCKED 05:26->05:28    +156 | LOCKED 05:26->05:28    +169
+   11-06  ARIA      |                no fill |                no fill
+   11-07  AIO       |                no fill |                no fill
+   11-09  AIOT      | LOCKED 08:18->08:21    +169 | LOCKED 08:18->08:21    +169
+   11-10  PIEVERSE  | TARGET 00:52->00:57    +700 | TARGET 00:52->00:57    +700
+   11-11  ARIA      | LOCKED 04:55->05:00    +167 | LOCKED 04:55->05:00    +169
+   11-12  ARIA      |                no fill |                no fill
+   11-13  HANA      | LOCKED 07:06->07:26    +143 | LOCKED 07:06->07:26    +143
+   11-14  SOPH      | LOCKED 09:49->09:51    +169 | LOCKED 09:49->09:51    +169
+   each trade on a fixed $3,184: STRICT {'TARGET': 3, 'LOCKED': 8, 'STOP': 3} total $+1,015 | LENIENT {'TARGET': 3, 'LOCKED': 8, 'STOP': 3} total $+2,285
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,792 LENIENT $3,781 | no hard stop STRICT $3,845 LENIENT $5,594
+
+== 75%, $700, stop 2.25%, no extra
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 01:46->01:47    +700 | TARGET 01:46->01:47    +700
+   10-29  INIT      | LOCKED 10:55->11:11    +139 | LOCKED 10:55->11:11    +154
+   10-30  BEAT      | TARGET 15:25->15:35    +700 | TARGET 15:25->15:35    +700
+   10-30  PARTI     |                no fill |                no fill
+   10-31  AIN       | LOCKED 00:16->00:18    -806 | LOCKED 00:16->00:18    +154
+   10-31  SOPH      |                no fill |                no fill
+   11-01  AIN       | TARGET 01:34->01:50    +700 | TARGET 01:34->01:50    +700
+   11-01  EVAA      |   STOP 07:05->07:06   -1154 |   STOP 07:05->07:06   -1154
+   11-02  AIN       |                no fill |                no fill
+   11-02  ESPORTS   |   STOP 00:05->00:06    -913 |   STOP 00:05->00:06    -913
+   11-03  ARIA      | TARGET 01:56->02:08    +700 | TARGET 01:56->02:08    +700
+   11-04  AIO       | TARGET 05:26->05:27    +700 | TARGET 05:26->05:27    +700
+   11-06  ARIA      |                no fill |                no fill
+   11-07  AIO       |                no fill |                no fill
+   11-09  AIOT      | TARGET 08:18->08:21    +700 | TARGET 08:18->08:21    +700
+   11-10  PIEVERSE  | TARGET 00:52->00:55    +700 | TARGET 00:52->00:55    +700
+   11-11  ARIA      | LOCKED 04:55->05:01    +146 | LOCKED 04:55->05:01    +154
+   11-12  ARIA      |                no fill |                no fill
+   11-13  HANA      | LOCKED 07:06->07:27    +154 | LOCKED 07:06->07:27    +154
+   11-14  SOPH      | LOCKED 09:49->09:51    +162 | LOCKED 09:49->09:51    +162
+   each trade on a fixed $3,184: STRICT {'TARGET': 7, 'LOCKED': 5, 'STOP': 2} total $+2,631 | LENIENT {'TARGET': 7, 'LOCKED': 5, 'STOP': 2} total $+3,613
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,950 LENIENT $2,950 | no hard stop STRICT $6,771 LENIENT $6,771
+
+== 75%, $700, stop 2.25%, 20% extra
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 01:46->01:47    +700 | TARGET 01:46->01:47    +700
+   10-29  INIT      | LOCKED 10:55->11:11    +139 | LOCKED 10:55->11:11    +154
+   10-30  BEAT      | TARGET 15:25->15:35    +700 | TARGET 15:25->15:35    +700
+   10-30  PARTI     |                no fill |                no fill
+   10-31  AIN       | LOCKED 00:16->00:18    -806 | LOCKED 00:16->00:18    +154
+   10-31  SOPH      |                no fill |                no fill
+   11-01  AIN       | TARGET 01:34->01:50    +700 | TARGET 01:34->01:50    +700
+   11-01  EVAA      |   STOP 07:05->07:06   -1154 |   STOP 07:05->07:06   -1154
+   11-02  AIN       |                no fill |                no fill
+   11-02  ESPORTS   |   STOP 00:05->00:06    -913 |   STOP 00:05->00:06    -913
+   11-03  ARIA      | TARGET 01:56->02:08    +700 | TARGET 01:56->02:08    +700
+   11-04  AIO       | TARGET 05:26->05:27    +700 | TARGET 05:26->05:27    +700
+   11-06  ARIA      |                no fill |                no fill
+   11-07  AIO       |                no fill |                no fill
+   11-09  AIOT      | TARGET 08:18->08:21    +700 | TARGET 08:18->08:21    +700
+   11-10  PIEVERSE  | TARGET 00:52->00:55    +700 | TARGET 00:52->00:55    +700
+   11-11  ARIA      | LOCKED 04:55->05:01    +146 | LOCKED 04:55->05:01    +154
+   11-12  ARIA      |                no fill |                no fill
+   11-13  HANA      | LOCKED 07:06->07:27    +154 | LOCKED 07:06->07:27    +154
+   11-14  SOPH      | LOCKED 09:49->09:51    +162 | LOCKED 09:49->09:51    +162
+   each trade on a fixed $3,184: STRICT {'TARGET': 7, 'LOCKED': 5, 'STOP': 2} total $+2,631 | LENIENT {'TARGET': 7, 'LOCKED': 5, 'STOP': 2} total $+3,613
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,950 LENIENT $2,950 | no hard stop STRICT $6,771 LENIENT $6,771
+
+== 20x at 00:03 (no spike entry), 50%, $500, 2.25%
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 00:02->00:32    +500 | TARGET 00:02->00:32    +500
+   10-29  INIT      | TARGET 00:02->00:06    +500 | TARGET 00:02->00:06    +500
+   10-30  BEAT      | TARGET 00:02->00:18    +500 | TARGET 00:02->00:18    +500
+   10-30  PARTI     | TARGET 00:02->00:18    +500 | TARGET 00:02->00:18    +500
+   10-31  AIN       |    LIQ 00:02->00:16   -1592 |   STOP 00:02->00:16    -794
+   10-31  SOPH      | TARGET 00:02->00:04    +500 | TARGET 00:02->00:04    +500
+   11-01  AIN       |   STOP 00:02->01:10    -804 |   STOP 00:02->01:10    -794
+   11-01  EVAA      | TARGET 00:02->00:11    +500 | TARGET 00:02->00:11    +500
+   11-02  AIN       | TARGET 00:02->00:25    +500 | TARGET 00:02->00:25    +500
+   11-02  ESPORTS   |   STOP 00:02->00:03    -741 |   STOP 00:02->00:03    -682
+   11-03  ARIA      | TARGET 00:02->00:54    +500 | TARGET 00:02->00:54    +500
+   11-04  AIO       | TARGET 00:02->00:21    +500 | TARGET 00:02->00:21    +500
+   11-06  ARIA      | TARGET 00:02->00:48    +500 | TARGET 00:02->00:48    +500
+   11-07  AIO       |   STOP 00:02->00:11    -795 |   STOP 00:02->00:11    -794
+   11-09  AIOT      | TARGET 00:02->00:20    +500 | TARGET 00:02->00:20    +500
+   11-10  PIEVERSE  |   STOP 00:02->00:09    -787 |   STOP 00:02->00:09    -682
+   11-11  ARIA      |   STOP 00:02->01:41    -794 |   STOP 00:02->01:41    -794
+   11-12  ARIA      |   STOP 00:02->00:05    -794 |   STOP 00:02->00:05    -794
+   11-13  HANA      | TARGET 00:02->00:28    +500 | TARGET 00:02->00:28    +500
+   11-14  SOPH      | TARGET 00:02->00:17    +500 | TARGET 00:02->00:17    +500
+   each trade on a fixed $3,184: STRICT {'TARGET': 13, 'LIQ': 1, 'STOP': 6} total $+197 | LENIENT {'TARGET': 13, 'STOP': 7} total $+1,169
+   as an account (compounding): with 2-stops/month hard stop STRICT $2,644 LENIENT $3,512 | no hard stop STRICT $2,144 LENIENT $2,916
+
+== steady: filter, 3x, 10% margin, take 10%
+   day    coin      |                 STRICT |                LENIENT
+   10-29  EVAA      | TARGET 00:02->01:18     +94 | TARGET 00:02->01:18     +94
+   10-29  INIT      |    24h 00:02->24:00     +14 |    24h 00:02->24:00     +14
+   10-30  BEAT      | TARGET 00:02->00:18     +94 | TARGET 00:02->00:18     +94
+   10-30  PARTI     |               filtered |               filtered
+   10-31  AIN       |   STOP 00:02->02:14    -268 |   STOP 00:02->02:14    -268
+   10-31  SOPH      |               filtered |               filtered
+   11-01  AIN       |               filtered |               filtered
+   11-01  EVAA      | TARGET 00:02->02:26     +94 | TARGET 00:02->02:26     +94
+   11-02  AIN       |    24h 00:02->24:00     +24 |    24h 00:02->24:00     +24
+   11-02  ESPORTS   | TARGET 00:02->04:00     +94 | TARGET 00:02->04:00     +94
+   11-03  ARIA      |               filtered |               filtered
+   11-04  AIO       |    24h 00:02->24:00     -44 |    24h 00:02->24:00     -44
+   11-06  ARIA      |               filtered |               filtered
+   11-07  AIO       |               filtered |               filtered
+   11-09  AIOT      | TARGET 00:02->01:04     +94 | TARGET 00:02->01:04     +94
+   11-10  PIEVERSE  | TARGET 00:02->16:51     +94 | TARGET 00:02->16:51     +94
+   11-11  ARIA      |   STOP 00:02->09:48    -269 |   STOP 00:02->09:48    -268
+   11-12  ARIA      |               filtered |               filtered
+   11-13  HANA      |    24h 00:02->24:00      -6 |    24h 00:02->24:00      -6
+   11-14  SOPH      |               filtered |               filtered
+   each trade on a fixed $3,184: STRICT {'TARGET': 6, '24h': 4, 'STOP': 2} total $+13 | LENIENT {'TARGET': 6, '24h': 4, 'STOP': 2} total $+13
+   as an account (compounding): with 2-stops/month hard stop STRICT $3,163 LENIENT $3,164 | no hard stop STRICT $3,163 LENIENT $3,164
+
+SUMMARY (20 real picks, from $3,184)
+  version                                          |        fixed-size total |    account, hard stop | account, no hard stop
+  your version: 50%, $500, stop 2.25%, no extra    |     +1,463 ..     +2,172 |     2,452 ..     3,013 |     4,277 ..     5,502
+  50%, $700, stop 2.25%, 25% extra                 |     +1,920 ..     +2,642 |     2,792 ..     3,407 |     4,465 ..     5,595
+  50%, $700, stop 1%, 25% extra                    |     +1,015 ..     +2,285 |     2,792 ..     3,781 |     3,845 ..     5,594
+  75%, $700, stop 2.25%, no extra                  |     +2,631 ..     +3,613 |     2,950 ..     2,950 |     6,771 ..     6,771
+  75%, $700, stop 2.25%, 20% extra                 |     +2,631 ..     +3,613 |     2,950 ..     2,950 |     6,771 ..     6,771
+  20x at 00:03 (no spike entry), 50%, $500, 2.25%  |       +197 ..     +1,169 |     2,644 ..     3,512 |     2,144 ..     2,916
+  steady: filter, 3x, 10% margin, take 10%         |        +13 ..        +13 |     3,163 ..     3,164 |     3,163 ..     3,164
+
+  The real account (rule A) on its share of these picks: $1,661.84 on Nov 9 -> $1,530.20 on Nov 14 (+ the manual SOPH trade on Nov 14 -$609.26).

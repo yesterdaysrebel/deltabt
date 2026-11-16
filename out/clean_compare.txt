@@ -1,0 +1,25 @@
+CHECKS PASSED: stop before target in the same minute; a stop filled past liquidation loses the margin; 83,682 SOPH contracts on 50% of $1,534.98; 20x liquidation at +2.5%; PIEVERSE capped by its $10,000 20x limit.
+
+ALL ROWS: the same fill rules (see the script header). Start $3,184.
+
+A) EACH TRADE ALONE on a fixed $3,184 (full history, 1,022 picks)
+  version                                          trades target locked  stop  liq.  24h | avg/trade full stop avg      2025      2026 green mo
+  20x, sell at 00:03, $500 target                    1022    54%     0%   34%   12%   0% |    -190.7          -800  -124,364   -70,558    2/22 
+  20x, sell at 00:03, $1,000 target                  1022    36%     0%   46%   17%   1% |    -274.2          -800  -178,474  -101,746    2/22 
+  20x, spike +5%, $500 target                         604    56%     0%   30%   13%   0% |    -157.5          -771   -52,541   -42,564    4/22 
+  20x, spike +5%, $500, lock +$200                    604    25%    45%   20%    9%   0% |    -127.4          -771   -41,516   -35,442    6/22 
+  20x, spike +5%, $900, lock +$200                    604    13%    58%   20%    9%   0% |    -127.4          -771   -42,415   -34,545    6/22 
+  steady: filter, 3x, 10% margin, stop ~27.8%, take 10%    324    45%     0%    8%    1%  46% |     +11.2          -271    +1,112    +2,521   19/22 
+
+B) AS AN ACCOUNT, compounding from $3,184
+  version                                          | 20 real picks Oct29-Nov14 | history Jan 2025-Oct 2026  lowest | 21 monthly starts: under $1,000 up after 3 mo median 6 mo median 12 mo
+  20x, sell at 00:03, $500 target                  |                     2,144 |                         0       0 |                       21 of 21       0 of 21          25           27
+  20x, sell at 00:03, $1,000 target                |                     3,844 |                         0       0 |                       21 of 21       0 of 21          26           26
+  20x, spike +5%, $500 target                      |                     5,542 |                        43      43 |                       21 of 21       0 of 21          46           43
+  20x, spike +5%, $500, lock +$200                 |                     4,277 |                        30      30 |                       21 of 21       0 of 21          40           47
+  20x, spike +5%, $900, lock +$200                 |                     4,764 |                        47      47 |                       21 of 21       0 of 21          34           38
+  20x, spike +5%, $500, lock +$200, off 2 stops/mo |                     2,452 |                        31      31 |                       20 of 21       1 of 21         268           42
+  steady: filter, 3x, 10% margin, stop ~27.8%, take 10% |                     3,163 |                     8,336   3,184 |                        0 of 21      16 of 21       3,787        4,092
+  rule A as the real bot runs it (ladder 10/5/3)   |                   (see C) |                     5,068     993 |
+
+C) The real account ran rule A on these 20 picks (Nov 9 on): $1,661.84 on Nov 9 -> $1,530.20 on Nov 14.

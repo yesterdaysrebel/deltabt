@@ -1,0 +1,17 @@
+CHECKS PASSED: P1 == P2 on every fill for all 11 stop settings, both fills; as built == implementation B.
+
+Per fill at a fixed $3,184, STRICT .. LENIENT. TRAIN = 2025, TEST = 2026 + real picks (never seen).
+  stop                                   |   TRAIN avg/trade |    TEST avg/trade |          TEST total | TEST stops, targets, liq (strict)
+  touch stop +1.50%                      |    -100 ..    -52 |    -100 ..    -33 |  -29,476 ..   -9,776 | 112 stops,  71 targets, 2 liq of 296
+  touch stop +2.25%                      |     -94 ..    -49 |     -94 ..    -32 |  -27,857 ..   -9,561 |  85 stops,  82 targets, 4 liq of 296  <- as built
+  touch stop +3.00%                      |     -66 ..    -30 |    -117 ..    -60 |  -34,486 ..  -17,657 |  73 stops,  84 targets, 6 liq of 296
+  touch stop +3.50%                      |     -76 ..    -47 |    -102 ..    -57 |  -30,323 ..  -16,903 |  64 stops,  88 targets, 6 liq of 296
+  touch stop +4.00%                      |     -89 ..    -55 |    -108 ..    -58 |  -32,081 ..  -17,194 |  55 stops,  90 targets, 8 liq of 296
+  touch stop +4.50%                      |     -71 ..    -24 |    -107 ..    -49 |  -31,747 ..  -14,589 |  44 stops,  93 targets, 12 liq of 296
+  close > +2.25%, hard stop +3.5%        |     -72 ..    -51 |    -109 ..    -71 |  -32,258 ..  -21,011 |  79 stops,  84 targets, 5 liq of 296
+  close > +2.25%, hard stop +4.5%        |     -68 ..    -49 |    -104 ..    -73 |  -30,857 ..  -21,652 |  78 stops,  84 targets, 5 liq of 296
+  close > +3.00%, hard stop +3.5%        |     -73 ..    -48 |    -113 ..    -68 |  -33,430 ..  -20,126 |  68 stops,  87 targets, 6 liq of 296
+  close > +3.00%, hard stop +4.5%        |     -59 ..    -39 |    -116 ..    -75 |  -34,464 ..  -22,303 |  64 stops,  88 targets, 8 liq of 296
+  close > +3.50%, hard stop +4.5%        |     -76 ..    -51 |    -108 ..    -63 |  -32,078 ..  -18,585 |  54 stops,  90 targets, 9 liq of 296
+
+BEST ON TRAIN (strict): close > +3.00%, hard stop +4.5% -> TEST -116 .. -75 per trade vs as built -94 .. -32

@@ -1,0 +1,12 @@
+SANITY PASSED: with LTP as the trigger the function equals implementation B on every trade. Picks without mark candles: 0
+
+Spike Sell as built, per pick at a fixed $3,184: stop on LAST TRADED price vs on MARK price
+  STRICT  2025        321 trades | LTP: avg    -94, stops  31% (liq 1), avg stop   -850 | MARK: avg    -88, stops  31% (liq 1), avg stop   -839 | targets 79 -> 77
+  STRICT  2026 + real 296 trades | LTP: avg    -94, stops  30% (liq 4), avg stop   -907 | MARK: avg   -108, stops  30% (liq 6), avg stop   -951 | targets 82 -> 85
+  STRICT  all         617 trades | LTP: avg    -94, stops  31% (liq 5), avg stop   -877 | MARK: avg    -97, stops  31% (liq 7), avg stop   -892 | targets 161 -> 162
+  LENIENT 2025        321 trades | LTP: avg    -49, stops  31% (liq 0), avg stop   -754 | MARK: avg    -53, stops  31% (liq 1), avg stop   -770 | targets 79 -> 77
+  LENIENT 2026 + real 296 trades | LTP: avg    -32, stops  30% (liq 0), avg stop   -753 | MARK: avg    -65, stops  30% (liq 6), avg stop   -859 | targets 82 -> 85
+  LENIENT all         617 trades | LTP: avg    -41, stops  31% (liq 0), avg stop   -753 | MARK: avg    -59, stops  31% (liq 7), avg stop   -812 | targets 161 -> 162
+
+  LTP stops that the MARK trigger avoided (strict): 3 of 190; they became {'LOCKED': np.int64(2), 'TARGET': np.int64(1)}, P&L -2,262 -> +701
+  paired difference MARK - LTP per trade: mean -3, t -0.5; 2025 +7, 2026 -14
