@@ -1,4 +1,4 @@
-# Spike Sell (real-money run 4) — 10% margin, break-even then a 5% trail — rules fixed before any order
+# Spike Sell (real-money run 4) — rules fixed before any order (2026-11-16: 20% margin, plain 5% trail, no month-off)
 
 **Name (owner 2026-11-15): Spike Sell.** "Run 4" stays its run number in the bot's database.
 
@@ -41,7 +41,16 @@ drops; the three recent weeks were a good stretch. The owner chose to run it kno
 2. **Entry:** a resting **post-only GTC limit sell 5% above the last traded price** at entry time, with an
    exchange-held **stop +2.25% from the limit, triggered on the last traded price** (market stop). **No take-profit
    order.** Skipped if the bid is already at the limit. Not filled by **24:00 UTC** → cancelled ("no spike").
-3. **Size:** **10% of the wallet balance** as isolated margin per resting order (two may rest), at the most leverage
+**Owner change, 2026-11-16 ("We'll use 20% margin", after being shown the per-trade and account numbers at 5, 10, 15
+and 20%): rule 3 is now 20% of the balance and rule 5's extra margin 25/49 of that (10.2% of the balance).** About
+$12,400 of position on $3,184; a full stop about −$335, a liquidation about −$960. With the plain 5% trail and no
+month-off rule, from $3,184, strict .. lenient: the full history reaches the $1,000 floor in April 2025 ($985 ..
+$951); started 2026-01-01 it also ends at the floor ($961 .. $987); 19 .. 16 of 22 monthly starts end under $1,000.
+Per trade at a fixed $3,184: win 29–30%, average win +$717 .. +$706, average loss −$305 .. −$277, longest losing run
+11 trades. `scripts/replay_bot.py` (the real bot code) equals the research rule on every trade at 20%: full history
+51 / 60 trades, from 2026-01 65 / 81 trades, same wallets.
+
+3. *(10% until 2026-11-16)* **Size:** **10% of the wallet balance** as isolated margin per resting order (two may rest), at the most leverage
    **up to 20x** Delta allows for that notional on that coin (`initial_margin`, `max_leverage_notional`,
    `initial_margin_scaling_factor`, `position_size_limit` from /v2/products), leverage set and read back. About
    $6,200 of position on $3,184; a full stop costs about $177.
@@ -53,7 +62,19 @@ drops; the three recent weeks were a good stretch. The owner chose to run it kno
    +2.5% to about +5%. A top-up whose reply is lost is read back, never resent. **Option A:** while an entry rests, a
    watcher checks it every 2.5 s (`SpikeLive.watch`), so the extra margin lands within seconds of the fill; the
    watcher and the 30 s pass share one lock, and a top-up is attempted once per position (refused or unclear: logged).
-6. **Break-even:** once a **1m low since the fill reaches the price where the trade nets +$30.61 × balance / $3,184**
+**Owner change, 2026-11-16 ("I would change lock to trailing SL" → tested → "1 approved"): rule 6 is REMOVED and
+rule 7 starts at the fill.** The stop stays at +2.25% and trails 5% above the lowest 1m low since the fill as soon as
+that is lower than the stop it has (the first move needs a fall of about 2.6%). `BREAKEVEN_LOCK = False` in
+`live/spike_live.py`; `True` restores rule 6. Tested as "timed trail 0m / 5.00%" in `scripts/careful_timed_trail.py`
+(two implementations equal on every trade; a timed start made no difference; 2.25% and 3% trails were worse).
+With this exit and NO month-off rule (rule 9), from $3,184, strict .. lenient: 5% margin $979 .. $4,708; **10% margin
+the $1,000 floor ($948 .. $994, reached June–August 2025; started 2026-01-01: $5,046 .. $17,595; 10 .. 7 of 22
+monthly starts end under $1,000)**; 15% and 20% margin the floor by April–May 2025 (20%: 19 .. 16 of 22 starts under
+$1,000). `scripts/replay_bot.py` (the real bot code against history) equals the research rule on all 93 / 131 trades
+of the full history; from 2026-01, 216 of 217 (the one difference is position size above a leverage tier: the bot
+uses whole-number leverage, 19x, where the research formula uses 19.9x).
+
+6. *(removed 2026-11-16, kept for the record)* **Break-even:** once a **1m low since the fill reaches the price where the trade nets +$30.61 × balance / $3,184**
    after costs (maker 0.02% + 0.05% slippage in, taker 0.05% out; about a 0.6% fall), the stop is **moved to
    break-even** — the price netting $0 after those costs (PUT /v2/orders, read back). If the last price is already at
    or above that level, the bot **buys back at once** ("LOCK"). The move happens on the bot's next pass (30 s).
@@ -64,8 +85,14 @@ drops; the three recent weeks were a good stretch. The owner chose to run it kno
    start 5% above the current price — far looser than break-even).
 8. **Exits:** the stop at Delta; **24 h after the fill** the bot buys back ("TIME"). TIME, LOCK and LIQUIDATION (a
    jump past the stop: a tested risk, counted as a full stop) are planned; anything else unexplained HALTs, as run 3.
-9. **Hard stop:** after **2 full stops** (STOP_LOSS or LIQUIDATION while the stop was still the original one — not
-   after the break-even move) in a calendar month (UTC), **no new entries until the 1st**.
+9. **Hard stop per month: REMOVED by the owner, 2026-11-16** ("remove that setting"; confirmed "Remove it entirely"
+   after being shown the test). Until then: after 2 full stops (STOP_LOSS or LIQUIDATION while the stop was still the
+   original one) in a calendar month (UTC), no new entries until the 1st — **every number in the table above is WITH
+   that rule.** Without it, on the same history from $3,184 at 10% margin (`out/careful/timed_trail.txt` and the
+   month-off check recorded in CONTEXT.md): these rules end at **$955 (strict) .. $4,304 (lenient), deepest drop
+   70% .. 59%**; with a plain 5% trail in place of the break-even step they end at the **$1,000 floor ($948 .. $994)
+   during 2025**. Full stops are still counted and logged; `MONTH_STOP_LIMIT = N` in `live/spike_live.py` restores
+   the rule.
 10. **Kept from run 3:** the $1,000 floor (STOPPED until a refill, `fade-live-capital`), the $3,000 refill budget, HALT
     on anything unexplained, the capital check, exits-only without the switch, the kill switch.
 11. **Start:** Spike Sell begins on the funded wallet ($3,184.13 on 2026-11-15). The host's `DELTABOT_EQUITY` still

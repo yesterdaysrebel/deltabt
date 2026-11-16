@@ -1,4 +1,4 @@
-"""Owner 2026-11-17: "I would change lock to trailing SL; since most trades flip, the trailing SL can be TIMED instead
+"""Owner 2026-11-16: "I would change lock to trailing SL; since most trades flip, the trailing SL can be TIMED instead
 of price or % fall."  Spike Sell exactly as agreed (docs/fade_live_spike_prereg.md: resting sell 5% above the 00:02
 price, isolated margin at up to 20x plus the extra margin, exchange stop +2.25%, no target, out after 24 h, first fill
 wins, month off after 2 full stops, $1,000 floor), with the break-even "lock" replaced by a clock:

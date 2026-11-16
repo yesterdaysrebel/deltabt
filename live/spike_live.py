@@ -8,29 +8,38 @@ THE RULES (per UTC day, on the paper runner's two rule-A picks):
   entry      a resting post-only LIMIT SELL 5% above the last traded price at entry time (00:00-00:30 UTC), GTC,
              with an exchange-held stop +2.25% from the limit (last-traded trigger). NO take-profit order.
              Not filled by 24:00 UTC -> cancelled ("no spike").
-  size       10% of the balance as isolated margin per resting order, at the most leverage up to 20x that Delta
-             allows for that notional on that coin (~$6,200 of position on $3,184).
+  size       20% of the balance as isolated margin per resting order (owner 2026-11-16; was 10%), at the most
+             leverage up to 20x that Delta allows for that notional on that coin (~$12,400 of position on $3,184;
+             a full stop ~$335, a liquidation ~$960).
   one at a   the first pick to fill is the trade; the other pick's resting order is cancelled at once.
    time      No new resting orders while a position is open.
   after the  the rest of an order that filled in part is cancelled; the stop must cover the position (else bought
-   fill      back + HALT, as run 3); isolated margin checked (as run 3); then EXTRA isolated margin of 5.1% of the
-             balance is added (POST /v2/positions/change_margin) -- liquidation from ~+2.5% to ~+5%.
-  break-even once a 1m low since the fill reaches the price where the trade nets +$30.61 x balance / $3,184 (about a
-             0.6% fall), the stop is moved (PUT /v2/orders) to BREAK-EVEN (the price netting $0 after costs); if the
-             last price is already at or above that level the position is bought back at once ("LOCK").
-  the trail  from then on the stop trails 5% above the lowest 1m low since the fill, only when that is lower than
-             the stop it has, never up; if the last price is already at or above the new level: bought back ("LOCK").
-             Both moves happen on the bot's next pass (30 s), as the backtest moved them at the minute's close.
+   fill      back + HALT, as run 3); isolated margin checked (as run 3); then EXTRA isolated margin of 25/49 of the trade margin
+             (10.2% of the balance) is added (POST /v2/positions/change_margin) -- liquidation from ~+2.5% to ~+5%.
+  break-even REMOVED by the owner 2026-11-16 ("change lock to trailing SL"; BREAKEVEN_LOCK = False). Exit C had: once a
+             1m low nets +$30.61 x balance / $3,184 (about a 0.6% fall) the stop goes to break-even; if the last
+             price is already at or above that level the position is bought back at once ("LOCK").
+  the trail  the stop trails 5% above the lowest 1m low since the fill, only when that is lower than the stop it
+             has (so first after a fall of ~2.6%), never up; if the last price is already at or above the new level:
+             bought back ("LOCK"). Moved on the bot's next pass (30 s), as the backtest moved it at the minute's close.
   exits      the stop at Delta; 24 h after the FILL the bot buys back ("TIME").
-  hard stop  after 2 full stops (STOP_LOSS or LIQUIDATION before the stop was moved) in a calendar month (UTC), no
-             new entries until the 1st.
+  hard stop  NONE per month (owner 2026-11-16: "remove that setting", after being shown that with it removed the
+             tested account ends at the $1,000 floor in 2025). Full stops are still counted and logged
+             (`month_stops`); MONTH_STOP_LIMIT = N puts "no new entries until the 1st after N full stops" back.
   kept       run 3's machinery: $1,000 floor (STOPPED until a refill), HALT on anything unexplained, the capital
              check, reconcile, isolated-margin check, buy-backs that never over-buy, exits-only without the switch.
-Backtest of exactly these rules (scripts/careful_be_trail.py + scripts/careful_margin.py, two implementations
-agreeing on every trade, Delta's own 1m prices 2025-01..2026-11): from $3,184 the full history ends $1,801 (strict)
-.. $3,890 (lenient), deepest drop 67% .. 53%; 11 .. 22 of 22 monthly starts end above the start, none under the
-$1,000 floor; the 20 real picks +$871 .. +$1,119. About 1 trade in 8 is a winner. Roughly break-even on the
-history: the owner chose to run it knowing this (CONTEXT.md).
+Backtest of exit C WITH the month-off rule (scripts/careful_be_trail.py + scripts/careful_margin.py, two
+implementations agreeing on every trade, Delta's own 1m prices 2025-01..2026-11): from $3,184 the full history ends
+$1,801 (strict) .. $3,890 (lenient), deepest drop 67% .. 53%.
+Backtest of the rules AS THEY NOW ARE -- plain 5% trail, NO month-off rule, 10% margin (scripts/careful_timed_trail.py
+and the checks recorded in CONTEXT.md, 2026-11-16; two implementations agreeing on every trade): from $3,184 the full
+history ends at the $1,000 FLOOR, $948 (strict) .. $994 (lenient), reached between June and August 2025; started
+2026-01-01 it ends $5,046 .. $17,595; 10 .. 7 of 22 monthly starts end under $1,000 and 12 .. 15 above the start.
+With the month-off rule kept the same exit ended $6,074 .. $8,386.
+At 20% margin (owner 2026-11-16), same rules, from $3,184: the full history reaches the $1,000 floor by April 2025
+($951 .. $985); started 2026-01-01 it also ends at the floor; 19 .. 16 of 22 monthly starts end under $1,000. Per
+trade at a fixed $3,184: win 29-30%, average win +$706 .. +$717, average loss -$277 .. -$305, a liquidation -$962,
+longest losing run 11 trades. The owner chose these rules knowing this.
 """
 from __future__ import annotations
 
@@ -51,10 +60,11 @@ RUN_VERSION = 4
 #: without a host replacement. Floor ($1,000) and refill rules are run 3's.
 RUN_START_USD = 3184.0
 SPIKE_ABOVE = 0.05
-#: Owner 2026-11-15 ("I suggest we deploy with 10% margin"): 10% of the balance per trade; the extra margin keeps the
-#: tested liquidation distance (25% x 10/49 = 5.1% of the balance -> ~+5.1%).
-TRADE_MARGIN = 0.10
-EXTRA_MARGIN = 0.051
+#: Owner 2026-11-16 ("We'll use 20% margin", after the per-trade and account numbers at 5/10/15/20%; was 10%, owner
+#: 2026-11-15): 20% of the balance per trade. The extra margin keeps the tested liquidation distance: 25/49 of the
+#: trade margin (the ratio every careful_* test used) = 10.2% of the balance -> liquidation ~+5% from the entry.
+TRADE_MARGIN = 0.20
+EXTRA_MARGIN = TRADE_MARGIN * 25 / 49
 MAX_LEVERAGE = 20
 STOP_ABOVE = 0.0225
 #: Exit C (owner 2026-11-15, "C approved"): once the trade's best point (a 1m low) nets this much x balance/$3,184 the
@@ -63,11 +73,18 @@ BREAKEVEN_AFTER_USD = 150.0 * TRADE_MARGIN / 0.49
 #: The stop after that move nets this (0 = break-even after costs). Named "lock" in the table and the events (run 4's
 #: first version locked +$200 here).
 LOCK_USD = 0.0
+#: Owner 2026-11-16 ("change lock to trailing SL"; "1 approved"): NO break-even step. The stop stays at +2.25% and
+#: trails TRAIL above the lowest 1m low since the fill as soon as that is lower than the stop it has (the price must
+#: have fallen ~2.6% for the first move). True restores exit C (break-even at ~0.6%, then the trail). Tested:
+#: scripts/careful_timed_trail.py, variant "timed trail 0m / 5.00%" (out/careful/timed_trail.txt).
+BREAKEVEN_LOCK = False
 #: ... and then trails this far above the lowest price since the fill, only when that is lower than the stop it has;
 #: never up. Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: a native trail would start 5% above
 #: the CURRENT price -- far looser than break-even -- which is not the tested rule.
 TRAIL = 0.05
-MONTH_STOP_LIMIT = 2
+#: Month-off rule: no new entries until the 1st after this many full stops in a calendar month. None = no monthly
+#: limit (owner 2026-11-16). It was 2 until then; the tested results in the docstring above are WITH the limit of 2.
+MONTH_STOP_LIMIT: int | None = None
 #: Costs used to place the break-even levels: maker entry 0.02% + 0.05% slippage, taker exit 0.05%.
 COST = 0.0002 + 0.0005 + 0.0005
 #: Delta's fee reserve in an order's margin (measured: 83,682 SOPH contracts on 50% of $1,534.98).
@@ -511,7 +528,7 @@ class SpikeLive(L.LiveFade):
                 r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
                 if r["status"] != "OPEN":
                     continue                             # the margin check bought it back
-            if r["lock_price"] is None and r["entry_price"]:
+            if BREAKEVEN_LOCK and r["lock_price"] is None and r["entry_price"]:
                 await self._lock(con, r, now)
             elif r["entry_price"]:
                 await self._trail(con, r, now)
@@ -564,14 +581,16 @@ class SpikeLive(L.LiveFade):
         log.warning("spike %s: stop moved to %s (break-even)", r["symbol"], lp)
 
     async def _trail(self, con, r, now: float) -> None:
-        """After the break-even move: move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter
-        (lower) than the stop now; if the last price is already at or above it, buy back at once ("LOCK"), as the
-        backtest."""
+        """Move the stop to the lowest low since the fill x (1 + TRAIL) when that is tighter (lower) than the stop now;
+        if the last price is already at or above it, buy back at once ("LOCK"), as the backtest. With BREAKEVEN_LOCK
+        this runs after the break-even move; without it (owner 2026-11-16) from the fill, starting from the original
+        stop -- `trail_price` is written only once the stop HAS moved, so a NULL `trail_price` and `lock_price` still
+        means "the original stop"."""
         lows = await self._lows_since_fill(r, now)
         if not lows:
             return
         prod = await asyncio.to_thread(self.product, r["symbol"])
-        current = float(r["trail_price"] or r["lock_price"])
+        current = float(r["trail_price"] or r["lock_price"] or r["stop_price"])
         new = to_tick(min(lows) * (1 + TRAIL), prod["tick"], up=True)
         if float(new) >= current - float(prod["tick"]) * 0.5:
             return                                       # not tighter: the break-even stop (or the last trail) stays
@@ -594,14 +613,16 @@ class SpikeLive(L.LiveFade):
             trig = float(x["trail_price"] or x["lock_price"] or x["stop_price"])
             await event(con, "STOP_FILL", x["symbol"], {"trigger": trig, "fill": float(x["exit_price"]),
                                                        "slip_pct": round(100 * (float(x["exit_price"]) / trig - 1), 4),
-                                                       "locked": x["lock_price"] is not None})
+                                                       "locked": x["lock_price"] is not None,
+                                                       "trailed": x["trail_price"] is not None})
 
     # -- entries -------------------------------------------------------------------------------------------------
     async def month_stops(self, con, now: float) -> int:
         month = _ts(now).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return int(await con.fetchval(
             "SELECT count(*) FROM fade_live_positions WHERE status = 'CLOSED' AND exit_reason IN ('STOP_LOSS', 'LIQUIDATION') "
-            "AND lock_price IS NULL AND exit_time >= $1 AND detail->>'run' = $2", month, str(RUN_VERSION)) or 0)
+            "AND lock_price IS NULL AND trail_price IS NULL AND exit_time >= $1 AND detail->>'run' = $2",
+            month, str(RUN_VERSION)) or 0)
 
     async def _enter_one(self, con, day: int, p, now: float) -> None:
         from live.client import AmbiguousWrite, VenueError, VenueRejected
@@ -615,7 +636,7 @@ class SpikeLive(L.LiveFade):
             await self.set_state(con, "STOPPED", f"balance ${bal:.2f} under the ${L.FLOOR_USD:.0f} floor: refill "
                                  "and run fade-live-capital")
             return
-        if await self.month_stops(con, now) >= MONTH_STOP_LIMIT:
+        if MONTH_STOP_LIMIT is not None and await self.month_stops(con, now) >= MONTH_STOP_LIMIT:
             await self._skip(con, day, p, f"{MONTH_STOP_LIMIT} full stops this month: no entries until the 1st")
             return
         if await con.fetchval("SELECT count(*) FROM fade_live_positions WHERE status = 'OPEN'"):

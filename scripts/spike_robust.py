@@ -63,7 +63,7 @@ def btc_5m():
     p = OUT / "btc_5m.parquet"
     if p.exists():
         return pd.read_parquet(p)
-    rows, x, end = [], int(pd.Timestamp("2025-01-10", tz="UTC").timestamp()), int(pd.Timestamp("2026-11-17", tz="UTC").timestamp())
+    rows, x, end = [], int(pd.Timestamp("2025-01-10", tz="UTC").timestamp()), int(pd.Timestamp("2026-11-16", tz="UTC").timestamp())
     while x < end:
         e = min(end, x + 1999 * 300)
         req = urllib.request.Request(f"https://api.india.delta.exchange/v2/history/candles?resolution=5m&symbol=BTCUSD&start={x}&end={e}",

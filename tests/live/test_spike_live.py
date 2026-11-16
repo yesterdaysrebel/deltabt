@@ -19,25 +19,36 @@ from tests.live.test_fade_live import D0, DAY, FakeDelta, _db, _rows, _state
 LOCK_EVENTS = ("LOCK_MOVED", "LOCK_AT_MARKET", "LOCK_FAILED")
 
 
+@pytest.fixture(autouse=True)
+def _exit_mode(request, monkeypatch):
+    """The tests in this file were written for exit C (break-even, then the trail) and keep that mode. The owner's
+    2026-11-16 setting -- no break-even step, a plain 5% trail from the fill -- is the module default and is what the
+    `test_plain_trail_*` tests run."""
+    monkeypatch.setattr(S, "BREAKEVEN_LOCK", not request.node.name.startswith("test_plain_trail"))
+
+
 # ============================================================ pure rules
 
 def test_sizing_is_twenty_x_up_to_the_coin_limits():
     # the owner's SOPH screen: 50% of $1,534.98 at 20x = 83,682 contracts of 100 SOPH at 0.001792
     n, lev, notional = S.spike_size(1534.98, 0.001792, 100, 5.0, 50_000, 0.001, 202_000, share=0.50)
     assert lev == 20 and abs(n - 83_682) / 83_682 < 0.01
-    # the run's own share: 10% of $3,184 at 20x on a plain coin
-    assert S.TRADE_MARGIN == 0.10 and S.EXTRA_MARGIN == 0.051
+    # the run's own share: 20% of $3,184 at 20x on a plain coin (owner 2026-11-16; was 10%)
+    assert S.TRADE_MARGIN == 0.20 and S.EXTRA_MARGIN == pytest.approx(0.20 * 25 / 49)   # owner 2026-11-16: 20%
     n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None)
-    assert lev == 20 and 6_100 < notional < 6_300
+    assert lev == 20 and 12_300 < notional < 12_500
     # the first version's share: 49% of $3,184 at 20x
     n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None, share=0.49)
     assert lev == 20 and 30_000 < notional < 31_000
     # PIEVERSE: 20x only up to $10,000 (scaling 0.005% per $ above): $1,560 of margin cannot carry 20x ...
     n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None, share=0.49)
     assert lev < 20 and notional / lev <= 0.49 * 3184 + 1e-6
-    # ... but the run's $318 can
-    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None)
+    # ... 10% ($318) can ...
+    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None, share=0.10)
     assert lev == 20 and notional < 10_000
+    # ... and the run's 20% ($637) is above the tier: less than 20x, never more margin than the share
+    n, lev, notional = S.spike_size(3184, 2.0, 10, 5.0, 10_000, 0.005, None)
+    assert lev < 20 and notional / lev <= S.TRADE_MARGIN * 3184 + 1e-6
     # the contract limit binds
     n, lev, _ = S.spike_size(3184, 0.001, 100, 5.0, 50_000, 0.001, 1_000)
     assert n == 1_000
@@ -45,9 +56,9 @@ def test_sizing_is_twenty_x_up_to_the_coin_limits():
 
 
 def test_activation_and_break_even_prices_net_the_planned_dollars():
-    e, notional = 1.0, 6_219.0
+    e, notional = 1.0, S.TRADE_MARGIN * 3184 / (0.05 + S.FEE_RESERVE)        # the run's position on $3,184
     act, lk = S.activation_price(e, notional), S.lock_price(e, notional)
-    assert S.BREAKEVEN_AFTER_USD == pytest.approx(150 * 10 / 49) and S.LOCK_USD == 0 and S.TRAIL == 0.05
+    assert S.BREAKEVEN_AFTER_USD == pytest.approx(150 * S.TRADE_MARGIN / 0.49) and S.LOCK_USD == 0 and S.TRAIL == 0.05
     assert abs(notional * (e - act) / e - notional * S.COST - S.BREAKEVEN_AFTER_USD) < 1e-6   # nets +$30.61
     assert abs(notional * (e - lk) / e - notional * S.COST) < 1e-9                            # nets $0: break-even
     assert act < lk < e and 0.005 < 1 - act / e < 0.007                                       # a ~0.6% fall
@@ -172,7 +183,7 @@ async def test_two_resting_sells_with_a_last_price_stop_and_both_cancelled_at_mi
         assert "bracket_take_profit_price" not in x and rows["XUSD"]["target_price"] is None   # exit C: no target
         assert fake.lev[1] == 20 and rows["XUSD"]["leverage"] == 20
         notional = x["size"] * 1.05
-        assert abs(notional - 0.10 * 3184 / (0.05 + S.FEE_RESERVE)) <= 1.05   # margin / (5% + Delta's 0.12% fee reserve)
+        assert abs(notional - S.TRADE_MARGIN * 3184 / (0.05 + S.FEE_RESERVE)) <= 1.05   # margin / (5% + Delta's 0.12% fee reserve)
         assert not fake.pos                                             # nothing sold yet
         await acct.step(con, D0 + DAY + 5)                              # 24:00 UTC: no spike came
         rows = await _rows(con)
@@ -198,8 +209,8 @@ async def test_the_first_fill_cancels_the_other_and_adds_extra_margin():
         assert rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["entry_price"] == 1.05
         assert rows["YUSD"]["status"] == "SKIPPED" and "filled first" in rows["YUSD"]["skip_reason"]
         assert fake.resting[_cid(fake, 2)]["row"]["state"] == "cancelled"
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
-        assert rows["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]
+        assert rows["XUSD"]["extra_margin"] == round(S.EXTRA_MARGIN * 3184, 2)
         assert [e["kind"] for e in await _events(con, "EXTRA_MARGIN")] == ["EXTRA_MARGIN"]
         assert (await _state(con))["status"] == "RUNNING"               # a resting fill is not a stranger's position
     finally:
@@ -296,7 +307,7 @@ async def test_twenty_four_hours_after_the_fill_not_after_midnight():
 
 @requires_pg
 @pytest.mark.asyncio
-async def test_a_stop_is_logged_against_its_trigger_and_two_full_stops_end_the_month():
+async def test_a_stop_is_logged_against_its_trigger_and_two_full_stops_do_not_end_the_month():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
     fake = SpikeDelta(balance=3184.0)
     acct = _acct(fake)
@@ -320,8 +331,39 @@ async def test_a_stop_is_logged_against_its_trigger_and_two_full_stops_end_the_m
         await acct.step(con, D0 + 2 * DAY + 120)
         rows = await con.fetch("SELECT status, skip_reason FROM fade_live_positions WHERE day = $1",
                                __import__("datetime").datetime.fromtimestamp(D0 + 2 * DAY, __import__("datetime").timezone.utc))
-        assert [(r["status"], r["skip_reason"][:16]) for r in rows] == [("SKIPPED", "2 full stops thi")]
+        assert [r["status"] for r in rows] == ["RESTING"]              # owner 2026-11-16: no monthly limit
         assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_the_month_off_rule_still_works_when_a_limit_is_set(monkeypatch):
+    """MONTH_STOP_LIMIT = None is the owner's choice; setting a number must bring the old rule back unchanged."""
+    import live.spike_live as SL
+    monkeypatch.setattr(SL, "MONTH_STOP_LIMIT", 2)
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake)
+    try:
+        from tests.live.test_fade_live import _paper_day
+        for k in range(2):
+            day = D0 + k * DAY
+            if k:
+                await _paper_day(con, (("XUSD", 1, 0.10, 1.0),), day)
+            await acct.step(con, day + 120)
+            fake.fill_resting(_cid(fake, 1) if k == 0 else list(fake.resting)[-1])
+            await acct.step(con, day + 600)
+            fake.fire_stop("XUSD", 1.0760, at=day + 700)
+            await acct.step(con, day + 800)
+            await acct.step(con, day + 800 + 301)
+        assert await acct.month_stops(con, D0 + 2 * DAY) == 2
+        await _paper_day(con, (("XUSD", 1, 0.10, 1.0),), D0 + 2 * DAY)
+        await acct.step(con, D0 + 2 * DAY + 120)
+        rows = await con.fetch("SELECT status, skip_reason FROM fade_live_positions WHERE day = $1",
+                               __import__("datetime").datetime.fromtimestamp(D0 + 2 * DAY, __import__("datetime").timezone.utc))
+        assert [(r["status"], r["skip_reason"][:16]) for r in rows] == [("SKIPPED", "2 full stops thi")]
     finally:
         await con.close()
 
@@ -423,11 +465,11 @@ async def test_option_a_the_fast_watcher_adds_the_extra_margin_without_waiting_f
         fake.fill_resting(_cid(fake, 1))
         seen = await acct.fast(con, D0 + 125)                           # 5 s later, between two 30 s passes
         rows = await _rows(con)
-        assert seen >= 1 and rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
+        assert seen >= 1 and rows["XUSD"]["status"] == "OPEN" and rows["XUSD"]["extra_margin"] == round(S.EXTRA_MARGIN * 3184, 2)
         assert rows["YUSD"]["status"] == "SKIPPED"                      # the other pick cancelled at once too
         await acct.fast(con, D0 + 128)                                  # and again, and the next full pass:
         await acct.step(con, D0 + 150)
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # ... the margin was added exactly once
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]       # ... the margin was added exactly once
         assert (await _state(con))["status"] == "RUNNING"
     finally:
         await con.close()
@@ -539,7 +581,7 @@ async def test_both_picks_filling_before_the_cancel_lands_keeps_one_and_buys_the
         assert (rows["YUSD"]["status"], rows["YUSD"]["exit_reason"]) == ("CLOSED", "DOUBLE_FILL")
         assert fake.pos[2] == 0 and fake.pos[1] < 0                     # one position at a time, at Delta too
         assert [e["kind"] for e in await _events(con, "DOUBLE_FILL")] == ["DOUBLE_FILL"]
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # the trade still got its extra margin
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]       # the trade still got its extra margin
         assert (await _state(con))["status"] == "RUNNING"               # planned: no halt
     finally:
         await con.close()
@@ -567,8 +609,8 @@ async def test_a_failed_read_before_the_top_up_does_not_cost_the_extra_margin():
         assert x["status"] == "OPEN" and x["extra_margin"] is None and "extra_margin_tried" not in (x["detail"] or "")
         assert fake.margin_added == []
         await acct.fast(con, D0 + 128)                                  # the next look adds it
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
-        assert (await _rows(con))["XUSD"]["extra_margin"] == round(0.051 * 3184, 2)
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]
+        assert (await _rows(con))["XUSD"]["extra_margin"] == round(S.EXTRA_MARGIN * 3184, 2)
     finally:
         await con.close()
 
@@ -589,7 +631,7 @@ async def test_the_watcher_waits_for_the_margin_check_before_adding_margin():
         assert fake.margin_added == []                                  # an unchecked position is NOT topped up
         await acct.fast(con, D0 + 128)                                  # the next look completes the check FIRST, then tops up
         x = (await _rows(con))["XUSD"]
-        assert x["status"] == "OPEN" and "venue_position" in x["detail"] and fake.margin_added == [(1, round(0.051 * 3184, 2))]
+        assert x["status"] == "OPEN" and "venue_position" in x["detail"] and fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]
         assert (await _state(con))["status"] == "RUNNING"               # not bought back as "MARGIN", not halted
     finally:
         await con.close()
@@ -759,7 +801,7 @@ async def test_a_second_position_whose_buy_back_failed_is_closed_on_the_next_pas
         acct.buy_back = flaky
         await acct.step(con, D0 + 150)                                  # YUSD's double-fill buy-back fails once ...
         await acct.fast(con, D0 + 153)
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]       # only the trade is topped up, never the surplus one
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]       # only the trade is topped up, never the surplus one
         await acct.step(con, D0 + 180)                                  # ... and the exits close it (same pass or the next)
         rows = await _rows(con)
         assert (rows["YUSD"]["status"], rows["YUSD"]["exit_reason"]) == ("CLOSED", "DOUBLE_FILL") and fake.pos[2] == 0
@@ -869,7 +911,7 @@ async def test_a_fill_that_lands_while_halted_is_still_recorded_and_protected():
         await acct.step(con, D0 + 150)
         x = (await _rows(con))["XUSD"]
         assert x["status"] == "OPEN" and fake.pos[1] < 0                # ours, with its stop and its exits
-        assert fake.margin_added == [(1, round(0.051 * 3184, 2))]
+        assert fake.margin_added == [(1, round(S.EXTRA_MARGIN * 3184, 2))]
     finally:
         await con.close()
 
@@ -1089,3 +1131,97 @@ async def test_a_resting_sell_delta_stops_showing_is_given_two_minutes_then_canc
         assert all(r["row"]["state"] == "cancelled" for r in fake.resting.values())   # nothing left resting unwatched
     finally:
         await con.close()
+
+
+# ------------------------------------------------------------------ owner 2026-11-16: no break-even step, a plain trail
+def test_plain_trail_is_the_default_and_the_month_has_no_stop_limit():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spike_live_as_shipped", S.__file__)   # a private copy: the fixture
+    fresh = importlib.util.module_from_spec(spec)                                        # above patches the shared one
+    spec.loader.exec_module(fresh)
+    assert fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None and fresh.TRAIL == 0.05
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_plain_trail_no_break_even_move_and_the_stop_trails_from_the_fill():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05 * 0.993}                                        # a 0.7% fall: exit C would go to break-even here
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.043, 1.044, 1.043)
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["lock_price"] is None and x["trail_price"] is None and not fake.edits
+        lows["low"] = 1.05 * 0.98                                       # a 2% fall: 5% above it is still looser than the stop
+        fake.book["XUSD"] = (1.03, 1.031, 1.03)
+        await acct.step(con, D0 + 900)
+        assert (await _rows(con))["XUSD"]["trail_price"] is None and not fake.edits
+        lows["low"] = 1.05 * 0.96                                       # a 4% fall: 1.0584 is under the 1.0736 stop
+        fake.book["XUSD"] = (1.01, 1.011, 1.01)
+        await acct.step(con, D0 + 1200)
+        x = (await _rows(con))["XUSD"]
+        assert x["lock_price"] is None and abs(x["trail_price"] - 1.05 * 0.96 * 1.05) < 0.0002
+        assert x["trail_price"] < x["stop_price"] and float(fake.edits[-1][2]) == x["trail_price"]
+        n = len(fake.edits)
+        await acct.step(con, D0 + 1500)                                 # no new low: the stop does not move (never up)
+        assert len(fake.edits) == n
+        lows["low"] = 1.05 * 0.90
+        fake.book["XUSD"] = (0.95, 0.951, 0.95)
+        await acct.step(con, D0 + 1800)
+        assert abs((await _rows(con))["XUSD"]["trail_price"] - 1.05 * 0.90 * 1.05) < 0.0002
+        kinds = [e["kind"] for e in await _events(con)]
+        assert [k for k in kinds if k.startswith("TRAIL")] == ["TRAIL_MOVED", "TRAIL_MOVED"]
+        assert not [k for k in kinds if k in LOCK_EVENTS]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_plain_trail_buys_back_at_market_when_the_price_is_already_back_above_the_level():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05 * 0.93}                                         # fell 7%: the trailing level is 1.0253 ...
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.03, 1.031, 1.03)                         # ... and the price is already back above it
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "LOCK") and fake.pos[1] == 0
+        assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_AT_MARKET"]
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_plain_trail_a_stop_after_the_trail_moved_is_not_a_full_stop_and_is_logged_as_trailed():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05 * 0.96}
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.01, 1.011, 1.01)
+        await acct.step(con, D0 + 600)                                  # the stop is moved to 1.0584
+        trail = (await _rows(con))["XUSD"]["trail_price"]
+        assert trail is not None
+        fake.fire_stop("XUSD", 1.0600, at=D0 + 700)
+        await acct.step(con, D0 + 800)
+        await acct.step(con, D0 + 800 + 301)
+        x = (await _rows(con))["XUSD"]
+        assert (x["status"], x["exit_reason"]) == ("CLOSED", "STOP_LOSS")
+        assert await acct.month_stops(con, D0 + 3600) == 0              # not the original stop: not a full stop
+        fills = await _events(con, "STOP_FILL")
+        assert len(fills) == 1 and '"trailed": true' in fills[0]["detail"] and '"locked": false' in fills[0]["detail"]
+    finally:
+        await con.close()
+

@@ -137,6 +137,15 @@ round the clock (XAUT 98–100% of minutes, PAXG 75–95%, oil ~50%); US stock t
 flip_st_short −0.081R/signal (1,008; metals −0.094, stock tokens −0.063; Jan–Jul +0.09, Aug–Oct −0.22), account
 −$99; live-era rule −0.291R, −$100. Metal stops are 0.3–0.5% (4×ATR on low vol) so the 5x cap binds and noise stops
 dominate. Not traded. Cheap option offered: record-only on the 4 metals + a few liquid stock tokens.
+**QUICK TRADES ON THE 26 NON-CRYPTO PERPS — ALL FAIL (2026-11-16, owner "unpopular strategies with quick entry and
+exit for futures, US stock perps").** Pre-registered `docs/tradfi_quick_prereg.md`; data `scripts/tradfi_quick_data.py`
+(1m trade + `.DE<sym>` index candles from listing); test `scripts/tradfi_quick.py` -> `out/tradfi_quick/report.txt`.
+Costs are a third of crypto's (taker 0.01-0.02%, live spreads 0.001-0.045%). TRAP: Delta's REST forward-fills no-trade
+minutes as flat volume-0 candles -- 76-90% of stock-token minutes (real trades in 10-24% of minutes; PAXG/XAUT 95%+);
+with them counted the perp-vs-index snap-back "passed" (+0.13%/trade strict, t 7.2) on stale prints; with volume > 0
+only it is -0.12% strict / -0.04% lenient (gross ~0). Judged on 2026-08-15..11-15 with DEV-frozen cells: snap-back,
+fade the off-hours move into the US open (DEV +1.3%, TEST -0.27%), follow it, PAXG/XAUT pair (gross ~+0.04%, costs
+0.08%), last-30-min intraday momentum -- 0 of 5 pass, every TEST mean negative under both fills.
 
 **VERDICT 2026-11-09 — THE FADE HAS NO PROVEN EDGE; DO NOT SCALE REAL MONEY ON IT.** Pre-registered Binance test
 (`docs/fade_binance_prereg.md`, `scripts/fade_binance_test.py`, `out/gainer_fade/binance_judge.txt`; 2021-2024, 2,609
@@ -206,6 +215,363 @@ negative at every threshold; premium >= 0.2% TEST +0.157R t 1.75, n 35/yr, 2024 
 one that swapped years.)
 **THE STOP-LOSS PROBLEM, DIAGNOSED (2026-11-15, owner: "find a way to solve the stop-loss problem"; all on the
 careful dataset, every family double-implemented, train 2025 / test 2026+real):**
+- REVIEW 2026-11-16 (owner "run a review on all the studies"): 16 studies of 11-15/16 re-run -> byte-identical to the
+  saved outputs (`out/review/rerun.sh`). FEES WERE OVER-CHARGED in every careful_* script: 0.12% round trip vs Delta's
+  real fills (GST in) maker 0.0212% / taker 0.0531% = 0.042% (resting target exit) / 0.074% (stop, time). New
+  independent grid at the real fees (`scripts/review_real_fees.py`, validated on 1,524 trades against
+  careful_one_pct.p1; `out/review/real_fees.txt`), % of the position per trade, top pick, 381 trades: every target
+  0.5-1.5% x stop 1.5-10% stays negative under STRICT, LENIENT and even PERFECT fills (1% / 2.25%: -0.46 / -0.16 /
+  -0.05%); the verdict does not flip. Positive in both years only with a 5-10% stop and a >= 5% or no target (no
+  target, 10% stop: +0.37% strict .. +0.70% lenient before funding, t 0.6-1.1) = the wide-stop lead below, unproven.
+  The dataset's flat minutes (46%) are Delta's forward-filled no-trade minutes; they cannot trigger anything. Picks
+  spot-checked against Delta daily candles (14 of 14 rose on D-1, mean +14.2%).
+- OWNER'S HAND-TRADE RECORD, FULL (2026-11-16, owner "the venue is fine, you can't fine-tune the setup" -> uploaded Delta's
+  fill history, order history, annual summary to `out/manual/`, gitignored, repo is PUBLIC: never commit the per-trade
+  rows). `scripts/hand_trades_review.py trips|candles|report` -> `out/manual/report.txt`. 8,266 perp fills 2026-05-18 ..
+  11-07 = **766 round trips, 77 days, 66 coins: gross -$17,536, trading fees -$4,299, liquidation charges -$8,007, net
+  -$29,843** (= Delta's annual summary -25.3 lakh INR at 85 INR/USD, to the rupee; Delta's order-history Realised P&L
+  matches per coin to the cent). Liquidation charge = Delta's summary "Fee" minus the fills' "Fees paid", only on coins
+  with liquidations, ~0.47% of the liquidated notional -- NOT in the fill export. 302 wins +$41,979 (avg +$139, median
+  move +1.0%), 263 clean losses -$18,880, **201 liquidations (26%) -$52,942** at a median 2.79% against (~30x). Median
+  size $6.9k, hold 8.6 min. Price move per trip BEFORE fees: -0.33% of the position (t -3.0): the entries have no edge.
+  No pre-trade feature separates winners from liquidations: trade number of the day (1st -$44/trade, 2-3 +$5, 21+
+  -$128, 45% liquidated), previous result, gap, long/short, hour, size, maker/taker, coin -- every bucket with 60+ trips
+  is negative or ~0. Liquidated trades had chased a +2.1% move in the last 15-60 min (wins +1.0%); entries with a 3%+
+  1 h move behind them: 257 trips, 35% liquidated, -$14.6k (vs faded: -$2.0k; difference t ~1.5, not reliable). Rules
+  that drop trades: max 3 a day -$2,855, stop after the day's first liquidation -$4,738 -- still negative. WHAT-IF on
+  761 trips with Delta 1m candles (as traded -$28,807; two independent implementations agree to the cent), STRICT ..
+  LENIENT: stop 0.5% -$30.7k .. -$8.2k, 1% -$32.4k .. -$12.0k, 2% -$29.7k .. -$15.0k; liquidations HELD at lower
+  leverage (same size) with a stop at 5% -$21.0k .. -$14.7k, 10% -$22.0k .. -$18.9k, 20% -$17.3k .. -$16.2k (86% come
+  back to entry within 72 h, the other 14% lose 20%). 39% of the wins went 1%+ against first. **No stop width and no
+  leverage turns the owner's own record positive.** "Good money per trade" is true of the wins (top 10 = +$11.2k,
+  median move +10%) and of 24 of 77 days; it is the liquidation tail that the record never pays for. Supersedes the
+  15 Jul-8 Sep cut (369 trips, commit 2760df4). INDICATORS AT THE REAL ENTRIES (owner 11-16: "I work with wpr 140,
+  super trend 10,2"; `deltabt.indicators` on Delta 1m candles, last closed bar, 752 entries; inline run, per-entry
+  values in `out/manual/indicators_at_entry.pkl`): trade side = 1m Supertrend on 80% of entries (chance 50%), = 5m
+  Supertrend on 54% (chance); longs sit at 1m %R above -20 on 43% (random minute 25%), shorts spread out. The owner
+  trades WITH the 1m Supertrend, buying near the top of the 140-bar range. It does not pay: both STs agree 363 trips
+  avg -$46 (move -0.47%/trip), both AGAINST 104 trips avg -$9 (+0.30%/trip, difference t ~2.3, one of 4 groups);
+  every %R zone on 1m and 5m is negative (-$26..-$52/trip); the coded readings on the owner's own entries (dip band,
+  band cross, ST flip within 6 bars) avg -$62..-$68 vs -$30 for the rest. Same verdict as the 9-month backtests.
+  THE RULE TAKEN MECHANICALLY ON THE OWNER'S OWN COIN-DAYS (owner: "1m mostly, 5m for confirmation sometimes";
+  `scripts/hand_rule_test.py` -> `out/manual/rule_test.txt`; 66 coins, 538,590 1m bars = 374 coin-days around the
+  hand trades; second implementation agrees to 4 decimals): 1m triggers flip / %R breakout through -20 with ST /
+  %R dip back through -80 with ST, each with and without 5m ST; exits +1% target with a 2.8% or 1% stop (60 min),
+  or ride the 1m ST. **All 18 cells negative at both bounds**: STRICT -0.18..-0.40% of the position per trade
+  (t -1.4..-13), LENIENT (maker entry at the open, no slippage) -0.008..-0.18%. Target +1% / stop 2.8% WINS 57-65% of
+  the time and still loses -0.07..-0.12% lenient -- "mostly targets are hit" is true and does not pay.
+- %R(140) BAND BEHAVIOUR, DESCRIPTIVE (owner 11-16: "1m exhausted, 5m just started -> the 5m always tries to reach the
+  other band ... just study how the wpr band behaves"; `scripts/wpr_band_behaviour.py` -> `out/wpr_band_behaviour.txt`,
+  `scripts/wpr_5m_carry.py` -> `out/wpr_5m_carry.txt`; data A = owner's coin-days, B = careful dataset top gainers
+  2025-01..2026-11; key numbers re-derived by a second implementation). Same on 1m and 5m, same on A and B: %R is in a
+  band ~40% of the time, a stay lasts a median 3 bars; **after leaving a band it falls back into the same band 83-86%
+  of the time (a third on the next bar, ~55% within 3) and crosses to the other band 14-17%**, taking a median 31
+  bars; past -50 it finishes 62-65%, past -30 84-88%. Chance of the far band first ~ distance (15-18% just outside
+  the band, ~45% at the middle, 81-85% near the far band). Within 140 bars the 5m does reach the other band 52-57% of
+  the time, mostly after going back first. THE OWNER'S CONDITION IS REAL BUT SMALL: 5m just outside its band with the
+  1m already at the far band -> crosses 20-23% vs 15-16% (1m in the middle) vs 13% (1m not started); the same ~+7
+  points at every 5m level. PRICE: a 5m crossing = median +3.6..+4.9%, a fall-back = -0.7..-0.8%; mean over all trips
+  -0.16..-0.17% before fees. Traded (in at the 5m leave, out at the other band, stop at the range edge or 2.8%):
+  exhausted-1m subset -0.62..-1.15% strict, -0.24..-0.44% lenient on both datasets.
+- SUPERTREND(10,2) WITH THE %R(140) BAND, DESCRIPTIVE (owner 11-16; `scripts/st_band_behaviour.py` ->
+  `out/st_band_behaviour.txt`; same data A / B, no costs; second implementation reproduces legs and trip splits
+  exactly). TRAP: on no-trade minutes (Delta's flat bars) Supertrend's ATR collapses and it flips every bar (B
+  unfiltered: median 1m leg 1 bar), so stretches with > 20% flat 1m bars are dropped (A keeps 54% of bars, B 26%).
+  A LEG (flip to flip): median 12 / 8 bars on 1m, 15 on 5m; **33-36% of legs end in profit**, median -0.19% (1m),
+  -0.64..-0.97% (5m), mean -0.05..+0.02% (B 5m -0.15%), best tenth +1.2..1.5% (1m), +4.4..4.6% (5m). %R at the flip:
+  median -50; the %R level at the flip does NOT change the leg (30-35% profitable from every zone). A %R TRIP: with
+  Supertrend on its side when %R leaves the band 15-16% cross vs 11-12% against; no trip ever crosses without
+  Supertrend coming onto its side (it does within ~2 bars on 34-39% of the against-trips); fresh flip (<= 3 bars)
+  16-19% vs older 10-16%. LEVEL x SIDE: Supertrend matters most mid-range (5m at -60..-40: 51-62% with vs 38-49%
+  against), 2-3 points near either band. TWO TIMEFRAMES: 1m trip with both STs with it 22-28% cross (1.5% of trips;
+  price mean still ~0); 5m trip with 5m ST with but 1m ST against 5-8% (worst cell); 5m ST almost never flips against
+  the 1m ST. Price over a trip is ~0 or negative on average in every Supertrend cell. PRICE FROM EVERY STATE (owner
+  "do you see a setup forming?"; inline, liquid stretches): mean price move from a bar to %R's next band close, by
+  %R level x Supertrend side x other-timeframe Supertrend, is noise around zero (+-0.05% on 1m, +-0.4% on 5m, no
+  neighbouring cells agree, A and B disagree in sign on most) -- the odds improve exactly as the remaining payoff
+  shrinks. ONLY CANDIDATE: 1m %R low in its range (-80..-60, own terms) with BOTH the 1m and 5m Supertrend on side
+  (a 1m pullback in a 5m trend): A +0.40% / +0.07% (t < 1), B +0.00% / +0.22% (t 1.4 / 3.1), ~1.5-4% of bars; its
+  traded cousin (`hand_rule_test.py` dip+5m) was -0.18..-0.39% strict, -0.01..-0.18% lenient on A. Not a setup; a
+  pre-registered test on untouched data is the only honest next step.
+- **1m PULLBACK INSIDE A 5m TREND -- PRE-REGISTERED, FAIL (2026-11-16, owner "approved").** `docs/pullback_5m_trend_prereg.md`
+  (written before the download), `scripts/pullback_data.py` (30 most-traded Delta crypto perps, 1m, 2026-08-01..11-15,
+  `out/pullback/`), `scripts/pullback_5m_trend.py` -> `out/pullback/result.txt`; second implementation identical
+  (2,977 / 3,020 trades, same means). Entry = onset of [1m ST and 5m ST on side, 1m %R(140) in -80..-60 own terms],
+  exit = %R's next band close. STRICT -0.278% of the position per trade (t -10.2), LENIENT -0.149% (t -5.9), gross
+  before any fee -0.066%; both halves, longs and shorts, and all 13 coins with 30+ trades negative; %R reached the
+  band ahead on 35% of trades. Dead, nothing tuned. NOTE: 2,335 of 3,066 coin-days in Delta's top 30 by turnover
+  have > 20% no-trade 1m bars -- outside BTC/ETH/SOL/XRP and a few hot coins a 1m Supertrend on Delta is mostly
+  reading flat bars.
+- **FADE THE %R BAND EXIT -- PRE-REGISTERED, FAIL (2026-11-16, owner "with wpr what setup can you find").**
+  `docs/wpr_fade_leave_prereg.md`, `scripts/wpr_fade_leave.py` -> `out/pullback/fade_leave_result.txt` (second rule on
+  out/pullback; second implementation identical). The only regularity in the %R studies -- it falls back into the
+  band it left 86% of the time, +0.16% gross on 5m in data A/B -- traded on liquid untouched data: 5m STRICT -0.192%
+  per trade (t -5.8, 7,819 trades), LENIENT -0.053% (t -1.7) = gross +0.03%, i.e. the A/B figure was mostly
+  stale-bar / bid-ask bounce. 86% of trades do go back (+0.33..+0.47%), the 14% that cross lose 3.3% on average
+  (worst trade -45%, worst day -119% of a position). 1m: -0.21% strict, -0.07% lenient. With this, %R(140) has been
+  tested WITH the move and AGAINST it on 1m / 5m (and with the move on 15m / 1h): no reading has a gross edge.
+  ZERO FEES, GENEROUS FILLS (owner 11-16: "they do have winners, don't worry about fees from now on"; inline re-runs
+  with TAKER = MAKER = 0): the 18 trigger x exit cells on the owner's coin-days -0.12..+0.07% per trade (best:
+  %R breakout + ride the 1m Supertrend +0.049%, t 1.75; win 34%, avg win +1.67%, avg loss -0.79%); the same 18 on
+  the untouched liquid data -0.05..+0.01% (that best cell: +0.003%); pullback -0.066%; fade +0.03% (5m) / +0.017%
+  (1m); 5m carry -0.05..+0.03%, with the 1m exhausted -0.32..-0.37%. Winners are real (33-66% of trades, avg win
+  0.6-6%) and are cancelled by the losers BEFORE any fee: the zero is in the price path, not in the costs.
+- **"AVERAGE LOSS LESS THAN WIN" SEARCH -> ONE LEAD, CONFIRMATION RUN PRE-REGISTERED (2026-11-16).**
+  `scripts/win_gt_loss.py` -> `out/win_gt_loss.txt`: 6 entries (flip / %R breakout / %R dip, +-5m ST) x stop 0.5/1/2% x
+  way out (ride 1m ST, ride 5m ST, 3R target), ZERO fees, three fill models. Every cell has avg win 2-8x avg loss
+  with a 14-40% win rate; GENEROUS (stop at its price, no gap) is positive almost everywhere = the no-loss-tail trap;
+  STRICT is negative everywhere (-0.04..-0.54%); EXACT (stop at its price, or the open when the bar gaps through)
+  leaves ONE family positive on both data sets: **%R breakout (1m ST up, %R closes above -20; mirrored) + stop 2% /
+  target 6%: A +0.276% (t 4.0), U +0.187% (t 2.8), win 30-31%, avg win ~+5%, avg loss ~-2%, median hold 27-51 min**
+  (1%/3%: +0.05 / +0.08%). CONTROLS (inline, own simulator reproduces the cells): on A random entries with the same
+  bracket make +0.18% (owner-chosen trending coin-days: A is no evidence); on U random longs +0.19%, random shorts
+  -0.10% (rising market), signal longs +0.35%, shorts +0.02% -> excess over random ~+0.15%, t ~2. 15-minute version
+  (scalper window): +0.01..+0.03% on U. SCALPER OFFER, from the owner's fills: exit fee zero on 99% of trades
+  closed within 15 min, ENTRY fee still charged (0.036% avg); liquidations pay in full. Confirmation:
+  `docs/breakout_3r_prereg.md`, `scripts/breakout_oos_data.py` (same 30 coins, 2026-03-01..07-31, `out/breakout_oos/`),
+  `scripts/breakout_3r.py` -> `out/breakout_oos/result.txt`. RESULT: **FAIL** (second implementation identical). 2026-03..07, 615 liquid coin-days,
+  2%/6% EXACT +0.046% per trade before fees (t 0.57, 1,198 trades, win 38%, avg win +3.15%, avg loss -1.82%), first
+  half +0.20%, second half -0.07%, MID -0.011%, STRICT -0.22%, with real fees -0.06%; signal longs -0.015% vs random
+  longs -0.016%, signal shorts +0.109% vs random +0.033% (no real excess). 1%/3%: -0.019%. The Aug-Nov result was the
+  rising market; the entry adds nothing over a random bar with the same bracket.
+- SPIKE SELL, WIN RATE x WIN SIZE BEFORE FEES (owner 11-16: "find something with better avg win and bigger win rate";
+  inline, `review_real_fees.trade` with zero fees, both picks, 617 trades 2025-01..2026-11, STRICT / LENIENT):
+  no target / stop 10% / 24 h: win 52%, avg win +10.1%, avg loss -9.1% / -8.6%, mean +0.86% / +1.11% (t 1.8 / 2.4),
+  2025 +0.76%, 2026 +0.96% -- the only cell with win > 50%, avg win > avg loss and both years positive. Target 8% /
+  stop 10%: win 61%, +7.05% vs -9.2%, mean +0.72% / +0.93% (t 2.1 / 2.9). Target 10% / stop 10%: 58%, +7.97% vs
+  -9.15%, +0.79% / +0.99%. Target 5% / stop 10%: 69%, +4.8% vs -9.4%, +0.35% / +0.53%. Stops of 3-5% and targets of
+  1-2% are negative or ~0 as before. Consistent with `wide_account.txt` (+0.055..+0.080R at R = 10%). The 8% / 10%
+  targets and 15-20% stops are NEW cells on a data set already searched: in-sample, t ~2.
+- SPIKE SELL WIDE STOP: THE FLIP BACK (owner 11-16: "I don't like 24 h hold, it generally flips back and we don't
+  have a mechanism to cut the trade"; `scripts/spike_flip_back.py` -> `out/careful/spike_flip_back.txt`; plain case
+  asserted equal to `review_real_fees.trade`; second implementation equal trade by trade). Before fees, stop 10%,
+  617 trades, STRICT / LENIENT. A SHORTER CLOCK COSTS NOTHING: 8 h win 56%, +7.36% vs -7.47%, mean +0.82% / +1.01%
+  (t 2.1 / 2.8; 2025 +0.58%, 2026 +1.09%); 12 h +0.91% / +1.13%; 24 h +0.86% / +1.11%; 4 h +0.51% / +0.68%; 2 h
+  +0.19%; 1 h +0.04%. CUT RULES (break-even after 2-5%, lock half after 3-8%, trail 3-5% after 2-8%): under STRICT
+  every one is WORSE than the plain clock (early ones ~0: BE 2% +0.05%, trail 2%/3% -0.16%; latest ones +0.63..0.66%);
+  under LENIENT the late ones are level or slightly better (lock 8% +1.20%, trail 8%/5% +1.18%). They raise the win
+  rate (61-77%) by shrinking the win. Same lesson as the 2.25%-stop exits: a moved stop's result is its fill. The
+  live code's exit C (break-even at ~0.6%, then 5% trail) is the early kind.
+- QUICK EXITS ON THE OWNER'S OWN 761 ENTRIES (owner 11-16: "my trades that you analysed, you should find something
+  there with quick entry and exit"; inline on `out/manual/`, real fill price and time, Delta 1m candles, before fees;
+  two codings of the bracket agree). PRICE GOES AGAINST HIM AFTER THE ENTRY: -0.05% by the end of the entry minute,
+  -0.16% at 5 min, -0.27% at 10 min (t -2.9), -0.62% at 60 min. 60 brackets (target 0.3-2% x stop 0.5-2.8% x 5/10/15
+  min): all negative at EXACT fills (-0.07..-0.22%). WHERE IT SITS: his CHASES (entered with a 15-min move of 1%+):
+  395 trades, gross -$15,164, -0.41% at 10 min, negative in both halves; trades 6+ of the day: 466 trades, gross
+  -$16,197, -0.43% at 10 min in BOTH halves (t -3.6); first 5 of the day: gross -$489, ~0. ONLY POSITIVE SUBSET: his
+  FADES (entered against a 15-min move of 1%+): 93 trades / 35 days, +0.5% at 5-10 min, as traded gross +$729; with
+  target 1.5% / stop 1% / out in 15 min: win 52%, avg win +1.39%, avg loss -1.03%, mean +0.22% (t 2.05, halves +0.32
+  / +0.12%) -- one of ~9 subsets looked at, small. MECHANICAL VERSION FAILS (`scripts/fade_15m_move.py` ->
+  `out/fade_15m_move.txt`; second implementation agrees): fade ANY 15-min move of 1%+ and leave after 5-60 min, on
+  his coin-days and on U and O: 1-2% moves within +-0.04%, bigger moves inconsistent in sign (5%+: A -0.29%, U
+  +0.29%, O +0.04% at 10 min). So his fades' result is his selection (or luck), not the 15-min move itself.
+- **THE OWNER'S FADE MADE MECHANICAL ("fade a sharp move once it has turned") -- PRE-REGISTERED, FAIL (2026-11-16,
+  owner "yes test it").** Profile of his 93 fades vs every mechanical fade chance on his coin-days (medians): move
+  faded 2.5% vs 1.4%, 15-min range 6.7% vs 2.5%, entry 3 min after the extreme vs 1, 41% of the way back vs 16%,
+  last minute already his way (+0.30% vs -0.25%); inside his fades "last minute his way" +1.0% at 10 min (58
+  trades) vs -0.16% (35). Rule frozen in `docs/turn_fade_prereg.md` (15-min move 2%+, extreme 2-7 bars ago, 25-66%
+  retraced, last bar closing the fade's way; target 1.5% / stop 1% / out in 15 min), `scripts/turn_fade.py` ->
+  `out/turn_fade.txt`, signal logic unit-checked on synthetic prices, second implementation identical. U + O liquid
+  days, before fees: 2,418 trades, win 41%, avg win +1.31%, avg loss -0.97%, mean -0.043% (t -1.7); U -0.037%, O
+  -0.065%; MID -0.089%, STRICT -0.39%; random entries with the same bracket +0.009%, plain fade +0.014%. Looser
+  rule -0.009%; all days -0.02%; and on HIS OWN coin-days -0.071% (t -2.9). Waiting for the turn is worse than not
+  waiting. His 93 fades cannot be reproduced from the price bars: selection the bars do not show, or luck.
+- **TWO FORWARD TRIALS STARTED 2026-11-16 (owner "Try it" on: spike fade on paper + record what the bars do not show
+  for his hand trades). Nothing deployed, no orders, real account untouched.**
+  (1) SPIKE FADE 10% STOP / 8 h CLOCK, PAPER, FORWARD: rule frozen in `docs/spike8h_forward_prereg.md`; picks = the
+  paper runner's own rule A picks from 2026-11-15 (prod `fade_positions`, SELECT only); `python
+  scripts/spike8h_forward.py pull` (host, aws ssm) then `... run` (container) appends finished days to
+  `out/careful/spike8h_forward.csv`. Verdict at 60 and 120 filled trades (mean > 0 strict after real fees AND win >=
+  50%); earlier = progress note. First rows: 2026-11-15 EVAAUSD stopped after 75 min (-12.0% strict / -10.1%
+  lenient), SOPHUSD stopped after 9 min (-10.1%). NOT scheduled: someone has to run the two commands.
+  (2) TAPE + ORDER-BOOK RECORDER for the owner's hand trades: `scripts/tape_recorder.py` (public data only: websocket
+  all_trades with aggressor side; REST l2orderbook depth 20 every 10 s; 12 biggest 24 h movers + 8 most traded
+  crypto perps, re-chosen every 15 min) -> `out/manual/tape/{trades,book}_YYYYMMDD.csv`, `symbols.log`. Started
+  13:17 UTC inside the dev container `deltabt-py` (`docker exec -d`): it DIES when the dev container stops -- a
+  permanent home (the bot host) is the owner's deploy decision. OWNER, SAME DAY: "I am not going to hand trade,
+  that's why we are building the bot" -> the hand-trade plan is DROPPED. The recorder is kept for the only thing it
+  is still good for: a mechanical test of order-flow / order-book signals (aggressor imbalance, depth) once enough
+  days exist -- the one input never tested because Delta keeps no history of it. OWNER, SAME DAY: "Stop everything
+  no time for it" -> recorder STOPPED (about 12,000 prints kept in `out/manual/tape/`, 13:17 UTC onward, one
+  afternoon only); the forward paper test is NOT being updated (ledger holds 2026-11-15 only). Nothing is running.
+  Both can be restarted with the commands above if the owner asks.
+- %R RE-CHECK ON CHART BARS (owner 11-16: "Check wpr again"; inline). The one way my %R could differ from his chart:
+  Delta REST fills no-trade minutes as flat bars, a chart has no bar there, so chart %R(140) = last 140 TRADED bars.
+  Both versions side by side, before fees: same zone 97% of minutes on his coin-days (18% no-trade minutes), 92% on
+  the 30 perps all days (47% no-trade). After a close above -20 / below -80: filled +0.023 / +0.032 / +0.024% at
+  5 / 15 / 60 min vs chart +0.021 / +0.029 / +0.018% (random bar ~0) on A; ~0.00% both ways on U. The 18 entry x
+  exit cells: every pair within 0.01-0.07% of each other, all within +-0.08% of zero (A) / +-0.03% (U). The
+  filled-bar column reproduces the earlier zero-fee table exactly. Conclusion unchanged; the bar convention is not
+  the reason.
+- **SPIKE FADE (+5% entry, 10% stop, 8 h) -- TESTS MEANT TO BREAK IT (owner 11-16 "Run more tests";
+  `scripts/spike_robust.py` -> `out/careful/spike_robust.txt`; base asserted equal to `spike_flip_back.trade` on all
+  617 trades; before fees, STRICT).** Base +0.823% (t 2.14), lenient +1.010% (t 2.75). CONTROLS on the same picks,
+  same stop and clock: short at a random minute -0.074% (t -0.6, 20,980); short every pick at 00:02 +0.212% (t 0.75,
+  1,049) -- the waiting-for-the-spike entry is what pays, not the picks. (The 432 picks that never reached +5% were
+  +5.2% shorts from 00:02 -- hindsight, the rule cannot know.) MARKET: a BTC short over the same windows 0.00%,
+  correlation +0.12, result with BTC's share removed +0.825% (t 2.15): not market direction. WHERE: 2025 +0.58%,
+  2026 +1.09%; half-years +0.75 / +0.45 / +1.43 / +0.69% (none significant alone); pick 1 +0.68%, pick 2 +1.05%;
+  FILLED 00:03-06:00 +1.15% (t 2.2, 407) vs FILLED LATER +0.20% (t 0.35, 210); months 14 up / 9 down, 2026-08 -92%
+  then 2026-09 +168% (sum of trade returns); without the 5 best days +0.52% (t 1.4); day-resampling 5-95%
+  +0.20..+1.44%, <= 0 in 1.5%. NEIGHBOURS: entry +3/5/7/10% x stop 8/10/12/15% x clock 6/8/10/12 h: 64 of 64
+  positive, +0.38..+1.35%, smooth (wider stop and +7% entry a little better). Survives every attack; still t ~2,
+  leans on a handful of big days, and the first forward day was two stops.
+- **SPIKE FADE AUDIT (owner 11-16 "run as many tests as you want, check the strategy"; `scripts/spike_audit.py` ->
+  `out/careful/spike_audit.txt`).** FUNDING, never charged before: known for 611 of 617 trades, median 2 settlements
+  per 8 h trade (hourly coins up to 8); mean -0.10% of the position (the short pays), median 0; five trades carry
+  37% of it (SOPHUSD 2025-12-20: -10.5% on a +9.5% trade; INITUSD -6.1%); without those five -0.06%. ALL COSTS IN
+  (real fees + funding): STRICT +0.648% (t 1.68; 2025 +0.39%, 2026 +0.93%), LENIENT +0.835% (t 2.27). LIQUIDITY:
+  fill minute median $14k traded, under $1,000 on 7%, under $5,000 on 26% -- result the same in every liquidity
+  bucket (+0.71..+1.23%); but 74% of trades leave by the clock and 39% of ALL trades leave in a minute with under
+  $1,000 traded (13% with no trade at all): the 0.1% exit slippage is optimistic there (an extra 0.3-0.5% on those
+  = -0.12..-0.20% per trade). WALK-FORWARD over 64 settings: best-on-2025 (+7%, 15%, 8 h) makes +1.26% in 2026;
+  best-on-2026 makes +0.73% in 2025; 62 of 64 positive in both years; rank correlation of settings between years
+  -0.30 (no setting is reliably best -- do not tune). LOSS TAIL: 158 stops (26%), average -10.8%, 11 worse than
+  -12%, and ONE at -59% STRICT (API3USD 2025-08-19, stopped one minute after the fill in a one-minute spike;
+  lenient -10.1%) = -18% of the account at 3% risk. ACCOUNT from $3,184, all costs: 2% risk $6,326 .. $8,052, deepest
+  drop 31% .. 29%, worst month -18%, 14-15 of 23 months up, longest losing run 7, under water up to 182 days; 3%
+  risk $8,196 .. $11,875, drop 44% .. 40%. Universe is today's listed perps (delisted coins absent: survivorship,
+  direction unknown). Breadth test on untouched coin-days pre-registered (`docs/spike_breadth_prereg.md`,
+  `scripts/spike_breadth.py`) -> RESULT below.
+- **SPIKE FADE BREADTH TEST -- RESULT (2026-11-16; `out/careful/spike_breadth.txt`; second implementation identical).**
+  3,821 untouched coin-days 2025-01..2026-10; 931 dropped for no trade in 00:00-00:02 (no entry price, same convention
+  as the picks). Before fees, STRICT. RANK 3-5 (pre-registered test): 639 trades, win 55%, +5.1% vs -6.0%, mean
+  +0.159% (t 0.55), 2025 +0.19%, 2026 +0.13%, after real fees +0.085% -- passes the letter of the bar (> 0 overall and
+  in both years), a fraction of the picks' +0.82% and indistinguishable from zero. By rank (post hoc): 3rd +1.14%
+  (t 2.3, 245), 4th -0.15%, 5th -0.84%. CONTROLS: other gainers (rank 6+) -0.35%, non-gainers -0.73% (t -2.1):
+  selling any 5% intraday spike LOSES; the effect is confined to the top 2-3 previous-day gainers and fades with
+  rank. Strengthens "the pick matters", weakens "the size of the edge": the two-pick +0.82% is the top of a falling
+  gradient, so the true edge is probably below what the 617 trades show.
+- SPIKE FADE ENTRY WITH A TIGHT STOP / EARLY EXIT / HIGH LEVERAGE (owner 11-16: "high leverage, early exit, same
+  point, avg win > avg loss, more money per trade"; `scripts/spike_tight.py` -> `out/careful/spike_tight.txt`; 24 h
+  cells asserted equal to `review_real_fees.trade`). 100 cells: stop 1/1.5/2/3/5% x target none/2/3/5 stops x clock
+  30 m..8 h, before fees. Avg win > avg loss in 87, but STRICT > 0 in only 19, in both years in 8 (all at the 5%
+  stop), and NONE beats the wide version per unit of risk (+0.082R): best STRICT +0.076R = stop 5%, no target, 8 h:
+  win 44%, +7.4% vs -5.2%, mean +0.38% strict (t 1.15) / +0.68% lenient (t 2.24), after fees +0.30%, ~10x leverage
+  possible; stop 5% / 4 h: 50%, +5.5% vs -5.0%, +0.26% / +0.54%. Stops of 1-2% (20-25x) are negative under STRICT in
+  every cell (best -0.08R, worst -0.43R); 3% is zero. Tightening the stop raises leverage, not money per unit
+  of risk: the spike keeps running a few percent before it gives back, and a tight stop is inside that noise.
+- SPIKE SIZE (owner 11-16: "find another strategy ... losers should not equal winners in number or size, high
+  leverage quick exit"; `scripts/spike_size.py` -> `out/careful/spike_size.txt`; entry 5/7/10/15/20/30% above the
+  00:02 close x stop 5/10% x clock 1/2/4/8 h, before fees, STRICT; picks = discovery, breadth coin-days = check).
+  A BIGGER SPIKE DOES NOT GIVE BACK MORE: on the picks +7% is the top (5% stop, 8 h: 508 trades, win 45%, +8.1% vs
+  -5.3%, +0.80%, +0.159R, t 2.1; 10% stop, 8 h: win 56%, +8.2% vs -8.0%, +1.08%, t 2.3), +10% about equal to +5%,
+  +15% zero, and shorting +20% / +30% spikes LOSES (-0.4..-1.3% / -1.4..-3.6%, t to -2.8): monster spikes keep
+  running. CHECK does not back the +7% choice (3rd-5th gainers at +7%: -0.07..-0.35% in all 8 cells; other coins
+  negative throughout) -- consistent only with "the effect is in the top two gainers at a modest spike". No cell
+  anywhere has win > 55% AND avg win clearly > avg loss with a 5% stop or a clock under 4 h; the nearest are
+  +7% / 10% / 8 h (56%, 8.2 vs 8.0) and +5% / 5% / 4 h (50%, 5.5 vs 5.0). Both properties at once would mean
+  +1% or more per trade; the largest real effect in this data is +0.2..+0.8%.
+- **SEVEN NEW INTRADAY FAMILIES (owner 11-16: "you seem to look at the same families, search for families";
+  `docs/intraday_families_prereg.md`, `scripts/intraday_families.py` -> `out/intraday_families.txt`; 30 liquid Delta
+  perps, 1m, DEV 2026-03..07, TEST 2026-08..11, in at the next open, out N minutes later, before fees; per family
+  the best DEV variant + direction is the only one judged on TEST, bar t >= 2.7 and both TEST halves > 0).**
+  F1 BTC LEAD-LAG (27 variants): TEST -0.006% (t -0.2) FAIL. F3 VOLUME CLIMAX (6): -0.02% (t -0.1) FAIL.
+  F4 HOURLY CROSS-SECTION: not runnable as written (rarely 8 liquid coins a day); deviation with traded coins,
+  2 a side: DEV -0.007 / -0.012%, TEST +0.007 / -0.009% -- nothing. F6 YESTERDAY'S HIGH / LOW (3): +0.09% (t 0.4),
+  halves +0.32 / -0.09% FAIL. F7 HOUR OF DAY (24): DEV's best (short 13:00 UTC, t 2.7) is -0.03% on TEST FAIL.
+  F5 SQUEEZE BREAKOUT (3): following LOSES in all three holds in both periods; the mirror -- FADE a close outside a
+  quiet hour's range, hold 4 h -- DEV +0.10% (t 1.65), TEST +0.20% (t 1.92, halves +0.22 / +0.18%), win 54%, avg
+  win = avg loss; FAIL on the bar, the only consistent lead: pooled 5,370 trades +0.151% (t 2.48), 7 of 9 months up,
+  random entries +0.02%; it is in the small coins (+0.48%, t 2.3) not BTC/ETH/SOL/XRP (+0.03%), longs +0.20% /
+  shorts +0.10%, and only at 4-8 h (30 min +0.00%, 60 min +0.01%, 2 h +0.05%, 8 h +0.20%) -- slow give-back again,
+  not a quick trade; after two taker fees +0.03%. F2 LAST vs FAIR PRICE (mark candles in `out/marks/`, 9 variants):
+  DEV's best (gap 0.4%, trade toward the mark, hold 30 min: +0.30%, t 1.9) is -0.18% on TEST (t -1.6, both halves
+  negative); every variant flips sign between the two periods. FAIL. All twelve families done: 0 pass.
+- **FIVE MORE FAMILIES (owner "Search more families"; `docs/intraday_families2_prereg.md`,
+  `scripts/intraday_families2.py` -> `out/intraday_families2.txt`; same data, split, selection and bar): 0 PASS.**
+  H1 OPENING RANGE (first 30/60 min of the UTC day, follow or fade): TEST -0.01% (t 0.0). H2 FIRST 8-12 h PREDICT THE
+  NEXT 8 h: +0.67% on TEST but t 0.8 and halves -0.60 / +1.64% -- noise. H4 MARKET BREADTH (80-90% of coins one way
+  in an hour -> BTC/ETH/SOL): +0.008% (t 0.3). H5 SLOW LEAD-LAG (BTC 1-2% in an hour -> alts): chosen mirror +0.48%
+  (t 1.5), first half negative. H3 PAIRS among BTC/ETH/SOL/XRP (ratio 2-3 sd from its 24 h mean, sell rich / buy
+  cheap) is the one STATISTICALLY REAL effect: positive in all six variants in BOTH periods (z 2 / 60 min: DEV
+  +0.014% t 4.0, TEST +0.010% t 1.85; z 3 / 4 h: +0.044% t 2.2 / +0.054% t 2.1; z 3 / 12 h: +0.042 / +0.089%), win
+  55%, wins = losses -- and an order of magnitude below the cost of trading two legs (0.118% per leg taker):
+  after fees -0.11%. Twelve families on this data: no pass; two real effects (pairs reversion, fading quiet-range
+  breakouts), both slow and smaller than costs.
+- **TIMED TRAIL INSTEAD OF THE BREAK-EVEN LOCK (owner 2026-11-16: "ready to run 20% capital ... I would change lock
+  to trailing SL; since most trades flip the trailing SL can be timed instead of price or % fall";
+  `scripts/careful_timed_trail.py` -> `out/careful/timed_trail.txt`; Spike Sell exactly as agreed otherwise; two
+  implementations equal on every trade for all 28 exits at 10% and 20% margin; a third per-trade check agrees).**
+  From $3,184, full history, STRICT .. LENIENT, 10% margin: exit C as agreed $1,801 .. $3,890 (drop 67% .. 53%, 11 ..
+  22 of 22 starts above $3,184). PLAIN 5% TRAIL FROM THE FILL, NO LOCK: **$6,074 .. $8,386, drop 35% .. 30%, 22 .. 22
+  starts above**, 94 trades, win 37%, avg win +10.4% of the balance vs avg loss -4.5%. THE CLOCK HARDLY MATTERS: 5%
+  trail started after 15 / 30 / 60 min $6,041 / $4,722 / $5,626 strict; after 2-8 h ~$4,050; a timed break-even
+  lock is worse ($1,063 .. $2,609 strict for 15 min-4 h; 8 h $4,987). TIGHT TRAILS ARE WORSE THAN EXIT C: 2.25% and
+  3% trails $993 .. $3,075 strict. 20% MARGIN: plain 5% trail $6,588 .. $12,660 but drop 62% .. 54% (exit C at 20%
+  ends at the floor): strict fills gain almost nothing over 10% for twice the drawdown. WHAT THE RESULT RESTS ON:
+  (a) per trade over ALL 617 fills the plain trail is no better than exit C (-0.15% strict / +0.20% lenient of the
+  position; exit C -0.11 / +0.22%); (b) the account gain is the MONTH-OFF rule: without it the same exit ends at the
+  $1,000 floor in 2025; (c) the exact rule matters -- month off after 1 / 2 / 3 / 4 / 5 full stops: $2,773 / $6,074 /
+  $3,191 / $2,683 / $2,144 strict (lenient $3,146 / $8,386 / $5,203 / $6,087 / $6,765), exit C at the same settings
+  $2,936 / $1,801 / $979 / $982 / $996; (d) five winners carry it: total +$2,890 strict, without them -$1,803; 12 of
+  23 months up. Reading: dropping the early lock for a wide trail is not worse than exit C at any month-off setting
+  and usually better with smaller drops; the $6k figure is the lucky centre of that range. Not built into the bot.
+  **OWNER DECISION 2026-11-16: MONTH-OFF RULE REMOVED** ("We will [not] halt post 2 stop, remove that setting"; asked
+  once with the numbers -- keep 2 / loosen to 3 / remove -- answered "Remove it entirely"). Working tree only, NOT
+  committed, NOT deployed: `live/spike_live.py` `MONTH_STOP_LIMIT = None` (a number restores the rule; full stops
+  still counted by `month_stops`), `tests/live/test_spike_live.py` (the old test now asserts the third day's order
+  RESTS; a new test pins the rule when a limit is set), `docs/fade_live_spike_prereg.md` rule 9 rewritten with the
+  tested consequence (exit C without it $955 .. $4,304, drop 70% .. 59%; plain 5% trail without it the $1,000 floor
+  in 2025). The $1,000 floor and HALT rules are untouched.
+  **OWNER 2026-11-16, next message: "1 approved / 2 show me number / 3 wait"** = build the plain 5% trail; show the
+  margin numbers; do NOT commit yet. BUILT IN THE WORKING TREE (uncommitted, undeployed): `live/spike_live.py`
+  `BREAKEVEN_LOCK = False` (`_exits` goes straight to `_trail`, which starts from `stop_price`; `month_stops` and the
+  replay ledger treat a NULL lock_price AND trail_price as "the original stop"; STOP_FILL logs `trailed`); the
+  existing tests keep exit C through an autouse fixture, 4 new `test_plain_trail_*` tests; `scripts/replay_bot.py`
+  follows `S.BREAKEVEN_LOCK` / `S.MONTH_STOP_LIMIT`. VERIFIED: tests/live + tests/live_exec 2,915 passed; replay of
+  the REAL bot code vs the research rule: full history 93 / 131 trades identical, wallets $948.02 / $994.07, state
+  STOPPED (the floor); from 2026-01 216 of 217 identical ($5,033.75 vs $5,046.19) -- the one difference is SIZE, not
+  the exit: PIEVERSEUSD 2026-11-10 above its $10,000 leverage tier, bot 19x whole-number leverage $10,039 vs the
+  research formula's $10,507. MARGIN NUMBERS for these rules (plain 5% trail, no month-off, floor $1,000), from
+  $3,184, strict .. lenient: 5% $979 .. $4,708 (floor 2025-10 / never; 5 .. 0 of 22 starts under $1,000); 10% floor
+  $948 .. $994 (2025-06 .. 08; 2026 only $5,046 .. $17,595; 10 .. 7 starts under); 15% floor by 2025-04/05 (16 .. 12
+  under); 20% floor by 2025-04 (2026 only also the floor; 19 .. 16 under; worst month -$2,150).
+  Per trade at a fixed $3,184 (owner asked): 5% margin win 29-30%, avg win +$179 .. +$176, avg loss -$76 .. -$69, a
+  liquidation -$240 (extra margin makes the loss larger than the 5%), average -$1.90 .. +$5.63 a trade, 2025 lost /
+  2026 won both ways, longest losing run 11; 20% margin: same win rate, avg win +$717 .. +$706, avg loss -$305 ..
+  -$277, liquidation -$962, average -$7.60 .. +$22.55.
+  **OWNER 2026-11-16: "We'll use 20% margin."** BUILT (working tree, uncommitted, undeployed): `TRADE_MARGIN = 0.20`,
+  `EXTRA_MARGIN = TRADE_MARGIN * 25 / 49` (the tested ratio, 10.2% of the balance), docstring and prereg updated with
+  the consequence, tests updated (incl. PIEVERSE: the run's $637 is above its $10,000 tier -> under 20x). tests/live +
+  tests/live_exec 2,915 passed; replay of the real bot = research rule on every trade at 20%: full history 51 / 60
+  trades ($984.63 / $950.63, STOPPED at the floor), from 2026-01 65 / 81 ($961.38 / $987.13, STOPPED).
+  Commit / push / deploy: waiting for the owner ("3 wait").
+- LOOSENING THE OWNER'S FOUR WISHES (owner 11-16 "try to loosen my criteria"; inline on the spike-fade entry, 120
+  combinations of stop 3/5/7.5/10% x target 2..10% or none x clock 1 h..24 h, before fees, STRICT). Wishes scored
+  separately: MORE WINNERS (win > 55%), BIGGER WINS (avg win > avg loss), LEVERAGE (stop <= 5%, ~10x), QUICK (out
+  within 4 h). 47 combinations are positive in both years; NONE meets all four; none meets "more winners AND bigger
+  wins" at all; only 2 meet three -- give up MORE WINNERS: stop 5%, no target, 4 h: win 50%, +5.5% vs -5.0%, +0.26%
+  (t 0.9), after fees +0.19%. Give up LEVERAGE and BIGGER WINS: stop 10%, 4 h: win 59-60%, +5.3..5.5% vs -6.5..6.6%,
+  +0.51..0.53% (t 1.6-1.8), after fees +0.44..0.46%. Give up MORE WINNERS and QUICK: stop 5%, 8 h: win 44%, +7.4%
+  vs -5.2%, +0.38% (t 1.15). All three pay the same per unit of risk (R ~ +0.05..0.08): the choice is taste.
+  Nothing positive exits inside 2 hours.
+- THE NEW FAMILIES UNDER A LOOSER BAR (owner 11-16: "I mean for new family loosen the criteria"; inline, all 75
+  variants of the 10 runnable families, direction = DEV's sign; looser bar = same sign on DEV and TEST, 200+ trades
+  each, pooled t >= 2 by day; before fees). 37 of 75 have the same sign in both periods; 7 clear the looser bar:
+  PAIRS x4 (z 2 / 1 h +0.013% t 4.1; z 3 / 4 h +0.048% t 3.1; z 2 / 4 h +0.024%; z 3 / 12 h +0.062%; win 56-58%,
+  wins = losses; after two legs' fees -0.17..-0.22%); FADE THE QUIET-HOUR BREAKOUT, 4 h (+0.151% t 2.5, win 54%,
+  1.75 vs 1.72; after fees +0.03%); LONG THE 08:00 UTC HOUR (+0.170% t 2.6, win 50%, avg win +1.18% vs avg loss
+  -0.85%, after fees +0.05%) and LONG 21:00 (+0.127% t 2.1). THE HOUR RESULT IS NOT A SETUP: 14 of 24 hours are
+  positive long in both periods because the coins drifted up (any hour: DEV +0.017%, TEST +0.068% t 2.6); 08:00 is
+  a funding settlement but 00:00 is -0.15% on TEST and settlement hours as a group equal other hours on TEST
+  (+0.071 vs +0.067%); two hits out of 24 hours x 2 directions is what chance gives. Nothing in the looser list is
+  quick AND bigger than its costs: pairs is real and ~10x too small; the quiet-breakout fade is the same slow
+  give-back in small coins.
+  EXHAUSTION CHECK (owner: "above -20 is where moves have exhausted and selling starts"; inline on U, 19.6k events a
+  side): after the 1m %R closes above -20 price does what a RANDOM bar does -- +0.012% at 5 min, +0.055% at 60 min,
+  +0.226% at 4 h vs random long +0.009 / +0.053 / +0.234%; +1% before -1% 33% vs 32%; same for closes below -80 vs
+  random shorts; Supertrend side changes nothing. Neither exhaustion nor continuation: the cross carries no
+  information, which also says the breakout lead on U is mostly the rising market.
+- WHEN THE 1m %R CROSSES ITS BAND, HOW THE 5m BEHAVES (owner 11-16; `scripts/wpr_1m_to_5m.py` ->
+  `out/wpr_1m_to_5m.txt`; U and B-liquid agree; second implementation reproduces U). At a 1m close above -20 / below
+  -80 (own terms, vs a random bar from the same 5m zone): the 5m %R is already in the band ahead 36-38% (random
+  18-20%), between the bands ~60%, still behind 3-5%; the 5m Supertrend is on the event's side 88% (50%). The 5m then
+  gets to the band ahead before the band behind 30% vs 20% from -80..-65, 50-52% vs 41-42% from -65..-50, 67-70% vs
+  57-59% from -50..-35, 86-88% vs 80% from -35..-20; within 1 h 26-29% of those not yet there. So the 1m event adds
+  ~+8..13 points to the 5m's odds -- the owner's "the 5m tries to reach the other side" is real. PRICE over the next
+  15 min / 1 h is the same as after a random bar in every zone (+-0.05%): the 5m is LAGGING -- its last closed bar has
+  not yet printed the move the 1m just made, so the 5m "following" is mostly that move being recorded, not new move.
 - At 20x the trade has NO edge, whatever the stop: 23 entry designs (limit +3..15%, sell-after-the-turn; `careful_entry_grid.py`)
   and 48 exit designs (stop 1..3% x target $500..none x lock; `careful_exit_grid.py`) -- 0 of 71 positive on 2025.
   Lenient loss ~ the trading cost ($30-50/trade): zero edge minus costs.
@@ -302,6 +668,42 @@ careful dataset, every family double-implemented, train 2025 / test 2026+real):*
   scales the result (losses and the real-picks gain alike: real picks +$210..$540 at 5% -> +$2,500..$5,700 at 49%).
   22 starts never under $1,000 at <= 10% (quick book also at 15%); BE-trail starts above $3,184: 13..22 at 5%, 11..22
   at 10%, 9..20 at 15%, 8..16 at 20%, 3..11 at 30%, 1..6 at 49%.
+- ONE BIG TRADE (owner: "one for sure trade with 75% margin, let it run till 1000 profit and stop the bot for a
+  week"; `careful_big_one.py`, two implementations): top pick only, 75% margin at 20x (~$46.6k), +20% extra, take
+  profit at net +$1,000 (a 2.26% fall), stop 2.25%, 7 days off after a win. Per trade: +$1,000 first 48%, stop 50-52%
+  (avg -$1,348 strict .. -$1,150 lenient), 10 liquidations strict; -$226 .. -$123 per trade. Account from $3,184:
+  full history $499 .. $855 (the first three trades, Jan 15-17 2025, are stops: $681 strict, done); 2026 $627 .. $860;
+  22 starts under $1,000 in 21-22; real picks $5,185 (INIT 10-29 and AIOT 11-09, both +$1,001). CLOSED.
+- ONE-TIME +$2,000 GOAL (owner: "we just need 2000 as profit"; `careful_goal_2000.py`, from each of 615 pick days,
+  run to +$2,000 or the $1,000 floor): 75% / +$1,000 rule reaches +$2,000 first in 204 .. 216 starts (33-35% of all),
+  the floor first in 396 .. 385 (63-64%), median 10 days either way. Exit C at 10%: never the floor; +$2,000 in 86
+  (14%, strict) .. 338 (55%, lenient) of 615 starts, median 74 .. 215 days; the rest not there by 2026-11-14.
+  Early cuts on the 75% trade (`careful_big_one_cut.py`: stop 1/1.5%, cut on a close 0.5-1.5% against, cut if losing
+  after 2-30 min): all lose, -$24 .. -$266 per trade. CLOSED.
+  50% margin (`careful_big_one_margin.py`): +$1,000 target (3.34% fall) wins 39%, -$150 .. -$76 per trade, +$2,000
+  goal first in 30-35% of starts vs the floor 63-68%; +$500 target wins 57%, -$103 .. -$49 per trade, goal first only
+  15-21% (four wins needed) vs the floor 68-74%. No better than 75%. CLOSED.
+- 1% FALL TARGET (owner: "Can we try 1% fall simulator"; `careful_one_pct.py`, live product terms, two
+  implementations): top pick, take profit at a 1% fall. Stop 2.25%: 1% first in 67% of trades, break-even needs 74-77%;
+  per trade -$24 .. -$14 (10%), -$121 .. -$73 (50%), -$187 .. -$110 (75%). Stop 1%: 49% first, needs 58-66%. Accounts
+  from $3,184 all lose (10%: $1,181 .. $1,846; 50%/75%: at the floor); +$2,000 goal first 26-37% of starts at 50-75%
+  (stop 2.25%) vs the floor 59-70%. Real picks $5,188 (50%) / $6,218 (75%). CLOSED.
+  With BANKING (owner: "you are not considering banking and compounding"; `careful_one_pct_bank.py`, two account
+  implementations; compounding was always on): monthly / after-each-win sweeps above $3,184. Full history 50-75%
+  margin, stop 2.25%: $595 .. $938 -> $1,487 .. $2,098 (the early-2025 gains are kept), never above $3,184; the
+  +$2,000 goal odds do not improve (banking leaves a smaller wallet: floor first as often or more); real picks lower
+  ($6,218 -> $5,570 .. $5,939 at 75%). Banking protects gains already made; it cannot fix a losing average. CLOSED.
+- ONE-TIME +$1,000 GOAL (owner: "leave 2000 aside, how about 1000"; `careful_goal_1000.py`, 615 starts, average
+  per start counting unfinished runs at their Nov 14 total): with the $1,000 floor -- exit C at 10% reaches +$1,000
+  first in 40% (strict) .. 80% (lenient) of starts, never the floor, median 110 .. 211 days, avg +$274 .. +$1,199
+  per start (the only positive rule); 75%/50% margin +$1,000 target: 52-58% first (usually the first trade), avg
+  -$202 .. -$556; 1% fall targets: -$497 .. -$1,108. With a symmetric quit at -$1,000: exit C -$10 .. +$571, all
+  others -$129 .. -$854.
+- PRODUCT TERMS CHECK (`careful_limits_check.py`): the saved table held only 12 coins; the careful sims sized the
+  other 161 on defaults (20x to $50k). Delta's live list (`out/delta_margin/product_limits_live_all.json`, same units)
+  for the 173 picked coins: 141 at 20x to $50k, 15 at 20x to $10k, 2 at 10x, 14 at 50-200x (held to 20x by the rule).
+  Re-run with the live terms: 75%/50% per trade within $4, goal counts within 4 of 615; exit C at 10% identical
+  ($1,801.05 .. $3,889.84; its ~$6k positions are under every cap). Results stand.
   TALLY for the 20x setup: entries 23, exits 48, stop distance / close-confirmed 11, MARK trigger, earlier stop moves,
   buy instead 20, coin filters 72, context rules 100 + model, re-sell, reloads -- nothing passes out of sample.
 NOT built. A candidate for a PAPER account (rule family of the paper LADDER/A accounts, entry at the spike).
@@ -1106,7 +1508,16 @@ unit; Delta settles on its index's 30-min average — 10-28: 81,400.67 vs 30-min
 per `docs/options_paper_read.md` (~120 strangles ≈ 60 days before the mean is 2 SE from zero; 2026 SD 134 bps).
 Live snapshot 10-28 21:00 IST: bids 99–100% of mark, 7k–13k contracts at the best bid.
 
-**Selling daily BTC/ETH options — BUILD done, TEST PASSED (owner 10-28 "option 2"; pre-registered
+**RETRACTED 2026-11-16 — THE OPTION "PASS" WAS A SETTLEMENT BUG; NO EDGE.** `option_selling_lab.table()` settled
+each leg at `p.get(d - HOUR)` = the perp at 00:00 of the expiry day, 12 h after the 12:00 sale and 12 h BEFORE the
+12:00 expiry, so it counted half the price move the option was priced for. `scripts/option_recheck.py` (two P&L
+implementations agree on every leg; `out/options/recheck/report.txt`) re-fetched all 2,680 1% legs 2025-01-15 ..
+2026-11-15 and reproduces the lab exactly with the 00:00 price (TEST +24.35 bps, n 600, 76%). With Delta's own
+`settlement_price` (all 2,680 expired legs; perp-12:00 stand-in matches it on 98.8% of legs): at 0.9 x mark BUILD
+-16.1 bps (t -1.6), TEST -14.0 (t -1.6), win 64%; at 1.0 x mark (paper's real bids are 0.99 x mark, median
+spread 1.8%) BUILD -2.8, TEST -3.4 (t -0.4) -- zero edge, the options are fairly priced. Paper account
+10-29..11-15 agrees: BTC 17 strangles -32 bps, ETH 7 -124 bps. Everything below in this entry is superseded.
+**(SUPERSEDED) Selling daily BTC/ETH options — BUILD done, TEST PASSED (owner 10-28 "option 2"; pre-registered
 `docs/option_selling_prereg.md` before any option price was fetched; `scripts/option_selling_lab.py`,
 `out/options/build.txt`).** Delta still serves `MARK:` 1h history for expired daily options (12:00 UTC expiry; BTC
 0.001, ETH 0.01 contracts; fee min(0.01% notional, 3.5% premium)). 13,020 entry marks fetched (2025-01-15 → 2026-10-27);

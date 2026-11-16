@@ -305,10 +305,13 @@ def ref_trade(sym, H, L, Cl, bal, le, extra_frac=None):
                 return "LIQ", -cap, k, j
             return ("STOP" if stop == first else "TRAIL"), raw(x), k, j
         low = min(low, L[j])
-        if not active and L[j] <= act_px:
-            active = True
-        if active:
-            stop = min(stop, be, low * (1 + S.TRAIL))
+        if not S.BREAKEVEN_LOCK:                                    # owner 2026-11-16: a plain trail from the fill
+            stop = min(stop, low * (1 + S.TRAIL))
+        else:
+            if not active and L[j] <= act_px:
+                active = True
+            if active:
+                stop = min(stop, be, low * (1 + S.TRAIL))
         if Cl[j] >= stop:
             return ("STOP" if stop == first else "TRAIL"), raw(Cl[j] * 1.001), k, j
     return "24h", raw(Cl[last] * 1.001), k, last
@@ -324,7 +327,7 @@ def reference(days, le, start=S.RUN_START_USD, floor=L.FLOOR_USD, month_by_exit=
         m = day.strftime("%Y-%m")
         if bal < floor:
             break                                         # the bot is STOPPED from here on
-        if stops.get(m, 0) >= 2 or busy > t0 + 2:
+        if (S.MONTH_STOP_LIMIT is not None and stops.get(m, 0) >= S.MONTH_STOP_LIMIT) or busy > t0 + 2:
             continue
         best = None
         for rank, sym, H, L_, Cl in picks:
@@ -520,7 +523,7 @@ class Replay:
             d0 = r["day"].timestamp()
             how = {"TIME": "24h", "LOCK": "TRAIL", "LIQUIDATION": "LIQ"}.get(r["exit_reason"], r["exit_reason"])
             if r["exit_reason"] == "STOP_LOSS":
-                how = "STOP" if r["lock_price"] is None else "TRAIL"
+                how = "STOP" if r["lock_price"] is None and r["trail_price"] is None else "TRAIL"
             k = int((r["entry_time"].timestamp() - d0) // 60)
             j = int((r["exit_time"].timestamp() - d0) // 60) - 1 if r["exit_time"] else None
             out.append((r["day"].date(), r["symbol"], k, j, how, r["pnl"], r["status"]))
