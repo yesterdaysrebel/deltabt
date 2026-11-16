@@ -1,0 +1,40 @@
+CHECK PASSED: two account implementations agree (every version, every banking mode, both fills).
+
+1% fall target, top pick, compounding. TOTAL = bank + wallet, from $3,184. STRICT .. LENIENT.
+
+=== 10% margin, stop 2.25% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |    1,181 ..    1,846 |        0 ..        0 |    1,785 ..    2,384 |    3,533 ..    3,533 |   0 ..   0 /   4 ..   0
+   monthly   |    1,178 ..    1,955 |      189 ..      236 |    1,785 ..    2,407 |    3,528 ..    3,528 |   0 ..   0 /  39 ..   0
+   each win  |    1,174 ..    1,948 |      185 ..      229 |    1,893 ..    2,453 |    3,518 ..    3,518 |   0 ..   0 /  42 ..   0
+
+=== 50% margin, stop 2.25% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |      824 ..      938 |        0 ..        0 |      919 ..      934 |    5,188 ..    5,188 | 157 .. 191 / 430 .. 365
+   monthly   |    1,545 ..    1,938 |      639 ..      995 |      919 ..      934 |    5,065 ..    5,065 | 152 .. 184 / 434 .. 368
+   each win  |    1,511 ..    1,843 |      605 ..      900 |    1,416 ..    1,702 |    4,836 ..    4,836 | 110 .. 138 / 474 .. 412
+
+=== 75% margin, stop 2.25% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |      595 ..      929 |        0 ..        0 |      158 ..      718 |    6,218 ..    6,218 | 208 .. 225 / 388 .. 370
+   monthly   |    1,500 ..    2,098 |      521 ..    1,166 |      158 ..      718 |    5,939 ..    5,939 | 208 .. 225 / 388 .. 370
+   each win  |    1,487 ..    1,987 |      509 ..    1,055 |    1,657 ..    1,677 |    5,570 ..    5,570 | 189 .. 197 / 404 .. 391
+
+=== 10% margin, stop 1.00% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |    1,640 ..    2,297 |        0 ..        0 |    2,374 ..    2,867 |    3,013 ..    3,086 |   0 ..   0 /   0 ..   0
+   monthly   |    1,640 ..    2,297 |        0 ..        0 |    2,414 ..    2,886 |    3,017 ..    3,089 |   0 ..   0 /   0 ..   0
+   each win  |    1,660 ..    2,309 |       41 ..       41 |    2,435 ..    2,896 |    3,017 ..    3,089 |   0 ..   0 /   0 ..   0
+
+=== 50% margin, stop 1.00% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |      931 ..      916 |        0 ..        0 |      872 ..    1,545 |    2,426 ..    2,730 |  26 ..  54 / 476 .. 145
+   monthly   |      931 ..      916 |        0 ..        0 |    1,366 ..    1,825 |    2,499 ..    2,784 |  24 ..  42 / 479 .. 145
+   each win  |    1,004 ..      989 |      101 ..      101 |    1,784 ..    2,064 |    2,499 ..    2,784 |   8 ..  19 / 498 .. 165
+
+=== 75% margin, stop 1.00% ===
+   banking   |        full history |   (of which banked) |     2026 from Jan 1 |       20 real picks | +$2,000 goal first / floor first (of 615)
+   none      |      972 ..      851 |        0 ..        0 |      824 ..      904 |    2,117 ..    2,529 |  82 .. 101 / 494 .. 390
+   monthly   |      972 ..      851 |        0 ..        0 |    1,405 ..    1,475 |    2,265 ..    2,639 |  82 ..  97 / 499 .. 428
+   each win  |    1,006 ..      887 |       48 ..       48 |    1,874 ..    2,161 |    2,265 ..    2,639 |  59 ..  77 / 527 .. 465
+

@@ -1,0 +1,33 @@
+=== 10% margin (position ~$6,219): +$500 needs a 8.16% fall, stop 2.25% ===
+  STRICT  per trade at $3,184: +$500 first 20%, stop 78%, 24 h 2%; avg stop $-178; avg per trade $-36
+          full history from $3,184 -> $3,863; months traded 23, months with the +$500 win 12, months up 12, down 11; avg month $+30
+          22 monthly starts: median end $3,684; under $1,000 0; above $3,184 14
+  LENIENT per trade at $3,184: +$500 first 20%, stop 78%, 24 h 2%; avg stop $-154; avg per trade $-17
+          full history from $3,184 -> $4,117; months traded 23, months with the +$500 win 12, months up 12, down 11; avg month $+41
+          22 monthly starts: median end $3,841; under $1,000 0; above $3,184 14
+
+=== 25% margin (position ~$15,547): +$500 needs a 3.34% fall, stop 2.25% ===
+  STRICT  per trade at $3,184: +$500 first 39%, stop 61%, 24 h 0%; avg stop $-442; avg per trade $-78
+          full history from $3,184 -> $972; months traded 10, months with the +$500 win 4, months up 3, down 7; avg month $-221
+          22 monthly starts: median end $2,207; under $1,000 11; above $3,184 1
+  LENIENT per trade at $3,184: +$500 first 39%, stop 61%, 24 h 0%; avg stop $-382; avg per trade $-42
+          full history from $3,184 -> $951; months traded 23, months with the +$500 win 11, months up 11, down 12; avg month $-97
+          22 monthly starts: median end $2,355; under $1,000 5; above $3,184 1
+
+=== 50% margin (position ~$31,094): +$500 needs a 1.73% fall, stop 2.25% ===
+  STRICT  per trade at $3,184: +$500 first 56%, stop 44%, 24 h 0%; avg stop $-877; avg per trade $-107
+          full history from $3,184 -> $998; months traded 5, months with the +$500 win 3, months up 1, down 4; avg month $-437
+          22 monthly starts: median end $889; under $1,000 19; above $3,184 1
+  LENIENT per trade at $3,184: +$500 first 56%, stop 44%, 24 h 0%; avg stop $-752; avg per trade $-52
+          full history from $3,184 -> $969; months traded 6, months with the +$500 win 3, months up 1, down 5; avg month $-369
+          22 monthly starts: median end $965; under $1,000 18; above $3,184 1
+
+=== 75% margin (position ~$46,641): +$500 needs a 1.19% fall, stop 2.25% ===
+  STRICT  per trade at $3,184: +$500 first 63%, stop 37%, 24 h 0%; avg stop $-1,330; avg per trade $-182
+          full history from $3,184 -> $684; months traded 3, months with the +$500 win 1, months up 1, down 2; avg month $-833
+          22 monthly starts: median end $826; under $1,000 21; above $3,184 1
+  LENIENT per trade at $3,184: +$500 first 63%, stop 37%, 24 h 0%; avg stop $-1,113; avg per trade $-101
+          full history from $3,184 -> $988; months traded 5, months with the +$500 win 3, months up 1, down 4; avg month $-439
+          22 monthly starts: median end $826; under $1,000 21; above $3,184 1
+
+CHECK PASSED: t1 and t2 agree on every trade of every account.

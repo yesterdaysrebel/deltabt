@@ -1,0 +1,32 @@
+  (trail 0.25R from +0.25R: 301 trades differ by at most 7.0e-07 R -- float rounding)
+  (trail 0.25R from +0.5R: 159 trades differ by at most 7.6e-07 R -- float rounding)
+  (trail 0.5R from +0.5R: 129 trades differ by at most 7.5e-07 R -- float rounding)
+  (trail 0.5R from +1.0R: 35 trades differ by at most 5.5e-07 R -- float rounding)
+  (trail 1.0R from +0.0R: 155 trades differ by at most 7.2e-07 R -- float rounding)
+  (trail 1.0R from +0.5R: 61 trades differ by at most 4.6e-07 R -- float rounding)
+  (trail 1.0R from +1.0R: 22 trades differ by at most 4.6e-07 R -- float rounding)
+Rule A ladder picks 2025-01-15 .. 2026-10-27: 1022 trades, stop 2x ATR (median 19%); at 10% margin the rule allows 3x on 24%, 2x on 49%, 1x on 27%, none on 0%. From $3,184, ladder 10/5/3.
+
+TODAY: 10% RISK per trade (notional ~risk/stop, median ~40% of the balance)
+  exit                             | R/trade  win  | 2025 R   2026 R | end balance  worst drop  months up  floor        | avg $ per trade at $3,184
+  hold 24 h (today)                | +0.021   55% | -0.017  +0.067 | $      993      66%    1/22     2025-09-17 | $  -8.46 (395 trades)
+  trail 0.25R behind, from +0.25R  | -0.001   69% | -0.018  +0.021 | $    2,236      61%   12/22     never      | $  -0.61 (1022 trades)
+  trail 0.25R behind, from +0.5R   | +0.008   60% | -0.021  +0.043 | $    2,634      67%   11/22     never      | $  +0.14 (1022 trades)
+  trail 0.5R behind, from +0.5R    | +0.005   60% | -0.028  +0.045 | $    2,323      70%   11/22     never      | $  -0.23 (1022 trades)
+  trail 0.5R behind, from +1.0R    | +0.009   55% | -0.022  +0.046 | $    1,000      65%    2/22     2025-09-29 | $  -7.98 (417 trades)
+  trail 1.0R behind, from +0.0R    | +0.011   52% | -0.009  +0.036 | $    2,308      65%   10/22     never      | $  -0.08 (1022 trades)
+  trail 1.0R behind, from +0.5R    | +0.017   54% | -0.015  +0.056 | $      997      66%    0/22     2025-09-17 | $  -8.45 (395 trades)
+  trail 1.0R behind, from +1.0R    | +0.015   55% | -0.014  +0.051 | $      974      66%    0/22     2025-09-17 | $  -8.62 (395 trades)
+
+10% MARGIN per trade (notional 10-30% of the balance)
+  exit                             | R/trade  win  | 2025 R   2026 R | end balance  worst drop  months up  floor        | avg $ per trade at $3,184
+  hold 24 h (today)                | +0.021   55% | -0.017  +0.067 | $    3,688      42%   11/22     never      | $  +0.88 (1022 trades)
+  trail 0.25R behind, from +0.25R  | -0.001   69% | -0.018  +0.021 | $    3,008      35%   13/22     never      | $  -0.01 (1022 trades)
+  trail 0.25R behind, from +0.5R   | +0.008   60% | -0.021  +0.043 | $    3,594      40%   12/22     never      | $  +0.67 (1022 trades)
+  trail 0.5R behind, from +0.5R    | +0.005   60% | -0.028  +0.045 | $    2,624      43%    9/22     never      | $  -0.40 (1022 trades)
+  trail 0.5R behind, from +1.0R    | +0.009   55% | -0.022  +0.046 | $    3,347      40%   12/22     never      | $  +0.50 (1022 trades)
+  trail 1.0R behind, from +0.0R    | +0.011   52% | -0.009  +0.036 | $    2,738      39%   11/22     never      | $  -0.16 (1022 trades)
+  trail 1.0R behind, from +0.5R    | +0.017   54% | -0.015  +0.056 | $    3,555      42%   11/22     never      | $  +0.70 (1022 trades)
+  trail 1.0R behind, from +1.0R    | +0.015   55% | -0.014  +0.051 | $    3,741      42%   11/22     never      | $  +0.89 (1022 trades)
+
+CHECK PASSED: two trailing implementations agree (to 1e-5 R) on every trade of every exit; hold matches the no-plan exit.

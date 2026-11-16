@@ -1,0 +1,61 @@
+REPLAY: the real bot code against Delta's own 1m history, 2025-01-15 .. 2026-11-14, from $3,184.
+Rules: 10% margin at up to 20x, stop +2.25%, break-even after the best point nets +$30.61 x scale, then a 5% trail.
+
+STRICT fills: 171 trades, 171 identical to the research simulation, 0 different; end wallet $1,801.05 (research $1,801.05); state RUNNING; 11,933 bot passes
+   exits: TRAIL 128, STOP 41, 24h 1, LIQ 1 | winners 24 (14%) avg $+173, losers avg $-38, biggest win $+366, biggest loss $-277
+   events the bot logged: CLOSED_AT_DELTA 157, EXTRA_MARGIN 171, LOCK_AT_MARKET 13, LOCK_MOVED 116, NEW_RUN 1, STOP_FILL 156, TRAIL_MOVED 246
+   month   trades full stops winners      P&L end balance
+   2025-01      2          2       0     -340       2,844
+   2025-02     11          0       1      -77       2,767
+   2025-03      7          2       1      -66       2,700
+   2025-04      4          2       0     -319       2,381
+   2025-05      3          2       0     -243       2,138
+   2025-06      4          2       0     -272       1,866
+   2025-07      8          2       2     +281       2,147
+   2025-08      7          2       0     -272       1,875
+   2025-09      2          2       0     -177       1,699
+   2025-10      6          2       1     -218       1,480
+   2025-11     19          1       1      -23       1,457
+   2025-12      7          2       1      +58       1,515
+   2026-01      4          2       0     -148       1,367
+   2026-02      5          2       0     -144       1,224
+   2026-03     18          2       4     +160       1,383
+   2026-04      3          2       0     -136       1,248
+   2026-05      3          2       0     -152       1,095
+   2026-06     17          2       5     +570       1,666
+   2026-07      5          2       2      +93       1,759
+   2026-08     18          2       3     +293       2,052
+   2026-09      2          2       0     -199       1,853
+   2026-10      7          2       0     -397       1,456
+   2026-11      9          1       3     +345       1,801
+   lowest balance $1,051; deepest drop from a peak 65%; months up 7 of 23
+
+LENIENT fills: 171 trades, 171 identical to the research simulation, 0 different; end wallet $3,889.83 (research $3,889.84); state RUNNING; 11,933 bot passes
+   exits: TRAIL 128, STOP 42, 24h 1 | winners 25 (15%) avg $+263, losers avg $-40, biggest win $+661, biggest loss $-196
+   events the bot logged: CLOSED_AT_DELTA 157, EXTRA_MARGIN 171, LOCK_AT_MARKET 13, LOCK_MOVED 116, NEW_RUN 1, STOP_FILL 157, TRAIL_MOVED 246
+   month   trades full stops winners      P&L end balance
+   2025-01      2          2       0     -300       2,884
+   2025-02     11          0       2      +67       2,951
+   2025-03      7          2       1      -32       2,919
+   2025-04      4          2       0     -285       2,633
+   2025-05      3          2       0     -253       2,380
+   2025-06      4          2       0     -233       2,147
+   2025-07      8          2       2     +369       2,516
+   2025-08      7          2       0     -259       2,257
+   2025-09      2          2       0     -213       2,044
+   2025-10      6          2       1     -161       1,883
+   2025-11     19          1       1      +65       1,948
+   2025-12      7          2       1      +91       2,039
+   2026-01      4          2       0     -199       1,839
+   2026-02      5          2       0     -183       1,656
+   2026-03     18          2       4     +246       1,902
+   2026-04      3          2       0     -187       1,715
+   2026-05      3          2       0     -188       1,527
+   2026-06     17          2       5   +1,206       2,733
+   2026-07      5          2       2     +317       3,050
+   2026-08     18          2       3     +809       3,859
+   2026-09      2          2       0     -364       3,495
+   2026-10      7          2       0     -378       3,117
+   2026-11      9          1       3     +772       3,890
+   lowest balance $1,521; deepest drop from a peak 53%; months up 9 of 23
+

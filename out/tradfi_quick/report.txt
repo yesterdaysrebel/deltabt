@@ -1,0 +1,58 @@
+Quick trades on Delta non-crypto perps (docs/tradfi_quick_prereg.md). % of notional per trade, after fees and slip.
+coverage (share of minutes with a trade, since listing): AAOIB 15%, AMDB 12%, AMZNX 12%, CBRSB 16%, EWYB 5%, GOOGLX 22%, INTCB 18%, KORUB 52%, METAX 15%, MRNAB 27%, MRVLB 14%, MUB 21%, NBISB 22%, NVDAX 23%, OIL 46%, PAXG 95%, QQQX 21%, SKHYB 16%, SLVON 65%, SNDKB 70%, SOXLB 46%, SPCXX 44%, SPYX 10%, TSLAX 24%, WDCB 14%, XAUT 96%
+
+=== F1 basis snap-back (all 26) ===
+   k 0.15% H 5                  DEV n 64395 mean -0.1300% t -107.04 win  23% | TEST n 83012 mean -0.1340% t -98.81 win  21%
+   k 0.15% H 15                 DEV n 46329 mean -0.1310% t -68.95 win  27% | TEST n 56002 mean -0.1324% t -51.98 win  26%
+   k 0.15% H 60                 DEV n 32482 mean -0.1304% t -47.69 win  31% | TEST n 34850 mean -0.1326% t -29.24 win  32%
+   k 0.30% H 5                  DEV n 30145 mean -0.1266% t -70.63 win  23% | TEST n 33425 mean -0.1312% t -62.51 win  21%
+   k 0.30% H 15                 DEV n 22319 mean -0.1256% t -49.76 win  27% | TEST n 23081 mean -0.1274% t -36.62 win  27%
+   k 0.30% H 60                 DEV n 15836 mean -0.1226% t -33.79 win  33% | TEST n 15225 mean -0.1257% t -23.17 win  33%
+   k 0.50% H 5                  DEV n  9737 mean -0.1225% t -13.28 win  20% | TEST n 15203 mean -0.1239% t -45.69 win  18%
+   k 0.50% H 15                 DEV n  7318 mean -0.1193% t -11.27 win  26% | TEST n 10093 mean -0.1234% t -29.55 win  25%
+   k 0.50% H 60                 DEV n  4934 mean -0.1122% t -9.49 win  33% | TEST n  5800 mean -0.1197% t -18.45 win  32%
+   FROZEN on DEV: k 0.50% H 60
+   TEST STRICT  n  5800 mean -0.1197% t -18.45 win  32% | halves -0.1309% / -0.1146% | symbols positive 5/24 | FAIL
+   TEST LENIENT n  5800 mean -0.0397% t -6.20 win  43% | halves -0.0509% / -0.0346% | symbols positive 9/24 | FAIL
+
+=== F2 FADE the off-hours move into the open (stock tokens) ===
+   m 0.5% X 15                  DEV n   339 mean +0.1225% t +0.08 win  49% | TEST n   564 mean -0.1433% t -0.87 win  45%
+   m 0.5% X 60                  DEV n   339 mean +0.5441% t +1.23 win  54% | TEST n   564 mean -0.2540% t -0.82 win  46%
+   m 0.5% X 120                 DEV n   339 mean +0.5029% t +0.78 win  53% | TEST n   564 mean -0.3393% t -1.12 win  47%
+   m 1.0% X 15                  DEV n   259 mean +0.2058% t +0.93 win  50% | TEST n   446 mean -0.1458% t -0.80 win  45%
+   m 1.0% X 60                  DEV n   259 mean +0.7643% t +2.02 win  56% | TEST n   446 mean -0.2832% t -0.79 win  45%
+   m 1.0% X 120                 DEV n   259 mean +0.7774% t +1.64 win  53% | TEST n   446 mean -0.3830% t -1.20 win  47%
+   m 2.0% X 15                  DEV n   153 mean +0.3821% t +1.31 win  51% | TEST n   279 mean -0.0251% t -0.04 win  47%
+   m 2.0% X 60                  DEV n   153 mean +1.2797% t +1.98 win  63% | TEST n   279 mean -0.1174% t +0.14 win  47%
+   m 2.0% X 120                 DEV n   153 mean +1.3144% t +1.61 win  59% | TEST n   279 mean -0.2737% t -0.29 win  49%
+   FROZEN on DEV: m 2.0% X 120
+   TEST STRICT  n   279 mean -0.2737% t -0.29 win  49% | halves -0.3694% / -0.2219% | symbols positive 7/20 | FAIL
+   TEST LENIENT n   279 mean -0.1938% t -0.06 win  50% | halves -0.2893% / -0.1421% | symbols positive 8/20 | FAIL
+
+=== F2f FOLLOW the off-hours move into the open (stock tokens) ===
+   m 0.5% X 15                  DEV n   339 mean -0.4024% t -2.33 win  43% | TEST n   564 mean -0.1364% t -1.00 win  46%
+   m 0.5% X 60                  DEV n   339 mean -0.8241% t -2.65 win  39% | TEST n   564 mean -0.0255% t -0.36 win  48%
+   m 0.5% X 120                 DEV n   339 mean -0.7830% t -2.05 win  41% | TEST n   564 mean +0.0595% t -0.05 win  47%
+   m 1.0% X 15                  DEV n   259 mean -0.4855% t -2.55 win  43% | TEST n   446 mean -0.1339% t -0.87 win  47%
+   m 1.0% X 60                  DEV n   259 mean -1.0443% t -3.05 win  39% | TEST n   446 mean +0.0038% t -0.30 win  48%
+   m 1.0% X 120                 DEV n   259 mean -1.0574% t -2.56 win  41% | TEST n   446 mean +0.1032% t +0.11 win  48%
+   m 2.0% X 15                  DEV n   153 mean -0.6617% t -2.22 win  43% | TEST n   279 mean -0.2545% t -1.22 win  47%
+   m 2.0% X 60                  DEV n   153 mean -1.5600% t -2.54 win  36% | TEST n   279 mean -0.1618% t -0.93 win  47%
+   m 2.0% X 120                 DEV n   153 mean -1.5945% t -2.13 win  38% | TEST n   279 mean -0.0061% t -0.50 win  47%
+   FROZEN on DEV: m 0.5% X 15
+   TEST STRICT  n   564 mean -0.1364% t -1.00 win  46% | halves -0.1901% / -0.0952% | symbols positive 7/22 | FAIL
+   TEST LENIENT n   564 mean -0.0565% t -0.47 win  49% | halves -0.1102% / -0.0153% | symbols positive 11/22 | FAIL
+
+=== F3 gold pair PAXG/XAUT ===
+   d 0.05%                      DEV n   948 mean -0.2193% t -122.60 win   0% | TEST n   505 mean -0.2160% t -106.42 win   0%
+   d 0.10%                      DEV n   165 mean -0.2056% t -38.24 win   0% | TEST n   104 mean -0.2017% t -38.35 win   0%
+   d 0.20%                      DEV n    13 mean -0.2090% t -4.70 win   8% | TEST n     6 mean -0.1500% t -5.48 win   0%
+   FROZEN on DEV: d 0.10%
+   TEST STRICT  n   104 mean -0.2017% t -38.35 win   0% | halves -0.1930% / -0.2101% | symbols positive 0/1 | FAIL
+   TEST LENIENT n   104 mean -0.0416% t -6.91 win  22% | halves -0.0328% / -0.0501% | symbols positive 0/1 | FAIL
+
+=== F4 intraday momentum, last 30 min (stock tokens) ===
+   no parameters                DEV n   346 mean +0.0436% t -0.25 win  43% | TEST n   489 mean -0.1663% t -2.48 win  35%
+   FROZEN on DEV: no parameters
+   TEST STRICT  n   489 mean -0.1663% t -2.48 win  35% | halves -0.0794% / -0.2374% | symbols positive 4/22 | FAIL
+   TEST LENIENT n   489 mean -0.0863% t -1.35 win  39% | halves +0.0007% / -0.1574% | symbols positive 7/22 | FAIL

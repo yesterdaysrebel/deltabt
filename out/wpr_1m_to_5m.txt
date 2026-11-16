@@ -1,0 +1,29 @@
+WHEN THE 1m %R(140) HAS JUST CLOSED ABOVE -20 (OR BELOW -80): HOW THE 5m BEHAVES. Delta 1m trade candles, no fees.
+
+================ U  30 most-traded perps, Aug-Nov 2026, liquid days: 39,707 events (19,845 up, 19,862 down), 39,630 random bars
+each pair = after the 1m event / from the same 5m zone at a random bar
+where the 5m %R is (own terms) |  share of | 5m Supertrend |   5m %R closes in the band ahead within   |  ahead before |    price, event direction    
+                             |    events |       on side |        30 min           1 h           3 h |        behind |    next 15 min       next 1 h
+still in the band behind     |    3% / 18% |    68% /  15% |     2% /   0%     2% /   1%    11% /   8% |             - | -0.032/-0.005% -0.114/-0.060%
+-80..-65                     |   12% / 16% |    84% /  44% |     2% /   1%     4% /   3%    18% /  14% |    30% /  20% | +0.013/-0.012% +0.021/-0.041%
+-65..-50                     |   15% / 16% |    87% /  51% |     5% /   3%    11% /   8%    33% /  27% |    50% /  42% | -0.007/+0.009% -0.046/-0.011%
+-50..-35                     |   16% / 16% |    88% /  51% |    17% /   9%    27% /  18%    52% /  42% |    67% /  59% | -0.012/-0.047% -0.049/+0.006%
+-35..-20                     |   18% / 16% |    88% /  58% |    58% /  39%    68% /  53%    81% /  70% |    88% /  80% | +0.003/-0.002% +0.005/+0.019%
+already in the band ahead    |   36% / 18% |    92% /  85% |    98% /  95%    98% /  96%    99% /  97% |             - | -0.005/-0.001% +0.002/+0.055%
+ALL                          |  100% /100% |    88% /  50% |    49% /  25%    54% /  31%    66% /  44% |    62% /  50% | -0.004/-0.010% -0.014/-0.006%
+   up events (1m closes above -20): 5m already in the band ahead 36%, between the bands 60%, still in the band behind 4%; 5m reaches the band ahead within 1 h 29% (of those not there yet)
+   down events (1m closes below -80): 5m already in the band ahead 35%, between the bands 62%, still in the band behind 3%; 5m reaches the band ahead within 1 h 29% (of those not there yet)
+
+================ B  top gainers 2025-26, liquid stretches: 24,580 events (11,934 up, 12,646 down), 24,580 random bars
+each pair = after the 1m event / from the same 5m zone at a random bar
+where the 5m %R is (own terms) |  share of | 5m Supertrend |   5m %R closes in the band ahead within   |  ahead before |    price, event direction    
+                             |    events |       on side |        30 min           1 h           3 h |        behind |    next 15 min       next 1 h
+still in the band behind     |    5% / 21% |    73% /  18% |     1% /   0%     2% /   1%     9% /   7% |             - | -0.048/-0.078% -0.303/-0.153%
+-80..-65                     |   12% / 16% |    85% /  44% |     1% /   1%     4% /   2%    17% /  15% |    30% /  20% | -0.015/-0.060% -0.102/-0.091%
+-65..-50                     |   14% / 14% |    88% /  47% |     4% /   2%    11% /   7%    31% /  24% |    52% /  41% | -0.071/+0.004% -0.043/-0.002%
+-50..-35                     |   14% / 14% |    90% /  52% |    15% /   8%    26% /  18%    51% /  40% |    70% /  57% | +0.001/-0.040% +0.013/+0.031%
+-35..-20                     |   17% / 15% |    88% /  56% |    54% /  39%    64% /  51%    78% /  69% |    86% /  80% | -0.016/-0.015% -0.013/+0.051%
+already in the band ahead    |   38% / 20% |    90% /  82% |    98% /  96%    98% /  97%    99% /  98% |             - | +0.006/+0.030% +0.086/+0.070%
+ALL                          |  100% /100% |    88% /  49% |    49% /  27%    54% /  31%    65% /  43% |    62% /  50% | -0.015/-0.027% -0.000/-0.019%
+   up events (1m closes above -20): 5m already in the band ahead 35%, between the bands 58%, still in the band behind 8%; 5m reaches the band ahead within 1 h 26% (of those not there yet)
+   down events (1m closes below -80): 5m already in the band ahead 41%, between the bands 58%, still in the band behind 2%; 5m reaches the band ahead within 1 h 27% (of those not there yet)

@@ -1,0 +1,14 @@
+75% margin (position ~$46,641), take-profit at net +$100 (a 0.33% fall), stop 2.25%; bot stops for good at +$500.
+
+PER TRADE at $3,184, STRICT : 381 trades; +$100 first 78%, stopped 22% (liquidated 7); avg win $+100, avg stop $-1,420; break-even needs 93% wins; avg per trade $-231
+PER TRADE at $3,184, LENIENT: 381 trades; +$100 first 78%, stopped 22% (liquidated 0); avg win $+100, avg stop $-1,140; break-even needs 92% wins; avg per trade $-170
+
+ONE-TIME +$500 from each of 615 start days, ends at the bot's $1,000 floor:
+   STRICT : +$500 first 37% (median 8 days, 5 trades) | lost first 59% (avg loss $-2,493) | not decided 4% | avg result per start $-1,308
+   LENIENT: +$500 first 40% (median 8 days, 5 trades) | lost first 55% (avg loss $-2,323) | not decided 6% | avg result per start $-1,113
+
+ONE-TIME +$500 from each of 615 start days, quit when down $500:
+   STRICT : +$500 first 35% (median 8 days, 5 trades) | lost first 65% (avg loss $-1,331) | not decided 1% | avg result per start $-684
+   LENIENT: +$500 first 35% (median 8 days, 5 trades) | lost first 65% (avg loss $-1,056) | not decided 1% | avg result per start $-507
+
+CHECK PASSED: t1 and t2 agree on every trade of every run.

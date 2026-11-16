@@ -1,0 +1,85 @@
+HOW THE WILLIAMS %R(140) BAND BEHAVES -- 1m and 5m bars, Delta trade candles.
+
+================ A  the owner's own coin-days (66 coins)
+
+--- %R(140) on 1m bars
+1  time spent: bottom band 21%, between 59%, top band 20%.  A stay inside a band lasts a median 3 bars (a quarter last 10+, a tenth 25+).
+2  leaves a band 21,953 times.  Crosses to the other band: 15% (up moves 15%, down moves 15%).  Falls back into the band it left: 85%.
+   falls back: 32% of them on the very next bar, 55% within 3, 78% within 10 (median 3 bars).  Crossing takes a median 30 bars (middle half 15-53).
+   how far the trips get before they end (own terms: -80 = the band it left, -20 = the other band):
+      past -70: 46%   past -60: 30%   past -50: 23%   past -40: 18%   past -30: 13%   to the other band: 15%
+3  once a trip has got past a level, the chance it finishes:  past -70: 32%   past -60: 49%   past -50: 62%   past -40: 74%   past -30: 84%
+4  from any bar between the bands: chance %R closes in the TOP band before the bottom one, by its level now
+      level       -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      measured         17%       34%       47%       57%       68%       83%
+      coin toss         8%       25%       42%       58%       75%       92%
+6  PRICE over a trip (in the trip's direction): crossed -> median +1.84% (a tenth under +0.34%); fell back -> median -0.38% (a tenth under -1.26%);  all trips mean -0.077%
+
+--- %R(140) on 5m bars
+1  time spent: bottom band 22%, between 58%, top band 20%.  A stay inside a band lasts a median 3 bars (a quarter last 9+, a tenth 23+).
+2  leaves a band 3,813 times.  Crosses to the other band: 14% (up moves 14%, down moves 13%).  Falls back into the band it left: 86%.
+   falls back: 35% of them on the very next bar, 58% within 3, 82% within 10 (median 3 bars).  Crossing takes a median 31 bars (middle half 15-54).
+   how far the trips get before they end (own terms: -80 = the band it left, -20 = the other band):
+      past -70: 43%   past -60: 26%   past -50: 20%   past -40: 16%   past -30: 12%   to the other band: 14%
+3  once a trip has got past a level, the chance it finishes:  past -70: 32%   past -60: 50%   past -50: 65%   past -40: 76%   past -30: 88%
+4  from any bar between the bands: chance %R closes in the TOP band before the bottom one, by its level now
+      level       -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      measured         18%       33%       48%       58%       72%       85%
+      coin toss         8%       25%       42%       58%       75%       92%
+6  PRICE over a trip (in the trip's direction): crossed -> median +4.87% (a tenth under +1.15%); fell back -> median -0.77% (a tenth under -2.75%);  all trips mean -0.173%
+
+--- 5  the 5m and the 1m together: chance the 5m %R closes in its TOP band before its bottom band
+   (read a down move by mirror: 5m level -30 falling with the 1m at the bottom = 5m level -70 rising with the 1m at the top)
+   5m level now   5m over last 3 bars  |  1m at the top (exhausted)   1m in the middle  1m at the bottom |   all coin toss
+   -80..-70       rising               |                23% (1,039)        16% (7,140)         13% (552) |   17%        8%
+   -80..-70       falling              |                  23% (188)        18% (6,022)       12% (2,717) |   16%        8%
+   -70..-60       rising               |                37% (1,917)        30% (5,711)         26% (485) |   32%       25%
+   -70..-60       falling              |                  39% (353)        31% (4,985)       25% (2,571) |   29%       25%
+   -60..-50       rising               |                58% (2,031)        44% (4,832)         29% (448) |   47%       42%
+   -60..-50       falling              |                  59% (391)        46% (4,881)       35% (2,504) |   43%       42%
+   -50..-35       rising               |                68% (3,643)        57% (7,024)         46% (486) |   60%       62%
+   -50..-35       falling              |                  71% (812)        60% (7,669)       48% (3,208) |   57%       62%
+   -35..-20       rising               |                85% (3,927)        80% (8,287)         69% (278) |   81%       88%
+   -35..-20       falling              |                  81% (888)       80% (10,557)       72% (1,940) |   79%       88%
+
+================ B  Delta's top gainers, 2025-01 .. 2026-11
+
+--- %R(140) on 1m bars
+1  time spent: bottom band 24%, between 58%, top band 18%.  A stay inside a band lasts a median 4 bars (a quarter last 12+, a tenth 27+).
+2  leaves a band 111,590 times.  Crosses to the other band: 17% (up moves 16%, down moves 18%).  Falls back into the band it left: 83%.
+   falls back: 28% of them on the very next bar, 51% within 3, 76% within 10 (median 3 bars).  Crossing takes a median 31 bars (middle half 16-54).
+   how far the trips get before they end (own terms: -80 = the band it left, -20 = the other band):
+      past -70: 49%   past -60: 33%   past -50: 26%   past -40: 20%   past -30: 14%   to the other band: 17%
+3  once a trip has got past a level, the chance it finishes:  past -70: 34%   past -60: 50%   past -50: 63%   past -40: 75%   past -30: 85%
+4  from any bar between the bands: chance %R closes in the TOP band before the bottom one, by its level now
+      level       -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      measured         18%       32%       43%       54%       66%       81%
+      coin toss         8%       25%       42%       58%       75%       92%
+6  PRICE over a trip (in the trip's direction): crossed -> median +1.55% (a tenth under +0.47%); fell back -> median -0.38% (a tenth under -1.03%);  all trips mean -0.079%
+
+--- %R(140) on 5m bars
+1  time spent: bottom band 28%, between 59%, top band 13%.  A stay inside a band lasts a median 3 bars (a quarter last 10+, a tenth 24+).
+2  leaves a band 18,445 times.  Crosses to the other band: 14% (up moves 13%, down moves 15%).  Falls back into the band it left: 86%.
+   falls back: 31% of them on the very next bar, 56% within 3, 79% within 10 (median 3 bars).  Crossing takes a median 31 bars (middle half 16-54).
+   how far the trips get before they end (own terms: -80 = the band it left, -20 = the other band):
+      past -70: 44%   past -60: 29%   past -50: 21%   past -40: 17%   past -30: 13%   to the other band: 14%
+3  once a trip has got past a level, the chance it finishes:  past -70: 31%   past -60: 48%   past -50: 64%   past -40: 75%   past -30: 85%
+4  from any bar between the bands: chance %R closes in the TOP band before the bottom one, by its level now
+      level       -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      measured         15%       30%       43%       53%       67%       83%
+      coin toss         8%       25%       42%       58%       75%       92%
+6  PRICE over a trip (in the trip's direction): crossed -> median +3.64% (a tenth under +1.47%); fell back -> median -0.67% (a tenth under -1.85%);  all trips mean -0.155%
+
+--- 5  the 5m and the 1m together: chance the 5m %R closes in its TOP band before its bottom band
+   (read a down move by mirror: 5m level -30 falling with the 1m at the bottom = 5m level -70 rising with the 1m at the top)
+   5m level now   5m over last 3 bars  |  1m at the top (exhausted)   1m in the middle  1m at the bottom |   all coin toss
+   -80..-70       rising               |                20% (6,672)       15% (33,353)       13% (2,705) |   15%        8%
+   -80..-70       falling              |                19% (1,685)       17% (29,483)      14% (14,805) |   16%        8%
+   -70..-60       rising               |                37% (9,896)       31% (26,961)       24% (2,561) |   32%       25%
+   -70..-60       falling              |                34% (2,532)       33% (25,901)      25% (13,553) |   30%       25%
+   -60..-50       rising               |               52% (11,506)       45% (23,418)       36% (2,220) |   47%       42%
+   -60..-50       falling              |                51% (3,164)       45% (24,266)      37% (12,670) |   43%       42%
+   -50..-35       rising               |               67% (17,819)       58% (33,767)       50% (3,003) |   60%       62%
+   -50..-35       falling              |                65% (4,798)       58% (38,865)      52% (17,964) |   57%       62%
+   -35..-20       rising               |               83% (20,241)       80% (38,876)       73% (1,755) |   81%       88%
+   -35..-20       falling              |                83% (5,432)       81% (51,309)      75% (12,509) |   80%       88%

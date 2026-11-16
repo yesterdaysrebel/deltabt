@@ -1,0 +1,130 @@
+{
+ "fetched": "2026-11-16T10:47:11.509212+00:00",
+ "tags_seen": [
+  "None",
+  "crypto",
+  "tradfi"
+ ],
+ "coins": [
+  {
+   "symbol": "BTCUSD",
+   "turnover_usd": 1009078353.2390015
+  },
+  {
+   "symbol": "ETHUSD",
+   "turnover_usd": 522247848.7534983
+  },
+  {
+   "symbol": "SOLUSD",
+   "turnover_usd": 91750698.63570029
+  },
+  {
+   "symbol": "EVAAUSD",
+   "turnover_usd": 52639156.32339972
+  },
+  {
+   "symbol": "AKEUSD",
+   "turnover_usd": 28900373.796000026
+  },
+  {
+   "symbol": "RAREUSD",
+   "turnover_usd": 12248812.764
+  },
+  {
+   "symbol": "ARIAUSD",
+   "turnover_usd": 11652916.17200001
+  },
+  {
+   "symbol": "XRPUSD",
+   "turnover_usd": 8056782.523900008
+  },
+  {
+   "symbol": "INITUSD",
+   "turnover_usd": 6544785.525700003
+  },
+  {
+   "symbol": "SOPHUSD",
+   "turnover_usd": 5105807.5482000075
+  },
+  {
+   "symbol": "JCTUSD",
+   "turnover_usd": 5004306.336999986
+  },
+  {
+   "symbol": "ZECUSD",
+   "turnover_usd": 4677318.762
+  },
+  {
+   "symbol": "TACUSD",
+   "turnover_usd": 3769868.4251
+  },
+  {
+   "symbol": "UNIUSD",
+   "turnover_usd": 3552278.3989999965
+  },
+  {
+   "symbol": "DOGEUSD",
+   "turnover_usd": 2185372.4029999995
+  },
+  {
+   "symbol": "AAVEUSD",
+   "turnover_usd": 1963870.1929999993
+  },
+  {
+   "symbol": "VVVUSD",
+   "turnover_usd": 1533475.508000001
+  },
+  {
+   "symbol": "FFUSD",
+   "turnover_usd": 1464563.5529999998
+  },
+  {
+   "symbol": "BNBUSD",
+   "turnover_usd": 1386791.0383999995
+  },
+  {
+   "symbol": "BLESSUSD",
+   "turnover_usd": 1270232.9854
+  },
+  {
+   "symbol": "AINUSD",
+   "turnover_usd": 1077944.764000001
+  },
+  {
+   "symbol": "PIEVERSEUSD",
+   "turnover_usd": 1021801.8329999996
+  },
+  {
+   "symbol": "ASTERUSD",
+   "turnover_usd": 990240.5769999993
+  },
+  {
+   "symbol": "AVAXUSD",
+   "turnover_usd": 750554.0482999999
+  },
+  {
+   "symbol": "BTWUSD",
+   "turnover_usd": 715905.515
+  },
+  {
+   "symbol": "BCHUSD",
+   "turnover_usd": 711732.3904
+  },
+  {
+   "symbol": "KITEUSD",
+   "turnover_usd": 611513.31
+  },
+  {
+   "symbol": "LINKUSD",
+   "turnover_usd": 576970.7390000002
+  },
+  {
+   "symbol": "LTCUSD",
+   "turnover_usd": 563249.2110000001
+  },
+  {
+   "symbol": "HYPEUSD",
+   "turnover_usd": 545946.6414000001
+  }
+ ]
+}

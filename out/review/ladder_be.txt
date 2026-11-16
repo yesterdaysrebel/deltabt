@@ -1,0 +1,13 @@
+Rule A ladder picks 2025-01-15 .. 2026-10-27: 1022 trades; from $3,184; ladder margin m -> m/2 -> 0.3m.
+
+  exit                           | R/trade  win  stopped at -1R | 2025 R   2026 R | 25% margin: end   worst drop  months up  floor      | 10% margin: end  worst drop
+  hold 24 h (today)              | +0.021   55%     16%        | -0.017  +0.067 | $    4,441      61%    11/22    never      | $   3,688      42%
+  at +0.25R: stop to break-even  | +0.014   47%      9%        | -0.015  +0.049 | $    5,341      57%    11/22    never      | $   3,937      38%
+  at +0.5R: stop to break-even   | +0.019   54%     13%        | -0.022  +0.069 | $    3,584      63%    10/22    never      | $   4,089      43%
+  at +1.0R: stop to break-even   | +0.019   55%     15%        | -0.021  +0.067 | $    5,100      63%    11/22    never      | $   3,743      43%
+  at +0.5R: stop to +0.1R        | +0.022   60%     13%        | -0.023  +0.077 | $    5,475      62%    10/22    never      | $   4,366      42%
+  at +1.0R: stop to +0.1R        | +0.018   55%     15%        | -0.021  +0.065 | $    4,645      62%    11/22    never      | $   2,957      44%
+  at +0.5R: stop to +0.25R       | +0.018   60%     13%        | -0.023  +0.068 | $    5,014      62%    11/22    never      | $   4,441      42%
+  at +1.0R: stop to +0.25R       | +0.015   55%     15%        | -0.020  +0.058 | $    4,384      63%    11/22    never      | $   3,356      43%
+
+CHECK PASSED: loop and vectorised break-even exits agree on every trade; hold matches the no-plan exit.

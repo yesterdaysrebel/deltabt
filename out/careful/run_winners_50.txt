@@ -1,0 +1,9 @@
+=== 49% margin, no take-profit (break-even then 5% trail), from each of 615 start days ===
+  STRICT : ever up +$1,000: 40% (median 4 days); ends under $1,000: 87%; ends above $3,184: 8%; average end $1,240; single trades of +$1,000 or more: 1.8 per run, in 22 trades
+  LENIENT: ever up +$1,000: 55% (median 7 days); ends under $1,000: 68%; ends above $3,184: 31%; average end $7,287; single trades of +$1,000 or more: 2.9 per run, in 30 trades
+
+=== 10% margin, no take-profit (break-even then 5% trail), from each of 615 start days ===
+  STRICT : ever up +$1,000: 40% (median 110 days); ends under $1,000: 0%; ends above $3,184: 53%; average end $3,355; single trades of +$1,000 or more: 0.1 per run, in 96 trades
+  LENIENT: ever up +$1,000: 80% (median 211 days); ends under $1,000: 0%; ends above $3,184: 97%; average end $5,437; single trades of +$1,000 or more: 1.2 per run, in 96 trades
+
+CHECK PASSED: BT.t1 and BT.t2 agree on every trade of every run.

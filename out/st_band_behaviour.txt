@@ -1,0 +1,131 @@
+HOW SUPERTREND(10, 2) BEHAVES WITH THE WILLIAMS %R(140) BAND -- 1m and 5m bars, Delta trade candles, no costs.
+
+================ A  the owner's own coin-days (66 coins)
+stretches kept: 57 of 140 (288,692 of 536,228 one-minute bars); flat no-trade minutes: 28% of all bars, 6% of the kept ones
+
+--- 1m bars: 17,538 Supertrend legs, 12,861 %R trips
+1  a leg lasts a median 12 bars (middle half 6-21, a tenth 34+); 9% are over within 3 bars, 45% within 10.
+   price from one flip to the next, in the leg's direction: median -0.19%, mean -0.042%, worst tenth -1.73%, best tenth +1.50%; ends in profit 33%
+2  %R at the flip: still in the band behind 10%, between 70%, already in the band ahead 21% (median level -49).
+   while a leg runs, %R is in the band ahead 32% of the time, between 61%, in the band behind 7%.
+3  a leg by the %R level at its flip
+   %R at the flip                 legs median bars  %R reaches the band ahead ends in profit   price over the leg
+   in the band behind (-100..-80)   1679          10                         5%            31%   median -0.28%, mean -0.153%, worst tenth -1.97%, best tenth +1.31%
+   -80..-50                       6986          12                        14%            34%   median -0.16%, mean -0.054%, worst tenth -1.76%, best tenth +1.46%
+   -50..-20                       5234          12                        43%            33%   median -0.16%, mean -0.003%, worst tenth -1.58%, best tenth +1.50%
+   in the band ahead (-20..0)     3639          12                       100%            33%   median -0.22%, mean -0.023%, worst tenth -1.78%, best tenth +1.62%
+4  a %R trip by Supertrend's side at the bar %R leaves the band
+   Supertrend                trips  crosses  median bars if it crosses   price over the trip
+   with the trip              6083      15%                         29   median -0.33%, mean -0.049%, worst tenth -1.41%, best tenth +1.68%
+   against the trip           6778      12%                         34   median -0.29%, mean -0.040%, worst tenth -1.18%, best tenth +0.64%
+   of the trips that start against Supertrend: it flips onto the trip's side during 38% of them (median 2 bars after the leave) -> those cross 32%; it never flips on the other 62% -> those cross 0%
+   of the trips that start with Supertrend, by how long ago it flipped:  same bar to 3 bars: 17% cross (3,743)   4-10 bars: 12% cross (1,513)   11-30: 12% cross (789)   over 30: 13% cross (38)
+5  chance %R closes in the band AHEAD before the band behind, by its level now and Supertrend's side
+      level (own terms)     -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      Supertrend with            17%       35%       47%       59%       70%       85%
+      Supertrend against         15%       30%       41%       53%       65%       83%
+      share of bars with         45%       49%       50%       50%       51%       55%
+6  on the trips that cross (1,755): Supertrend was already with the trip when %R left the band on 53%; it flipped within 3 bars either side of the leave on 66%; it flipped later, during the trip, on 47%; it never came onto the trip's side on 0%.
+7  with the 5m Supertrend
+   a 1m %R trip, 1m with     / 5m with        191 trips,  28% cross, price median -0.25%, mean -0.018%, worst tenth -1.65%, best tenth +2.39%
+   a 1m %R trip, 1m with     / 5m against   5,892 trips,  15% cross, price median -0.33%, mean -0.050%, worst tenth -1.40%, best tenth +1.63%
+   a 1m %R trip, 1m against  / 5m with        641 trips,  15% cross, price median -0.29%, mean -0.011%, worst tenth -1.23%, best tenth +1.80%
+   a 1m %R trip, 1m against  / 5m against   6,137 trips,  12% cross, price median -0.29%, mean -0.042%, worst tenth -1.17%, best tenth +0.55%
+   a 1m leg, 5m Supertrend with the flip        7509 legs, median 12 bars, in profit 33%, median -0.18%, mean -0.023%, worst tenth -1.61%, best tenth +1.48%
+   a 1m leg, 5m Supertrend against the flip    10029 legs, median 12 bars, in profit 34%, median -0.19%, mean -0.056%, worst tenth -1.81%, best tenth +1.52%
+
+--- 5m bars: 2,336 Supertrend legs, 2,190 %R trips
+1  a leg lasts a median 15 bars (middle half 8-27, a tenth 44+); 5% are over within 3 bars, 35% within 10.
+   price from one flip to the next, in the leg's direction: median -0.64%, mean +0.015%, worst tenth -4.46%, best tenth +4.61%; ends in profit 33%
+2  %R at the flip: still in the band behind 8%, between 70%, already in the band ahead 21% (median level -50).
+   while a leg runs, %R is in the band ahead 34% of the time, between 59%, in the band behind 7%.
+3  a leg by the %R level at its flip
+   %R at the flip                 legs median bars  %R reaches the band ahead ends in profit   price over the leg
+   in the band behind (-100..-80)    197          13                         5%            31%   median -1.03%, mean -0.394%, worst tenth -3.95%, best tenth +3.93%
+   -80..-50                        962          16                        18%            34%   median -0.56%, mean +0.063%, worst tenth -4.63%, best tenth +4.90%
+   -50..-20                        682          15                        46%            34%   median -0.50%, mean +0.112%, worst tenth -4.12%, best tenth +5.13%
+   in the band ahead (-20..0)      495          14                       100%            30%   median -0.89%, mean -0.047%, worst tenth -4.95%, best tenth +3.80%
+4  a %R trip by Supertrend's side at the bar %R leaves the band
+   Supertrend                trips  crosses  median bars if it crosses   price over the trip
+   with the trip               893      16%                         34   median -0.88%, mean -0.319%, worst tenth -3.96%, best tenth +4.50%
+   against the trip           1297      12%                         32   median -0.53%, mean +0.018%, worst tenth -2.27%, best tenth +1.55%
+   of the trips that start against Supertrend: it flips onto the trip's side during 34% of them (median 2 bars after the leave) -> those cross 37%; it never flips on the other 66% -> those cross 0%
+   of the trips that start with Supertrend, by how long ago it flipped:  same bar to 3 bars: 19% cross (501)   4-10 bars: 10% cross (216)   11-30: 16% cross (166)   over 30: 10% cross (10)
+5  chance %R closes in the band AHEAD before the band behind, by its level now and Supertrend's side
+      level (own terms)     -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      Supertrend with            18%       36%       54%       62%       72%       85%
+      Supertrend against         15%       28%       38%       46%       64%       82%
+      share of bars with         42%       48%       50%       50%       52%       58%
+6  on the trips that cross (307): Supertrend was already with the trip when %R left the band on 48%; it flipped within 3 bars either side of the leave on 61%; it flipped later, during the trip, on 52%; it never came onto the trip's side on 0%.
+7  with the 1m Supertrend
+   a 5m %R trip, 5m with     / 1m with        778 trips,  18% cross, price median -0.89%, mean -0.229%, worst tenth -4.11%, best tenth +5.33%
+   a 5m %R trip, 5m with     / 1m against     115 trips,   5% cross, price median -0.79%, mean -0.925%, worst tenth -2.57%, best tenth -0.09%
+   a 5m %R trip, 5m against  / 1m with      1,037 trips,  12% cross, price median -0.57%, mean -0.045%, worst tenth -2.32%, best tenth +1.25%
+   a 5m %R trip, 5m against  / 1m against     260 trips,  12% cross, price median -0.44%, mean +0.271%, worst tenth -2.03%, best tenth +3.30%
+   a 5m leg, 1m Supertrend with the flip        2312 legs, median 15 bars, in profit 33%, median -0.63%, mean +0.032%, worst tenth -4.46%, best tenth +4.65%
+   a 5m leg, 1m Supertrend against the flip       24 legs, median 11 bars, in profit 17%, median -0.80%, mean -1.626%, worst tenth -5.06%, best tenth +0.82%
+
+================ B  Delta's top gainers, 2025-01 .. 2026-11
+stretches kept: 269 of 1,049 (774,720 of 3,021,120 one-minute bars); flat no-trade minutes: 46% of all bars, 8% of the kept ones
+
+--- 1m bars: 59,492 Supertrend legs, 33,604 %R trips
+1  a leg lasts a median 8 bars (middle half 2-17, a tenth 29+); 30% are over within 3 bars, 58% within 10.
+   price from one flip to the next, in the leg's direction: median -0.19%, mean -0.046%, worst tenth -1.39%, best tenth +1.16%; ends in profit 36%
+2  %R at the flip: still in the band behind 12%, between 68%, already in the band ahead 20% (median level -49).
+   while a leg runs, %R is in the band ahead 31% of the time, between 62%, in the band behind 7%.
+3  a leg by the %R level at its flip
+   %R at the flip                 legs median bars  %R reaches the band ahead ends in profit   price over the leg
+   in the band behind (-100..-80)   7002           5                         3%            39%   median -0.12%, mean -0.083%, worst tenth -1.24%, best tenth +0.88%
+   -80..-50                      22340           9                        10%            36%   median -0.22%, mean -0.073%, worst tenth -1.47%, best tenth +1.23%
+   -50..-20                      18406           8                        33%            37%   median -0.17%, mean -0.006%, worst tenth -1.31%, best tenth +1.14%
+   in the band ahead (-20..0)    11744           8                       100%            35%   median -0.24%, mean -0.036%, worst tenth -1.42%, best tenth +1.23%
+4  a %R trip by Supertrend's side at the bar %R leaves the band
+   Supertrend                trips  crosses  median bars if it crosses   price over the trip
+   with the trip             15672      15%                         34   median -0.38%, mean -0.073%, worst tenth -1.26%, best tenth +1.81%
+   against the trip          17932      12%                         33   median -0.33%, mean -0.034%, worst tenth -1.07%, best tenth +1.67%
+   of the trips that start against Supertrend: it flips onto the trip's side during 39% of them (median 2 bars after the leave) -> those cross 32%; it never flips on the other 61% -> those cross 0%
+   of the trips that start with Supertrend, by how long ago it flipped:  same bar to 3 bars: 16% cross (9,739)   4-10 bars: 14% cross (3,987)   11-30: 14% cross (1,887)   over 30: 10% cross (59)
+5  chance %R closes in the band AHEAD before the band behind, by its level now and Supertrend's side
+      level (own terms)     -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      Supertrend with            17%       35%       49%       60%       71%       85%
+      Supertrend against         15%       29%       40%       51%       65%       83%
+      share of bars with         45%       50%       50%       50%       50%       55%
+6  on the trips that cross (4,561): Supertrend was already with the trip when %R left the band on 52%; it flipped within 3 bars either side of the leave on 65%; it flipped later, during the trip, on 48%; it never came onto the trip's side on 0%.
+7  with the 5m Supertrend
+   a 1m %R trip, 1m with     / 5m with        551 trips,  22% cross, price median -0.33%, mean -0.110%, worst tenth -1.55%, best tenth +2.10%
+   a 1m %R trip, 1m with     / 5m against  15,121 trips,  15% cross, price median -0.38%, mean -0.072%, worst tenth -1.25%, best tenth +1.80%
+   a 1m %R trip, 1m against  / 5m with      1,986 trips,  14% cross, price median -0.33%, mean -0.074%, worst tenth -1.10%, best tenth +1.66%
+   a 1m %R trip, 1m against  / 5m against  15,946 trips,  12% cross, price median -0.33%, mean -0.029%, worst tenth -1.07%, best tenth +1.68%
+   a 1m leg, 5m Supertrend with the flip       26624 legs, median 7 bars, in profit 36%, median -0.18%, mean -0.029%, worst tenth -1.31%, best tenth +1.09%
+   a 1m leg, 5m Supertrend against the flip    32868 legs, median 9 bars, in profit 36%, median -0.21%, mean -0.060%, worst tenth -1.46%, best tenth +1.22%
+
+--- 5m bars: 5,368 Supertrend legs, 4,571 %R trips
+1  a leg lasts a median 15 bars (middle half 8-26, a tenth 42+); 5% are over within 3 bars, 35% within 10.
+   price from one flip to the next, in the leg's direction: median -0.97%, mean -0.146%, worst tenth -4.17%, best tenth +4.39%; ends in profit 34%
+2  %R at the flip: still in the band behind 9%, between 70%, already in the band ahead 21% (median level -49).
+   while a leg runs, %R is in the band ahead 33% of the time, between 60%, in the band behind 7%.
+3  a leg by the %R level at its flip
+   %R at the flip                 legs median bars  %R reaches the band ahead ends in profit   price over the leg
+   in the band behind (-100..-80)    504          14                         4%            30%   median -1.00%, mean -0.211%, worst tenth -3.49%, best tenth +3.77%
+   -80..-50                       2112          15                        15%            34%   median -1.03%, mean -0.286%, worst tenth -4.47%, best tenth +4.29%
+   -50..-20                       1642          15                        45%            35%   median -0.84%, mean +0.043%, worst tenth -3.56%, best tenth +4.75%
+   in the band ahead (-20..0)     1110          16                       100%            34%   median -0.97%, mean -0.132%, worst tenth -4.46%, best tenth +4.51%
+4  a %R trip by Supertrend's side at the bar %R leaves the band
+   Supertrend                trips  crosses  median bars if it crosses   price over the trip
+   with the trip              1863      16%                         37   median -0.85%, mean -0.100%, worst tenth -3.07%, best tenth +4.87%
+   against the trip           2708      11%                         31   median -0.78%, mean -0.241%, worst tenth -2.43%, best tenth +2.99%
+   of the trips that start against Supertrend: it flips onto the trip's side during 36% of them (median 2 bars after the leave) -> those cross 32%; it never flips on the other 64% -> those cross 0%
+   of the trips that start with Supertrend, by how long ago it flipped:  same bar to 3 bars: 18% cross (984)   4-10 bars: 13% cross (493)   11-30: 12% cross (339)   over 30: 11% cross (47)
+5  chance %R closes in the band AHEAD before the band behind, by its level now and Supertrend's side
+      level (own terms)     -80..-70  -70..-60  -60..-50  -50..-40  -40..-30  -30..-20
+      Supertrend with            17%       33%       51%       60%       72%       85%
+      Supertrend against         15%       28%       40%       49%       67%       83%
+      share of bars with         42%       48%       49%       51%       52%       58%
+6  on the trips that cross (599): Supertrend was already with the trip when %R left the band on 48%; it flipped within 3 bars either side of the leave on 59%; it flipped later, during the trip, on 52%; it never came onto the trip's side on 0%.
+7  with the 1m Supertrend
+   a 5m %R trip, 5m with     / 1m with      1,631 trips,  17% cross, price median -0.87%, mean -0.078%, worst tenth -3.21%, best tenth +5.10%
+   a 5m %R trip, 5m with     / 1m against     232 trips,   8% cross, price median -0.70%, mean -0.249%, worst tenth -1.91%, best tenth -0.06%
+   a 5m %R trip, 5m against  / 1m with      2,141 trips,  12% cross, price median -0.80%, mean -0.250%, worst tenth -2.44%, best tenth +2.99%
+   a 5m %R trip, 5m against  / 1m against     567 trips,  11% cross, price median -0.70%, mean -0.211%, worst tenth -2.24%, best tenth +2.68%
+   a 5m leg, 1m Supertrend with the flip        5219 legs, median 15 bars, in profit 34%, median -0.96%, mean -0.153%, worst tenth -4.20%, best tenth +4.41%
+   a 5m leg, 1m Supertrend against the flip      149 legs, median 11 bars, in profit 27%, median -1.04%, mean +0.075%, worst tenth -3.42%, best tenth +4.33%

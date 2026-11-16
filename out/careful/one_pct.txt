@@ -1,0 +1,46 @@
+CHECK PASSED: two implementations agree on every trade of every version, both fills.
+
+TARGET = a 1% fall. Top pick only. STRICT .. LENIENT.
+
+=== 10% margin, stop 2.25% ===
+   per trade STRICT : 381 trades; 1% fall first 67% (win avg $+55), stop first 33% (avg $-183, liquidated 4), 24 h 0; break-even needs 77% wins; avg per trade $-24
+   per trade LENIENT: 381 trades; 1% fall first 67% (win avg $+55), stop first 33% (avg $-154, liquidated 0), 24 h 0; break-even needs 74% wins; avg per trade $-14
+   account from $3,184: full history   1,181 ..   1,846 | 2026 from Jan 1   1,785 ..   2,384 | 20 real picks   3,533 ..   3,533
+   one-time +$2,000 goal STRICT : first in 0 of 615 starts (0%), floor first 4 (1%), neither by Nov 14 611
+   one-time +$2,000 goal LENIENT: first in 0 of 615 starts (0%), floor first 0 (0%), neither by Nov 14 615
+
+=== 50% margin, stop 2.25% ===
+   per trade STRICT : 381 trades; 1% fall first 67% (win avg $+269), stop first 33% (avg $-909, liquidated 4), 24 h 0; break-even needs 77% wins; avg per trade $-121
+   per trade LENIENT: 381 trades; 1% fall first 67% (win avg $+269), stop first 33% (avg $-764, liquidated 0), 24 h 0; break-even needs 74% wins; avg per trade $-73
+   account from $3,184: full history     824 ..     938 | 2026 from Jan 1     919 ..     934 | 20 real picks   5,188 ..   5,188
+   one-time +$2,000 goal STRICT : first in 157 of 615 starts (26%), floor first 430 (70%), neither by Nov 14 28; median 16 days to the goal
+   one-time +$2,000 goal LENIENT: first in 191 of 615 starts (31%), floor first 365 (59%), neither by Nov 14 59; median 19 days to the goal
+
+=== 75% margin, stop 2.25% ===
+   per trade STRICT : 381 trades; 1% fall first 67% (win avg $+401), stop first 33% (avg $-1,376, liquidated 8), 24 h 0; break-even needs 77% wins; avg per trade $-187
+   per trade LENIENT: 381 trades; 1% fall first 67% (win avg $+401), stop first 33% (avg $-1,143, liquidated 0), 24 h 0; break-even needs 74% wins; avg per trade $-110
+   account from $3,184: full history     595 ..     929 | 2026 from Jan 1     158 ..     718 | 20 real picks   6,218 ..   6,218
+   one-time +$2,000 goal STRICT : first in 208 of 615 starts (34%), floor first 388 (63%), neither by Nov 14 19; median 12 days to the goal
+   one-time +$2,000 goal LENIENT: first in 225 of 615 starts (37%), floor first 370 (60%), neither by Nov 14 20; median 13 days to the goal
+
+=== 10% margin, stop 1.00% ===
+   per trade STRICT : 381 trades; 1% fall first 49% (win avg $+55), stop first 51% (avg $-103, liquidated 2), 24 h 0; break-even needs 65% wins; avg per trade $-26
+   per trade LENIENT: 381 trades; 1% fall first 49% (win avg $+55), stop first 51% (avg $-76, liquidated 0), 24 h 0; break-even needs 58% wins; avg per trade $-12
+   account from $3,184: full history   1,640 ..   2,297 | 2026 from Jan 1   2,374 ..   2,867 | 20 real picks   3,013 ..   3,086
+   one-time +$2,000 goal STRICT : first in 0 of 615 starts (0%), floor first 0 (0%), neither by Nov 14 615
+   one-time +$2,000 goal LENIENT: first in 0 of 615 starts (0%), floor first 0 (0%), neither by Nov 14 615
+
+=== 50% margin, stop 1.00% ===
+   per trade STRICT : 381 trades; 1% fall first 49% (win avg $+268), stop first 51% (avg $-511, liquidated 2), 24 h 0; break-even needs 66% wins; avg per trade $-130
+   per trade LENIENT: 381 trades; 1% fall first 49% (win avg $+268), stop first 51% (avg $-377, liquidated 0), 24 h 0; break-even needs 58% wins; avg per trade $-62
+   account from $3,184: full history     931 ..     916 | 2026 from Jan 1     872 ..   1,545 | 20 real picks   2,426 ..   2,730
+   one-time +$2,000 goal STRICT : first in 26 of 615 starts (4%), floor first 476 (77%), neither by Nov 14 113; median 14 days to the goal
+   one-time +$2,000 goal LENIENT: first in 54 of 615 starts (9%), floor first 145 (24%), neither by Nov 14 416; median 38 days to the goal
+
+=== 75% margin, stop 1.00% ===
+   per trade STRICT : 381 trades; 1% fall first 49% (win avg $+399), stop first 51% (avg $-779, liquidated 6), 24 h 0; break-even needs 66% wins; avg per trade $-204
+   per trade LENIENT: 381 trades; 1% fall first 49% (win avg $+399), stop first 51% (avg $-563, liquidated 0), 24 h 0; break-even needs 59% wins; avg per trade $-94
+   account from $3,184: full history     972 ..     851 | 2026 from Jan 1     824 ..     904 | 20 real picks   2,117 ..   2,529
+   one-time +$2,000 goal STRICT : first in 82 of 615 starts (13%), floor first 494 (80%), neither by Nov 14 39; median 12 days to the goal
+   one-time +$2,000 goal LENIENT: first in 101 of 615 starts (16%), floor first 390 (63%), neither by Nov 14 124; median 17 days to the goal
+

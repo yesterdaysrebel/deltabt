@@ -1,0 +1,22 @@
+Rule A ladder picks 2025-01-15 .. 2026-10-27 (1022); stop 2x ATR median 19%; 25% margin a trade, from $3,184.
+
+   L  stop                               exit                    | trades  liquidated  full stop  break-even  24 h | avg $/trade at $3,184 | end balance  worst drop  floor
+  3x  rule's 2x ATR (liq. first if closer) hold 24 h               |   388        1%        10%         0%     89% |      -7.96           | $      951      73%   2025-09-13
+  3x  rule's 2x ATR (liq. first if closer) at +0.25R: to break-even|   398        1%         8%        27%     64% |      -7.64           | $      999      73%   2025-09-19
+  3x  rule's 2x ATR (liq. first if closer) at +0.5R: to break-even |   382        1%        10%         4%     85% |      -7.84           | $      986      72%   2025-09-10
+
+  5x  rule's 2x ATR (liq. first if closer) hold 24 h               |   155       11%         3%         0%     86% |     -17.89           | $      991      73%   2025-05-09
+  5x  rule's 2x ATR (liq. first if closer) at +0.25R: to break-even|   129        9%         2%        26%     62% |     -23.70           | $      945      74%   2025-04-26
+  5x  rule's 2x ATR (liq. first if closer) at +0.5R: to break-even |   129       10%         4%         3%     83% |     -22.64           | $      956      72%   2025-04-26
+  5x  tightened to half the liq. distance hold 24 h               |   129        0%        40%         0%     60% |     -26.87           | $      951      64%   2025-04-26
+  5x  tightened to half the liq. distance at +0.25R: to break-even|   206        0%        19%        60%     21% |     -16.05           | $      994      69%   2025-06-09
+  5x  tightened to half the liq. distance at +0.5R: to break-even |   141        0%        30%        33%     37% |     -23.73           | $      985      65%   2025-05-02
+
+  8x  rule's 2x ATR (liq. first if closer) hold 24 h               |    80       32%         0%         0%     68% |     -40.99           | $      892      58%   2025-03-23
+  8x  rule's 2x ATR (liq. first if closer) at +0.25R: to break-even|    76       25%         0%        22%     53% |     -39.67           | $      990      59%   2025-03-21
+  8x  rule's 2x ATR (liq. first if closer) at +0.5R: to break-even |    80       32%         0%         2%     65% |     -41.04           | $      896      63%   2025-03-23
+  8x  tightened to half the liq. distance hold 24 h               |    99        0%        59%         0%     41% |     -33.11           | $      958      64%   2025-04-09
+  8x  tightened to half the liq. distance at +0.25R: to break-even|   300        0%        20%        69%     11% |      -9.87           | $      977      77%   2025-07-28
+  8x  tightened to half the liq. distance at +0.5R: to break-even |   105        0%        35%        44%     21% |     -31.22           | $      990      69%   2025-04-12
+
+CHECK PASSED: loop and vectorised trades agree on every trade of every account.

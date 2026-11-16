@@ -1,0 +1,33 @@
+AUDIT OF THE SPIKE FADE (sell +5%, stop 10%, out after 8 h) -- 617 trades, 2025-01 .. 2026-11. % of the position.
+
+1  FUNDING while the short was open (+ = paid to the short). Known for 611 of 617 trades; settlements per trade: median 2, max 8
+   mean -0.1016% of the position; median +0.0000%; worst -10.53%, best +2.25%; the short PAID on 41% of trades, was paid on 43%, no settlement on 15%
+
+2  LIQUIDITY (USD traded on Delta; known for 617 trades). A 3%-risk position on $3,184 is about $950.
+   in the fill minute: 10th pct $1,541  25th pct $4,729  50th pct $14,302  75th pct $37,401;  under $1,000 on 7% of trades, under $5,000 on 26%
+   in the exit minute: 10th pct $0  25th pct $167  50th pct $2,672  75th pct $16,806;  under $1,000 on 39% of trades
+   fill minute traded $5,000+         454 trades  win  56%  avg win  +7.89%  avg loss  -8.00%  mean +0.816%  t +1.70
+   fill minute traded $1,000-5,000    122 trades  win  54%  avg win  +6.33%  avg loss  -5.91%  mean +0.714%  t +1.01
+   fill minute traded under $1,000     41 trades  win  66%  avg win  +4.97%  avg loss  -5.99%  mean +1.231%  t +1.23
+
+3  ALL COSTS IN (real fees 0.0212% in / 0.0531% out, funding as measured; unknown funding = the average)
+   STRICT  before costs   617 trades  win  56%  avg win  +7.36%  avg loss  -7.47%  mean +0.823%  t +2.14
+   STRICT  after costs    617 trades  win  55%  avg win  +7.30%  avg loss  -7.46%  mean +0.648%  t +1.68
+   LENIENT after costs    617 trades  win  55%  avg win  +7.30%  avg loss  -7.04%  mean +0.835%  t +2.27
+   STRICT after costs, 2025 +0.385%, 2026 +0.933%; only trades the fill minute could carry ($5,000+):   454 trades  win  55%  avg win  +7.81%  avg loss  -7.99%  mean +0.640%  t +1.33
+
+4  WALK-FORWARD over the 64 settings (STRICT, before costs)
+   best on 2025: entry +7%, stop 15%, 8 h -> 2025 +1.334%, then 2026 +1.262%
+   best on 2026: entry +10%, stop 15%, 12 h -> 2026 +1.862%, then 2025 +0.734%
+   settings positive in 2025: 62 of 64; in 2026: 64; in both: 62; rank correlation between the two years across settings -0.30
+   the chosen setting (+5%, 10%, 8 h): 2025 +0.576%, 2026 +1.091%
+
+5  THE LOSS TAIL (STRICT): 158 stops = 26% of trades; average stop -10.84%; worse than -12%: 11, worse than -15%: 2, worse than -20%: 1; worst five: -59.2%, -15.7%, -13.7%, -13.3%, -13.3%
+   stopped within 15 min of the fill: 12% of stops; within 60 min: 32%
+
+6  THE ACCOUNT from $3,184, every cost in, compounding, position = risk x balance / 10%
+                                end deepest drop worst month best month months up longest losing run longest under water
+   risk 2% STRICT         $   6,326          31%        -18%       +37%    14/23               7 trades            182 days
+   risk 2% LENIENT        $   8,052          29%        -17%       +37%    15/23               7 trades             94 days
+   risk 3% STRICT         $   8,196          44%        -26%       +59%    14/23               7 trades            184 days
+   risk 3% LENIENT        $  11,875          40%        -25%       +59%    15/23               7 trades             94 days

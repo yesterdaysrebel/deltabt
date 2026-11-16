@@ -1,0 +1,25 @@
+CHECK PASSED: two implementations agree on every trade and every account.
+
+PER TRADE at a fixed $3,184 (every top pick that fills, no pause), STRICT .. LENIENT:
+   STRICT : 381 trades; reached +$1,000 182 (48%), stopped 189 (50%), liquidated 10, 24 h 0; avg win $+1,001, avg stop $-1,348; avg per trade $-226; total $-86,176
+   LENIENT: 381 trades; reached +$1,000 182 (48%), stopped 199 (52%), liquidated 0, 24 h 0; avg win $+1,001, avg stop $-1,150; avg per trade $-123; total $-46,780
+   (position on $3,184: ~$46,641; +$1,000 needs a ~2.26% fall; the stop is +2.25%)
+
+ACCOUNT from $3,184 (top pick only, week off after a +$1,000 win, $1,000 floor), end balance STRICT .. LENIENT:
+                                      |      full history |   2026 from Jan 1 |     20 real picks | 22 starts: under $1,000 / above $3,184
+   with month-off after 2 stops       |     499 ..     855 |     826 ..     860 |   5,185 ..   5,185 | 21 .. 21 /  1 ..  1 of 22
+   no month-off                       |     681 ..     826 |     627 ..     667 |   5,185 ..   5,185 | 22 .. 22 /  0 ..  0 of 22
+
+   full history, no month-off, STRICT -- every trade until it stops:
+      2025-01-15 LDOUSD       STOP     -1,340  balance    1,844
+      2025-01-16 XRPUSD       STOP       -742  balance    1,101
+      2025-01-17 HBARUSD      STOP       -420  balance      681
+
+   full history, no month-off, LENIENT -- every trade until it stops:
+      2025-01-15 LDOUSD       STOP     -1,154  balance    2,030
+      2025-01-16 XRPUSD       STOP       -736  balance    1,295
+      2025-01-17 HBARUSD      STOP       -469  balance      826
+
+   20 real picks, no month-off, STRICT:
+      2026-10-29 INITUSD      TARGET   +1,001  balance    4,185
+      2026-11-09 AIOTUSD      TARGET   +1,001  balance    5,185

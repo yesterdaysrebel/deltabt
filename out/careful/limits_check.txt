@@ -1,0 +1,8 @@
+Saved table (12 coins, the rest 20x to $50k)  vs  Delta's live terms for all 173 coins (held to max 20x):
+
+   75% margin, +$1,000, STRICT : per trade $  -226 -> $  -223; target first 48% -> 47%; +$2,000 goal first 204 -> 206 of 615; floor first 396 -> 395
+   75% margin, +$1,000, LENIENT: per trade $  -123 -> $  -119; target first 48% -> 47%; +$2,000 goal first 216 -> 216 of 615; floor first 385 -> 385
+   50% margin, +$1,000, STRICT : per trade $  -150 -> $  -150; target first 39% -> 39%; +$2,000 goal first 187 -> 183 of 615; floor first 416 -> 420
+   50% margin, +$1,000, LENIENT: per trade $   -76 -> $   -78; target first 39% -> 39%; +$2,000 goal first 215 -> 214 of 615; floor first 388 -> 389
+   exit C at 10% margin (approved), full history, STRICT : $1,801.05 -> $1,801.05
+   exit C at 10% margin (approved), full history, LENIENT: $3,889.84 -> $3,889.84

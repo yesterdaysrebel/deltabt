@@ -1,0 +1,40 @@
+FADE THE %R BAND EXIT -- the pre-registered test (docs/wpr_fade_leave_prereg.md); data out/pullback (30 coins, 2026-08-01..11-15)
+
+===== 5m bars  (JUDGED)
+== STRICT
+   all                    7819 trades  mean -0.1922%  t  -5.84  win  42%  back into the band  86%   median hold 4 bars
+   2026-08-01..09-22      3267 trades  mean -0.2053%  t  -4.55  win  40%  back into the band  86%
+   2026-09-23..11-15      4552 trades  mean -0.1828%  t  -3.93  win  43%  back into the band  86%
+   buys                   3977 trades  mean -0.1527%  t  -3.23  win  41%  back into the band  86%
+   sells                  3842 trades  mean -0.2330%  t  -5.73  win  43%  back into the band  86%
+   coins with 30+ trades: 19, positive on 6;  BACK trades mean +0.330%, ACROSS trades mean -3.343%;  worst trade -45.36%, worst day -118.79%, best day +58.47%
+== LENIENT
+   all                    7911 trades  mean -0.0529%  t  -1.65  win  69%  back into the band  86%   median hold 4 bars
+   2026-08-01..09-22      3295 trades  mean -0.0674%  t  -1.54  win  68%  back into the band  86%
+   2026-09-23..11-15      4616 trades  mean -0.0426%  t  -0.94  win  70%  back into the band  86%
+   buys                   4020 trades  mean -0.0042%  t  -0.09  win  68%  back into the band  86%
+   sells                  3891 trades  mean -0.1033%  t  -2.48  win  70%  back into the band  86%
+   coins with 30+ trades: 20, positive on 8;  BACK trades mean +0.473%, ACROSS trades mean -3.240%;  worst trade -44.92%, worst day -107.66%, best day +74.69%
+
+===== 1m bars  (secondary, not judged)
+== STRICT
+   all                   39388 trades  mean -0.2116%  t -24.08  win  21%  back into the band  85%   median hold 4 bars
+   2026-08-01..09-22     16460 trades  mean -0.2315%  t -14.27  win  19%  back into the band  85%
+   2026-09-23..11-15     22928 trades  mean -0.1974%  t -21.16  win  22%  back into the band  85%
+   buys                  19715 trades  mean -0.2063%  t -19.64  win  21%  back into the band  85%
+   sells                 19673 trades  mean -0.2170%  t -19.61  win  21%  back into the band  85%
+   coins with 30+ trades: 21, positive on 0;  BACK trades mean +0.011%, ACROSS trades mean -1.510%;  worst trade -44.17%, worst day -165.12%, best day +4.95%
+== LENIENT
+   all                   39980 trades  mean -0.0658%  t  -9.46  win  48%  back into the band  85%   median hold 4 bars
+   2026-08-01..09-22     16663 trades  mean -0.0870%  t  -7.73  win  45%  back into the band  85%
+   2026-09-23..11-15     23317 trades  mean -0.0507%  t  -5.76  win  49%  back into the band  85%
+   buys                  19979 trades  mean -0.0610%  t  -6.06  win  46%  back into the band  85%
+   sells                 20001 trades  mean -0.0707%  t  -7.10  win  49%  back into the band  85%
+   coins with 30+ trades: 21, positive on 6;  BACK trades mean +0.161%, ACROSS trades mean -1.388%;  worst trade -43.58%, worst day -100.20%, best day +85.37%
+
+   FAIL  STRICT mean > 0
+   FAIL  t >= 2 by day (STRICT)
+   FAIL  STRICT > 0 in both halves
+   FAIL  STRICT > 0 on 60%+ of coins
+   FAIL  buys and sells each > 0 under LENIENT
+VERDICT (5m): FAIL   (LENIENT mean <= 0: dead)
