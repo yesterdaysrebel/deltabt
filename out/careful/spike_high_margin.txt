@@ -1,0 +1,102 @@
+Owner 2026-11-17: "try with high margin" (after the $40-45 target check, scripts/spike_usd_target.py).
+$ per trade at today's $2,895.60. Before fees.
+
+===== margin 20% at 5x: position $2,878 (1.0x the balance); a full 10% stop ~ $288 (10% of the balance); $40 = 1.39% move, $45 = 1.56%
+  no target (as now)
+     history STRICT  617 trades  win  49%  avg win $ +237  avg loss $ -179  per trade $ +24.9  | half-years $ +17 +24 +37 +20 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  49%  avg win $ +243  avg loss $ -164  per trade $ +36.3
+     real picks 13 trades STRICT win  54%  avg win $ +256  avg loss $ -172  per trade $ +58.4 | LENIENT $+92.7
+     account STRICT  454 taken, end $     115,470, lowest $2,262, worst fall 71%, worst single trade -30% of the balance, never under $1,000
+     account LENIENT 454 taken, end $     631,428, lowest $2,280, worst fall 56%, worst single trade -10% of the balance, never under $1,000
+  take-profit $40
+     history STRICT  617 trades  win  87%  avg win $  +40  avg loss $ -277  per trade $  -1.7  | half-years $ +1 -1 -3 -4 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  88%  avg win $  +40  avg loss $ -260  per trade $  +3.0
+     real picks 15 trades STRICT win  87%  avg win $  +40  avg loss $ -273  per trade $  -1.7 | LENIENT $-1.3
+     account STRICT  586 taken, end $       1,351, lowest $1,212, worst fall 71%, worst single trade -30% of the balance, never under $1,000
+     account LENIENT 587 taken, end $       3,916, lowest $1,962, worst fall 54%, worst single trade -10% of the balance, never under $1,000
+  take-profit $45
+     history STRICT  617 trades  win  86%  avg win $  +45  avg loss $ -276  per trade $  +1.3  | half-years $ +6 +2 +1 -4 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  87%  avg win $  +45  avg loss $ -256  per trade $  +5.0
+     real picks 15 trades STRICT win  87%  avg win $  +45  avg loss $ -273  per trade $  +2.6 | LENIENT $+3.0
+     account STRICT  583 taken, end $       2,243, lowest $1,640, worst fall 64%, worst single trade -30% of the balance, never under $1,000
+     account LENIENT 584 taken, end $       5,266, lowest $2,358, worst fall 51%, worst single trade -10% of the balance, never under $1,000
+
+===== margin 30% at 5x: position $4,317 (1.5x the balance); a full 10% stop ~ $432 (15% of the balance); $40 = 0.93% move, $45 = 1.04%
+  no target (as now)
+     history STRICT  617 trades  win  49%  avg win $ +356  avg loss $ -268  per trade $ +37.4  | half-years $ +26 +37 +55 +30 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  49%  avg win $ +364  avg loss $ -246  per trade $ +54.4
+     real picks 13 trades STRICT win  54%  avg win $ +385  avg loss $ -259  per trade $ +87.6 | LENIENT $+139.0
+     account STRICT  454 taken, end $     245,478, lowest $1,979, worst fall 81%, worst single trade -45% of the balance, never under $1,000
+     account LENIENT 454 taken, end $   2,840,505, lowest $2,004, worst fall 71%, worst single trade -15% of the balance, never under $1,000
+  take-profit $40
+     history STRICT  617 trades  win  90%  avg win $  +40  avg loss $ -444  per trade $  -6.3  | half-years $ +4 -7 -11 -11 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  91%  avg win $  +40  avg loss $ -407  per trade $  -0.6
+     real picks 15 trades STRICT win  93%  avg win $  +40  avg loss $ -436  per trade $  +8.2 | LENIENT $+8.6
+     account STRICT  595 taken, end $         222, lowest $202, worst fall 96%, worst single trade -45% of the balance, UNDER THE $1,000 FLOOR 2025-09-02 (bot stops)
+     account LENIENT 596 taken, end $         975, lowest $885, worst fall 83%, worst single trade -15% of the balance, UNDER THE $1,000 FLOOR 2026-11-02 (bot stops)
+  take-profit $45
+     history STRICT  617 trades  win  89%  avg win $  +45  avg loss $ -435  per trade $  -6.4  | half-years $ +4 -7 -13 -10 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  90%  avg win $  +45  avg loss $ -406  per trade $  +1.8
+     real picks 15 trades STRICT win  93%  avg win $  +45  avg loss $ -436  per trade $ +12.9 | LENIENT $+13.2
+     account STRICT  592 taken, end $         184, lowest $166, worst fall 97%, worst single trade -45% of the balance, UNDER THE $1,000 FLOOR 2025-09-09 (bot stops)
+     account LENIENT 595 taken, end $       1,496, lowest $1,307, worst fall 75%, worst single trade -15% of the balance, never under $1,000
+
+===== margin 40% at 5x: position $5,756 (2.0x the balance); a full 10% stop ~ $576 (20% of the balance); $40 = 0.69% move, $45 = 0.78%
+  no target (as now)
+     history STRICT  617 trades  win  49%  avg win $ +475  avg loss $ -357  per trade $ +49.9  | half-years $ +34 +49 +73 +39 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  49%  avg win $ +485  avg loss $ -328  per trade $ +72.6
+     real picks 13 trades STRICT win  54%  avg win $ +513  avg loss $ -345  per trade $+116.8 | LENIENT $+185.4
+     account STRICT  454 taken, end $     263,815, lowest $1,280, worst fall 90%, worst single trade -60% of the balance, never under $1,000
+     account LENIENT 454 taken, end $   6,448,187, lowest $1,749, worst fall 83%, worst single trade -20% of the balance, never under $1,000
+  take-profit $40
+     history STRICT  617 trades  win  91%  avg win $  +40  avg loss $ -598  per trade $ -14.8  | half-years $ -2 -14 -20 -22 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  92%  avg win $  +40  avg loss $ -552  per trade $  -7.0
+     real picks 15 trades STRICT win  93%  avg win $  +40  avg loss $ -582  per trade $  -1.5 | LENIENT $-1.0
+     account STRICT  598 taken, end $          19, lowest $17, worst fall 100%, worst single trade -60% of the balance, UNDER THE $1,000 FLOOR 2025-08-19 (bot stops)
+     account LENIENT 599 taken, end $         170, lowest $154, worst fall 97%, worst single trade -20% of the balance, UNDER THE $1,000 FLOOR 2025-09-13 (bot stops)
+  take-profit $45
+     history STRICT  617 trades  win  91%  avg win $  +45  avg loss $ -596  per trade $ -11.2  | half-years $ +2 -13 -15 -18 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  92%  avg win $  +45  avg loss $ -544  per trade $  -4.7
+     real picks 15 trades STRICT win  93%  avg win $  +45  avg loss $ -582  per trade $  +3.2 | LENIENT $+3.6
+     account STRICT  597 taken, end $          38, lowest $34, worst fall 99%, worst single trade -60% of the balance, UNDER THE $1,000 FLOOR 2025-08-19 (bot stops)
+     account LENIENT 599 taken, end $         257, lowest $231, worst fall 95%, worst single trade -20% of the balance, UNDER THE $1,000 FLOOR 2025-09-13 (bot stops)
+
+===== margin 50% at 5x: position $7,195 (2.5x the balance); a full 10% stop ~ $720 (25% of the balance); $40 = 0.56% move, $45 = 0.63%
+  no target (as now)
+     history STRICT  617 trades  win  49%  avg win $ +593  avg loss $ -447  per trade $ +62.3  | half-years $ +43 +61 +92 +49 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  49%  avg win $ +607  avg loss $ -410  per trade $ +90.7
+     real picks 13 trades STRICT win  54%  avg win $ +641  avg loss $ -431  per trade $+146.1 | LENIENT $+231.7
+     account STRICT  454 taken, end $     101,021, lowest $488, worst fall 97%, worst single trade -75% of the balance, UNDER THE $1,000 FLOOR 2025-09-03 (bot stops)
+     account LENIENT 454 taken, end $   8,748,612, lowest $1,514, worst fall 90%, worst single trade -25% of the balance, never under $1,000
+  take-profit $40
+     history STRICT  617 trades  win  92%  avg win $  +40  avg loss $ -761  per trade $ -23.6  | half-years $ -5 -27 -29 -31 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  92%  avg win $  +40  avg loss $ -691  per trade $ -15.7
+     real picks 15 trades STRICT win  93%  avg win $  +40  avg loss $ -727  per trade $ -11.2 | LENIENT $-10.6
+     account STRICT  599 taken, end $           1, lowest $1, worst fall 100%, worst single trade -75% of the balance, UNDER THE $1,000 FLOOR 2025-05-15 (bot stops)
+     account LENIENT 601 taken, end $          15, lowest $14, worst fall 100%, worst single trade -25% of the balance, UNDER THE $1,000 FLOOR 2025-08-19 (bot stops)
+  take-profit $45
+     history STRICT  617 trades  win  92%  avg win $  +45  avg loss $ -751  per trade $ -19.5  | half-years $ -2 -23 -25 -26 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  92%  avg win $  +45  avg loss $ -690  per trade $ -12.2
+     real picks 15 trades STRICT win  93%  avg win $  +45  avg loss $ -727  per trade $  -6.5 | LENIENT $-6.0
+     account STRICT  599 taken, end $           2, lowest $2, worst fall 100%, worst single trade -75% of the balance, UNDER THE $1,000 FLOOR 2025-05-15 (bot stops)
+     account LENIENT 600 taken, end $          29, lowest $26, worst fall 99%, worst single trade -25% of the balance, UNDER THE $1,000 FLOOR 2025-08-30 (bot stops)
+
+===== margin 60% at 5x: position $8,634 (3.0x the balance); a full 10% stop ~ $863 (30% of the balance); $40 = 0.46% move, $45 = 0.52%
+  no target (as now)
+     history STRICT  617 trades  win  49%  avg win $ +712  avg loss $ -536  per trade $ +74.8  | half-years $ +51 +73 +110 +59 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  49%  avg win $ +728  avg loss $ -493  per trade $+108.9
+     real picks 13 trades STRICT win  54%  avg win $ +769  avg loss $ -517  per trade $+175.3 | LENIENT $+278.1
+     account STRICT  454 taken, end $       4,369, lowest $96, worst fall 99%, worst single trade -90% of the balance, UNDER THE $1,000 FLOOR 2025-08-19 (bot stops)
+     account LENIENT 454 taken, end $   7,694,007, lowest $1,299, worst fall 95%, worst single trade -30% of the balance, never under $1,000
+  take-profit $40
+     history STRICT  617 trades  win  92%  avg win $  +40  avg loss $ -917  per trade $ -32.9  | half-years $ -13 -40 -32 -44 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  93%  avg win $  +40  avg loss $ -830  per trade $ -22.0
+     real picks 15 trades STRICT win  93%  avg win $  +40  avg loss $ -873  per trade $ -20.9 | LENIENT $-20.2
+     account STRICT  601 taken, end $           0, lowest $0, worst fall 100%, worst single trade -90% of the balance, UNDER THE $1,000 FLOOR 2025-05-07 (bot stops)
+     account LENIENT 603 taken, end $           2, lowest $2, worst fall 100%, worst single trade -30% of the balance, UNDER THE $1,000 FLOOR 2025-05-15 (bot stops)
+  take-profit $45
+     history STRICT  617 trades  win  92%  avg win $  +45  avg loss $ -915  per trade $ -29.7  | half-years $ -9 -35 -33 -40 | liquidated 1 (STRICT), 0 (LENIENT)
+     history LENIENT             win  93%  avg win $  +45  avg loss $ -829  per trade $ -20.2
+     real picks 15 trades STRICT win  93%  avg win $  +45  avg loss $ -873  per trade $ -16.2 | LENIENT $-15.6
+     account STRICT  600 taken, end $           0, lowest $0, worst fall 100%, worst single trade -90% of the balance, UNDER THE $1,000 FLOOR 2025-05-11 (bot stops)
+     account LENIENT 601 taken, end $           3, lowest $2, worst fall 100%, worst single trade -30% of the balance, UNDER THE $1,000 FLOOR 2025-08-16 (bot stops)
