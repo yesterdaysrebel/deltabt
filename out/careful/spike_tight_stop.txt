@@ -1,0 +1,22 @@
+Owner 2026-11-17: "with target closer the SL should not hit right? let's say with 50% margin SL sitting right above
+entry we hit target".
+Position $7,195; $40 = 0.56%, $45 = 0.63% below the entry. $ per trade at today's balance.
+
+===== take-profit $40 (0.56%)
+  stop 0.25% ($  18):  STRICT win  18% (needed ~31%)  avg win $ +40  avg loss $  -63  per trade $ -44.1 | LENIENT win  20% per trade $  -6.3 | stopped in the fill minute 64%, within 5 min 80% | CONTROL $ -18.2 | bot rules: under $1,000 in 100% of orders | fees $1.5/trade
+  stop 0.50% ($  36):  STRICT win  33% (needed ~47%)  avg win $ +40  avg loss $  -86  per trade $ -44.7 | LENIENT win  37% per trade $  -7.5 | stopped in the fill minute 41%, within 5 min 64% | CONTROL $ -17.8 | bot rules: under $1,000 in 100% of orders | fees $1.6/trade
+  stop 0.75% ($  54):  STRICT win  43% (needed ~57%)  avg win $ +40  avg loss $ -108  per trade $ -44.0 | LENIENT win  47% per trade $  -9.3 | stopped in the fill minute 26%, within 5 min 51% | CONTROL $ -17.3 | bot rules: under $1,000 in 100% of orders | fees $1.6/trade
+  stop 1.00% ($  72):  STRICT win  51% (needed ~64%)  avg win $ +40  avg loss $ -129  per trade $ -43.6 | LENIENT win  55% per trade $ -10.3 | stopped in the fill minute 20%, within 5 min 40% | CONTROL $ -18.5 | bot rules: under $1,000 in 100% of orders | fees $1.7/trade
+  stop 1.50% ($ 108):  STRICT win  62% (needed ~73%)  avg win $ +40  avg loss $ -171  per trade $ -39.7 | LENIENT win  65% per trade $ -11.1 | stopped in the fill minute 12%, within 5 min 26% | CONTROL $ -16.5 | bot rules: under $1,000 in 100% of orders | fees $1.8/trade
+  stop 2.00% ($ 144):  STRICT win  70% (needed ~78%)  avg win $ +40  avg loss $ -214  per trade $ -36.6 | LENIENT win  72% per trade $ -11.6 | stopped in the fill minute 8%, within 5 min 18% | CONTROL $ -16.6 | bot rules: under $1,000 in 100% of orders | fees $1.9/trade
+  stop 3.00% ($ 216):  STRICT win  78% (needed ~84%)  avg win $ +40  avg loss $ -293  per trade $ -31.9 | LENIENT win  80% per trade $ -10.6 | stopped in the fill minute 4%, within 5 min 10% | CONTROL $ -16.0 | bot rules: under $1,000 in 100% of orders | fees $2.0/trade
+
+===== take-profit $45 (0.63%)
+  stop 0.25% ($  18):  STRICT win  18% (needed ~29%)  avg win $ +45  avg loss $  -63  per trade $ -43.4 | LENIENT win  19% per trade $  -5.8 | stopped in the fill minute 64%, within 5 min 80% | CONTROL $ -17.4 | bot rules: under $1,000 in 100% of orders | fees $1.5/trade
+  stop 0.50% ($  36):  STRICT win  32% (needed ~44%)  avg win $ +45  avg loss $  -86  per trade $ -44.0 | LENIENT win  36% per trade $  -7.1 | stopped in the fill minute 41%, within 5 min 65% | CONTROL $ -16.5 | bot rules: under $1,000 in 100% of orders | fees $1.6/trade
+  stop 0.75% ($  54):  STRICT win  42% (needed ~55%)  avg win $ +45  avg loss $ -107  per trade $ -43.2 | LENIENT win  46% per trade $  -8.7 | stopped in the fill minute 26%, within 5 min 51% | CONTROL $ -19.4 | bot rules: under $1,000 in 100% of orders | fees $1.6/trade
+  stop 1.00% ($  72):  STRICT win  50% (needed ~62%)  avg win $ +45  avg loss $ -128  per trade $ -42.3 | LENIENT win  53% per trade $  -9.4 | stopped in the fill minute 20%, within 5 min 40% | CONTROL $ -15.5 | bot rules: under $1,000 in 100% of orders | fees $1.7/trade
+  stop 1.50% ($ 108):  STRICT win  62% (needed ~71%)  avg win $ +45  avg loss $ -170  per trade $ -37.6 | LENIENT win  64% per trade $  -9.8 | stopped in the fill minute 12%, within 5 min 26% | CONTROL $ -19.4 | bot rules: under $1,000 in 100% of orders | fees $1.8/trade
+  stop 2.00% ($ 144):  STRICT win  69% (needed ~76%)  avg win $ +45  avg loss $ -213  per trade $ -34.0 | LENIENT win  71% per trade $ -10.1 | stopped in the fill minute 8%, within 5 min 18% | CONTROL $ -18.8 | bot rules: under $1,000 in 100% of orders | fees $1.9/trade
+  stop 3.00% ($ 216):  STRICT win  78% (needed ~83%)  avg win $ +45  avg loss $ -292  per trade $ -29.7 | LENIENT win  79% per trade $  -9.5 | stopped in the fill minute 4%, within 5 min 10% | CONTROL $ -14.8 | bot rules: under $1,000 in 100% of orders | fees $2.0/trade
+
