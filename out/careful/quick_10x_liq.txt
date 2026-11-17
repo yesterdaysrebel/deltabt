@@ -1,0 +1,5 @@
+liquidation 12.6% above; QUICK's stop is past it on 91% of picks
+STRICT both picks: 971 trades, win 74%, avg win $+108, avg loss $-307, per trade $+1.8, after fees $-0.5, half-years -9 +9 -14 +23; TARGET 70%, LIQUIDATED 15%, CLOCK 13%, STOP 1%
+   account with fees: end $157, lowest $30, worst fall 99%; random orders under $1,000 100%
+STRICT top pick: 594 trades, win 74%, avg win $+109, avg loss $-345, per trade $-9.1, after fees $-11.5, half-years -3 -4 -33 +7; TARGET 69%, LIQUIDATED 18%, CLOCK 11%, STOP 1%
+   account with fees: end $45, lowest $25, worst fall 100%; random orders under $1,000 100%

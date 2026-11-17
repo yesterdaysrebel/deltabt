@@ -12,6 +12,7 @@ Account: $2,895.60 compounding, 20% margin per trade; lowest point, worst fall, 
 1,000 random orders of the days -> chance of going under $1,000.
 
     PYTHONPATH=. python scripts/quick_20m.py      # -> out/careful/quick_20m.txt
+    PYTHONPATH=. python scripts/quick_20m.py 0.10  # owner "show me the numbers for 10% at 5x" -> quick_10m.txt
 """
 import json
 import sys
@@ -84,11 +85,14 @@ def account(d, rng):
 
 
 def main():
+    global POS
+    marg = float(sys.argv[1]) if len(sys.argv) > 1 else 0.20
+    POS = 5 * marg
     days = D.load()
     P = pd.read_csv("out/careful/picks_atr.csv", parse_dates=["day"])
     atr = {(d, s): a for d, s, a in zip(P.day, P.symbol, P.atrp)}
     rng = np.random.default_rng(20261117)
-    out = [__doc__.split("\n\n")[0], f"{days[0][0]:%Y-%m-%d}..{days[-1][0]:%Y-%m-%d}. $ per trade on a ${POS * BAL:,.0f} position. Before fees unless said.", ""]
+    out = [__doc__.split("\n\n")[0], f"MARGIN {marg:.0%} at 5x. {days[0][0]:%Y-%m-%d}..{days[-1][0]:%Y-%m-%d}. $ per trade on a ${POS * BAL:,.0f} position. Before fees unless said.", ""]
     w = out.append
     q = run(days, atr, 2.0, True)
     paper = {(pd.Timestamp(x["day"][:10]), x["symbol"]): x["exit_reason"] for x in json.load(open("out/fade_quick_full/quick_paper.json")) if x.get("exit_reason")}
@@ -96,7 +100,7 @@ def main():
     both = [k for k in paper if k in mine]
     same = sum(1 for k in both if {"TARGET": "TARGET", "STOP": "STOP"}.get(paper[k], "CLOCK") == {"LIQUIDATED": "STOP"}.get(mine[k], mine[k]))
     w(f"CHECK vs the paper bot's own QUICK ledger: {same} of {len(both)} shared trades end the same way (TARGET / STOP / end of day)")
-    w(f"   median stop distance {100 * q.dist.median():.1f}% (target {100 * 0.2 * q.dist.median():.1f}%) -> at $2,896: stop ~${q.dist.median() * BAL:.0f}, target ~${0.2 * q.dist.median() * BAL:.0f}")
+    w(f"   median stop distance {100 * q.dist.median():.1f}% (target {100 * 0.2 * q.dist.median():.1f}%) -> on the ${POS * BAL:,.0f} position: stop ~${q.dist.median() * POS * BAL:.0f}, target ~${0.2 * q.dist.median() * POS * BAL:.0f}")
     w("")
     for k in (2.0, 1.0, 3.0):
         w(f"===== SL {k:.0f} x ATR{'  (QUICK today)' if k == 2.0 else ''}, target 0.2 x the stop distance, out 23:59")
@@ -111,7 +115,7 @@ def main():
         w("")
     txt = "\n".join(out)
     print(txt)
-    Path("out/careful/quick_20m.txt").write_text(txt + "\n")
+    Path(f"out/careful/quick_{round(marg * 100)}m.txt").write_text(txt + "\n")
 
 
 if __name__ == "__main__":
