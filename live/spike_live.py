@@ -21,9 +21,9 @@ THE RULES (per UTC day, on the paper runner's two rule-A picks):
   break-even REMOVED by the owner 2026-11-16 ("change lock to trailing SL"; BREAKEVEN_LOCK = False). Exit C had: once a
              1m low nets +$30.61 x balance / $3,184 (about a 0.6% fall) the stop goes to break-even; if the last
              price is already at or above that level the position is bought back at once ("LOCK").
-  the trail  RULE C (owner 2026-11-17, "approved on C"): the stop trails 10% above the lowest 1m low since the fill,
-             only when that level is at or below the ENTRY and lower than the stop it has (so first after a fall of
-             ~9.1%), never up; if the last price is already at or above the new level: bought back ("LOCK"). Moved on
+  the trail  RULE C, TRAIL FROM THE FILL (owner 2026-11-17, "use 10% from the fill"): the stop trails 10% above the
+             lowest 1m low since the fill as soon as that is lower than the stop it has (so first after any new low),
+             never up; (rule C as first deployed the same day moved it only to a level at or below the ENTRY); if the last price is already at or above the new level: bought back ("LOCK"). Moved on
              the bot's next pass (30 s), as the backtest moved it at the minute's close. (2026-11-16..17 it was a 5%
              trail from the fill with a 2.25% stop.)
   exits      the stop at Delta; 24 h after the FILL the bot buys back ("TIME").
@@ -96,10 +96,11 @@ BREAKEVEN_LOCK = False
 #: never up. Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: a native trail would start 5% above
 #: the CURRENT price -- far looser than break-even -- which is not the tested rule.
 TRAIL = 0.10
-#: Owner 2026-11-17 ("approved on C"): the trail moves the stop only to a level AT OR BELOW the entry -- i.e. first after a
-#: fall of ~9.1% -- never while it would still be a loss. Tested: scripts/spike_verify.py cell C (two implementations
-#: agree on every trade; out/careful/spike_verify.txt). False = the trail from the fill (run 4 as first deployed).
-TRAIL_ONLY_PAST_ENTRY = True
+#: True: the trail moves the stop only to a level AT OR BELOW the entry (first after a ~9.1% fall) -- rule C as approved
+#: 2026-11-17 ("approved on C"; win 59%, +$233 / -$266, +1.07%/trade strict). Owner 2026-11-17 ("use 10% from the
+#: fill", after the trail table): False -- the 10% trail tightens from the fill on: win 49%, average win +8.25% vs
+#: average loss -6.39% of the position, +0.77%/trade strict (+1.26% lenient) (out/careful/trail_from_fill.txt).
+TRAIL_ONLY_PAST_ENTRY = False
 #: Month-off rule: no new entries until the 1st after this many full stops in a calendar month. None = no monthly
 #: limit (owner 2026-11-16). It was 2 until then; the tested results in the docstring above are WITH the limit of 2.
 MONTH_STOP_LIMIT: int | None = None

@@ -1240,7 +1240,7 @@ def test_rule_c_is_what_ships():
     spec = importlib.util.spec_from_file_location("spike_live_rule_c", S.__file__)
     fresh = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fresh)
-    assert (fresh.MAX_LEVERAGE, fresh.STOP_ABOVE, fresh.TRAIL, fresh.TRAIL_ONLY_PAST_ENTRY) == (5, 0.10, 0.10, True)
+    assert (fresh.MAX_LEVERAGE, fresh.STOP_ABOVE, fresh.TRAIL, fresh.TRAIL_ONLY_PAST_ENTRY) == (5, 0.10, 0.10, False)
     assert fresh.TRADE_MARGIN == 0.20 and fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None
 
 
@@ -1256,7 +1256,8 @@ def test_rule_c_sizing_is_five_x_so_the_position_is_about_the_balance():
 
 @requires_pg
 @pytest.mark.asyncio
-async def test_rule_c_stop_ten_percent_and_the_trail_only_once_past_the_entry():
+async def test_rule_c_stop_ten_percent_and_the_trail_only_once_past_the_entry(monkeypatch):
+    monkeypatch.setattr(S, "TRAIL_ONLY_PAST_ENTRY", True)          # rule C as first approved; the gate stays available
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
     fake = SpikeDelta(balance=3184.0)
     lows = {"low": 1.05}
@@ -1302,5 +1303,34 @@ async def test_rule_c_a_spike_through_two_percent_does_not_stop_it():
         await acct.step(con, D0 + 600)
         x = (await _rows(con))["XUSD"]
         assert x["status"] == "OPEN" and x["trail_price"] is None and x["stop_price"] > 1.075 * 1.07
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_rule_c_the_ten_percent_trail_tightens_from_the_fill():
+    """Owner 2026-11-17, "use 10% from the fill": the first new low moves the stop, even while it is still above the entry."""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05}
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.03, 1.031, 1.03)
+        lows["low"] = 1.05 * 0.97                     # a 3% fall: 10% above it is 1.12035, under the 1.155 stop
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and abs(x["trail_price"] - 1.05 * 0.97 * 1.10) < 0.0002 and x["trail_price"] > x["entry_price"]
+        assert float(fake.edits[-1][2]) == x["trail_price"]
+        n = len(fake.edits)
+        await acct.step(con, D0 + 900)                # no new low: never up, no move
+        assert len(fake.edits) == n
+        lows["low"] = 1.05 * 0.88
+        fake.book["XUSD"] = (0.93, 0.931, 0.93)
+        await acct.step(con, D0 + 1200)
+        assert abs((await _rows(con))["XUSD"]["trail_price"] - 1.05 * 0.88 * 1.10) < 0.0002
+        assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_MOVED", "TRAIL_MOVED"]
     finally:
         await con.close()
