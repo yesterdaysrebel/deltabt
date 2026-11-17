@@ -43,7 +43,9 @@ MAKER, TAKER = 0.000212, 0.000531
 CELLS = {"LIVE": dict(entry="live", stop=0.0225, base="entry", trail=0.05, be=False, mins=1440, tp=None),
          "A": dict(entry="turn", stop=0.05, base="high", trail=0.10, be=True, mins=1440, tp=None),
          "B": dict(entry="turn", stop=0.05, base="high", trail=0.05, be=True, mins=480, tp=None),
-         "C": dict(entry="live", stop=0.10, base="entry", trail=0.10, be=True, mins=1440, tp=None)}
+         "C": dict(entry="live", stop=0.10, base="entry", trail=0.10, be=True, mins=1440, tp=None),
+         # owner 2026-11-17 "use 10% from the fill" (after the trail table): C with the trail tightening from the fill
+         "C from the fill": dict(entry="live", stop=0.10, base="entry", trail=0.10, be=False, mins=1440, tp=None)}
 for en in ("live", "turn"):
     for tp in (0.01, 0.02):
         for m in (15, 60):

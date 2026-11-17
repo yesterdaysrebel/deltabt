@@ -1,0 +1,97 @@
+Owner 2026-11-17 "run it on real fills": rule C (trail only past the entry, as first deployed) and rule C with the
+10% trail from the fill (owner "use 10% from the fill"), and run 4 as it first ran, on the REAL picks: the paper
+runner's own picks 2026-10-29..11-14 (careful dataset, source "real") and 11-15..11-17 (read from the prod paper
+table, Delta 1m candles fetched here). Today's CROSS uses its ACTUAL live fill (0.154 at 05:02:51 UTC). STRICT and
+LENIENT fills as scripts/spike_verify.py. Before fees; $ at 1x the current $2,895.60 balance (run 4: 4x and its stop).
+26 real picks, 2026-10-29 .. 2026-11-17.
+
+===== run 4 as first live (2.25% stop, 5% trail, 4x)
+   2026-10-29 EVAAUSD    sold 1.51799    10-29 01:46  ->  STOP            10-29 01:52   +3.60%  $  +417
+   2026-10-29 INITUSD    cancelled: the day's other pick filled first
+   2026-10-30 BEATUSD    sold 0.10878    10-30 15:25  ->  STOP            10-30 23:47   +2.00%  $  +231
+   2026-10-30 PARTIUSD   cancelled: the day's other pick filled first
+   2026-10-31 AINUSD     sold 0.189252   10-31 00:16  ->  STOP            10-31 00:16   -2.35%  $  -272
+   2026-10-31 SOPHUSD    cancelled: the day's other pick filled first
+   2026-11-01 AINUSD     sold 0.247643   11-01 01:34  ->  STOP            11-01 01:34   -2.35%  $  -272
+   2026-11-01 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-02 ESPORTSUSD sold 0.0178605  11-02 00:05  ->  STOP            11-02 00:05   -2.35%  $  -272
+   2026-11-02 AINUSD     cancelled: the day's other pick filled first
+   2026-11-03 ARIAUSD    sold 0.121349   11-03 01:56  ->  STOP            11-03 03:25  +11.20%  $ +1298
+   2026-11-04 AIOUSD     sold 0.0378735  11-04 05:26  ->  STOP            11-04 08:46   +0.97%  $  +112
+   2026-11-06 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-07 AIOUSD     no spike: the +5% sell never filled
+   2026-11-09 AIOTUSD    sold 0.173481   11-09 08:18  ->  STOP            11-09 10:18   +6.91%  $  +800
+   2026-11-10 PIEVERSEUSD sold 2.13139    11-10 00:52  ->  STOP            11-10 01:42   +3.16%  $  +367
+   2026-11-11 ARIAUSD    sold 0.228344   11-11 04:55  ->  STOP            11-11 06:16   -1.26%  $  -146
+   2026-11-12 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-13 HANAUSD    sold 0.018375   11-13 07:06  ->  STOP            11-13 09:42   -2.35%  $  -272
+   2026-11-14 SOPHUSD    sold 0.00188055 11-14 09:49  ->  STOP            11-14 09:54   -2.35%  $  -272
+   2026-11-15 SOPHUSD    sold 0.00227955 11-15 01:12  ->  STOP            11-15 01:15   -2.40%  $  -278
+   2026-11-15 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-16 RAREUSD    sold 0.013104   11-16 00:06  ->  STOP            11-16 00:21   +4.15%  $  +481
+   2026-11-16 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STOP            11-17 05:02   -2.35%  $  -272
+   2026-11-17 BLESSUSD   cancelled: the day's other pick filled first
+   STRICT  15 trades, 7 wins (47%), avg win $+529, avg loss $-257, per trade $+110, total $+1,645
+   LENIENT 15 trades, 7 wins (47%), avg win $+575, avg loss $-245, per trade $+138, total $+2,066
+
+===== rule C (trail only past the entry)
+   2026-10-29 EVAAUSD    sold 1.51799    10-29 01:46  ->  STOP            10-29 06:01  +21.05%  $  +610
+   2026-10-29 INITUSD    cancelled: the day's other pick filled first
+   2026-10-30 BEATUSD    sold 0.10878    10-30 15:25  ->  CLOCK           10-31 15:25   +9.13%  $  +264
+   2026-10-30 PARTIUSD   cancelled: the day's other pick filled first
+   2026-10-31 AINUSD     no order: a position was still open at 00:00 (one at a time)
+   2026-10-31 SOPHUSD    no order: a position was still open at 00:00 (one at a time)
+   2026-11-01 AINUSD     sold 0.247643   11-01 01:34  ->  STOP            11-01 03:23  -11.07%  $  -321
+   2026-11-01 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-02 ESPORTSUSD sold 0.0178605  11-02 00:05  ->  STOP            11-02 00:09  -10.11%  $  -293
+   2026-11-02 AINUSD     cancelled: the day's other pick filled first
+   2026-11-03 ARIAUSD    sold 0.121349   11-03 01:56  ->  STOP            11-03 03:45   +6.53%  $  +189
+   2026-11-04 AIOUSD     sold 0.0378735  11-04 05:26  ->  CLOCK           11-05 05:26   -0.46%  $   -13
+   2026-11-06 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-07 AIOUSD     no spike: the +5% sell never filled
+   2026-11-09 AIOTUSD    sold 0.173481   11-09 08:18  ->  STOP            11-09 14:07   +9.73%  $  +282
+   2026-11-10 PIEVERSEUSD sold 2.13139    11-10 00:52  ->  STOP            11-10 03:08   +1.06%  $   +31
+   2026-11-11 ARIAUSD    sold 0.228344   11-11 04:55  ->  STOP            11-11 08:01  -10.11%  $  -293
+   2026-11-12 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-13 HANAUSD    sold 0.018375   11-13 07:06  ->  CLOCK           11-14 07:06  +10.49%  $  +304
+   2026-11-14 SOPHUSD    no order: a position was still open at 00:00 (one at a time)
+   2026-11-15 SOPHUSD    sold 0.00227955 11-15 01:12  ->  STOP            11-15 01:21  -10.11%  $  -293
+   2026-11-15 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-16 RAREUSD    sold 0.013104   11-16 00:06  ->  STOP            11-16 04:55   +4.36%  $  +126
+   2026-11-16 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STILL OPEN now  11-18 05:02   +3.50%  $  +101
+   2026-11-17 BLESSUSD   cancelled: the day's other pick filled first
+   STRICT  13 trades, 8 wins (62%), avg win $+238, avg loss $-242, per trade $+53, total $+694
+   LENIENT 13 trades, 8 wins (62%), avg win $+265, avg loss $-234, per trade $+73, total $+952
+
+===== rule C, 10% trail FROM THE FILL
+   2026-10-29 EVAAUSD    sold 1.51799    10-29 01:46  ->  STOP            10-29 06:01  +21.05%  $  +610
+   2026-10-29 INITUSD    cancelled: the day's other pick filled first
+   2026-10-30 BEATUSD    sold 0.10878    10-30 15:25  ->  CLOCK           10-31 15:25   +9.13%  $  +264
+   2026-10-30 PARTIUSD   cancelled: the day's other pick filled first
+   2026-10-31 AINUSD     no order: a position was still open at 00:00 (one at a time)
+   2026-10-31 SOPHUSD    no order: a position was still open at 00:00 (one at a time)
+   2026-11-01 AINUSD     sold 0.247643   11-01 01:34  ->  STOP            11-01 03:13   -3.85%  $  -111
+   2026-11-01 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-02 ESPORTSUSD sold 0.0178605  11-02 00:05  ->  STOP            11-02 00:09  -10.11%  $  -293
+   2026-11-02 AINUSD     cancelled: the day's other pick filled first
+   2026-11-03 ARIAUSD    sold 0.121349   11-03 01:56  ->  STOP            11-03 03:45   +6.53%  $  +189
+   2026-11-04 AIOUSD     sold 0.0378735  11-04 05:26  ->  STOP            11-04 13:38   -3.18%  $   -92
+   2026-11-06 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-07 AIOUSD     no spike: the +5% sell never filled
+   2026-11-09 AIOTUSD    sold 0.173481   11-09 08:18  ->  STOP            11-09 14:07   +9.73%  $  +282
+   2026-11-10 PIEVERSEUSD sold 2.13139    11-10 00:52  ->  STOP            11-10 03:08   +1.06%  $   +31
+   2026-11-11 ARIAUSD    sold 0.228344   11-11 04:55  ->  STOP            11-11 07:57   -6.13%  $  -178
+   2026-11-12 ARIAUSD    no spike: the +5% sell never filled
+   2026-11-13 HANAUSD    sold 0.018375   11-13 07:06  ->  CLOCK           11-14 07:06  +10.49%  $  +304
+   2026-11-14 SOPHUSD    no order: a position was still open at 00:00 (one at a time)
+   2026-11-15 SOPHUSD    sold 0.00227955 11-15 01:12  ->  STOP            11-15 01:18   -7.57%  $  -219
+   2026-11-15 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-16 RAREUSD    sold 0.013104   11-16 00:06  ->  STOP            11-16 04:55   +4.36%  $  +126
+   2026-11-16 EVAAUSD    cancelled: the day's other pick filled first
+   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STILL OPEN now  11-18 05:02   +3.50%  $  +101
+   2026-11-17 BLESSUSD   cancelled: the day's other pick filled first
+   STRICT  13 trades, 8 wins (62%), avg win $+238, avg loss $-179, per trade $+78, total $+1,013
+   LENIENT 13 trades, 8 wins (62%), avg win $+265, avg loss $-158, per trade $+102, total $+1,330
+
