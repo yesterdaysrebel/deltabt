@@ -1,0 +1,46 @@
+Owner 2026-11-17: "with current setup check how often it reaches target of 40-45$ per trade".
+Notional $2,878; $40 = 1.39%, $45 = 1.56% below the entry.
+
+===== STRICT
+  HISTORY 2025-01-15..2026-11-14, every fill: 617 trades.  As it runs now: win  49%  avg win $ +237  avg loss $ -184  per trade $+22.2
+    final result: >= $45 43%,  $40-45 0%,  $0-40 6%,  loss 51%
+    REACHED $40 at some point: 535 of 617 (87%), median 0.2 h after the fill; of those, ended >= $40 49%, ended $0-40 7%, ended a LOSS 44%
+      never reached $40: 82 trades, win   1%  avg win $  +10  avg loss $ -297  per trade $-293.7
+      IF BOOKED at $40 (take-profit added): win  87%  avg win $  +40  avg loss $ -297  per trade $ -4.4
+    REACHED $45 at some point: 532 of 617 (86%), median 0.3 h after the fill; of those, ended >= $45 49%, ended $0-45 7%, ended a LOSS 43%
+      never reached $45: 85 trades, win   1%  avg win $  +10  avg loss $ -296  per trade $-292.0
+      IF BOOKED at $45 (take-profit added): win  86%  avg win $  +45  avg loss $ -296  per trade $ -1.4
+      2025-01..: 138 trades, reached $40 86%; per trade as now $+17.1, booked at $40 $+1.3, at $45 $+5.6
+      2025-07..: 183 trades, reached $40 87%; per trade as now $+15.3, booked at $40 $-9.7, at $45 $-6.9
+      2026-01..: 160 trades, reached $40 87%; per trade as now $+36.7, booked at $40 $-3.2, at $45 $+1.1
+      2026-07..: 136 trades, reached $40 87%; per trade as now $+19.7, booked at $40 $-4.3, at $45 $-4.3
+  REAL PICKS 10-29..11-17, as the bot trades them: 13 trades.  As it runs now: win  54%  avg win $ +256  avg loss $ -172  per trade $+58.4
+    final result: >= $45 46%,  $40-45 0%,  $0-40 8%,  loss 46%
+    REACHED $40 at some point: 12 of 13 (92%), median 0.0 h after the fill; of those, ended >= $40 50%, ended $0-40 8%, ended a LOSS 42%
+      never reached $40: 1 trades, win   0%  avg win $ +nan  avg loss $ -291  per trade $-291.0
+      IF BOOKED at $40 (take-profit added): win  92%  avg win $  +40  avg loss $ -291  per trade $+14.5
+    REACHED $45 at some point: 12 of 13 (92%), median 0.1 h after the fill; of those, ended >= $45 50%, ended $0-45 8%, ended a LOSS 42%
+      never reached $45: 1 trades, win   0%  avg win $ +nan  avg loss $ -291  per trade $-291.0
+      IF BOOKED at $45 (take-profit added): win  92%  avg win $  +45  avg loss $ -291  per trade $+19.2
+
+===== LENIENT
+  HISTORY 2025-01-15..2026-11-14, every fill: 617 trades.  As it runs now: win  49%  avg win $ +243  avg loss $ -164  per trade $+36.3
+    final result: >= $45 43%,  $40-45 0%,  $0-40 6%,  loss 51%
+    REACHED $40 at some point: 540 of 617 (88%), median 0.2 h after the fill; of those, ended >= $40 49%, ended $0-40 7%, ended a LOSS 44%
+      never reached $40: 77 trades, win   1%  avg win $  +11  avg loss $ -260  per trade $-256.5
+      IF BOOKED at $40 (take-profit added): win  88%  avg win $  +40  avg loss $ -260  per trade $ +3.0
+    REACHED $45 at some point: 534 of 617 (87%), median 0.2 h after the fill; of those, ended >= $45 50%, ended $0-45 7%, ended a LOSS 43%
+      never reached $45: 83 trades, win   1%  avg win $  +11  avg loss $ -256  per trade $-252.7
+      IF BOOKED at $45 (take-profit added): win  87%  avg win $  +45  avg loss $ -256  per trade $ +5.0
+      2025-01..: 138 trades, reached $40 86%; per trade as now $+24.4, booked at $40 $+2.7, at $45 $+6.6
+      2025-07..: 183 trades, reached $40 89%; per trade as now $+35.3, booked at $40 $+6.4, at $45 $+7.7
+      2026-01..: 160 trades, reached $40 88%; per trade as now $+48.9, booked at $40 $+0.8, at $45 $+3.3
+      2026-07..: 136 trades, reached $40 88%; per trade as now $+34.9, booked at $40 $+1.3, at $45 $+1.5
+  REAL PICKS 10-29..11-17, as the bot trades them: 13 trades.  As it runs now: win  54%  avg win $ +287  avg loss $ -134  per trade $+92.7
+    final result: >= $45 46%,  $40-45 0%,  $0-40 8%,  loss 46%
+    REACHED $40 at some point: 12 of 13 (92%), median 0.0 h after the fill; of those, ended >= $40 50%, ended $0-40 8%, ended a LOSS 42%
+      never reached $40: 1 trades, win   0%  avg win $ +nan  avg loss $ -288  per trade $-287.8
+      IF BOOKED at $40 (take-profit added): win  92%  avg win $  +40  avg loss $ -288  per trade $+14.8
+    REACHED $45 at some point: 12 of 13 (92%), median 0.0 h after the fill; of those, ended >= $45 50%, ended $0-45 8%, ended a LOSS 42%
+      never reached $45: 1 trades, win   0%  avg win $ +nan  avg loss $ -288  per trade $-287.8
+      IF BOOKED at $45 (take-profit added): win  92%  avg win $  +45  avg loss $ -288  per trade $+19.4
