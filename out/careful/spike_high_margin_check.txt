@@ -1,0 +1,21 @@
+Owner 2026-11-17: "are you sure about the results here?" -- independent check of scripts/spike_high_margin.py.
+
+===== STRICT: 617 fills, 369 taken under the bot's day rules; liquidated 0; per taken trade +1.38% of the position (t +2.83), win 50%
+  margin 20%: per trade $ +39.6 | actual order: lowest $2,343, worst fall 61%, never under $1,000 | 5,000 random orders: worst fall median 63%, 1-in-10 bad luck 76%, under $1,000 in 2%
+  margin 30%: per trade $ +59.4 | actual order: lowest $2,088, worst fall 79%, never under $1,000 | 5,000 random orders: worst fall median 80%, 1-in-10 bad luck 90%, under $1,000 in 15%
+  margin 40%: per trade $ +79.2 | actual order: lowest $1,509, worst fall 89%, never under $1,000 | 5,000 random orders: worst fall median 91%, 1-in-10 bad luck 97%, under $1,000 in 32%
+  margin 50%: per trade $ +99.1 | actual order: lowest $950, worst fall 95%, UNDER $1,000 at trade 87 (2025-07-13) | 5,000 random orders: worst fall median 96%, 1-in-10 bad luck 99%, under $1,000 in 51%
+  margin 60%: per trade $+118.9 | actual order: lowest $352, worst fall 98%, UNDER $1,000 at trade 85 (2025-07-11) | 5,000 random orders: worst fall median 99%, 1-in-10 bad luck 100%, under $1,000 in 72%
+===== LENIENT: 617 fills, 369 taken under the bot's day rules; liquidated 0; per taken trade +1.75% of the position (t +3.66), win 51%
+  margin 20%: per trade $ +50.4 | actual order: lowest $2,361, worst fall 53%, never under $1,000 | 5,000 random orders: worst fall median 55%, 1-in-10 bad luck 68%, under $1,000 in 1%
+  margin 30%: per trade $ +75.7 | actual order: lowest $2,113, worst fall 71%, never under $1,000 | 5,000 random orders: worst fall median 72%, 1-in-10 bad luck 84%, under $1,000 in 5%
+  margin 40%: per trade $+100.9 | actual order: lowest $1,877, worst fall 83%, never under $1,000 | 5,000 random orders: worst fall median 84%, 1-in-10 bad luck 93%, under $1,000 in 15%
+  margin 50%: per trade $+126.1 | actual order: lowest $1,655, worst fall 91%, never under $1,000 | 5,000 random orders: worst fall median 92%, 1-in-10 bad luck 97%, under $1,000 in 28%
+  margin 60%: per trade $+151.3 | actual order: lowest $1,185, worst fall 95%, never under $1,000 | 5,000 random orders: worst fall median 96%, 1-in-10 bad luck 99%, under $1,000 in 42%
+
+TAKE-PROFIT $40 / $45 under the bot's day rules (STRICT, LENIENT per trade; STRICT floor odds over 5,000 orders):
+  margin 20%:  $40: 450 taken, win 86%, $-5.2 / $-0.2 per trade, under $1,000 in 100%  |  $45: 450 taken, win 85%, $-2.2 / $+2.1 per trade, under $1,000 in 43%
+  margin 30%:  $40: 454 taken, win 90%, $-7.9 / $-3.0 per trade, under $1,000 in 100%  |  $45: 453 taken, win 89%, $-8.7 / $+0.6 per trade, under $1,000 in 100%
+  margin 40%:  $40: 454 taken, win 91%, $-17.4 / $-9.3 per trade, under $1,000 in 100%  |  $45: 454 taken, win 91%, $-14.1 / $-6.6 per trade, under $1,000 in 100%
+  margin 50%:  $40: 454 taken, win 92%, $-26.9 / $-19.3 per trade, under $1,000 in 100%  |  $45: 454 taken, win 91%, $-23.0 / $-14.7 per trade, under $1,000 in 100%
+  margin 60%:  $40: 454 taken, win 92%, $-37.7 / $-28.4 per trade, under $1,000 in 100%  |  $45: 454 taken, win 92%, $-33.1 / $-24.0 per trade, under $1,000 in 100%
