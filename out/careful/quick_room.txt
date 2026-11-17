@@ -1,0 +1,42 @@
+Owner 2026-11-17: "leave 40$ target how about quick with 10% margin 5x leverage, we give it room by adding margin
+later, avoid liquidation as well".
+2025-01-15..2026-11-14; $ per trade on a $1,448 position (at $2,895.60). Before fees.
+
+===== A  QUICK as it runs (2xATR stop, small target, 23:59)
+  STRICT  both picks  971 trades  win  77%  avg win $ +55  avg loss $ -161  per trade $ +6.2 (t +1.69; fees $1.2)  worst $ -427 | half-years +2 +8 -1 +18 | TARGET 73% CLOCK 18% STOP 8% LIQUIDATED 1%
+          top pick    594 trades  win  78%  avg win $ +56  avg loss $ -190  per trade $ +2.7 (t +0.56; fees $1.2)  worst $ -427 | half-years +5 -0 -7 +16 | TARGET 73% CLOCK 16% STOP 9% LIQUIDATED 1%
+          account, both picks: end $10,298, lowest $2,343, worst fall 77% | with fees end $6,930, lowest $1,705, worst fall 78%
+  LENIENT both picks  971 trades  win  78%  avg win $ +55  avg loss $ -155  per trade $ +9.0 (t +2.60; fees $1.2)  worst $ -427 | half-years +3 +10 +5 +20 | TARGET 74% CLOCK 17% STOP 8% LIQUIDATED 0%
+          top pick    594 trades  win  79%  avg win $ +56  avg loss $ -182  per trade $ +5.8 (t +1.24; fees $1.2)  worst $ -427 | half-years +7 +1 -1 +19 | TARGET 74% CLOCK 16% STOP 9% LIQUIDATED 0%
+
+===== B27 no stop, no target, 23:59, liquidation +27%
+  STRICT  both picks  971 trades  win  60%  avg win $+132  avg loss $ -167  per trade $+11.5 (t +1.64; fees $1.5)  worst $ -427 | half-years +2 +8 +20 +15 | CLOCK 90% LIQUIDATED 10%
+          top pick    594 trades  win  61%  avg win $+147  avg loss $ -200  per trade $+11.8 (t +1.25; fees $1.5)  worst $ -427 | half-years +9 -3 +19 +27 | CLOCK 87% LIQUIDATED 13%
+          account, both picks: end $8,266, lowest $938, worst fall 91% | with fees end $4,927, lowest $749, worst fall 91%
+  LENIENT both picks  971 trades  win  60%  avg win $+133  avg loss $ -167  per trade $+12.8 (t +1.83; fees $1.5)  worst $ -427 | half-years +4 +9 +21 +17 | CLOCK 90% LIQUIDATED 10%
+          top pick    594 trades  win  61%  avg win $+148  avg loss $ -199  per trade $+13.0 (t +1.38; fees $1.5)  worst $ -427 | half-years +11 -2 +20 +28 | CLOCK 87% LIQUIDATED 13%
+
+===== B50 no stop, no target, 23:59, liquidation +50%
+  STRICT  both picks  971 trades  win  60%  avg win $+133  avg loss $ -179  per trade $ +8.6 (t +1.09; fees $1.5)  worst $ -760 | half-years +2 +9 +18 +3 | CLOCK 95% LIQUIDATED 5%
+          top pick    594 trades  win  62%  avg win $+148  avg loss $ -214  per trade $ +8.9 (t +0.85; fees $1.5)  worst $ -760 | half-years +8 -3 +16 +17 | CLOCK 94% LIQUIDATED 6%
+          account, both picks: end $981, lowest $595, worst fall 98% | with fees end $582, lowest $361, worst fall 98%
+  LENIENT both picks  971 trades  win  60%  avg win $+134  avg loss $ -179  per trade $ +9.9 (t +1.25; fees $1.5)  worst $ -760 | half-years +4 +10 +19 +4 | CLOCK 95% LIQUIDATED 5%
+          top pick    594 trades  win  62%  avg win $+149  avg loss $ -213  per trade $+10.2 (t +0.98; fees $1.5)  worst $ -760 | half-years +9 -2 +17 +18 | CLOCK 94% LIQUIDATED 6%
+
+===== C  10% stop + 10% trail from the fill, 24 h
+  STRICT  both picks  971 trades  win  44%  avg win $+100  avg loss $  -84  per trade $ -2.7 (t -0.70; fees $1.5)  worst $ -427 | half-years -15 +4 -4 +2 | STOP 63% CLOCK 37% LIQUIDATED 0%
+          top pick    594 trades  win  43%  avg win $+105  avg loss $  -88  per trade $ -5.1 (t -1.04; fees $1.5)  worst $ -427 | half-years -10 -5 -5 +1 | STOP 69% CLOCK 31% LIQUIDATED 0%
+          account, both picks: end $495, lowest $266, worst fall 93% | with fees end $296, lowest $165, worst fall 95%
+  LENIENT both picks  971 trades  win  45%  avg win $+101  avg loss $  -79  per trade $ +2.5 (t +0.66; fees $1.5)  worst $ -145 | half-years -10 +9 +2 +8 | STOP 63% CLOCK 37%
+          top pick    594 trades  win  45%  avg win $+104  avg loss $  -82  per trade $ +1.0 (t +0.22; fees $1.5)  worst $ -145 | half-years -6 +1 +2 +7 | STOP 69% CLOCK 31%
+
+===== D  10% stop, 23:59
+  STRICT  both picks  971 trades  win  51%  avg win $+130  avg loss $ -117  per trade $ +8.3 (t +1.52; fees $1.5)  worst $ -427 | half-years -6 +8 +18 +10 | CLOCK 66% STOP 34% LIQUIDATED 0%
+          top pick    594 trades  win  51%  avg win $+143  avg loss $ -129  per trade $ +8.4 (t +1.19; fees $1.5)  worst $ -427 | half-years +2 +1 +17 +14 | CLOCK 61% STOP 38% LIQUIDATED 0%
+          account, both picks: end $9,530, lowest $578, worst fall 84% | with fees end $5,709, lowest $479, worst fall 86%
+  LENIENT both picks  971 trades  win  51%  avg win $+131  avg loss $ -112  per trade $+11.9 (t +2.20; fees $1.5)  worst $ -145 | half-years -3 +12 +21 +15 | CLOCK 66% STOP 34%
+          top pick    594 trades  win  51%  avg win $+144  avg loss $ -122  per trade $+12.6 (t +1.81; fees $1.5)  worst $ -145 | half-years +5 +6 +21 +20 | CLOCK 62% STOP 38%
+
+===== REFERENCE: the live spike rule (resting sell 5% above, 10% stop, 10% trail from the fill), same $1,448 position, every fill
+  STRICT   617 trades  win  49%  avg win $+119  avg loss $  -90  per trade $+12.6 (t +2.38; fees $1.1)  worst $ -427 | half-years +9 +12 +18 +10 | STOP 68% CLOCK 32% LIQUIDATED 0%
+  LENIENT  617 trades  win  49%  avg win $+122  avg loss $  -83  per trade $+18.3 (t +3.50; fees $1.1)  worst $ -145 | half-years +12 +18 +25 +18 | STOP 68% CLOCK 32%
