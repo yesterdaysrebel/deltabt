@@ -798,6 +798,23 @@ now Delta's fill time); `fade-live-capital` built run 3's class (now `fade_live.
 starts flat): run ownership is read from `detail->>'run'` (no run_version column on positions). tests/live +
 live_exec: 2,910 passed.
 
+**SPIKE SELL RULE C -- LIVE 2026-11-17 (#170, merge 1c704fb; owner "approved on C").** After the first live trade
+(CROSS 2026-11-17: filled 0.154 at 05:02:51, stopped at the 2.25% stop 27 s later in the same spike, then fell below
+the entry; -$291 + ~$9 fees, wallet $3,195.85 -> $2,895.60): `STOP_ABOVE` 0.10, `MAX_LEVERAGE` 5 (20% margin = ~1x
+the balance, a full stop ~10% of it; liquidation ~+27% after the unchanged extra margin), `TRAIL` 0.10 with
+`TRAIL_ONLY_PAST_ENTRY` (the stop moves only to a level at or below the entry). Entry, picks, 24 h, no month-off, floor
+unchanged; RUN_VERSION stays 4. Evidence (`scripts/spike_verify.py`, `out/careful/spike_verify.txt`, two
+implementations, 617 trades, before fees): win 59%, +8.1% / -9.2%, +1.07%/trade strict (+1.50% lenient), all four
+half-years positive, random-minute control -0.09%; compounding low $897 (worst fall 89%); chosen from ~70 variants.
+Same file: the live 2.25%-stop rules -0.31%/trade, positive in 1 of 4 half-years; quick 20x exits (1-2% target,
+15-60 min) all negative strict. Replay of the real bot (`scripts/replay_bot.py`, now honouring the position's
+leverage): 2026-08..11 68/68 identical; full history first 321 trades identical, diverging from 2026-09-21 at a ~$96k
+simulated balance (coin size limits). deploy-prod run 44051329938 approved by the owner, completed ~10:00 UTC; prod
+image 1c704fb verified: constants 5 / 0.10 / 0.10 / True, $2,895.60 sizes to 2,878 notional at 5x, RUNNING, nothing open.
+Also tested 2026-11-17 and NOT adopted: QUICK with other exits (`scripts/quick_exits.py`: as-is +0.024R, t 1.95, the
+best; tighter stops worse) and QUICK at 50% margin + break-even lock + 1% target (`scripts/quick_margin50.py`: 5-20x
+bust by liquidation, 2-3x survive with 66-83% falls).
+
 **SPIKE SELL -- MERGED 2026-11-16 (#168, merge e393c80; owner "Commit push and merge then deploy all approved").
 Rules as merged: 20% margin (+ 25/49 of it as extra margin), +2.25% stop, plain 5% trail from the fill (no
 break-even step), no take-profit, 24 h exit, NO month-off rule, $1,000 floor. deploy-prod run 43935278199 dispatched
