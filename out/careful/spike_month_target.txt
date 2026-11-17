@@ -1,0 +1,75 @@
+Owner 2026-11-17: "my idea was make small profit per trade and stop at one point then start next month".
+23 months 2025-01..2026-11. Before fees; $ at $2,895.60 each month.
+
+===== margin 20% (position $2,878), no take-profit (as now)
+  STRICT  no monthly stop      369 trades, win  50%, avg win $+255, avg loss $ -177 | avg month $ +636, months up 18/23, worst month $-1124, best $+1774, total $+14,621
+  STRICT  stop at +$100/month  117 trades, win  50%, avg win $+232, avg loss $ -169 | avg month $ +169, months up 20/23, worst month $-1124, best $ +691, total $+3,887 | reached $100 in 20/23 months
+  STRICT  stop at +$200/month  153 trades, win  52%, avg win $+236, avg loss $ -179 | avg month $ +234, months up 19/23, worst month $-1124, best $ +699, total $+5,378 | reached $200 in 18/23 months
+  STRICT  stop at +$300/month  182 trades, win  52%, avg win $+227, avg loss $ -178 | avg month $ +246, months up 18/23, worst month $-1124, best $ +699, total $+5,650 | reached $300 in 17/23 months
+  STRICT  stop at +$500/month  236 trades, win  51%, avg win $+243, avg loss $ -181 | avg month $ +352, months up 17/23, worst month $-1124, best $+1194, total $+8,103 | reached $500 in 15/23 months
+  LENIENT no monthly stop      369 trades, win  51%, avg win $+259, avg loss $ -164 | avg month $ +809, months up 19/23, worst month $ -881, best $+2219, total $+18,612
+  LENIENT stop at +$100/month  114 trades, win  50%, avg win $+234, avg loss $ -158 | avg month $ +188, months up 21/23, worst month $ -881, best $ +697, total $+4,325 | reached $100 in 20/23 months
+  LENIENT stop at +$200/month  152 trades, win  52%, avg win $+237, avg loss $ -168 | avg month $ +281, months up 21/23, worst month $ -881, best $ +714, total $+6,467 | reached $200 in 19/23 months
+  LENIENT stop at +$300/month  161 trades, win  53%, avg win $+234, avg loss $ -165 | avg month $ +320, months up 21/23, worst month $ -881, best $ +714, total $+7,360 | reached $300 in 18/23 months
+  LENIENT stop at +$500/month  229 trades, win  52%, avg win $+243, avg loss $ -169 | avg month $ +430, months up 19/23, worst month $ -881, best $+1438, total $+9,894 | reached $500 in 16/23 months
+
+===== margin 20% (position $2,878), take-profit $40 (1.39%)
+  STRICT  no monthly stop      450 trades, win  86%, avg win $ +40, avg loss $ -298 | avg month $ -173, months up 12/23, worst month $-2413, best $ +760, total $-3,988
+  STRICT  stop at +$100/month  164 trades, win  84%, avg win $ +40, avg loss $ -250 | avg month $  -42, months up 17/23, worst month $ -904, best $ +120, total $  -974 | reached $100 in 17/23 months
+  STRICT  stop at +$200/month  256 trades, win  85%, avg win $ +40, avg loss $ -265 | avg month $  -58, months up 15/23, worst month $ -904, best $ +232, total $-1,332 | reached $200 in 14/23 months
+  STRICT  stop at +$300/month  364 trades, win  85%, avg win $ +40, avg loss $ -301 | avg month $ -168, months up 13/23, worst month $-2413, best $ +320, total $-3,867 | reached $300 in 9/23 months
+  STRICT  stop at +$500/month  414 trades, win  85%, avg win $ +40, avg loss $ -299 | avg month $ -180, months up 12/23, worst month $-2413, best $ +520, total $-4,147 | reached $500 in 4/23 months
+  LENIENT no monthly stop      450 trades, win  86%, avg win $ +40, avg loss $ -256 | avg month $   -4, months up 12/23, worst month $ -866, best $ +960, total $   -84
+  LENIENT stop at +$100/month  163 trades, win  85%, avg win $ +40, avg loss $ -253 | avg month $  -35, months up 17/23, worst month $ -866, best $ +120, total $  -809 | reached $100 in 17/23 months
+  LENIENT stop at +$200/month  232 trades, win  86%, avg win $ +40, avg loss $ -258 | avg month $  -12, months up 16/23, worst month $ -866, best $ +232, total $  -270 | reached $200 in 15/23 months
+  LENIENT stop at +$300/month  337 trades, win  86%, avg win $ +40, avg loss $ -252 | avg month $  -11, months up 14/23, worst month $ -866, best $ +337, total $  -246 | reached $300 in 11/23 months
+  LENIENT stop at +$500/month  407 trades, win  86%, avg win $ +40, avg loss $ -255 | avg month $  -24, months up 12/23, worst month $ -866, best $ +537, total $  -545 | reached $500 in 5/23 months
+
+===== margin 20% (position $2,878), take-profit $45 (1.56%)
+  STRICT  no monthly stop      450 trades, win  85%, avg win $ +45, avg loss $ -297 | avg month $ -115, months up 11/23, worst month $-2328, best $ +855, total $-2,634
+  STRICT  stop at +$100/month  163 trades, win  84%, avg win $ +45, avg loss $ -250 | avg month $  -14, months up 17/23, worst month $ -804, best $ +135, total $  -329 | reached $100 in 17/23 months
+  STRICT  stop at +$200/month  252 trades, win  85%, avg win $ +45, avg loss $ -265 | avg month $  -18, months up 15/23, worst month $ -804, best $ +225, total $  -422 | reached $200 in 14/23 months
+  STRICT  stop at +$300/month  340 trades, win  84%, avg win $ +45, avg loss $ -301 | avg month $ -132, months up 13/23, worst month $-2328, best $ +342, total $-3,040 | reached $300 in 11/23 months
+  STRICT  stop at +$500/month  410 trades, win  85%, avg win $ +45, avg loss $ -299 | avg month $ -124, months up 12/23, worst month $-2328, best $ +540, total $-2,849 | reached $500 in 6/23 months
+  LENIENT no monthly stop      450 trades, win  86%, avg win $ +45, avg loss $ -252 | avg month $  +41, months up 12/23, worst month $ -766, best $ +855, total $  +937
+  LENIENT stop at +$100/month  163 trades, win  84%, avg win $ +45, avg loss $ -244 | avg month $   -8, months up 17/23, worst month $ -766, best $ +135, total $  -182 | reached $100 in 17/23 months
+  LENIENT stop at +$200/month  236 trades, win  86%, avg win $ +45, avg loss $ -251 | avg month $  +24, months up 16/23, worst month $ -766, best $ +228, total $  +552 | reached $200 in 15/23 months
+  LENIENT stop at +$300/month  338 trades, win  85%, avg win $ +45, avg loss $ -247 | avg month $   +0, months up 13/23, worst month $ -766, best $ +328, total $    +6 | reached $300 in 11/23 months
+  LENIENT stop at +$500/month  410 trades, win  85%, avg win $ +45, avg loss $ -251 | avg month $  +18, months up 12/23, worst month $ -766, best $ +540, total $  +415 | reached $500 in 6/23 months
+
+===== margin 10% (position $1,439), no take-profit (as now)
+  STRICT  no monthly stop      369 trades, win  50%, avg win $+128, avg loss $  -89 | avg month $ +318, months up 18/23, worst month $ -562, best $ +887, total $+7,311
+  STRICT  stop at +$100/month  153 trades, win  52%, avg win $+118, avg loss $  -90 | avg month $ +117, months up 19/23, worst month $ -562, best $ +349, total $+2,689 | reached $100 in 18/23 months
+  STRICT  stop at +$200/month  224 trades, win  51%, avg win $+121, avg loss $  -91 | avg month $ +165, months up 17/23, worst month $ -562, best $ +597, total $+3,786 | reached $200 in 15/23 months
+  STRICT  stop at +$300/month  242 trades, win  52%, avg win $+124, avg loss $  -90 | avg month $ +211, months up 17/23, worst month $ -562, best $ +597, total $+4,854 | reached $300 in 15/23 months
+  STRICT  stop at +$500/month  282 trades, win  52%, avg win $+128, avg loss $  -88 | avg month $ +299, months up 18/23, worst month $ -562, best $ +755, total $+6,879 | reached $500 in 11/23 months
+  LENIENT no monthly stop      369 trades, win  51%, avg win $+129, avg loss $  -82 | avg month $ +405, months up 19/23, worst month $ -440, best $+1110, total $+9,306
+  LENIENT stop at +$100/month  152 trades, win  52%, avg win $+119, avg loss $  -84 | avg month $ +141, months up 21/23, worst month $ -440, best $ +357, total $+3,233 | reached $100 in 19/23 months
+  LENIENT stop at +$200/month  204 trades, win  52%, avg win $+119, avg loss $  -84 | avg month $ +201, months up 20/23, worst month $ -440, best $ +719, total $+4,633 | reached $200 in 17/23 months
+  LENIENT stop at +$300/month  238 trades, win  52%, avg win $+125, avg loss $  -84 | avg month $ +256, months up 19/23, worst month $ -440, best $ +719, total $+5,897 | reached $300 in 16/23 months
+  LENIENT stop at +$500/month  280 trades, win  52%, avg win $+129, avg loss $  -81 | avg month $ +347, months up 19/23, worst month $ -440, best $ +730, total $+7,989 | reached $500 in 12/23 months
+
+===== margin 10% (position $1,439), take-profit $40 (2.78%)
+  STRICT  no monthly stop      442 trades, win  78%, avg win $ +40, avg loss $ -137 | avg month $  +15, months up 12/23, worst month $-1027, best $ +758, total $  +342
+  STRICT  stop at +$100/month  203 trades, win  78%, avg win $ +40, avg loss $ -123 | avg month $  +33, months up 18/23, worst month $ -355, best $ +135, total $  +758 | reached $100 in 16/23 months
+  STRICT  stop at +$200/month  307 trades, win  78%, avg win $ +40, avg loss $ -123 | avg month $  +50, months up 17/23, worst month $ -355, best $ +221, total $+1,151 | reached $200 in 11/23 months
+  STRICT  stop at +$300/month  387 trades, win  77%, avg win $ +40, avg loss $ -138 | avg month $   -9, months up 13/23, worst month $-1027, best $ +324, total $  -200 | reached $300 in 6/23 months
+  STRICT  stop at +$500/month  424 trades, win  78%, avg win $ +40, avg loss $ -138 | avg month $   +1, months up 12/23, worst month $-1027, best $ +532, total $   +32 | reached $500 in 2/23 months
+  LENIENT no monthly stop      442 trades, win  78%, avg win $ +40, avg loss $ -120 | avg month $ +101, months up 14/23, worst month $ -329, best $ +760, total $+2,334
+  LENIENT stop at +$100/month  198 trades, win  78%, avg win $ +40, avg loss $ -117 | avg month $  +43, months up 19/23, worst month $ -329, best $ +136, total $  +991 | reached $100 in 16/23 months
+  LENIENT stop at +$200/month  279 trades, win  80%, avg win $ +40, avg loss $ -117 | avg month $  +95, months up 19/23, worst month $ -329, best $ +231, total $+2,178 | reached $200 in 14/23 months
+  LENIENT stop at +$300/month  386 trades, win  78%, avg win $ +40, avg loss $ -120 | avg month $  +73, months up 15/23, worst month $ -329, best $ +320, total $+1,677 | reached $300 in 6/23 months
+  LENIENT stop at +$500/month  424 trades, win  78%, avg win $ +40, avg loss $ -120 | avg month $  +88, months up 14/23, worst month $ -329, best $ +534, total $+2,016 | reached $500 in 2/23 months
+
+===== margin 10% (position $1,439), take-profit $45 (3.13%)
+  STRICT  no monthly stop      441 trades, win  74%, avg win $ +45, avg loss $ -130 | avg month $  -17, months up 11/23, worst month $ -997, best $ +873, total $  -380
+  STRICT  stop at +$100/month  218 trades, win  73%, avg win $ +45, avg loss $ -121 | avg month $   -3, months up 15/23, worst month $ -691, best $ +135, total $   -65 | reached $100 in 14/23 months
+  STRICT  stop at +$200/month  323 trades, win  73%, avg win $ +45, avg loss $ -121 | avg month $   -6, months up 13/23, worst month $ -691, best $ +225, total $  -147 | reached $200 in 10/23 months
+  STRICT  stop at +$300/month  377 trades, win  73%, avg win $ +45, avg loss $ -131 | avg month $  -30, months up 12/23, worst month $ -997, best $ +337, total $  -698 | reached $300 in 8/23 months
+  STRICT  stop at +$500/month  428 trades, win  74%, avg win $ +45, avg loss $ -131 | avg month $  -31, months up 11/23, worst month $ -997, best $ +540, total $  -712 | reached $500 in 1/23 months
+  LENIENT no monthly stop      441 trades, win  75%, avg win $ +45, avg loss $ -116 | avg month $ +100, months up 15/23, worst month $ -664, best $ +875, total $+2,300
+  LENIENT stop at +$100/month  196 trades, win  75%, avg win $ +45, avg loss $ -117 | avg month $  +37, months up 17/23, worst month $ -664, best $ +135, total $  +851 | reached $100 in 16/23 months
+  LENIENT stop at +$200/month  290 trades, win  76%, avg win $ +45, avg loss $ -115 | avg month $  +70, months up 16/23, worst month $ -664, best $ +240, total $+1,616 | reached $200 in 13/23 months
+  LENIENT stop at +$300/month  369 trades, win  75%, avg win $ +45, avg loss $ -114 | avg month $  +91, months up 15/23, worst month $ -664, best $ +338, total $+2,086 | reached $300 in 9/23 months
+  LENIENT stop at +$500/month  428 trades, win  75%, avg win $ +45, avg loss $ -116 | avg month $  +85, months up 15/23, worst month $ -664, best $ +540, total $+1,965 | reached $500 in 1/23 months
+
