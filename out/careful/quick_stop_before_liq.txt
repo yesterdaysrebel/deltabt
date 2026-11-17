@@ -1,0 +1,46 @@
+Owner 2026-11-17: "so avoid liquidations, cut losses it's simple dumb".
+
+===== owner's size $11,937: $40 = a 0.34% fall
+  stop 0.5% above ($60 + slippage); win rate needed at the stop 60%
+    STRICT  history  971 trades  win  48%  avg win $ +40  avg loss $ -109  per trade $ -37.1  total $ -36,031  (fees $6.5/trade) | STOP 52% TARGET 48%
+            recent    26 trades  win  42%  avg win $ +40  avg loss $ -130  per trade $ -57.8  total $  -1,503  (fees $6.3/trade) | STOP 58% TARGET 42%
+    LENIENT history  971 trades  win  61%  avg win $ +40  avg loss $  -60  per trade $  +1.0  total $    +960  (fees $6.5/trade) | TARGET 61% STOP 39%
+            recent    26 trades  win  58%  avg win $ +40  avg loss $  -60  per trade $  -2.2  total $     -57  (fees $6.3/trade) | TARGET 58% STOP 42%
+  stop 1.0% above ($119 + slippage); win rate needed at the stop 75%
+    STRICT  history  971 trades  win  64%  avg win $ +40  avg loss $ -169  per trade $ -35.5  total $ -34,452  (fees $6.7/trade) | TARGET 64% STOP 36%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $ -177  per trade $ -68.4  total $  -1,779  (fees $6.8/trade) | TARGET 50% STOP 50%
+    LENIENT history  971 trades  win  72%  avg win $ +40  avg loss $ -119  per trade $  -5.0  total $  -4,827  (fees $6.6/trade) | TARGET 72% STOP 28%
+            recent    26 trades  win  58%  avg win $ +40  avg loss $ -119  per trade $ -27.4  total $    -713  (fees $6.8/trade) | TARGET 58% STOP 42%
+  stop 1.5% above ($179 + slippage); win rate needed at the stop 82%
+    STRICT  history  971 trades  win  72%  avg win $ +40  avg loss $ -224  per trade $ -34.0  total $ -33,041  (fees $6.9/trade) | TARGET 72% STOP 28%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $ -215  per trade $ -87.5  total $  -2,276  (fees $6.8/trade) | TARGET 50% STOP 50%
+    LENIENT history  971 trades  win  78%  avg win $ +40  avg loss $ -179  per trade $  -9.0  total $  -8,695  (fees $6.8/trade) | TARGET 78% STOP 22%
+            recent    26 trades  win  58%  avg win $ +40  avg loss $ -179  per trade $ -52.7  total $  -1,370  (fees $6.8/trade) | TARGET 58% STOP 42%
+  stop 2.0% above ($239 + slippage); win rate needed at the stop 86%
+    STRICT  history  971 trades  win  78%  avg win $ +40  avg loss $ -292  per trade $ -33.8  total $ -32,853  (fees $7.1/trade) | TARGET 78% STOP 22%
+            recent    26 trades  win  65%  avg win $ +40  avg loss $ -282  per trade $ -71.3  total $  -1,854  (fees $7.1/trade) | TARGET 65% STOP 35%
+    LENIENT history  971 trades  win  82%  avg win $ +40  avg loss $ -239  per trade $  -8.8  total $  -8,545  (fees $6.9/trade) | TARGET 82% STOP 18%
+            recent    26 trades  win  73%  avg win $ +40  avg loss $ -239  per trade $ -35.0  total $    -911  (fees $6.9/trade) | TARGET 73% STOP 27%
+
+===== 2x size $5,791: $40 = a 0.69% fall
+  stop 0.5% above ($29 + slippage); win rate needed at the stop 42%
+    STRICT  history  971 trades  win  38%  avg win $ +40  avg loss $  -52  per trade $ -17.1  total $ -16,596  (fees $3.3/trade) | STOP 62% TARGET 38%
+            recent    26 trades  win  42%  avg win $ +40  avg loss $  -63  per trade $ -19.3  total $    -503  (fees $3.1/trade) | STOP 58% TARGET 42%
+    LENIENT history  971 trades  win  47%  avg win $ +40  avg loss $  -29  per trade $  +3.5  total $  +3,397  (fees $3.2/trade) | STOP 53% TARGET 47%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $  -29  per trade $  +5.5  total $    +144  (fees $3.1/trade) | TARGET 50% STOP 50%
+  stop 1.0% above ($58 + slippage); win rate needed at the stop 59%
+    STRICT  history  971 trades  win  53%  avg win $ +40  avg loss $  -81  per trade $ -16.9  total $ -16,391  (fees $3.5/trade) | TARGET 53% STOP 47% CLOCK 0%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $  -86  per trade $ -22.9  total $    -596  (fees $3.3/trade) | TARGET 50% STOP 50%
+    LENIENT history  971 trades  win  60%  avg win $ +40  avg loss $  -58  per trade $  +1.0  total $    +923  (fees $3.4/trade) | TARGET 60% STOP 40% CLOCK 0%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $  -58  per trade $  -9.0  total $    -233  (fees $3.3/trade) | TARGET 50% STOP 50%
+  stop 1.5% above ($87 + slippage); win rate needed at the stop 68%
+    STRICT  history  971 trades  win  62%  avg win $ +40  avg loss $ -108  per trade $ -16.8  total $ -16,349  (fees $3.6/trade) | TARGET 61% STOP 38% CLOCK 0%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $ -104  per trade $ -32.2  total $    -837  (fees $3.3/trade) | TARGET 50% STOP 50%
+    LENIENT history  971 trades  win  67%  avg win $ +40  avg loss $  -87  per trade $  -2.2  total $  -2,164  (fees $3.5/trade) | TARGET 67% STOP 33% CLOCK 0%
+            recent    26 trades  win  50%  avg win $ +40  avg loss $  -87  per trade $ -23.4  total $    -609  (fees $3.3/trade) | TARGET 50% STOP 50%
+  stop 2.0% above ($116 + slippage); win rate needed at the stop 74%
+    STRICT  history  971 trades  win  68%  avg win $ +40  avg loss $ -139  per trade $ -17.7  total $ -17,174  (fees $3.7/trade) | TARGET 68% STOP 32% CLOCK 0%
+            recent    26 trades  win  65%  avg win $ +40  avg loss $ -137  per trade $ -21.1  total $    -549  (fees $3.5/trade) | TARGET 65% STOP 35%
+    LENIENT history  971 trades  win  72%  avg win $ +40  avg loss $ -116  per trade $  -3.2  total $  -3,102  (fees $3.6/trade) | TARGET 72% STOP 28% CLOCK 0%
+            recent    26 trades  win  65%  avg win $ +40  avg loss $ -116  per trade $ -13.9  total $    -362  (fees $3.5/trade) | TARGET 65% STOP 35%
+
