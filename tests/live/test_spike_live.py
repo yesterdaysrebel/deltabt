@@ -32,6 +32,10 @@ def _exit_mode(request, monkeypatch):
     monkeypatch.setattr(S, "STOP_ABOVE", 0.0225)
     monkeypatch.setattr(S, "TRAIL", 0.05)
     monkeypatch.setattr(S, "TRAIL_ONLY_PAST_ENTRY", False)
+    # ... and run 4's 20% margin (owner 2026-11-17 moved the shipped value to 10%)
+    monkeypatch.setattr(S, "TRADE_MARGIN", 0.20)
+    monkeypatch.setattr(S, "EXTRA_MARGIN", 0.20 * 25 / 49)
+    monkeypatch.setattr(S, "BREAKEVEN_AFTER_USD", 150.0 * 0.20 / 0.49)
 
 
 # ============================================================ pure rules
@@ -282,7 +286,7 @@ async def test_the_lock_buys_back_at_market_when_the_price_is_already_above_it_a
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05 * 0.985, "close": 1.049}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.049, 1.0495, 1.049)                      # bounced back above the break-even level
         await acct.step(con, D0 + 600)
         x = (await _rows(con))["XUSD"]
@@ -524,7 +528,7 @@ async def test_the_trail_follows_the_price_down_after_the_lock_and_never_up():
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.035, 1.036, 1.035)
         await acct.step(con, D0 + 600)                                  # the break-even move
         x = (await _rows(con))["XUSD"]
@@ -557,7 +561,7 @@ async def test_the_trail_buys_back_at_market_when_the_price_already_bounced_abov
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.035, 1.036, 1.035)
         await acct.step(con, D0 + 600)                                  # the break-even move
         lows["low"] = 1.05 * 0.93                                       # fell 7% ...
@@ -1196,7 +1200,7 @@ async def test_plain_trail_buys_back_at_market_when_the_price_is_already_back_ab
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.03, 1.031, 1.03)                         # ... and the price is already back above it
         await acct.step(con, D0 + 600)
         x = (await _rows(con))["XUSD"]
@@ -1216,7 +1220,7 @@ async def test_plain_trail_a_stop_after_the_trail_moved_is_not_a_full_stop_and_i
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.01, 1.011, 1.01)
         await acct.step(con, D0 + 600)                                  # the stop is moved to 1.0584
         trail = (await _rows(con))["XUSD"]["trail_price"]
@@ -1241,13 +1245,14 @@ def test_rule_c_is_what_ships():
     fresh = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fresh)
     assert (fresh.MAX_LEVERAGE, fresh.STOP_ABOVE, fresh.TRAIL, fresh.TRAIL_ONLY_PAST_ENTRY) == (5, 0.10, 0.10, False)
-    assert fresh.TRADE_MARGIN == 0.20 and fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None
+    assert fresh.TRADE_MARGIN == 0.10 and fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None   # 10%: owner 2026-11-17
+    assert fresh.EXTRA_MARGIN == pytest.approx(0.10 * 25 / 49)
 
 
-def test_rule_c_sizing_is_five_x_so_the_position_is_about_the_balance():
+def test_rule_c_sizing_is_five_x_so_the_position_is_about_half_the_balance():
     n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None)
-    assert lev == 5 and 3_150 < notional < 3_180                       # 20% / (20% + 0.12% fee reserve) of $3,184
-    assert notional * S.STOP_ABOVE / 3184 == pytest.approx(0.10, abs=0.002)   # a full stop ~10% of the balance
+    assert lev == 5 and 1_575 < notional < 1_590                       # 10% / (20% + 0.12% fee reserve) of $3,184
+    assert notional * S.STOP_ABOVE / 3184 == pytest.approx(0.05, abs=0.001)   # a full stop ~5% of the balance
     liq = 1 + 1 / 5 - 0.025                                               # isolated, before the extra margin
     assert liq - 1 > S.STOP_ABOVE + 0.05                                  # liquidation well past the stop
     n, lev, _ = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None, max_lev=20)
@@ -1317,7 +1322,7 @@ async def test_rule_c_the_ten_percent_trail_tightens_from_the_fill():
     acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
     try:
         await acct.step(con, D0 + 120)
-        fake.fill_resting(_cid(fake, 1))
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)   # filled between passes (the trail uses finished minutes)
         fake.book["XUSD"] = (1.03, 1.031, 1.03)
         lows["low"] = 1.05 * 0.97                     # a 3% fall: 10% above it is 1.12035, under the 1.155 stop
         await acct.step(con, D0 + 600)
@@ -1334,3 +1339,17 @@ async def test_rule_c_the_ten_percent_trail_tightens_from_the_fill():
         assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_MOVED", "TRAIL_MOVED"]
     finally:
         await con.close()
+
+
+# ------------------------------------------------------------------ owner 2026-11-17: finished minutes only ("approved")
+@pytest.mark.asyncio
+async def test_rule_c_the_trail_ignores_the_minute_still_forming():
+    import datetime as _dt
+    bars = lambda sym, a, b: [{"time": a + 60, "low": 0.90, "close": 0.95}, {"time": a + 120, "low": 0.50, "close": 0.55}]
+    acct = _acct(SpikeDelta(balance=3184.0), candles=bars)
+    t_fill = 1_800_000_000 - 1_800_000_000 % 60 + 10                   # 10 s into a minute
+    r = {"entry_time": _dt.datetime.fromtimestamp(t_fill, _dt.timezone.utc), "symbol": "XUSD"}
+    start = t_fill // 60 * 60
+    assert await acct._lows_since_fill(r, start + 119) == []           # minute +1 still forming: not used
+    assert await acct._lows_since_fill(r, start + 120) == [0.90]       # minute +1 over; minute +2 forming
+    assert await acct._lows_since_fill(r, start + 180) == [0.90, 0.50]

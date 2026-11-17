@@ -72,9 +72,11 @@ RUN_VERSION = 4
 RUN_START_USD = 3184.0
 SPIKE_ABOVE = 0.05
 #: Owner 2026-11-16 ("We'll use 20% margin", after the per-trade and account numbers at 5/10/15/20%; was 10%, owner
-#: 2026-11-15): 20% of the balance per trade. The extra margin keeps the tested liquidation distance: 25/49 of the
-#: trade margin (the ratio every careful_* test used) = 10.2% of the balance -> liquidation ~+5% from the entry.
-TRADE_MARGIN = 0.20
+#: 2026-11-15): 20% of the balance per trade. Owner 2026-11-17 ("approved on both", then "let's do it now"): 10%,
+#: after the external review and scripts/spike_high_margin_check.py (20%: under $1,000 in 2% of 5,000 orderings,
+#: worst fall 61%; a 10% stop costs ~10% of the balance at 20%, ~5% at 10%). The extra margin keeps the tested
+#: liquidation distance: 25/49 of the trade margin -> at 5x liquidation ~+27% from the entry.
+TRADE_MARGIN = 0.10
 EXTRA_MARGIN = TRADE_MARGIN * 25 / 49
 #: Owner 2026-11-17 ("approved on C", after the first live trade -- CROSS -- was stopped 27 s after its fill and then
 #: fell): leverage at most 5x, so 20% margin is a position of ~1x the balance and a full 10% stop costs ~10% of it
@@ -116,12 +118,13 @@ DEFAULT_CAP = 50_000.0
 
 
 def spike_size(balance: float, price: float, cv: float, im_pct: float, cap: float, ims_pct: float,
-               contract_limit: float | None, share: float = TRADE_MARGIN, max_lev: int | None = None) -> tuple[int, int, float]:
+               contract_limit: float | None, share: float | None = None, max_lev: int | None = None) -> tuple[int, int, float]:
     """(contracts, leverage, notional) for `share` of the balance as margin: the most leverage <= max_lev (default
     MAX_LEVERAGE) that Delta
     allows for the resulting notional (IM = im + ims per $ above cap, all in %), within the coin's contract limit.
     (0, 0, 0) when nothing fits."""
     max_lev = MAX_LEVERAGE if max_lev is None else max_lev   # read at call time (rule C lowered it to 5x)
+    share = TRADE_MARGIN if share is None else share         # likewise (owner 2026-11-17: 20% -> 10%)
     margin = share * balance
     if not (margin > 0 and price > 0 and cv > 0):
         return 0, 0, 0.0
@@ -555,10 +558,14 @@ class SpikeLive(L.LiveFade):
                 await self._trail(con, r, now)
 
     async def _lows_since_fill(self, r, now: float) -> list[float]:
-        """The 1m lows after the fill minute (the fill minute itself is not used, as in the backtest)."""
+        """The 1m lows after the fill minute (the fill minute itself is not used, as in the backtest), FINISHED minutes
+        only: the backtest (scripts/spike_verify.py) moves the trail with a minute's low once that minute is over, and
+        the external review (2026-11-17, out/review_pack/2026-11-17-spike) found the live bot also used the minute still
+        forming (candles are fetched with drop_forming=False) -- an earlier, untested tightening. Owner: "approved"."""
         start = int(r["entry_time"].timestamp()) // 60 * 60
         bars = await asyncio.to_thread(self.candles, r["symbol"], start, int(now))
-        return [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start]
+        return [float(b["low"]) for b in bars if b.get("low") not in (None, "") and int(b["time"]) > start
+                and int(b["time"]) + 60 <= now]
 
     async def _move_stop(self, r, price, tick) -> str | None:
         """Move the resting stop to `price` and read it back. None when it reads back at the new price, else why not
