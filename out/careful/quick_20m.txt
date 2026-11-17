@@ -1,0 +1,31 @@
+Owner 2026-11-17: "focus on just quick leave everything out of results: run quick with 20% margin 5x leverage, add
+margin once filled to move liquidation, add SL, target as it is today".
+2025-01-15..2026-11-14. $ per trade on a $2,896 position. Before fees unless said.
+
+CHECK vs the paper bot's own QUICK ledger: 16 of 16 shared trades end the same way (TARGET / STOP / end of day)
+   median stop distance 19.3% (target 3.9%) -> at $2,896: stop ~$558, target ~$112
+
+===== SL 2 x ATR  (QUICK today), target 0.2 x the stop distance, out 23:59
+  STRICT  both picks  971 trades  win  77%  avg win $+110  avg loss $ -322  per trade $+12.3 (t +1.69; fees $2.3, after fees $+10.0)  worst $-854 | half-years +3 +16 -2 +35 | months up 16/23, avg month $+520 | TARGET 73% CLOCK 18% STOP 8% LIQUIDATED 1%
+          top pick    594 trades  win  78%  avg win $+111  avg loss $ -380  per trade $ +5.4 (t +0.56; fees $2.3, after fees $+3.1)  worst $-854 | half-years +11 -1 -14 +32 | months up 12/23, avg month $+140 | TARGET 73% CLOCK 16% STOP 9% LIQUIDATED 1%
+          account both picks: before fees: end $5,613, lowest $367, worst fall 97%, UNDER $1,000 2026-06-29, random orders under $1,000 59% | with fees: end $2,511, lowest $189, worst fall 97%, UNDER $1,000 2026-06-11, random orders under $1,000 75%
+          account top pick:   before fees: end $891, lowest $195, worst fall 98%, UNDER $1,000 2026-01-21, random orders under $1,000 100% | with fees: end $546, lowest $131, worst fall 98%, UNDER $1,000 2025-12-24, random orders under $1,000 100%
+  LENIENT both picks  971 trades  win  78%  avg win $+110  avg loss $ -310  per trade $+18.0 (t +2.60; fees $2.3, after fees $+15.7)  worst $-854 | half-years +6 +19 +9 +40 | months up 17/23, avg month $+760 | TARGET 74% CLOCK 17% STOP 8% LIQUIDATED 0%
+          top pick    594 trades  win  79%  avg win $+112  avg loss $ -365  per trade $+11.6 (t +1.24; fees $2.3, after fees $+9.3)  worst $-854 | half-years +14 +3 -2 +39 | months up 14/23, avg month $+301 | TARGET 74% CLOCK 16% STOP 9% LIQUIDATED 0%
+
+===== SL 1 x ATR, target 0.2 x the stop distance, out 23:59
+  STRICT  both picks  971 trades  win  83%  avg win $ +58  avg loss $ -263  per trade $ +3.0 (t +0.71; fees $2.1, after fees $+0.9)  worst $-664 | half-years -2 +14 -10 +9 | months up 15/23, avg month $+126 | TARGET 83% STOP 14% CLOCK 3%
+          top pick    594 trades  win  83%  avg win $ +59  avg loss $ -289  per trade $ -1.1 (t -0.19; fees $2.1, after fees $-3.2)  worst $-664 | half-years -7 +9 -18 +13 | months up 12/23, avg month $-29 | TARGET 82% STOP 16% CLOCK 2%
+          account both picks: before fees: end $2,678, lowest $1,342, worst fall 82%, never under $1,000, random orders under $1,000 39% | with fees: end $1,296, lowest $679, worst fall 86%, UNDER $1,000 2026-06-29, random orders under $1,000 75%
+          account top pick:   before fees: end $1,098, lowest $682, worst fall 85%, UNDER $1,000 2026-06-11, random orders under $1,000 86% | with fees: end $707, lowest $459, worst fall 89%, UNDER $1,000 2026-05-30, random orders under $1,000 100%
+  LENIENT both picks  971 trades  win  84%  avg win $ +57  avg loss $ -252  per trade $ +8.7 (t +2.17; fees $2.1, after fees $+6.6)  worst $-470 | half-years +4 +19 -0 +10 | months up 15/23, avg month $+367 | TARGET 84% STOP 13% CLOCK 3%
+          top pick    594 trades  win  84%  avg win $ +58  avg loss $ -277  per trade $ +4.7 (t +0.89; fees $2.1, after fees $+2.6)  worst $-470 | half-years -0 +13 -7 +15 | months up 15/23, avg month $+122 | TARGET 84% STOP 15% CLOCK 2%
+
+===== SL 3 x ATR, target 0.2 x the stop distance, out 23:59
+  STRICT  both picks  971 trades  win  72%  avg win $+155  avg loss $ -310  per trade $+26.8 (t +3.07; fees $2.5, after fees $+24.3)  worst $-854 | half-years +13 +18 +27 +54 | months up 18/23, avg month $+1129 | TARGET 62% CLOCK 32% LIQUIDATED 3% STOP 3%
+          top pick    594 trades  win  74%  avg win $+159  avg loss $ -369  per trade $+23.6 (t +2.05; fees $2.4, after fees $+21.2)  worst $-854 | half-years +20 +1 +17 +66 | months up 13/23, avg month $+611 | TARGET 64% CLOCK 29% LIQUIDATED 4% STOP 3%
+          account both picks: before fees: end $138,276, lowest $987, worst fall 92%, UNDER $1,000 2025-10-12, random orders under $1,000 40% | with fees: end $59,204, lowest $686, worst fall 93%, UNDER $1,000 2025-10-08, random orders under $1,000 40%
+          account top pick:   before fees: end $15,117, lowest $909, worst fall 92%, UNDER $1,000 2025-10-10, random orders under $1,000 40% | with fees: end $9,063, lowest $670, worst fall 94%, UNDER $1,000 2025-10-10, random orders under $1,000 47%
+  LENIENT both picks  971 trades  win  73%  avg win $+155  avg loss $ -309  per trade $+29.7 (t +3.44; fees $2.5, after fees $+27.2)  worst $-854 | half-years +16 +23 +29 +55 | months up 18/23, avg month $+1252 | TARGET 63% CLOCK 31% LIQUIDATED 3% STOP 3%
+          top pick    594 trades  win  75%  avg win $+159  avg loss $ -369  per trade $+26.7 (t +2.34; fees $2.4, after fees $+24.3)  worst $-854 | half-years +23 +6 +20 +67 | months up 15/23, avg month $+690 | TARGET 65% CLOCK 29% LIQUIDATED 4% STOP 3%
+
