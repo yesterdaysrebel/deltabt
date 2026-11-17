@@ -819,6 +819,16 @@ picks 10-29..11-17 as the bot trades them (`scripts/real_picks_rule_c.py`): 13 t
 per trade before fees vs +$53 for C. Replay 2026-08..11 71/71 identical. deploy-prod run 44064424605 approved by the
 owner, completed 10:46 UTC; prod image fc09838 verified: constants 5 / 0.10 / 0.10 / False, RUNNING, $2,895.60,
 nothing open. Judge after ~30 live trades: stop if avg win < avg loss or win rate < ~40%.
+**THEN 10% MARGIN + FINISHED-MINUTE TRAIL (owner 2026-11-17 "approved on both" / "let's do it now"):**
+`TRADE_MARGIN` 0.20 -> 0.10 (position ~0.5x the balance, a full 10% stop ~5% of it; extra margin still 25/49 ->
+liquidation ~+27%), and `_lows_since_fill` uses FINISHED 1m bars only (the external review -- GPT, Gemini, Kimi via
+OpenRouter, out/review_pack/2026-11-17-spike -- found the live trail also used the forming minute; the backtest and
+the replay never did). Why 10%: `scripts/spike_high_margin_check.py` (the bot's day rules, 5,000 orderings): 20%
+worst fall 61%, under $1,000 in 2%; the review's sizing said 7-10%. Replay 2026-08..11 at 10%: 71/71 identical.
+Same day, tested and NOT adopted: $40/$45 take-profits, 30-60% margin, tight stops with a close target, QUICK with
+$40 / max leverage / stops before liquidation, QUICK at 10-20% margin (scripts/quick_*.py, out/careful/quick_*.txt);
+QUICK at 10% x 5x is ~+$5/trade after fees over history (t 1.7) and ~-$2/trade on the paper trades 10-29..11-17 once
+the picks the $250 paper account skipped are included.
 Also tested 2026-11-17 and NOT adopted: QUICK with other exits (`scripts/quick_exits.py`: as-is +0.024R, t 1.95, the
 best; tighter stops worse) and QUICK at 50% margin + break-even lock + 1% target (`scripts/quick_margin50.py`: 5-20x
 bust by liquidation, 2-3x survive with 66-83% falls).
