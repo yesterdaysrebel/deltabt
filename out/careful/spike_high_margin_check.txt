@@ -13,7 +13,7 @@ Owner 2026-11-17: "are you sure about the results here?" -- independent check of
   margin 50%: per trade $+126.1 | actual order: lowest $1,655, worst fall 91%, never under $1,000 | 5,000 random orders: worst fall median 92%, 1-in-10 bad luck 97%, under $1,000 in 28%
   margin 60%: per trade $+151.3 | actual order: lowest $1,185, worst fall 95%, never under $1,000 | 5,000 random orders: worst fall median 96%, 1-in-10 bad luck 99%, under $1,000 in 42%
 
-TAKE-PROFIT $40 / $45 under the bot's day rules (STRICT, LENIENT per trade; STRICT floor odds over 5,000 orders):
+TAKE-PROFIT $40 / $45 under the bot's day rules (STRICT, LENIENT per trade; STRICT floor odds over 2,000 orders):
   margin 20%:  $40: 450 taken, win 86%, $-5.2 / $-0.2 per trade, under $1,000 in 100%  |  $45: 450 taken, win 85%, $-2.2 / $+2.1 per trade, under $1,000 in 43%
   margin 30%:  $40: 454 taken, win 90%, $-7.9 / $-3.0 per trade, under $1,000 in 100%  |  $45: 453 taken, win 89%, $-8.7 / $+0.6 per trade, under $1,000 in 100%
   margin 40%:  $40: 454 taken, win 91%, $-17.4 / $-9.3 per trade, under $1,000 in 100%  |  $45: 454 taken, win 91%, $-14.1 / $-6.6 per trade, under $1,000 in 100%

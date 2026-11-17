@@ -106,7 +106,7 @@ def target_check():
     """the $40 / $45 take-profit cells under the same day rules (added after the first run of this file)"""
     days = D.load()
     rng = np.random.default_rng(7)
-    out = ["\nTAKE-PROFIT $40 / $45 under the bot's day rules (STRICT, LENIENT per trade; STRICT floor odds over 5,000 orders):"]
+    out = ["\nTAKE-PROFIT $40 / $45 under the bot's day rules (STRICT, LENIENT per trade; STRICT floor odds over 2,000 orders):"]
     for m in MARGINS:
         n = N20 * m / 0.20
         cells = []
