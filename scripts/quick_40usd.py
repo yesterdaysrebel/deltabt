@@ -12,6 +12,8 @@ Account: $2,895.60 compounding, the target stays $40 x balance / $2,895.60; firs
 and 2,000 random orders of the trading days -> chance of going under $1,000.
 
     PYTHONPATH=. python scripts/quick_40usd.py      # -> out/careful/quick_40usd.txt
+    PYTHONPATH=. python scripts/quick_40usd.py 0.10 10,15,20 500 m10   # owner "10% margin with max leverage"
+                                                    # (20x = the max on every picked coin with known limits) -> quick_40usd_m10.txt
 """
 import sys
 from pathlib import Path
@@ -42,16 +44,21 @@ def day_path(byday, fees, order=None):
 
 
 def main():
+    marg = float(sys.argv[1]) if len(sys.argv) > 1 else 0.50
+    levs = tuple(int(x) for x in sys.argv[2].split(",")) if len(sys.argv) > 2 else (2, 3, 5)
+    perms = int(sys.argv[3]) if len(sys.argv) > 3 else 2000
+    tag = f"_{sys.argv[4]}" if len(sys.argv) > 4 else ""
+    Q.MARGIN = marg
     days = D.load()
     P = pd.read_csv("out/careful/picks_atr.csv", parse_dates=["day"])
     atr = {(d, s): a for d, s, a in zip(P.day, P.symbol, P.atrp)}
     rng = np.random.default_rng(20261117)
-    out = [__doc__.split("\n\n")[0], f"{days[0][0]:%Y-%m-%d}..{days[-1][0]:%Y-%m-%d}. $ at ${BAL:,.2f}.", ""]
+    out = [__doc__.split("\n\n")[0], f"MARGIN {marg:.0%} per trade. {days[0][0]:%Y-%m-%d}..{days[-1][0]:%Y-%m-%d}. $ at ${BAL:,.2f}.", ""]
     w = out.append
-    for lev in (2, 3, 5):
+    for lev in levs:
         pos = Q.MARGIN * lev * BAL
         Q.TP = USD / pos
-        w(f"===== {lev}x: position ${pos:,.0f} ({0.5 * lev:.1f}x the balance); $40 = a {100 * Q.TP:.2f}% fall; liquidation ~{100 * (1 / lev - 0.025):.0f}% above")
+        w(f"===== {lev}x: position ${pos:,.0f} ({marg * lev:.1f}x the balance); $40 = a {100 * Q.TP:.2f}% fall; liquidation ~{100 * (1 / lev - 0.025):.1f}% above (loses the whole margin, ${marg * BAL:,.0f})")
         for lock in (None, 0.005):
             for fill in ("STRICT", "LENIENT"):
                 d = Q.run(days, atr, lev, lock, fill == "STRICT")     # asserts the two implementations agree
@@ -69,14 +76,14 @@ def main():
                         byday = list(sub.groupby("day"))
                         for fees in (False, True):
                             bal, lo, mdd, under = day_path(byday, fees)
-                            odds = np.mean([day_path(byday, fees, rng.permutation(len(byday)))[3] is not None for _ in range(2000)])
+                            odds = np.mean([day_path(byday, fees, rng.permutation(len(byday)))[3] is not None for _ in range(perms)])
                             w(f"  {'':{len(lab)}}  account{' + fees' if fees else '       '}: end ${bal:,.0f}, lowest ${lo:,.0f}, worst fall {100 * mdd:.0f}%"
                               + (f", UNDER $1,000 {under:%Y-%m-%d}" if under is not None else ", never under $1,000")
-                              + f" | random orders: under $1,000 in {100 * odds:.0f}%")
+                              + f" | random orders ({perms}): under $1,000 in {100 * odds:.0f}%")
         w("")
     txt = "\n".join(out)
     print(txt)
-    Path("out/careful/quick_40usd.txt").write_text(txt + "\n")
+    Path(f"out/careful/quick_40usd{tag}.txt").write_text(txt + "\n")
 
 
 if __name__ == "__main__":
