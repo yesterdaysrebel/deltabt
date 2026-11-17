@@ -60,10 +60,10 @@ LENIENT fills as scripts/spike_verify.py. Before fees; $ at 1x the current $2,89
    2026-11-15 EVAAUSD    cancelled: the day's other pick filled first
    2026-11-16 RAREUSD    sold 0.013104   11-16 00:06  ->  STOP            11-16 04:55   +4.36%  $  +126
    2026-11-16 EVAAUSD    cancelled: the day's other pick filled first
-   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STILL OPEN now  11-18 05:02   +3.50%  $  +101
+   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STILL OPEN now  11-18 05:02   +3.37%  $   +98
    2026-11-17 BLESSUSD   cancelled: the day's other pick filled first
-   STRICT  13 trades, 8 wins (62%), avg win $+238, avg loss $-242, per trade $+53, total $+694
-   LENIENT 13 trades, 8 wins (62%), avg win $+265, avg loss $-234, per trade $+73, total $+952
+   STRICT  13 trades, 8 wins (62%), avg win $+238, avg loss $-242, per trade $+53, total $+691
+   LENIENT 13 trades, 8 wins (62%), avg win $+265, avg loss $-234, per trade $+73, total $+948
 
 ===== rule C, 10% trail FROM THE FILL
    2026-10-29 EVAAUSD    sold 1.51799    10-29 01:46  ->  STOP            10-29 06:01  +21.05%  $  +610
@@ -90,8 +90,8 @@ LENIENT fills as scripts/spike_verify.py. Before fees; $ at 1x the current $2,89
    2026-11-15 EVAAUSD    cancelled: the day's other pick filled first
    2026-11-16 RAREUSD    sold 0.013104   11-16 00:06  ->  STOP            11-16 04:55   +4.36%  $  +126
    2026-11-16 EVAAUSD    cancelled: the day's other pick filled first
-   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STILL OPEN now  11-18 05:02   +3.50%  $  +101
+   2026-11-17 CROSSUSD   sold 0.154      11-17 05:02  ->  STOP            11-17 14:47   -5.11%  $  -148
    2026-11-17 BLESSUSD   cancelled: the day's other pick filled first
-   STRICT  13 trades, 8 wins (62%), avg win $+238, avg loss $-179, per trade $+78, total $+1,013
-   LENIENT 13 trades, 8 wins (62%), avg win $+265, avg loss $-158, per trade $+102, total $+1,330
+   STRICT  13 trades, 7 wins (54%), avg win $+258, avg loss $-174, per trade $+59, total $+764
+   LENIENT 13 trades, 7 wins (54%), avg win $+288, avg loss $-134, per trade $+93, total $+1,212
 
