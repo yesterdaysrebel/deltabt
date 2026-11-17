@@ -1,6 +1,7 @@
 """Owner 2026-11-17: "run same test on paper trades" -- QUICK at 10% margin x 5x (position 0.5x the balance: $1,448 at
 $2,895.60), both picks, extra margin after the fill (liquidation ~27% above), today's SL / target / 23:59 exit, on the
-paper bot's own QUICK ledger (out/fade_quick_full/quick_paper.json, 2026-10-29..11-12) and its saved 1m candles
+paper bot's own QUICK ledger (out/fade_quick_full/quick_paper.json 2026-10-29..11-12 and quick_paper_1113_1117.json
+11-13..11-17, read-only from the prod fade_positions table, account QUICK) and its saved 1m candles
 (traded and MARK; Delta liquidates on the mark price).
 
   1  PAPER AS RECORDED: each closed paper trade's own entry / exit prices, sized at $1,448.
@@ -43,7 +44,7 @@ def bars(sym, t0, mark=False):
 
 
 def main():
-    led = json.load(open(DIR / "quick_paper.json"))
+    led = json.load(open(DIR / "quick_paper.json")) + json.load(open(DIR / "quick_paper_1113_1117.json"))   # + prod 11-13..11-17
     out = [__doc__.split("\n\n")[0], ""]
     w = out.append
     rec = [x for x in led if x.get("exit_reason")]
