@@ -1,0 +1,57 @@
+Owner 2026-11-17: "if we run quick with 50% margin and make 40$ per trade that is possible".
+2025-01-15..2026-11-14. $ at $2,895.60.
+
+===== 2x: position $2,896 (1.0x the balance); $40 = a 1.38% fall; liquidation ~48% above
+  no lock STRICT  both picks 971 trades  win  91%  avg win $ +40  avg loss $ -347  per trade $ +6.0 (fees $2.0) | half-years -11 +12 +10 +11 | TARGET 91% CLOCK 5% STOP 4%
+                              account       : end $955, lowest $955, worst fall 76%, UNDER $1,000 2025-06-01 | random orders: under $1,000 in 19%
+                              account + fees: end $941, lowest $941, worst fall 76%, UNDER $1,000 2025-05-30 | random orders: under $1,000 in 30%
+  no lock STRICT  top pick   594 trades  win  92%  avg win $ +40  avg loss $ -418  per trade $ +2.9 (fees $2.0) | half-years -11 +5 +6 +14 | TARGET 92% STOP 5% CLOCK 3%
+                              account       : end $992, lowest $992, worst fall 76%, UNDER $1,000 2025-07-11 | random orders: under $1,000 in 32%
+                              account + fees: end $885, lowest $885, worst fall 78%, UNDER $1,000 2025-07-11 | random orders: under $1,000 in 55%
+  no lock LENIENT both picks 971 trades  win  92%  avg win $ +40  avg loss $ -331  per trade $+11.7 (fees $2.0) | half-years -5 +14 +20 +15 | TARGET 92% CLOCK 4% STOP 4%
+  no lock LENIENT top pick   594 trades  win  93%  avg win $ +40  avg loss $ -402  per trade $ +8.7 (fees $2.0) | half-years -8 +8 +16 +20 | TARGET 93% STOP 4% CLOCK 3%
+  lock 0.5% STRICT  both picks 971 trades  win  45%  avg win $ +40  avg loss $  -27  per trade $ +3.2 (fees $2.0) | half-years -4 +6 +0 +10 | LOCK 52% TARGET 45% STOP 1% CLOCK 1%
+                                account       : end $6,119, lowest $1,644, worst fall 46%, never under $1,000 | random orders: under $1,000 in 0%
+                                account + fees: end $3,104, lowest $1,446, worst fall 53%, never under $1,000 | random orders: under $1,000 in 3%
+  lock 0.5% STRICT  top pick   594 trades  win  46%  avg win $ +40  avg loss $  -26  per trade $ +4.5 (fees $1.9) | half-years +1 +8 -2 +12 | LOCK 52% TARGET 46% STOP 1% CLOCK 1%
+                                account       : end $5,947, lowest $2,407, worst fall 38%, never under $1,000 | random orders: under $1,000 in 0%
+                                account + fees: end $3,986, lowest $2,251, worst fall 42%, never under $1,000 | random orders: under $1,000 in 0%
+  lock 0.5% LENIENT both picks 971 trades  win  48%  avg win $ +40  avg loss $  -16  per trade $+10.8 (fees $2.0) | half-years +6 +12 +8 +17 | LOCK 49% TARGET 48% STOP 1% CLOCK 1%
+  lock 0.5% LENIENT top pick   594 trades  win  50%  avg win $ +40  avg loss $  -14  per trade $+13.0 (fees $1.9) | half-years +14 +14 +8 +18 | TARGET 50% LOCK 49% STOP 1% CLOCK 1%
+
+===== 3x: position $4,343 (1.5x the balance); $40 = a 0.92% fall; liquidation ~31% above
+  no lock STRICT  both picks 971 trades  win  94%  avg win $ +40  avg loss $ -519  per trade $ +6.6 (fees $2.9) | half-years -8 +10 +12 +10 | TARGET 94% CLOCK 3% STOP 3% LIQUIDATED 0%
+                              account       : end $920, lowest $920, worst fall 74%, UNDER $1,000 2025-04-12 | random orders: under $1,000 in 39%
+                              account + fees: end $836, lowest $836, worst fall 75%, UNDER $1,000 2025-04-12 | random orders: under $1,000 in 68%
+  no lock STRICT  top pick   594 trades  win  94%  avg win $ +40  avg loss $ -594  per trade $ +3.7 (fees $2.8) | half-years -4 +2 +7 +10 | TARGET 94% STOP 3% CLOCK 2% LIQUIDATED 0%
+                              account       : end $961, lowest $961, worst fall 76%, UNDER $1,000 2026-06-02 | random orders: under $1,000 in 65%
+                              account + fees: end $768, lowest $768, worst fall 80%, UNDER $1,000 2025-12-24 | random orders: under $1,000 in 100%
+  no lock LENIENT both picks 971 trades  win  95%  avg win $ +40  avg loss $ -520  per trade $+12.3 (fees $2.8) | half-years +1 +16 +15 +16 | TARGET 95% CLOCK 2% STOP 2% LIQUIDATED 0%
+  no lock LENIENT top pick   594 trades  win  95%  avg win $ +40  avg loss $ -586  per trade $ +9.4 (fees $2.8) | half-years +7 +8 +11 +13 | TARGET 95% STOP 3% CLOCK 2% LIQUIDATED 0%
+  lock 0.5% STRICT  both picks 971 trades  win  61%  avg win $ +40  avg loss $  -51  per trade $ +4.5 (fees $2.9) | half-years -4 +9 -0 +14 | TARGET 61% LOCK 37% STOP 1% CLOCK 1%
+                                account       : end $6,163, lowest $1,199, worst fall 62%, never under $1,000 | random orders: under $1,000 in 9%
+                                account + fees: end $999, lowest $999, worst fall 67%, UNDER $1,000 2026-08-05 | random orders: under $1,000 in 30%
+  lock 0.5% STRICT  top pick   594 trades  win  61%  avg win $ +40  avg loss $  -47  per trade $ +6.0 (fees $2.8) | half-years +6 +10 -3 +12 | TARGET 61% LOCK 37% STOP 1% CLOCK 1%
+                                account       : end $6,127, lowest $2,282, worst fall 54%, never under $1,000 | random orders: under $1,000 in 3%
+                                account + fees: end $3,443, lowest $2,079, worst fall 61%, never under $1,000 | random orders: under $1,000 in 8%
+  lock 0.5% LENIENT both picks 971 trades  win  66%  avg win $ +40  avg loss $  -37  per trade $+13.6 (fees $2.8) | half-years +8 +17 +9 +21 | TARGET 66% LOCK 32% STOP 1% CLOCK 1%
+  lock 0.5% LENIENT top pick   594 trades  win  65%  avg win $ +40  avg loss $  -29  per trade $+15.8 (fees $2.7) | half-years +19 +18 +8 +20 | TARGET 65% LOCK 33% STOP 1% CLOCK 1%
+
+===== 5x: position $7,239 (2.5x the balance); $40 = a 0.55% fall; liquidation ~18% above
+  no lock STRICT  both picks 971 trades  win  96%  avg win $ +40  avg loss $ -966  per trade $ -1.5 (fees $4.5) | half-years -9 +3 -15 +17 | TARGET 96% LIQUIDATED 2% CLOCK 1% STOP 1%
+                              account       : end $946, lowest $946, worst fall 69%, UNDER $1,000 2025-03-27 | random orders: under $1,000 in 100%
+                              account + fees: end $900, lowest $900, worst fall 70%, UNDER $1,000 2025-03-21 | random orders: under $1,000 in 100%
+  no lock STRICT  top pick   594 trades  win  96%  avg win $ +40  avg loss $-1104  per trade $ -6.2 (fees $4.5) | half-years +2 -7 -31 +16 | TARGET 96% LIQUIDATED 3% CLOCK 1% STOP 1%
+                              account       : end $901, lowest $901, worst fall 77%, UNDER $1,000 2025-05-09 | random orders: under $1,000 in 100%
+                              account + fees: end $771, lowest $771, worst fall 79%, UNDER $1,000 2025-05-09 | random orders: under $1,000 in 100%
+  no lock LENIENT both picks 971 trades  win  97%  avg win $ +40  avg loss $-1009  per trade $ +6.5 (fees $4.4) | half-years -5 +17 -9 +23 | TARGET 97% LIQUIDATED 2% CLOCK 1% STOP 1%
+  no lock LENIENT top pick   594 trades  win  97%  avg win $ +40  avg loss $-1209  per trade $ +4.3 (fees $4.3) | half-years +6 +17 -21 +16 | TARGET 97% LIQUIDATED 2% STOP 1% CLOCK 0%
+  lock 0.5% STRICT  both picks 971 trades  win  82%  avg win $ +40  avg loss $ -198  per trade $ -3.9 (fees $4.5) | half-years -12 +7 -22 +12 | TARGET 82% LOCK 15% LIQUIDATED 2% CLOCK 1% STOP 1%
+                                account       : end $788, lowest $788, worst fall 74%, UNDER $1,000 2025-04-01 | random orders: under $1,000 in 100%
+                                account + fees: end $986, lowest $986, worst fall 68%, UNDER $1,000 2025-03-21 | random orders: under $1,000 in 100%
+  lock 0.5% STRICT  top pick   594 trades  win  82%  avg win $ +40  avg loss $ -217  per trade $ -6.7 (fees $4.4) | half-years +0 +6 -36 +6 | TARGET 82% LOCK 15% LIQUIDATED 2% STOP 1% CLOCK 0%
+                                account       : end $855, lowest $855, worst fall 80%, UNDER $1,000 2025-05-09 | random orders: under $1,000 in 100%
+                                account + fees: end $734, lowest $734, worst fall 82%, UNDER $1,000 2025-05-09 | random orders: under $1,000 in 100%
+  lock 0.5% LENIENT both picks 971 trades  win  92%  avg win $ +40  avg loss $ -386  per trade $ +6.2 (fees $4.4) | half-years -0 +16 -11 +21 | TARGET 92% LOCK 5% LIQUIDATED 1% CLOCK 1% STOP 1%
+  lock 0.5% LENIENT top pick   594 trades  win  92%  avg win $ +40  avg loss $ -398  per trade $ +4.6 (fees $4.3) | half-years +15 +15 -23 +14 | TARGET 92% LOCK 5% LIQUIDATED 2% STOP 1% CLOCK 0%
+
