@@ -811,6 +811,14 @@ Same file: the live 2.25%-stop rules -0.31%/trade, positive in 1 of 4 half-years
 leverage): 2026-08..11 68/68 identical; full history first 321 trades identical, diverging from 2026-09-21 at a ~$96k
 simulated balance (coin size limits). deploy-prod run 44051329938 approved by the owner, completed ~10:00 UTC; prod
 image 1c704fb verified: constants 5 / 0.10 / 0.10 / True, $2,895.60 sizes to 2,878 notional at 5x, RUNNING, nothing open.
+**SUPERSEDED SAME DAY by rule C, TRAIL FROM THE FILL (#172, merge fc09838; owner "use 10% from the fill"):** only
+`TRAIL_ONLY_PAST_ENTRY` False -- the 10% trail tightens from the fill, so the stop can come inside the entry before
+the trade is in profit. Evidence (same file, cell "C from the fill"): win 49%, +8.25% / -6.39%, +0.77%/trade strict
+(+1.26% lenient), t 1.99, half-years +0.60 / +0.53 / +1.28 / +0.69%, control -0.10%, compounding low $1,046. Real
+picks 10-29..11-17 as the bot trades them (`scripts/real_picks_rule_c.py`): 13 trades, 8 wins, +$238 / -$179, +$78
+per trade before fees vs +$53 for C. Replay 2026-08..11 71/71 identical. deploy-prod run 44064424605 approved by the
+owner, completed 10:46 UTC; prod image fc09838 verified: constants 5 / 0.10 / 0.10 / False, RUNNING, $2,895.60,
+nothing open. Judge after ~30 live trades: stop if avg win < avg loss or win rate < ~40%.
 Also tested 2026-11-17 and NOT adopted: QUICK with other exits (`scripts/quick_exits.py`: as-is +0.024R, t 1.95, the
 best; tighter stops worse) and QUICK at 50% margin + break-even lock + 1% target (`scripts/quick_margin50.py`: 5-20x
 bust by liquidation, 2-3x survive with 66-83% falls).
