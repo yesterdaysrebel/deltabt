@@ -100,3 +100,9 @@ out/wpr/
 /out/careful/dataset.npz
 /out/careful/mark.npz
 /out/careful/btc.npz
+
+# research caches (2026-11-16): pickled intermediate results, stderr of re-runs, raw API dumps -- all regenerable
+out/**/*.pkl
+out/review/*.err
+out/options/recheck/legs.jsonl
+out/tradfi_quick/products.json

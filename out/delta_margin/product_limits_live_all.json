@@ -1,0 +1,2252 @@
+{
+"MVLLBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"COHRBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.01
+},
+"SNXXBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 1.0
+},
+"MUUBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"TQQQBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"BEBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.01
+},
+"DELLBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.01
+},
+"BMNRBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"CRWVBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"IOSTUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10000.0
+},
+"DOODUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10000.0
+},
+"IRYSUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 100.0
+},
+"JCTUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 1000.0
+},
+"KORUBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 1.0
+},
+"MSFTBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.01
+},
+"AAOIBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.1
+},
+"AVGOBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.1
+},
+"ORCLBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.1
+},
+"MRNABUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001524,
+"mms": 7.62e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.1
+},
+"RLCUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"BRUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"CAPUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 100.0
+},
+"GTCUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 100.0
+},
+"NMRUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 0.000354,
+"mms": 0.000177,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 1.0
+},
+"QNTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 0.0001417,
+"mms": 7.085e-05,
+"max_lev_notional": 50000.0,
+"limit": 15000.0,
+"cv": 0.1
+},
+"ARKUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"MOVRUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"SOONUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"BTWUSD": {
+"im": 10.0,
+"mm": 5.0,
+"ims": 0.0013333,
+"mms": 0.00066665,
+"max_lev_notional": 20000.0,
+"limit": 15000.0,
+"cv": 10.0
+},
+"OILUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"TLMUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 15000.0,
+"cv": 10000.0
+},
+"ESPORTSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 75000.0,
+"cv": 100.0
+},
+"AKEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 15000.0,
+"cv": 10000.0
+},
+"BANKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 13000.0,
+"cv": 100.0
+},
+"RKLBBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 29000.0,
+"cv": 0.1
+},
+"ARMBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 80000.0,
+"cv": 0.01
+},
+"BABABUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 17000.0,
+"cv": 0.1
+},
+"HOODBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 20000.0,
+"cv": 0.1
+},
+"MRVLBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"TSMBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 50000.0,
+"cv": 0.01
+},
+"SKHYBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 12000.0,
+"cv": 0.1
+},
+"NBISBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 11500.0,
+"cv": 0.1
+},
+"LITEBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 25000.0,
+"cv": 0.01
+},
+"PLTRBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 15000.0,
+"cv": 0.1
+},
+"EWYBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"INTCBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 18000.0,
+"cv": 0.1
+},
+"WDCBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 34000.0,
+"cv": 0.01
+},
+"AMDBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 36000.0,
+"cv": 0.01
+},
+"CBRSBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 10000.0,
+"cv": 0.1
+},
+"SNDKBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 11000.0,
+"cv": 0.01
+},
+"MUBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 20000.0,
+"cv": 0.01
+},
+"MSTRBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 20000.0,
+"cv": 0.1
+},
+"SOXLBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 10500.0,
+"cv": 0.1
+},
+"DRAMBUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 31000.0,
+"cv": 0.1
+},
+"GRAMUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 16000.0,
+"cv": 10.0
+},
+"INUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 50000.0,
+"cv": 100.0
+},
+"TACUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 50000.0,
+"cv": 100.0
+},
+"SPCXXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 100000.0,
+"cv": 0.01
+},
+"VELVETUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 55000.0,
+"cv": 10.0
+},
+"ALLOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 5500.0,
+"cv": 100.0
+},
+"OPNUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 27000.0,
+"cv": 100.0
+},
+"AIGENSYNUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 50000.0,
+"cv": 100.0
+},
+"BILLUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 11000.0,
+"cv": 100.0
+},
+"BUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 8000.0,
+"cv": 100.0
+},
+"LABUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 13000.0,
+"cv": 10.0
+},
+"SKYAIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 35000.0,
+"cv": 10.0
+},
+"PIEVERSEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 26000.0,
+"cv": 10.0
+},
+"CHIPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 5e-05,
+"mms": 2.5e-05,
+"max_lev_notional": 10000.0,
+"limit": 28000.0,
+"cv": 100.0
+},
+"ENJUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 30000.0,
+"cv": 100.0
+},
+"XAUTUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 52000.0,
+"cv": 0.001
+},
+"BASEDUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 19000.0,
+"cv": 100.0
+},
+"ARIAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 376000.0,
+"cv": 10.0
+},
+"SIRENUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 32000.0,
+"cv": 10.0
+},
+"AIOTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 40000.0,
+"cv": 100.0
+},
+"RAVEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 286000.0,
+"cv": 1.0
+},
+"SPYXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 30000.0,
+"cv": 0.01
+},
+"QQQXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 34000.0,
+"cv": 0.01
+},
+"CRCLXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 18000.0,
+"cv": 0.1
+},
+"COINXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 100000.0,
+"cv": 0.01
+},
+"SLVONUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 2e-05,
+"mms": 1e-05,
+"max_lev_notional": 75000.0,
+"limit": 62000.0,
+"cv": 0.1
+},
+"PAXGUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 200000.0,
+"cv": 0.001
+},
+"NVDAXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 100000.0,
+"cv": 0.01
+},
+"TSLAXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 50000.0,
+"cv": 0.01
+},
+"AMZNXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 100000.0,
+"cv": 0.01
+},
+"AAPLXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 76000.0,
+"cv": 0.01
+},
+"METAXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 32000.0,
+"cv": 0.01
+},
+"GOOGLXUSD": {
+"im": 4.0,
+"mm": 2.0,
+"ims": 0.0001,
+"mms": 5e-05,
+"max_lev_notional": 40000.0,
+"limit": 70000.0,
+"cv": 0.01
+},
+"AXSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 12000.0,
+"cv": 10.0
+},
+"DUSKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 13000.0,
+"cv": 100.0
+},
+"FRAXUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 53000.0,
+"cv": 10.0
+},
+"DASHUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 71000.0,
+"cv": 0.1
+},
+"XMRUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 35000.0,
+"cv": 0.01
+},
+"LIGHTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 159000.0,
+"cv": 10.0
+},
+"RIVERUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 39000.0,
+"cv": 1.0
+},
+"LITUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 29000.0,
+"cv": 10.0
+},
+"BEATUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 92000.0,
+"cv": 10.0
+},
+"1000BONKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 30000.0,
+"cv": 1000.0
+},
+"1000FLOKIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 60000.0,
+"cv": 100.0
+},
+"1000PEPEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 60000.0,
+"cv": 1000.0
+},
+"1000SHIBUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 35000.0,
+"cv": 1000.0
+},
+"PARTIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 62000.0,
+"cv": 100.0
+},
+"TNSRUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 42000.0,
+"cv": 100.0
+},
+"PIPPINUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 96000.0,
+"cv": 100.0
+},
+"MONUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 100000.0,
+"cv": 100.0
+},
+"ZENUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 43000.0,
+"cv": 1.0
+},
+"KITEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 30000.0,
+"cv": 100.0
+},
+"MMTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 118000.0,
+"cv": 10.0
+},
+"STRKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 65000.0,
+"cv": 100.0
+},
+"GIGGLEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 52000.0,
+"cv": 0.1
+},
+"BLESSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 323000.0,
+"cv": 100.0
+},
+"EVAAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 295000.0,
+"cv": 1.0
+},
+"HANAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 93000.0,
+"cv": 100.0
+},
+"ZECUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 15000.0,
+"cv": 0.1
+},
+"COAIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 67000.0,
+"cv": 10.0
+},
+"STBLUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 628000.0,
+"cv": 10.0
+},
+"ORDERUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 319000.0,
+"cv": 10.0
+},
+"XANUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 219000.0,
+"cv": 100.0
+},
+"EDENUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 451000.0,
+"cv": 10.0
+},
+"FFUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 28000.0,
+"cv": 100.0
+},
+"XPLUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 197000.0,
+"cv": 10.0
+},
+"ASTERUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 38000.0,
+"cv": 10.0
+},
+"WLFIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 341000.0,
+"cv": 10.0
+},
+"AIOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 25000.0,
+"cv": 100.0
+},
+"ZORAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 193000.0,
+"cv": 100.0
+},
+"TOWNSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 402000.0,
+"cv": 100.0
+},
+"PROVEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 68000.0,
+"cv": 10.0
+},
+"SKLUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 261000.0,
+"cv": 100.0
+},
+"AINUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 63000.0,
+"cv": 100.0
+},
+"SAHARAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 105000.0,
+"cv": 100.0
+},
+"HUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 50000.0,
+"cv": 100.0
+},
+"MUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 10000.0,
+"cv": 10.0
+},
+"CROSSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 120000.0,
+"cv": 10.0
+},
+"PUMPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 140000.0,
+"cv": 1000.0
+},
+"MEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 122000.0,
+"cv": 10.0
+},
+"SOPHUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 202000.0,
+"cv": 100.0
+},
+"MASKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 389000.0,
+"cv": 1.0
+},
+"HYPEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 70000.0,
+"cv": 0.1
+},
+"WCTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 319000.0,
+"cv": 10.0
+},
+"SIGNUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 157000.0,
+"cv": 100.0
+},
+"DEEPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 642000.0,
+"cv": 10.0
+},
+"INITUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 281000.0,
+"cv": 10.0
+},
+"API3USD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 62000.0,
+"cv": 10.0
+},
+"MUBARAKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1389000.0,
+"cv": 10.0
+},
+"BMTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1123000.0,
+"cv": 10.0
+},
+"LAYERUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 180000.0,
+"cv": 10.0
+},
+"RAREUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 98000.0,
+"cv": 100.0
+},
+"REDUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 101000.0,
+"cv": 10.0
+},
+"AUCTIONUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 411000.0,
+"cv": 0.1
+},
+"KAITOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 612000.0,
+"cv": 1.0
+},
+"PIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 144000.0,
+"cv": 10.0
+},
+"GLMUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 187000.0,
+"cv": 10.0
+},
+"TSTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 178000.0,
+"cv": 100.0
+},
+"CAKEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 120000.0,
+"cv": 1.0
+},
+"BERAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 387000.0,
+"cv": 1.0
+},
+"VVVUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 75000.0,
+"cv": 1.0
+},
+"ARCUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 481000.0,
+"cv": 10.0
+},
+"AVAAIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 284000.0,
+"cv": 100.0
+},
+"SOLVUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 623000.0,
+"cv": 100.0
+},
+"VANAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 119000.0,
+"cv": 1.0
+},
+"COOKIEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 892000.0,
+"cv": 10.0
+},
+"SUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 375000.0,
+"cv": 10.0
+},
+"GRIFFAINUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1812000.0,
+"cv": 10.0
+},
+"JUPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 129000.0,
+"cv": 10.0
+},
+"SWARMSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2170000.0,
+"cv": 10.0
+},
+"MELANIAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1474000.0,
+"cv": 1.0
+},
+"TRUMPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 525000.0,
+"cv": 0.1
+},
+"SPXUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 67000.0,
+"cv": 10.0
+},
+"HIVEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 269000.0,
+"cv": 10.0
+},
+"SONICUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 394000.0,
+"cv": 10.0
+},
+"BIOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 566000.0,
+"cv": 10.0
+},
+"MOVEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 746000.0,
+"cv": 10.0
+},
+"PENGUUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 263000.0,
+"cv": 100.0
+},
+"AIXBTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 838000.0,
+"cv": 10.0
+},
+"USUALUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 972000.0,
+"cv": 10.0
+},
+"VIRTUALUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 314000.0,
+"cv": 1.0
+},
+"FARTCOINUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 870000.0,
+"cv": 1.0
+},
+"1000SATSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 16666000.0,
+"cv": 1000.0
+},
+"1MBABYDOGEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 4363000.0,
+"cv": 100.0
+},
+"JASMYUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 375000.0,
+"cv": 100.0
+},
+"DOGSUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 6561000.0,
+"cv": 1000.0
+},
+"MOODENGUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 369000.0,
+"cv": 10.0
+},
+"SUNUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 137000.0,
+"cv": 100.0
+},
+"IOTAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2948000.0,
+"cv": 1.0
+},
+"RSRUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1081000.0,
+"cv": 100.0
+},
+"GOATUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 830000.0,
+"cv": 10.0
+},
+"KSMUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 375000.0,
+"cv": 0.1
+},
+"XLMUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1212000.0,
+"cv": 1.0
+},
+"MANAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1773000.0,
+"cv": 1.0
+},
+"POPCATUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 3443000.0,
+"cv": 1.0
+},
+"ACTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1138000.0,
+"cv": 10.0
+},
+"PNUTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 3510000.0,
+"cv": 1.0
+},
+"SAGAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 14318000.0,
+"cv": 1.0
+},
+"NEIROUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2212000.0,
+"cv": 1000.0
+},
+"POLUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 214000.0,
+"cv": 10.0
+},
+"EIGENUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 775000.0,
+"cv": 1.0
+},
+"MANTAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 3092000.0,
+"cv": 1.0
+},
+"GALAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 415000.0,
+"cv": 100.0
+},
+"BLURUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 858000.0,
+"cv": 10.0
+},
+"TAOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 80000.0,
+"cv": 0.01
+},
+"LISTAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 181000.0,
+"cv": 10.0
+},
+"ZKUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 909000.0,
+"cv": 10.0
+},
+"IOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1611000.0,
+"cv": 1.0
+},
+"ZROUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 176000.0,
+"cv": 1.0
+},
+"BBUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 511000.0,
+"cv": 10.0
+},
+"NOTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 4682000.0,
+"cv": 100.0
+},
+"ETHFIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 422000.0,
+"cv": 1.0
+},
+"PEOPLEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 273000.0,
+"cv": 100.0
+},
+"DYDXUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1506000.0,
+"cv": 1.0
+},
+"SUSHIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 851000.0,
+"cv": 1.0
+},
+"ARUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 76000.0,
+"cv": 1.0
+},
+"RUNEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 444000.0,
+"cv": 1.0
+},
+"XAIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1743000.0,
+"cv": 10.0
+},
+"APTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 163000.0,
+"cv": 1.0
+},
+"STXUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 847000.0,
+"cv": 1.0
+},
+"ALTUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2210000.0,
+"cv": 10.0
+},
+"TRXUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 1000000.0,
+"cv": 1.0
+},
+"OPUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 20491000.0,
+"cv": 0.1
+},
+"FILUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 198000.0,
+"cv": 1.0
+},
+"LDOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 636000.0,
+"cv": 1.0
+},
+"ETCUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 296000.0,
+"cv": 0.1
+},
+"TRBUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 129000.0,
+"cv": 0.1
+},
+"ENAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1492000.0,
+"cv": 1.0
+},
+"PENDLEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 132000.0,
+"cv": 1.0
+},
+"ONDOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 75000.0,
+"cv": 10.0
+},
+"AAVEUSD": {
+"im": 2.0,
+"mm": 1.0,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 5000.0,
+"cv": 1.0
+},
+"JTOUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 748000.0,
+"cv": 1.0
+},
+"HBARUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2362000.0,
+"cv": 1.0
+},
+"ORDIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 643000.0,
+"cv": 0.1
+},
+"MEMEUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 2413000.0,
+"cv": 100.0
+},
+"ARBUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 1486000.0,
+"cv": 1.0
+},
+"TIAUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 566000.0,
+"cv": 1.0
+},
+"SEIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 238000.0,
+"cv": 10.0
+},
+"SUIUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 180000.0,
+"cv": 1.0
+},
+"WLDUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 548000.0,
+"cv": 1.0
+},
+"INJUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 57000.0,
+"cv": 1.0
+},
+"NEARUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 171000.0,
+"cv": 1.0
+},
+"ADAUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 50000.0,
+"limit": 1337000.0,
+"cv": 1.0
+},
+"WIFUSD": {
+"im": 5.0,
+"mm": 2.5,
+"ims": 1e-05,
+"mms": 5e-06,
+"max_lev_notional": 50000.0,
+"limit": 770000.0,
+"cv": 1.0
+},
+"DOTUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 204000.0,
+"cv": 1.0
+},
+"UNIUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 100000.0,
+"cv": 1.0
+},
+"BNBUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 17000.0,
+"cv": 0.1
+},
+"LINKUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 160000.0,
+"cv": 1.0
+},
+"LTCUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 100000.0,
+"cv": 0.1
+},
+"BCHUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 100000.0,
+"cv": 0.01
+},
+"XRPUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 300000.0,
+"cv": 1.0
+},
+"AVAXUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 50000.0,
+"cv": 1.0
+},
+"SOLUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 11111.0,
+"cv": 1.0
+},
+"DOGEUSD": {
+"im": 1.0,
+"mm": 0.5,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 50000.0,
+"cv": 100.0
+},
+"ETHUSD": {
+"im": 0.5,
+"mm": 0.25,
+"ims": 4e-06,
+"mms": 2e-06,
+"max_lev_notional": 100000.0,
+"limit": 162683.0,
+"cv": 0.01
+},
+"BTCUSD": {
+"im": 0.5,
+"mm": 0.25,
+"ims": 2.5e-06,
+"mms": 1.25e-06,
+"max_lev_notional": 100000.0,
+"limit": 125000.0,
+"cv": 0.001
+}
+}
