@@ -1,0 +1,73 @@
+Owner 2026-11-17: "run same test on paper trades" -- QUICK at 10% margin x 5x (position 0.5x the balance: $1,448 at
+$2,895.60), both picks, extra margin after the fill (liquidation ~27% above), today's SL / target / 23:59 exit, on the
+paper bot's own QUICK ledger (out/fade_quick_full/quick_paper.json, 2026-10-29..11-12) and its saved 1m candles
+(traded and MARK; Delta liquidates on the mark price).
+
+1  PAPER AS RECORDED: 23 closed trades, 20 wins avg $+73, 3 losses avg $-283; per trade $+26.7 before fees, $+25.5 after; total $+586 after fees
+
+2  RE-SIMULATED, LENIENT: exits match the paper ledger on 23 of 23 closed trades
+   2026-10-29 EVAAUSD      paper             TARGET      +3.81%  $  +55  (after fees $  +54)  stop 19.1% above; mark high before exit  +0.4%
+   2026-10-29 INITUSD      paper             TARGET      +4.62%  $  +67  (after fees $  +66)  stop 23.1% above; mark high before exit  +1.2%
+   2026-10-30 BEATUSD      paper             TARGET      +4.38%  $  +63  (after fees $  +62)  stop 21.9% above; mark high before exit  +2.3%
+   2026-10-30 PARTIUSD     paper             TARGET      +3.93%  $  +57  (after fees $  +56)  stop 19.6% above; mark high before exit  +1.8%
+   2026-10-31 AINUSD       paper             STOP       -24.59%  $ -356  (after fees $ -357)  stop 24.6% above; mark high before exit +25.2%
+   2026-10-31 SOPHUSD      paper             TARGET      +5.67%  $  +82  (after fees $  +81)  stop 28.3% above; mark high before exit  +2.9%
+   2026-11-01 AINUSD       SKIPPED by paper  LIQUIDATED -29.50%  $ -427  (after fees $ -429)  stop 25.3% above; mark high before exit +27.7%
+   2026-11-01 EVAAUSD      paper             TARGET      +6.22%  $  +90  (after fees $  +89)  stop 31.1% above; mark high before exit  +1.8%
+   2026-11-02 AINUSD       SKIPPED by paper  TARGET      +5.14%  $  +74  (after fees $  +73)  stop 25.7% above; mark high before exit  +1.3%
+   2026-11-02 ESPORTSUSD   paper             TARGET      +3.61%  $  +52  (after fees $  +51)  stop 18.0% above; mark high before exit +14.4%
+   2026-11-03 ARIAUSD      paper             TARGET      +6.30%  $  +91  (after fees $  +90)  stop 31.5% above; mark high before exit  +4.7%
+   2026-11-03 EVAAUSD      paper             CLOCK       +0.72%  $  +10  (after fees $   +9)  stop 39.0% above; mark high before exit  +8.5%
+   2026-11-04 AIOUSD       paper             TARGET      +3.29%  $  +48  (after fees $  +47)  stop 16.4% above; mark high before exit  +1.2%
+   2026-11-04 BMTUSD       paper             CLOCK       -9.41%  $ -136  (after fees $ -138)  stop 55.2% above; mark high before exit +24.9%
+   2026-11-05 CAPUSD       paper             TARGET      +7.06%  $ +102  (after fees $ +101)  stop 35.3% above; mark high before exit  +3.8%
+   2026-11-05 INITUSD      paper             CLOCK       +5.12%  $  +74  (after fees $  +73)  stop 53.8% above; mark high before exit  +8.5%
+   2026-11-06 ARIAUSD      paper             TARGET      +5.34%  $  +77  (after fees $  +76)  stop 26.7% above; mark high before exit  +1.8%
+   2026-11-06 CAPUSD       paper             TARGET      +7.10%  $ +103  (after fees $ +102)  stop 35.5% above; mark high before exit  +2.3%
+   2026-11-07 AIOUSD       paper             TARGET      +4.64%  $  +67  (after fees $  +66)  stop 23.2% above; mark high before exit  +2.5%
+   2026-11-07 AKEUSD       SKIPPED by paper  LIQUIDATED -29.50%  $ -427  (after fees $ -429)  stop 247.5% above; mark high before exit +63.7%
+   2026-11-08 AINUSD       SKIPPED by paper  CLOCK       -7.16%  $ -104  (after fees $ -105)  stop 98.1% above; mark high before exit  +8.9%
+   2026-11-08 AKEUSD       SKIPPED by paper  CLOCK       +8.32%  $ +120  (after fees $ +119)  stop 148.2% above; mark high before exit  +5.1%
+   2026-11-09 AIOTUSD      paper             TARGET      +3.38%  $  +49  (after fees $  +48)  stop 16.9% above; mark high before exit  +3.2%
+   2026-11-09 JCTUSD       SKIPPED by paper  TARGET     +11.63%  $ +168  (after fees $ +167)  stop 58.2% above; mark high before exit  +6.1%
+   2026-11-10 INITUSD      paper             TARGET      +8.34%  $ +121  (after fees $ +120)  stop 41.7% above; mark high before exit +12.5%
+   2026-11-10 PIEVERSEUSD  paper             TARGET      +3.13%  $  +45  (after fees $  +44)  stop 15.6% above; mark high before exit  +4.9%
+   2026-11-11 ARIAUSD      paper             STOP       -24.56%  $ -356  (after fees $ -357)  stop 24.6% above; mark high before exit +26.2%
+   2026-11-11 INITUSD      paper             TARGET      +8.42%  $ +122  (after fees $ +121)  stop 42.1% above; mark high before exit  +5.4%
+   2026-11-12 AINUSD       SKIPPED by paper  CLOCK      +15.29%  $ +221  (after fees $ +220)  stop 112.6% above; mark high before exit  +0.8%
+   2026-11-12 ARIAUSD      paper             TARGET      +5.95%  $  +86  (after fees $  +85)  stop 29.8% above; mark high before exit  +4.5%
+   -> 30 trades (7 the paper bot skipped): win 80%, avg win $+85, avg loss $-301; per trade $+8.0 before fees, $+6.8 after; total after fees $+205; liquidated 2; worst day $-363, best day $+305
+
+2  RE-SIMULATED, STRICT: exits match the paper ledger on 23 of 23 closed trades
+   2026-10-29 EVAAUSD      paper             TARGET      +3.81%  $  +55  (after fees $  +54)  stop 19.1% above; mark high before exit  +0.4%
+   2026-10-29 INITUSD      paper             TARGET      +4.62%  $  +67  (after fees $  +66)  stop 23.1% above; mark high before exit  +1.2%
+   2026-10-30 BEATUSD      paper             TARGET      +4.38%  $  +63  (after fees $  +62)  stop 21.9% above; mark high before exit  +2.3%
+   2026-10-30 PARTIUSD     paper             TARGET      +3.93%  $  +57  (after fees $  +56)  stop 19.6% above; mark high before exit  +1.9%
+   2026-10-31 AINUSD       paper             STOP       -24.86%  $ -360  (after fees $ -361)  stop 24.6% above; mark high before exit +25.3%
+   2026-10-31 SOPHUSD      paper             TARGET      +5.67%  $  +82  (after fees $  +81)  stop 28.3% above; mark high before exit  +3.0%
+   2026-11-01 AINUSD       SKIPPED by paper  LIQUIDATED -29.50%  $ -427  (after fees $ -429)  stop 25.3% above; mark high before exit +27.8%
+   2026-11-01 EVAAUSD      paper             TARGET      +6.22%  $  +90  (after fees $  +89)  stop 31.1% above; mark high before exit  +1.8%
+   2026-11-02 AINUSD       SKIPPED by paper  TARGET      +5.14%  $  +74  (after fees $  +73)  stop 25.7% above; mark high before exit  +1.4%
+   2026-11-02 ESPORTSUSD   paper             TARGET      +3.61%  $  +52  (after fees $  +51)  stop 18.0% above; mark high before exit +14.5%
+   2026-11-03 ARIAUSD      paper             TARGET      +6.30%  $  +91  (after fees $  +90)  stop 31.5% above; mark high before exit  +4.7%
+   2026-11-03 EVAAUSD      paper             CLOCK       +0.62%  $   +9  (after fees $   +7)  stop 39.0% above; mark high before exit  +8.5%
+   2026-11-04 AIOUSD       paper             TARGET      +3.29%  $  +48  (after fees $  +47)  stop 16.4% above; mark high before exit  +1.2%
+   2026-11-04 BMTUSD       paper             CLOCK       -9.52%  $ -138  (after fees $ -139)  stop 55.2% above; mark high before exit +24.9%
+   2026-11-05 CAPUSD       paper             TARGET      +7.06%  $ +102  (after fees $ +101)  stop 35.3% above; mark high before exit  +3.9%
+   2026-11-05 INITUSD      paper             CLOCK       +5.02%  $  +73  (after fees $  +71)  stop 53.8% above; mark high before exit  +8.5%
+   2026-11-06 ARIAUSD      paper             TARGET      +5.34%  $  +77  (after fees $  +76)  stop 26.7% above; mark high before exit  +1.9%
+   2026-11-06 CAPUSD       paper             TARGET      +7.10%  $ +103  (after fees $ +102)  stop 35.5% above; mark high before exit  +2.3%
+   2026-11-07 AIOUSD       paper             TARGET      +4.64%  $  +67  (after fees $  +66)  stop 23.2% above; mark high before exit  +2.5%
+   2026-11-07 AKEUSD       SKIPPED by paper  LIQUIDATED -29.50%  $ -427  (after fees $ -429)  stop 247.5% above; mark high before exit +63.8%
+   2026-11-08 AINUSD       SKIPPED by paper  CLOCK       -7.27%  $ -105  (after fees $ -107)  stop 98.1% above; mark high before exit  +8.9%
+   2026-11-08 AKEUSD       SKIPPED by paper  CLOCK       +8.23%  $ +119  (after fees $ +118)  stop 148.2% above; mark high before exit  +5.2%
+   2026-11-09 AIOTUSD      paper             TARGET      +3.38%  $  +49  (after fees $  +48)  stop 16.9% above; mark high before exit  +3.3%
+   2026-11-09 JCTUSD       SKIPPED by paper  TARGET     +11.63%  $ +168  (after fees $ +167)  stop 58.2% above; mark high before exit  +6.2%
+   2026-11-10 INITUSD      paper             TARGET      +8.34%  $ +121  (after fees $ +120)  stop 41.7% above; mark high before exit +12.6%
+   2026-11-10 PIEVERSEUSD  paper             TARGET      +3.13%  $  +45  (after fees $  +44)  stop 15.6% above; mark high before exit  +5.0%
+   2026-11-11 ARIAUSD      paper             STOP       -24.74%  $ -358  (after fees $ -360)  stop 24.6% above; mark high before exit +26.3%
+   2026-11-11 INITUSD      paper             TARGET      +8.42%  $ +122  (after fees $ +121)  stop 42.1% above; mark high before exit  +5.5%
+   2026-11-12 AINUSD       SKIPPED by paper  CLOCK      +15.21%  $ +220  (after fees $ +219)  stop 112.6% above; mark high before exit  +0.8%
+   2026-11-12 ARIAUSD      paper             TARGET      +5.95%  $  +86  (after fees $  +85)  stop 29.8% above; mark high before exit  +4.6%
+   -> 30 trades (7 the paper bot skipped): win 80%, avg win $+85, avg loss $-303; per trade $+7.5 before fees, $+6.3 after; total after fees $+189; liquidated 2; worst day $-363, best day $+304
+
