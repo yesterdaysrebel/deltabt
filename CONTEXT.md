@@ -536,7 +536,8 @@ careful dataset, every family double-implemented, train 2025 / test 2026+real):*
   the consequence, tests updated (incl. PIEVERSE: the run's $637 is above its $10,000 tier -> under 20x). tests/live +
   tests/live_exec 2,915 passed; replay of the real bot = research rule on every trade at 20%: full history 51 / 60
   trades ($984.63 / $950.63, STOPPED at the floor), from 2026-01 65 / 81 ($961.38 / $987.13, STOPPED).
-  Commit / push / deploy: waiting for the owner ("3 wait").
+  Then "Commit push and merge then deploy all approved": committed (f733116 research, a212f75 live), #168 merged
+  (e393c80), deploy-prod 43935278199 approved and completed 19:30 UTC; probe PASS (see SPIKE SELL -- MERGED below).
 - LOOSENING THE OWNER'S FOUR WISHES (owner 11-16 "try to loosen my criteria"; inline on the spike-fade entry, 120
   combinations of stop 3/5/7.5/10% x target 2..10% or none x clock 1 h..24 h, before fees, STRICT). Wishes scored
   separately: MORE WINNERS (win > 55%), BIGGER WINS (avg win > avg loss), LEVERAGE (stop <= 5%, ~10x), QUICK (out
@@ -797,7 +798,21 @@ now Delta's fill time); `fade-live-capital` built run 3's class (now `fade_live.
 starts flat): run ownership is read from `detail->>'run'` (no run_version column on positions). tests/live +
 live_exec: 2,910 passed.
 
-**SPIKE SELL AS IT WILL RUN (owner 2026-11-15: "I suggest we deploy with 10% margin", exit "C approved") -- BUILT, NOT
+**SPIKE SELL -- MERGED 2026-11-16 (#168, merge e393c80; owner "Commit push and merge then deploy all approved").
+Rules as merged: 20% margin (+ 25/49 of it as extra margin), +2.25% stop, plain 5% trail from the fill (no
+break-even step), no take-profit, 24 h exit, NO month-off rule, $1,000 floor. deploy-prod run 43935278199 dispatched
+19:03 UTC, approved by the owner, COMPLETED 19:30 UTC: the bot host runs image e393c80 (healthy); run 4 NEW_RUN
+19:29:49 UTC, RUNNING, wallet $3,195.85, no open positions. **LIVE ON REAL MONEY from the next 00:00 UTC entry.**
+PROBE PASS 2026-11-16 ~19:45 UTC (owner "Yes"; run as `docker exec -e DELTABOT_EQUITY=3184 deltabot python -m live
+fade-live-probe XRPUSD` because the probe's wallet check reads the host's DELTABOT_EQUITY=1500 and would refuse
+$3,196 -- the bot's own run-start check uses RUN_START_USD=3184): resting post-only sell accepted and cancelled;
+1 XRPUSD sold at 0.9566 with a LAST-TRADED stop leg; stop moved 1.148 -> 1.1958 and read back; $1 isolated margin
+added (liquidation 1.43 -> 2.43; isolated: YES); bought back at 0.9567, nothing left open; wallet $3,195.85; state
+still RUNNING afterwards. Open item: the probe should take max(DELTABOT_EQUITY, RUN_START_USD) like the bot. Backtest of these exact rules: the $1,000 floor
+in April 2025 (see the bullets above and the prereg).** The paragraph below is the 2026-11-15 version (10%, exit C,
+month-off 2), kept for the record.
+
+**(SUPERSEDED 2026-11-16) SPIKE SELL AS IT WILL RUN (owner 2026-11-15: "I suggest we deploy with 10% margin", exit "C approved") -- BUILT, NOT
 DEPLOYED:** `live/spike_live.py`: TRADE_MARGIN 0.10, EXTRA_MARGIN 0.051, NO take-profit order (target_price NULL),
 stop +2.25% LTP; once a 1m low nets +$30.61 x balance/$3,184 (`BREAKEVEN_AFTER_USD` = 150 x 10/49, ~0.6% fall) the
 stop moves to break-even (`LOCK_USD` 0; lock_price column / LOCK_* events keep their names), then `TRAIL` 5% above the
