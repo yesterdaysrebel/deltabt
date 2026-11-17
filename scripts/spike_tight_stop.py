@@ -5,10 +5,11 @@ Grid written before the run. The live entry (resting sell 5% above the 00:02 clo
 position at today's $2,895.60 (2.5x the balance); take-profit $40 (0.56% below the entry) or $45 (0.63%); stop S above
 the entry, S = 0.25, 0.5, 0.75, 1, 1.5, 2, 3%; no trail; out after 24 h. Liquidation (~27% above) is past every stop.
   * every fill: STRICT and LENIENT (scripts/spike_verify.py fills; trade1 and trade2 must agree on every trade);
-    "needed" = the win rate at which wins pay for losses at that stop (before fees)
+    "needed" = the win rate at which wins pay for losses: at the nominal stop, and at the ACTUAL average loss
+    (external review 2026-11-17: the nominal one understates it, losses fill well past a tight stop)
   * CONTROL: the same exit after a short at a random minute of the same days (does selling the spike help at all?)
   * the account: the bot's day rules (scripts/spike_high_margin_check.py), $2,895.60 compounding at 50% margin,
-    5,000 random orders -> chance of going under the bot's $1,000 floor.
+    2,000 random orders -> chance of going under the bot's $1,000 floor.
 Before fees, with one line for fees.
 
     PYTHONPATH=. python scripts/spike_tight_stop.py      # -> out/careful/spike_tight_stop.txt
@@ -66,6 +67,7 @@ def main():
             u = S.ret * N
             win = u > 0
             need = s / (s + tp)
+            need_real = -u[~win].mean() / (-u[~win].mean() + u[win].mean())
             same_min = 100 * ((S.how == "STOP") & (S.j == S.k)).mean()
             first5 = 100 * ((S.how == "STOP") & (S.j - S.k <= 5)).mean()
             fee = N * np.where(S.how == "TARGET", MAKER + MAKER, MAKER + TAKER)
@@ -73,7 +75,7 @@ def main():
             tk = live_select(S).ret.to_numpy()
             under = np.mean([path(rng.permutation(tk), M)[3] is not None for _ in range(2000)])
             ctrl = control(days, c, rng)
-            w(f"  stop {100 * s:4.2f}% (${N * s:4.0f}):  STRICT win {100 * win.mean():3.0f}% (needed ~{100 * need:.0f}%)  avg win ${u[win].mean():+4.0f}  "
+            w(f"  stop {100 * s:4.2f}% (${N * s:4.0f}):  STRICT win {100 * win.mean():3.0f}% (needed {100 * need:.0f}% at the stop, {100 * need_real:.0f}% at the actual loss)  avg win ${u[win].mean():+4.0f}  "
               f"avg loss ${u[~win].mean():+5.0f}  per trade ${u.mean():+6.1f} | LENIENT win {100 * (Ln.ret > 0).mean():3.0f}% per trade ${N * Ln.ret.mean():+6.1f} "
               f"| stopped in the fill minute {same_min:.0f}%, within 5 min {first5:.0f}% | CONTROL ${N * ctrl.mean():+6.1f} "
               f"| bot rules: under $1,000 in {100 * under:.0f}% of orders | fees ${fee.mean():.1f}/trade")
