@@ -36,6 +36,27 @@ are very uneven. No margin from 5% to 49% makes any tested exit profitable on st
 drops; the three recent weeks were a good stretch. The owner chose to run it knowing this.**
 
 ## The rules
+**Owner change, 2026-11-17 ("approved on C") -- RULE C, in force from this date; it overrides rules 2, 3 and 7 below
+where they differ.** The first live trade (CROSS, 2026-11-17) filled at 0.154 at 05:02:51 and was stopped at the 2.25%
+stop 27 s later, during the same spike; CROSS then fell below the entry. In the history 405 of run 4's 447 losers did
+the same. Rule C, chosen from `scripts/spike_fewer_losers.py` and checked in `scripts/spike_verify.py`
+(`out/careful/spike_verify.txt`):
+- **Stop +10%** from the limit (was +2.25%).
+- **Leverage at most 5x** (was 20x): 20% margin is a position of ~1x the balance; a full stop costs ~10% of it;
+  liquidation ~+17.5% before and ~+27% after the unchanged extra margin (25/49 of the trade margin).
+- **Trail 10% above the lowest 1m low since the fill, only once that level is at or below the entry** (first after a
+  ~9.1% fall), never up; bought back at market if the price is already above the new level (was: 5% from the fill).
+- Everything else unchanged: picks, the 5% spike entry, one position at a time, 24 h after the fill, no month-off rule,
+  the $1,000 floor.
+Evidence, 617 trades 2025-01..2026-11, two implementations agreeing on every trade, before fees: **win 59%, average
+win +8.1%, average loss -9.2% of the position, +1.07% per trade STRICT (+1.50% LENIENT)**; positive in all four
+half-years (+0.75 / +0.65 / +1.81 / +1.08%), 15 of 23 months up, +0.77% without the 5 best days; a random-minute short
+with the same exit -0.09%. At a fixed $3,184 with a stop costing 9%: win +$247, loss -$270, **+$43 a trade** (+$41 with
+real fees). Compounding from $3,184 the STRICT account's lowest point was **$897 (worst fall 89%)** before it ended far
+higher. Known limits, accepted by the owner: average loss larger than average win; ~1x position, not high leverage;
+chosen from ~70 variants, so expect less. The real bot code replayed minute by minute (`scripts/replay_bot.py`,
+2026-08..11) made the same 68 trades as the reference, to the cent.
+
 1. **Picks:** the paper runner's rule A picks (top 2 previous-UTC-day gainers), within 30 minutes of 00:00 UTC; a pick
    whose 2 × ATR14% stop would be more than 32.5% away is skipped (the universe every test used).
 2. **Entry:** a resting **post-only GTC limit sell 5% above the last traded price** at entry time, with an

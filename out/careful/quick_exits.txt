@@ -1,0 +1,77 @@
+QUICK WITH OTHER EXITS, margin topped up after the fill so the stop (not liquidation) closes a loser. 1049 picks 2025-01-15..2026-11-14, entry at the 00:00 close, before fees. $ = each pick risking 4.5% of $3,184 ($143) at the stop (2 picks a day = 9% a day, the live bot's risk). R = the result in stop-distances. Half-years: mean R in 2025 H1, H2, 2026 H1, H2.
+
+CHECK vs the paper bot's own QUICK ledger: 16 of 16 shared trades end the same way (paper: {'TARGET': 14, 'STOP': 2}; this sim: {'TARGET': 14, 'STOP': 2})
+   the paper-period picks in this sim:   20  win  85%  avg win $  +29  avg loss $ -144  per trade $ +2.7  (+0.019R, t +0.21)
+
+    stop    target  clock | STRICT                                                                      | LENIENT per trade | half-years (STRICT R)
+ 2.0xATR   0.1xstop    60m |  971  win  64%  avg win $  +12  avg loss $  -21  per trade $ +0.3  (+0.002R, t +0.43) | $ +1.6 | -0.003 +0.011 -0.013 +0.015
+ 2.0xATR   0.1xstop   240m |  971  win  74%  avg win $  +14  avg loss $  -38  per trade $ +0.5  (+0.004R, t +0.49) | $ +2.0 | -0.013 +0.017 -0.013 +0.023
+ 2.0xATR   0.1xstop    day |  971  win  88%  avg win $  +14  avg loss $  -94  per trade $ +1.3  (+0.009R, t +1.05) | $ +2.8 | -0.015 +0.021 +0.000 +0.029
+ 2.0xATR   0.2xstop    60m |  971  win  57%  avg win $  +16  avg loss $  -21  per trade $ +0.5  (+0.003R, t +0.56) | $ +1.6 | -0.001 +0.016 -0.020 +0.021
+ 2.0xATR   0.2xstop   240m |  971  win  65%  avg win $  +24  avg loss $  -40  per trade $ +1.6  (+0.011R, t +1.18) | $ +3.0 | -0.005 +0.028 -0.017 +0.040
+ 2.0xATR   0.2xstop    day |  971  win  77%  avg win $  +28  avg loss $  -80  per trade $ +3.4  (+0.024R, t +1.95) | $ +4.9 | -0.001 +0.029 +0.008 +0.063  <- QUICK as it runs
+ 2.0xATR   0.3xstop    60m |  971  win  56%  avg win $  +19  avg loss $  -21  per trade $ +1.2  (+0.009R, t +1.28) | $ +2.2 | +0.001 +0.019 -0.013 +0.031
+ 2.0xATR   0.3xstop   240m |  971  win  62%  avg win $  +29  avg loss $  -40  per trade $ +2.3  (+0.016R, t +1.50) | $ +3.7 | -0.007 +0.017 -0.008 +0.069
+ 2.0xATR   0.3xstop    day |  971  win  70%  avg win $  +39  avg loss $  -81  per trade $ +3.5  (+0.025R, t +1.52) | $ +5.9 | -0.003 -0.007 +0.027 +0.095
+ 2.0xATR   0.5xstop    60m |  971  win  55%  avg win $  +19  avg loss $  -21  per trade $ +1.1  (+0.008R, t +1.04) | $ +1.9 | +0.004 +0.021 -0.015 +0.022
+ 2.0xATR   0.5xstop   240m |  971  win  59%  avg win $  +33  avg loss $  -41  per trade $ +2.5  (+0.018R, t +1.45) | $ +3.5 | -0.001 +0.023 -0.003 +0.057
+ 2.0xATR   0.5xstop    day |  971  win  63%  avg win $  +53  avg loss $  -77  per trade $ +4.0  (+0.028R, t +1.51) | $ +6.4 | +0.002 -0.002 +0.053 +0.068
+ 2.0xATR   1.0xstop    60m |  971  win  55%  avg win $  +20  avg loss $  -21  per trade $ +1.4  (+0.009R, t +1.24) | $ +2.2 | +0.003 +0.024 -0.014 +0.025
+ 2.0xATR   1.0xstop   240m |  971  win  58%  avg win $  +36  avg loss $  -42  per trade $ +3.0  (+0.021R, t +1.59) | $ +4.1 | -0.001 +0.032 +0.003 +0.051
+ 2.0xATR   1.0xstop    day |  971  win  58%  avg win $  +66  avg loss $  -78  per trade $ +4.9  (+0.034R, t +1.56) | $ +7.3 | -0.006 +0.007 +0.087 +0.048
+ 1.0xATR   0.1xstop    60m |  971  win  73%  avg win $  +14  avg loss $  -41  per trade $ -0.9  (-0.006R, t -0.82) | $ +1.4 | -0.019 +0.011 -0.023 +0.002
+ 1.0xATR   0.1xstop   240m |  971  win  83%  avg win $  +14  avg loss $  -78  per trade $ -1.1  (-0.007R, t -0.76) | $ +1.0 | -0.039 +0.020 -0.017 -0.002
+ 1.0xATR   0.1xstop    day |  971  win  90%  avg win $  +14  avg loss $ -134  per trade $ -0.7  (-0.005R, t -0.44) | $ +1.7 | -0.044 +0.030 -0.007 -0.010
+ 1.0xATR   0.2xstop    60m |  971  win  64%  avg win $  +24  avg loss $  -42  per trade $ +0.0  (+0.000R, t +0.02) | $ +2.5 | -0.013 +0.019 -0.023 +0.016
+ 1.0xATR   0.2xstop   240m |  971  win  72%  avg win $  +28  avg loss $  -73  per trade $ -0.1  (-0.001R, t -0.04) | $ +3.0 | -0.024 +0.019 -0.033 +0.037
+ 1.0xATR   0.2xstop    day |  971  win  83%  avg win $  +29  avg loss $ -134  per trade $ +0.9  (+0.006R, t +0.43) | $ +4.0 | -0.017 +0.042 -0.027 +0.022
+ 1.0xATR   0.3xstop    60m |  971  win  58%  avg win $  +29  avg loss $  -42  per trade $ -0.5  (-0.003R, t -0.28) | $ +2.2 | -0.027 +0.021 -0.025 +0.016
+ 1.0xATR   0.3xstop   240m |  971  win  65%  avg win $  +39  avg loss $  -73  per trade $ +0.4  (+0.002R, t +0.17) | $ +4.2 | -0.029 +0.022 -0.025 +0.043
+ 1.0xATR   0.3xstop    day |  971  win  75%  avg win $  +42  avg loss $ -124  per trade $ +1.6  (+0.011R, t +0.64) | $ +5.5 | -0.015 +0.038 -0.017 +0.036
+ 1.0xATR   0.5xstop    60m |  971  win  56%  avg win $  +35  avg loss $  -43  per trade $ +0.5  (+0.004R, t +0.28) | $ +2.7 | -0.019 +0.033 -0.031 +0.029
+ 1.0xATR   0.5xstop   240m |  971  win  60%  avg win $  +53  avg loss $  -75  per trade $ +2.1  (+0.015R, t +0.84) | $ +5.2 | -0.014 +0.031 -0.033 +0.082
+ 1.0xATR   0.5xstop    day |  971  win  66%  avg win $  +67  avg loss $ -123  per trade $ +2.6  (+0.018R, t +0.82) | $ +6.5 | -0.013 +0.045 -0.028 +0.069
+ 1.0xATR   1.0xstop    60m |  971  win  55%  avg win $  +38  avg loss $  -43  per trade $ +0.7  (+0.005R, t +0.36) | $ +2.8 | -0.012 +0.040 -0.033 +0.022
+ 1.0xATR   1.0xstop   240m |  971  win  56%  avg win $  +65  avg loss $  -77  per trade $ +2.4  (+0.017R, t +0.78) | $ +5.1 | -0.004 +0.028 -0.042 +0.097
+ 1.0xATR   1.0xstop    day |  971  win  54%  avg win $ +104  avg loss $ -123  per trade $ -0.6  (-0.004R, t -0.12) | $ +5.5 | -0.034 -0.020 -0.010 +0.058
+ 0.5xATR   0.1xstop    60m |  971  win  81%  avg win $  +14  avg loss $  -87  per trade $ -5.1  (-0.036R, t -3.27) | $ -0.5 | -0.025 -0.009 -0.071 -0.040
+ 0.5xATR   0.1xstop   240m |  971  win  87%  avg win $  +14  avg loss $ -137  per trade $ -5.8  (-0.040R, t -3.27) | $ -0.9 | -0.037 -0.019 -0.065 -0.042
+ 0.5xATR   0.1xstop    day |  971  win  88%  avg win $  +14  avg loss $ -158  per trade $ -5.5  (-0.038R, t -3.10) | $ -0.8 | -0.027 -0.027 -0.062 -0.036
+ 0.5xATR   0.2xstop    60m |  971  win  71%  avg win $  +27  avg loss $  -79  per trade $ -3.3  (-0.023R, t -1.71) | $ +2.2 | -0.035 +0.004 -0.049 -0.019
+ 0.5xATR   0.2xstop   240m |  971  win  79%  avg win $  +29  avg loss $ -123  per trade $ -3.7  (-0.026R, t -1.63) | $ +1.9 | -0.050 +0.000 -0.039 -0.022
+ 0.5xATR   0.2xstop    day |  971  win  82%  avg win $  +29  avg loss $ -155  per trade $ -3.8  (-0.027R, t -1.63) | $ +2.4 | -0.056 +0.003 -0.038 -0.025
+ 0.5xATR   0.3xstop    60m |  971  win  66%  avg win $  +39  avg loss $  -80  per trade $ -1.9  (-0.014R, t -0.87) | $ +2.5 | -0.040 +0.009 -0.023 -0.007
+ 0.5xATR   0.3xstop   240m |  971  win  72%  avg win $  +42  avg loss $ -120  per trade $ -3.0  (-0.021R, t -1.15) | $ +2.7 | -0.057 +0.001 -0.027 -0.008
+ 0.5xATR   0.3xstop    day |  971  win  77%  avg win $  +43  avg loss $ -152  per trade $ -2.3  (-0.016R, t -0.86) | $ +3.0 | -0.043 +0.003 -0.023 -0.007
+ 0.5xATR   0.5xstop    60m |  971  win  58%  avg win $  +53  avg loss $  -78  per trade $ -2.4  (-0.017R, t -0.93) | $ +3.1 | -0.018 -0.003 -0.040 -0.005
+ 0.5xATR   0.5xstop   240m |  971  win  62%  avg win $  +67  avg loss $ -117  per trade $ -2.8  (-0.020R, t -0.88) | $ +3.8 | -0.043 -0.010 -0.052 +0.032
+ 0.5xATR   0.5xstop    day |  971  win  66%  avg win $  +71  avg loss $ -151  per trade $ -4.2  (-0.029R, t -1.21) | $ +3.7 | -0.044 -0.036 -0.049 +0.021
+ 0.5xATR   1.0xstop    60m |  971  win  53%  avg win $  +67  avg loss $  -78  per trade $ -0.5  (-0.003R, t -0.15) | $ +4.9 | -0.036 +0.035 -0.042 +0.026
+ 0.5xATR   1.0xstop   240m |  971  win  53%  avg win $ +103  avg loss $ -118  per trade $ -1.3  (-0.009R, t -0.33) | $ +6.4 | -0.042 -0.002 -0.063 +0.084
+ 0.5xATR   1.0xstop    day |  971  win  50%  avg win $ +136  avg loss $ -149  per trade $ -7.0  (-0.049R, t -1.45) | $ +1.9 | -0.088 -0.073 -0.096 +0.085
+
+QUICK AS-IS and the 3 best STRICT cells (best of 45, so expect shrinkage):
+  2.0xATR stop, target 0.2x, day
+     STRICT  971  win  77%  avg win $  +28  avg loss $  -80  per trade $ +3.4  (+0.024R, t +1.95);  months up 17 of 23;  median stop 19.3% away -> notional 0.23x the balance per pick
+     without the 5 best days  961  win  77%  avg win $  +28  avg loss $  -80  per trade $ +3.1  (+0.022R, t +1.79)
+     CONTROL same exit after a short at a random minute: 1049  win  63%  avg win $  +25  avg loss $  -49  per trade $ -2.1  (-0.014R, t -1.40)
+     account, 2.0% of the balance at risk per pick: STRICT $    4,911 at the end, lowest $3,040, worst fall 20% | LENIENT $    6,000 at the end, lowest $3,093, worst fall 15% | STRICT + real fees $    4,505 at the end, lowest $2,992, worst fall 21%
+     account, 4.5% of the balance at risk per pick: STRICT $    7,779 at the end, lowest $2,824, worst fall 41% | LENIENT $   12,288 at the end, lowest $2,938, worst fall 32% | STRICT + real fees $    6,405 at the end, lowest $2,711, worst fall 42%
+  2.0xATR stop, target 1.0x, day
+     STRICT  971  win  58%  avg win $  +66  avg loss $  -78  per trade $ +4.9  (+0.034R, t +1.56);  months up 14 of 23;  median stop 19.3% away -> notional 0.23x the balance per pick
+     without the 5 best days  961  win  57%  avg win $  +64  avg loss $  -78  per trade $ +3.5  (+0.024R, t +1.12)
+     CONTROL same exit after a short at a random minute: 1049  win  52%  avg win $  +45  avg loss $  -49  per trade $ +0.2  (+0.001R, t +0.09)
+     account, 2.0% of the balance at risk per pick: STRICT $    5,666 at the end, lowest $2,213, worst fall 33% | LENIENT $    7,889 at the end, lowest $2,641, worst fall 22% | STRICT + real fees $    5,082 at the end, lowest $2,126, worst fall 35%
+     account, 4.5% of the balance at risk per pick: STRICT $    8,913 at the end, lowest $1,289, worst fall 62% | LENIENT $   19,415 at the end, lowest $1,981, worst fall 46% | STRICT + real fees $    6,974 at the end, lowest $1,178, worst fall 65%
+  2.0xATR stop, target 0.5x, day
+     STRICT  971  win  63%  avg win $  +53  avg loss $  -77  per trade $ +4.0  (+0.028R, t +1.51);  months up 12 of 23;  median stop 19.3% away -> notional 0.23x the balance per pick
+     without the 5 best days  961  win  62%  avg win $  +52  avg loss $  -77  per trade $ +3.3  (+0.023R, t +1.24)
+     CONTROL same exit after a short at a random minute: 1049  win  55%  avg win $  +39  avg loss $  -46  per trade $ +0.7  (+0.005R, t +0.40)
+     account, 2.0% of the balance at risk per pick: STRICT $    5,134 at the end, lowest $2,368, worst fall 31% | LENIENT $    7,205 at the end, lowest $2,887, worst fall 17% | STRICT + real fees $    4,644 at the end, lowest $2,276, worst fall 33%
+     account, 4.5% of the balance at risk per pick: STRICT $    7,677 at the end, lowest $1,510, worst fall 60% | LENIENT $   17,030 at the end, lowest $2,438, worst fall 36% | STRICT + real fees $    6,122 at the end, lowest $1,381, worst fall 63%
+  2.0xATR stop, target 0.3x, day
+     STRICT  971  win  70%  avg win $  +39  avg loss $  -81  per trade $ +3.5  (+0.025R, t +1.52);  months up 14 of 23;  median stop 19.3% away -> notional 0.23x the balance per pick
+     without the 5 best days  961  win  70%  avg win $  +39  avg loss $  -81  per trade $ +3.1  (+0.022R, t +1.34)
+     CONTROL same exit after a short at a random minute: 1049  win  60%  avg win $  +31  avg loss $  -50  per trade $ -0.8  (-0.006R, t -0.50)
+     account, 2.0% of the balance at risk per pick: STRICT $    4,875 at the end, lowest $2,617, worst fall 21% | LENIENT $    6,802 at the end, lowest $3,039, worst fall 16% | STRICT + real fees $    4,448 at the end, lowest $2,518, worst fall 24%
+     account, 4.5% of the balance at risk per pick: STRICT $    7,159 at the end, lowest $1,903, worst fall 46% | LENIENT $   15,693 at the end, lowest $2,863, worst fall 33% | STRICT + real fees $    5,823 at the end, lowest $1,743, worst fall 50%

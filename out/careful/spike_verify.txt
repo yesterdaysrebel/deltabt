@@ -1,0 +1,158 @@
+VERIFYING THE FEWER-LOSERS CANDIDATES AND THE QUICK HIGH-LEVERAGE EXITS (scripts/spike_verify.py). Before fees unless said; % of the position.
+1049 picks, 2025-01-15 .. 2026-11-14.
+
+===== LIVE   {'entry': 'live', 'stop': 0.0225, 'base': 'entry', 'trail': 0.05, 'be': False, 'mins': 1440, 'tp': None}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  28%  avg win  +5.60%  avg loss  -2.56%  mean  -0.31%  t -1.38   stop 2.2% away (median); exits: STOP 96%, CLOCK 4%
+   LENIENT   617 trades  win  29%  avg win  +5.53%  avg loss  -2.02%  mean  +0.20%  t +1.14
+     2025 H1   138 trades  win  29%  avg win  +4.49%  avg loss  -2.22%  mean  -0.28%  t -0.87
+     2025 H2   183 trades  win  23%  avg win  +5.71%  avg loss  -2.93%  mean  -0.90%  t -1.60
+     2026 H1   160 trades  win  26%  avg win  +5.47%  avg loss  -2.42%  mean  -0.35%  t -1.01
+     2026 H2   136 trades  win  33%  avg win  +6.62%  avg loss  -2.54%  mean  +0.49%  t +1.09
+   months up 9 of 23;  without the 5 best days:  610 trades  win  27%  avg win  +5.19%  avg loss  -2.56%  mean  -0.49%  t -2.29
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  28%  avg win  +4.58%  avg loss  -2.35%  mean  -0.39%  t -4.42
+   ACCOUNT  STRICT   167 taken  $        -262 at the end  lowest $-262  worst fall 108%  |  at a fixed $3,184: avg win $ +637  avg loss $ -370  per trade $  -98
+            LENIENT  555 taken  $         444 at the end  lowest $18  worst fall  99%  |  at a fixed $3,184: avg win $ +711  avg loss $ -256  per trade $  +26
+            STRICT with real fees  167 taken  $        -173 at the end  lowest $-173  worst fall 105%  |  at a fixed $3,184: avg win $ +642  avg loss $ -374  per trade $ -106
+
+===== A   {'entry': 'turn', 'stop': 0.05, 'base': 'high', 'trail': 0.1, 'be': True, 'mins': 1440, 'tp': None}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  54%  avg win  +8.09%  avg loss  -7.42%  mean  +0.94%  t +2.55   stop 7.5% away (median); exits: STOP 63%, CLOCK 37%
+   LENIENT   616 trades  win  55%  avg win  +8.22%  avg loss  -7.12%  mean  +1.30%  t +3.54
+     2025 H1   137 trades  win  53%  avg win  +7.13%  avg loss  -6.89%  mean  +0.48%  t +0.71
+     2025 H2   181 trades  win  52%  avg win  +7.88%  avg loss  -7.46%  mean  +0.59%  t +0.83
+     2026 H1   162 trades  win  53%  avg win  +9.68%  avg loss  -7.46%  mean  +1.64%  t +2.15
+     2026 H2   136 trades  win  58%  avg win  +7.48%  avg loss  -7.92%  mean  +1.02%  t +1.34
+   months up 16 of 23;  without the 5 best days:  606 trades  win  53%  avg win  +7.74%  avg loss  -7.42%  mean  +0.66%  t +1.89
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  50%  avg win  +6.32%  avg loss  -6.51%  mean  -0.14%  t -0.75
+   ACCOUNT  STRICT   454 taken  $     164,907 at the end  lowest $1,528  worst fall  79%  |  at a fixed $3,184: avg win $ +323  avg loss $ -272  per trade $  +48
+            LENIENT  454 taken  $     805,381 at the end  lowest $2,365  worst fall  72%  |  at a fixed $3,184: avg win $ +331  avg loss $ -263  per trade $  +61
+            STRICT with real fees  454 taken  $     112,329 at the end  lowest $1,254  worst fall  82%  |  at a fixed $3,184: avg win $ +323  avg loss $ -272  per trade $  +44
+
+===== B   {'entry': 'turn', 'stop': 0.05, 'base': 'high', 'trail': 0.05, 'be': True, 'mins': 480, 'tp': None}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  62%  avg win  +4.84%  avg loss  -6.02%  mean  +0.71%  t +2.61   stop 7.5% away (median); exits: STOP 64%, CLOCK 36%
+   LENIENT   616 trades  win  64%  avg win  +4.98%  avg loss  -5.96%  mean  +1.08%  t +3.90
+     2025 H1   137 trades  win  60%  avg win  +4.15%  avg loss  -4.84%  mean  +0.54%  t +1.17
+     2025 H2   181 trades  win  58%  avg win  +5.10%  avg loss  -5.84%  mean  +0.50%  t +0.90
+     2026 H1   162 trades  win  65%  avg win  +4.86%  avg loss  -6.68%  mean  +0.80%  t +1.46
+     2026 H2   136 trades  win  66%  avg win  +5.12%  avg loss  -6.90%  mean  +1.06%  t +1.82
+   months up 17 of 23;  without the 5 best days:  606 trades  win  62%  avg win  +4.56%  avg loss  -6.04%  mean  +0.48%  t +1.92
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  55%  avg win  +3.57%  avg loss  -4.74%  mean  -0.18%  t -1.69
+   ACCOUNT  STRICT   543 taken  $      43,666 at the end  lowest $2,494  worst fall  64%  |  at a fixed $3,184: avg win $ +178  avg loss $ -226  per trade $  +24
+            LENIENT  543 taken  $     329,808 at the end  lowest $2,526  worst fall  56%  |  at a fixed $3,184: avg win $ +186  avg loss $ -224  per trade $  +38
+            STRICT with real fees  543 taken  $      21,302 at the end  lowest $2,465  worst fall  67%  |  at a fixed $3,184: avg win $ +177  avg loss $ -225  per trade $  +20
+
+===== C   {'entry': 'live', 'stop': 0.1, 'base': 'entry', 'trail': 0.1, 'be': True, 'mins': 1440, 'tp': None}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  59%  avg win  +8.05%  avg loss  -9.18%  mean  +1.07%  t +2.50   stop 10.0% away (median); exits: STOP 57%, CLOCK 43%
+   LENIENT   617 trades  win  60%  avg win  +8.21%  avg loss  -8.55%  mean  +1.50%  t +3.73
+     2025 H1   138 trades  win  61%  avg win  +6.33%  avg loss  -7.92%  mean  +0.75%  t +1.04
+     2025 H2   183 trades  win  58%  avg win  +8.11%  avg loss  -9.62%  mean  +0.65%  t +0.72
+     2026 H1   160 trades  win  59%  avg win  +9.40%  avg loss  -9.28%  mean  +1.81%  t +2.18
+     2026 H2   136 trades  win  60%  avg win  +8.18%  avg loss  -9.70%  mean  +1.08%  t +1.21
+   months up 15 of 23;  without the 5 best days:  608 trades  win  59%  avg win  +7.68%  avg loss  -9.18%  mean  +0.77%  t +1.88
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  54%  avg win  +6.28%  avg loss  -7.44%  mean  -0.09%  t -0.42
+   ACCOUNT  STRICT   431 taken  $      79,866 at the end  lowest $897  worst fall  89%  |  at a fixed $3,184: avg win $ +247  avg loss $ -270  per trade $  +43
+            LENIENT  431 taken  $     873,951 at the end  lowest $2,890  worst fall  65%  |  at a fixed $3,184: avg win $ +252  avg loss $ -248  per trade $  +58
+            STRICT with real fees  431 taken  $      61,281 at the end  lowest $815  worst fall  90%  |  at a fixed $3,184: avg win $ +250  avg loss $ -264  per trade $  +41
+
+===== Q live tp1% 15m   {'entry': 'live', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 15, 'tp': 0.01}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  58%  avg win  +0.92%  avg loss  -2.29%  mean  -0.42%  t -2.67   stop 2.2% away (median); exits: TARGET 51%, CLOCK 25%, STOP 25%
+   LENIENT   617 trades  win  61%  avg win  +0.93%  avg loss  -1.66%  mean  -0.08%  t -1.40
+     2025 H1   138 trades  win  62%  avg win  +0.82%  avg loss  -1.58%  mean  -0.10%  t -0.85
+     2025 H2   183 trades  win  54%  avg win  +0.94%  avg loss  -2.74%  mean  -0.77%  t -1.57
+     2026 H1   160 trades  win  58%  avg win  +0.98%  avg loss  -2.28%  mean  -0.39%  t -2.58
+     2026 H2   136 trades  win  61%  avg win  +0.96%  avg loss  -2.27%  mean  -0.30%  t -2.07
+   months up 4 of 23;  without the 5 best days:  607 trades  win  57%  avg win  +0.92%  avg loss  -2.29%  mean  -0.44%  t -2.78
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  50%  avg win  +0.69%  avg loss  -0.91%  mean  -0.11%  t -7.81
+   ACCOUNT  STRICT   191 taken  $        -783 at the end  lowest $-783  worst fall 121%  |  at a fixed $3,184: avg win $ +105  avg loss $ -337  per trade $  -92
+            LENIENT  610 taken  $         178 at the end  lowest $137  worst fall  96%  |  at a fixed $3,184: avg win $ +118  avg loss $ -210  per trade $  -10
+            STRICT with real fees  191 taken  $        -665 at the end  lowest $-665  worst fall 118%  |  at a fixed $3,184: avg win $ +105  avg loss $ -332  per trade $  -94
+
+===== Q live tp1% 60m   {'entry': 'live', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 60, 'tp': 0.01}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  63%  avg win  +0.98%  avg loss  -2.92%  mean  -0.48%  t -3.01   stop 2.2% away (median); exits: TARGET 61%, STOP 34%, CLOCK 6%
+   LENIENT   617 trades  win  65%  avg win  +0.99%  avg loss  -2.14%  mean  -0.09%  t -1.55
+     2025 H1   138 trades  win  67%  avg win  +0.96%  avg loss  -2.36%  mean  -0.12%  t -0.84
+     2025 H2   183 trades  win  60%  avg win  +0.97%  avg loss  -3.63%  mean  -0.86%  t -1.75
+     2026 H1   160 trades  win  62%  avg win  +1.00%  avg loss  -2.76%  mean  -0.44%  t -2.73
+     2026 H2   136 trades  win  62%  avg win  +1.00%  avg loss  -2.61%  mean  -0.38%  t -2.43
+   months up 4 of 23;  without the 5 best days:  607 trades  win  62%  avg win  +0.98%  avg loss  -2.92%  mean  -0.50%  t -3.12
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  57%  avg win  +0.89%  avg loss  -1.64%  mean  -0.21%  t -9.75
+   ACCOUNT  STRICT   191 taken  $        -755 at the end  lowest $-755  worst fall 124%  |  at a fixed $3,184: avg win $ +122  avg loss $ -465  per trade $  -90
+            LENIENT  610 taken  $          98 at the end  lowest $74  worst fall  98%  |  at a fixed $3,184: avg win $ +126  avg loss $ -273  per trade $  -12
+            STRICT with real fees  191 taken  $        -571 at the end  lowest $-571  worst fall 118%  |  at a fixed $3,184: avg win $ +119  avg loss $ -464  per trade $  -95
+
+===== Q live tp2% 15m   {'entry': 'live', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 15, 'tp': 0.02}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  50%  avg win  +1.41%  avg loss  -2.16%  mean  -0.37%  t -2.28   stop 2.2% away (median); exits: CLOCK 44%, STOP 28%, TARGET 27%
+   LENIENT   617 trades  win  52%  avg win  +1.43%  avg loss  -1.60%  mean  -0.02%  t -0.35
+     2025 H1   138 trades  win  54%  avg win  +1.12%  avg loss  -1.47%  mean  -0.08%  t -0.56
+     2025 H2   183 trades  win  45%  avg win  +1.41%  avg loss  -2.54%  mean  -0.75%  t -1.50
+     2026 H1   160 trades  win  50%  avg win  +1.59%  avg loss  -2.27%  mean  -0.34%  t -1.92
+     2026 H2   136 trades  win  53%  avg win  +1.53%  avg loss  -2.14%  mean  -0.20%  t -1.11
+   months up 5 of 23;  without the 5 best days:  607 trades  win  49%  avg win  +1.39%  avg loss  -2.16%  mean  -0.41%  t -2.49
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  45%  avg win  +0.84%  avg loss  -0.94%  mean  -0.14%  t -8.77
+   ACCOUNT  STRICT   191 taken  $      -1,163 at the end  lowest $-1,163  worst fall 136%  |  at a fixed $3,184: avg win $ +147  avg loss $ -312  per trade $  -84
+            LENIENT  609 taken  $         381 at the end  lowest $219  worst fall  95%  |  at a fixed $3,184: avg win $ +182  avg loss $ -204  per trade $   -4
+            STRICT with real fees  191 taken  $        -988 at the end  lowest $-988  worst fall 131%  |  at a fixed $3,184: avg win $ +148  avg loss $ -308  per trade $  -86
+
+===== Q live tp2% 60m   {'entry': 'live', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 60, 'tp': 0.02}   (the two implementations agree on all 1234 trades)
+   STRICT    617 trades  win  51%  avg win  +1.82%  avg loss  -2.76%  mean  -0.42%  t -2.48   stop 2.2% away (median); exits: TARGET 43%, STOP 43%, CLOCK 14%
+   LENIENT   617 trades  win  52%  avg win  +1.84%  avg loss  -2.07%  mean  -0.04%  t -0.43
+     2025 H1   138 trades  win  56%  avg win  +1.71%  avg loss  -2.24%  mean  -0.04%  t -0.19
+     2025 H2   183 trades  win  48%  avg win  +1.75%  avg loss  -3.32%  mean  -0.88%  t -1.75
+     2026 H1   160 trades  win  51%  avg win  +1.93%  avg loss  -2.70%  mean  -0.32%  t -1.64
+     2026 H2   136 trades  win  50%  avg win  +1.91%  avg loss  -2.52%  mean  -0.30%  t -1.51
+   months up 6 of 23;  without the 5 best days:  607 trades  win  50%  avg win  +1.82%  avg loss  -2.76%  mean  -0.46%  t -2.69
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  48%  avg win  +1.35%  avg loss  -1.66%  mean  -0.21%  t -6.27
+   ACCOUNT  STRICT   189 taken  $      -1,449 at the end  lowest $-1,449  worst fall 146%  |  at a fixed $3,184: avg win $ +212  avg loss $ -422  per trade $  -77
+            LENIENT  605 taken  $         173 at the end  lowest $124  worst fall  98%  |  at a fixed $3,184: avg win $ +234  avg loss $ -265  per trade $   -5
+            STRICT with real fees  189 taken  $      -1,017 at the end  lowest $-1,017  worst fall 132%  |  at a fixed $3,184: avg win $ +208  avg loss $ -423  per trade $  -82
+
+===== Q turn tp1% 15m   {'entry': 'turn', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 15, 'tp': 0.01}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  56%  avg win  +0.90%  avg loss  -1.61%  mean  -0.20%  t -3.41   stop 2.2% away (median); exits: TARGET 47%, CLOCK 33%, STOP 19%
+   LENIENT   616 trades  win  62%  avg win  +0.91%  avg loss  -1.39%  mean  +0.03%  t +0.63
+     2025 H1   137 trades  win  53%  avg win  +0.88%  avg loss  -1.23%  mean  -0.12%  t -1.11
+     2025 H2   181 trades  win  53%  avg win  +0.86%  avg loss  -1.65%  mean  -0.32%  t -3.17
+     2026 H1   162 trades  win  60%  avg win  +0.94%  avg loss  -1.76%  mean  -0.13%  t -1.00
+     2026 H2   136 trades  win  60%  avg win  +0.92%  avg loss  -1.85%  mean  -0.20%  t -1.55
+   months up 6 of 23;  without the 5 best days:  606 trades  win  56%  avg win  +0.90%  avg loss  -1.61%  mean  -0.22%  t -3.73
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  48%  avg win  +0.69%  avg loss  -0.94%  mean  -0.16%  t -10.41
+   ACCOUNT  STRICT   611 taken  $          10 at the end  lowest $10  worst fall 100%  |  at a fixed $3,184: avg win $ +115  avg loss $ -206  per trade $  -24
+            LENIENT  610 taken  $       3,806 at the end  lowest $1,397  worst fall  69%  |  at a fixed $3,184: avg win $ +116  avg loss $ -177  per trade $   +5
+            STRICT with real fees  611 taken  $           3 at the end  lowest $3  worst fall 100%  |  at a fixed $3,184: avg win $ +110  avg loss $ -209  per trade $  -31
+
+===== Q turn tp1% 60m   {'entry': 'turn', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 60, 'tp': 0.01}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  62%  avg win  +0.97%  avg loss  -2.32%  mean  -0.27%  t -3.99   stop 2.2% away (median); exits: TARGET 60%, STOP 31%, CLOCK 9%
+   LENIENT   616 trades  win  67%  avg win  +0.98%  avg loss  -1.97%  mean  -0.00%  t -0.05
+     2025 H1   137 trades  win  63%  avg win  +0.97%  avg loss  -1.98%  mean  -0.12%  t -0.88
+     2025 H2   181 trades  win  60%  avg win  +0.93%  avg loss  -2.26%  mean  -0.36%  t -3.14
+     2026 H1   162 trades  win  65%  avg win  +1.00%  avg loss  -2.47%  mean  -0.22%  t -1.55
+     2026 H2   136 trades  win  62%  avg win  +0.99%  avg loss  -2.56%  mean  -0.37%  t -2.39
+   months up 6 of 23;  without the 5 best days:  606 trades  win  62%  avg win  +0.97%  avg loss  -2.32%  mean  -0.29%  t -4.26
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  58%  avg win  +0.89%  avg loss  -1.61%  mean  -0.16%  t -7.75
+   ACCOUNT  STRICT   609 taken  $           1 at the end  lowest $1  worst fall 100%  |  at a fixed $3,184: avg win $ +124  avg loss $ -297  per trade $  -34
+            LENIENT  609 taken  $       1,157 at the end  lowest $930  worst fall  82%  |  at a fixed $3,184: avg win $ +125  avg loss $ -252  per trade $   +0
+            STRICT with real fees  609 taken  $           0 at the end  lowest $0  worst fall 100%  |  at a fixed $3,184: avg win $ +117  avg loss $ -304  per trade $  -42
+
+===== Q turn tp2% 15m   {'entry': 'turn', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 15, 'tp': 0.02}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  48%  avg win  +1.40%  avg loss  -1.57%  mean  -0.14%  t -1.97   stop 2.2% away (median); exits: CLOCK 51%, TARGET 27%, STOP 22%
+   LENIENT   616 trades  win  52%  avg win  +1.43%  avg loss  -1.38%  mean  +0.07%  t +1.08
+     2025 H1   137 trades  win  44%  avg win  +1.29%  avg loss  -1.15%  mean  -0.08%  t -0.66
+     2025 H2   181 trades  win  48%  avg win  +1.36%  avg loss  -1.65%  mean  -0.21%  t -1.69
+     2026 H1   162 trades  win  49%  avg win  +1.44%  avg loss  -1.71%  mean  -0.16%  t -1.02
+     2026 H2   136 trades  win  51%  avg win  +1.49%  avg loss  -1.75%  mean  -0.08%  t -0.50
+   months up 7 of 23;  without the 5 best days:  606 trades  win  47%  avg win  +1.38%  avg loss  -1.57%  mean  -0.17%  t -2.50
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  44%  avg win  +0.85%  avg loss  -0.95%  mean  -0.16%  t -9.28
+   ACCOUNT  STRICT   611 taken  $          28 at the end  lowest $26  worst fall  99%  |  at a fixed $3,184: avg win $ +178  avg loss $ -200  per trade $  -16
+            LENIENT  610 taken  $       6,382 at the end  lowest $1,509  worst fall  76%  |  at a fixed $3,184: avg win $ +182  avg loss $ -176  per trade $  +10
+            STRICT with real fees  611 taken  $           8 at the end  lowest $7  worst fall 100%  |  at a fixed $3,184: avg win $ +174  avg loss $ -204  per trade $  -23
+
+===== Q turn tp2% 60m   {'entry': 'turn', 'stop': 0.0225, 'base': 'entry', 'trail': 0.0, 'be': False, 'mins': 60, 'tp': 0.02}   (the two implementations agree on all 1232 trades)
+   STRICT    616 trades  win  51%  avg win  +1.76%  avg loss  -2.26%  mean  -0.20%  t -2.39   stop 2.2% away (median); exits: TARGET 42%, STOP 39%, CLOCK 19%
+   LENIENT   616 trades  win  52%  avg win  +1.79%  avg loss  -1.93%  mean  +0.01%  t +0.19
+     2025 H1   137 trades  win  49%  avg win  +1.64%  avg loss  -1.82%  mean  -0.13%  t -0.76
+     2025 H2   181 trades  win  51%  avg win  +1.60%  avg loss  -2.29%  mean  -0.31%  t -2.15
+     2026 H1   162 trades  win  51%  avg win  +1.88%  avg loss  -2.41%  mean  -0.24%  t -1.24
+     2026 H2   136 trades  win  54%  avg win  +1.92%  avg loss  -2.52%  mean  -0.11%  t -0.57
+   months up 7 of 23;  without the 5 best days:  606 trades  win  50%  avg win  +1.75%  avg loss  -2.26%  mean  -0.24%  t -2.82
+   CONTROL random-minute short, same exit (STRICT): 5245 trades  win  48%  avg win  +1.37%  avg loss  -1.66%  mean  -0.21%  t -8.19
+   ACCOUNT  STRICT   605 taken  $           2 at the end  lowest $2  worst fall 100%  |  at a fixed $3,184: avg win $ +224  avg loss $ -289  per trade $  -26
+            LENIENT  604 taken  $         817 at the end  lowest $288  worst fall  93%  |  at a fixed $3,184: avg win $ +229  avg loss $ -247  per trade $   +3
+            STRICT with real fees  605 taken  $           0 at the end  lowest $0  worst fall 100%  |  at a fixed $3,184: avg win $ +218  avg loss $ -295  per trade $  -36

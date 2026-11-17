@@ -126,7 +126,8 @@ class ReplayDelta:
         p, s = self.pos[pid], self.spec[pid]
         n = p["qty"] * s["cv"] * p["entry"]
         over = max(0.0, n - s["cap"])
-        return p["entry"] * (1 + (s["im"] + s["ims"] * over) - (s["mm"] + s["mms"] * over) + p["extra"] / n)
+        im = max(s["im"] + s["ims"] * over, 1.0 / p["lev"])          # the position's own leverage (rule C: 5x) sets its margin
+        return p["entry"] * (1 + im - (s["mm"] + s["mms"] * over) + p["extra"] / n)
 
     def _margined(self, pid):
         p, s = self.pos[pid], self.spec[pid]
@@ -282,6 +283,22 @@ class ReplayDelta:
 
 
 # ====================================================================================== the reference (research rule)
+def ref_sizing(sym, margin, price, extra):
+    """careful_sim_b.sizing with the bot's leverage cap: initial margin never under 1 / S.MAX_LEVERAGE."""
+    p = D.PRODUCTS.get(sym) or B.DEFAULT
+    im, mm, ims, mms, cap = max(p["im"] / 100, 1.0 / S.MAX_LEVERAGE), p["mm"] / 100, p["ims"] / 100, p["mms"] / 100, p["max_lev_notional"]
+    lo_, hi_ = 0.0, margin / (im + 0.0012)
+    for _ in range(100):
+        mid = (lo_ + hi_) / 2
+        if mid * (max(im, p["im"] / 100 + ims * max(0.0, mid - cap)) + 0.0012) <= margin:
+            lo_ = mid
+        else:
+            hi_ = mid
+    n = min(lo_, p["limit"] * p["cv"] * price)
+    over = max(0.0, n - cap)
+    return n, max(im, p["im"] / 100 + ims * over) - (mm + mms * over) + extra / n
+
+
 def ref_trade(sym, H, L, Cl, bal, le, extra_frac=None):
     """scripts/careful_be_trail.t1 with the bot's parameters. extra_frac=None -> the bot's 5.1%."""
     e = Cl[2] * 1.05
@@ -290,7 +307,7 @@ def ref_trade(sym, H, L, Cl, bal, le, extra_frac=None):
         return None
     margin = S.TRADE_MARGIN * bal
     extra = (S.EXTRA_MARGIN if extra_frac is None else extra_frac) * bal
-    n, ld = B.sizing(sym, margin, e, extra)
+    n, ld = ref_sizing(sym, margin, e, extra)
     cap, Q = margin + extra, e * (1 + ld)
     raw = lambda x: max(n * (-(x / e - 1) - 0.0007 - 0.0005 * x / e), -cap)  # noqa: E731
     first = e * (1 + S.STOP_ABOVE)
@@ -306,7 +323,8 @@ def ref_trade(sym, H, L, Cl, bal, le, extra_frac=None):
             return ("STOP" if stop == first else "TRAIL"), raw(x), k, j
         low = min(low, L[j])
         if not S.BREAKEVEN_LOCK:                                    # owner 2026-11-16: a plain trail from the fill
-            stop = min(stop, low * (1 + S.TRAIL))
+            if not S.TRAIL_ONLY_PAST_ENTRY or low * (1 + S.TRAIL) <= e:   # rule C (2026-11-17): only once past the entry
+                stop = min(stop, low * (1 + S.TRAIL))
         else:
             if not active and L[j] <= act_px:
                 active = True

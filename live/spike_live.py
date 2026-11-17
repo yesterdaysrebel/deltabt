@@ -6,22 +6,26 @@ careful simulation (docs/careful_sim_spec.md) the owner chose, 2026-11-15: **"de
 
 THE RULES (per UTC day, on the paper runner's two rule-A picks):
   entry      a resting post-only LIMIT SELL 5% above the last traded price at entry time (00:00-00:30 UTC), GTC,
-             with an exchange-held stop +2.25% from the limit (last-traded trigger). NO take-profit order.
+             with an exchange-held stop +10% from the limit (last-traded trigger; +2.25% until 2026-11-17). NO
+             take-profit order.
              Not filled by 24:00 UTC -> cancelled ("no spike").
   size       20% of the balance as isolated margin per resting order (owner 2026-11-16; was 10%), at the most
-             leverage up to 20x that Delta allows for that notional on that coin (~$12,400 of position on $3,184;
-             a full stop ~$335, a liquidation ~$960).
+             leverage up to 5x that Delta allows for that notional on that coin (owner 2026-11-17, rule C; was 20x):
+             ~1x the balance of position, a full 10% stop ~10% of the balance (~$290 on $2,896).
   one at a   the first pick to fill is the trade; the other pick's resting order is cancelled at once.
    time      No new resting orders while a position is open.
   after the  the rest of an order that filled in part is cancelled; the stop must cover the position (else bought
    fill      back + HALT, as run 3); isolated margin checked (as run 3); then EXTRA isolated margin of 25/49 of the trade margin
-             (10.2% of the balance) is added (POST /v2/positions/change_margin) -- liquidation from ~+2.5% to ~+5%.
+             (10.2% of the balance) is added (POST /v2/positions/change_margin) -- at 5x liquidation from ~+17.5% to ~+27%,
+             well past the 10% stop (at 20x it was ~+2.5% to ~+5%).
   break-even REMOVED by the owner 2026-11-16 ("change lock to trailing SL"; BREAKEVEN_LOCK = False). Exit C had: once a
              1m low nets +$30.61 x balance / $3,184 (about a 0.6% fall) the stop goes to break-even; if the last
              price is already at or above that level the position is bought back at once ("LOCK").
-  the trail  the stop trails 5% above the lowest 1m low since the fill, only when that is lower than the stop it
-             has (so first after a fall of ~2.6%), never up; if the last price is already at or above the new level:
-             bought back ("LOCK"). Moved on the bot's next pass (30 s), as the backtest moved it at the minute's close.
+  the trail  RULE C (owner 2026-11-17, "approved on C"): the stop trails 10% above the lowest 1m low since the fill,
+             only when that level is at or below the ENTRY and lower than the stop it has (so first after a fall of
+             ~9.1%), never up; if the last price is already at or above the new level: bought back ("LOCK"). Moved on
+             the bot's next pass (30 s), as the backtest moved it at the minute's close. (2026-11-16..17 it was a 5%
+             trail from the fill with a 2.25% stop.)
   exits      the stop at Delta; 24 h after the FILL the bot buys back ("TIME").
   hard stop  NONE per month (owner 2026-11-16: "remove that setting", after being shown that with it removed the
              tested account ends at the $1,000 floor in 2025). Full stops are still counted and logged
@@ -40,6 +44,13 @@ At 20% margin (owner 2026-11-16), same rules, from $3,184: the full history reac
 ($951 .. $985); started 2026-01-01 it also ends at the floor; 19 .. 16 of 22 monthly starts end under $1,000. Per
 trade at a fixed $3,184: win 29-30%, average win +$706 .. +$717, average loss -$277 .. -$305, a liquidation -$962,
 longest losing run 11 trades. The owner chose these rules knowing this.
+RULE C (owner 2026-11-17, "approved on C", after the first live trade, CROSS, was stopped 27 s after its fill at the
+2.25% stop and then fell below the entry -- as 405 of the 447 losers in the history did): stop 10%, trail 10% only once
+past the entry, 24 h, 5x. scripts/spike_verify.py (two implementations agreeing on every trade, 617 trades
+2025-01..2026-11, before fees): win 59%, average win +8.1%, average loss -9.2% of the position, +1.07% per trade STRICT
+(+1.50% LENIENT), positive in all four half-years, 15 of 23 months up; a random-minute short with the same exit -0.09%.
+At a fixed $3,184 and a stop costing 9%: win +$247, loss -$270, +$43 a trade. Compounding from $3,184 the strict
+account fell to $897 at its lowest (worst fall 89%) before ending far higher. Chosen from ~70 variants: expect less.
 """
 from __future__ import annotations
 
@@ -65,8 +76,11 @@ SPIKE_ABOVE = 0.05
 #: trade margin (the ratio every careful_* test used) = 10.2% of the balance -> liquidation ~+5% from the entry.
 TRADE_MARGIN = 0.20
 EXTRA_MARGIN = TRADE_MARGIN * 25 / 49
-MAX_LEVERAGE = 20
-STOP_ABOVE = 0.0225
+#: Owner 2026-11-17 ("approved on C", after the first live trade -- CROSS -- was stopped 27 s after its fill and then
+#: fell): leverage at most 5x, so 20% margin is a position of ~1x the balance and a full 10% stop costs ~10% of it
+#: (was 20x / 2.25%: a position of ~4x and a stop of ~9%). Liquidation sits ~+17.5% before, ~+27% after the extra margin.
+MAX_LEVERAGE = 5
+STOP_ABOVE = 0.10
 #: Exit C (owner 2026-11-15, "C approved"): once the trade's best point (a 1m low) nets this much x balance/$3,184 the
 #: stop goes to break-even. Tested as +$150 on a 49%-margin position; at 10% margin the same price fall is 150 x 10/49.
 BREAKEVEN_AFTER_USD = 150.0 * TRADE_MARGIN / 0.49
@@ -81,7 +95,11 @@ BREAKEVEN_LOCK = False
 #: ... and then trails this far above the lowest price since the fill, only when that is lower than the stop it has;
 #: never up. Moved by the bot (PUT /v2/orders), not Delta's native trailing stop: a native trail would start 5% above
 #: the CURRENT price -- far looser than break-even -- which is not the tested rule.
-TRAIL = 0.05
+TRAIL = 0.10
+#: Owner 2026-11-17 ("approved on C"): the trail moves the stop only to a level AT OR BELOW the entry -- i.e. first after a
+#: fall of ~9.1% -- never while it would still be a loss. Tested: scripts/spike_verify.py cell C (two implementations
+#: agree on every trade; out/careful/spike_verify.txt). False = the trail from the fill (run 4 as first deployed).
+TRAIL_ONLY_PAST_ENTRY = True
 #: Month-off rule: no new entries until the 1st after this many full stops in a calendar month. None = no monthly
 #: limit (owner 2026-11-16). It was 2 until then; the tested results in the docstring above are WITH the limit of 2.
 MONTH_STOP_LIMIT: int | None = None
@@ -97,10 +115,12 @@ DEFAULT_CAP = 50_000.0
 
 
 def spike_size(balance: float, price: float, cv: float, im_pct: float, cap: float, ims_pct: float,
-               contract_limit: float | None, share: float = TRADE_MARGIN, max_lev: int = MAX_LEVERAGE) -> tuple[int, int, float]:
-    """(contracts, leverage, notional) for `share` of the balance as margin: the most leverage <= max_lev that Delta
+               contract_limit: float | None, share: float = TRADE_MARGIN, max_lev: int | None = None) -> tuple[int, int, float]:
+    """(contracts, leverage, notional) for `share` of the balance as margin: the most leverage <= max_lev (default
+    MAX_LEVERAGE) that Delta
     allows for the resulting notional (IM = im + ims per $ above cap, all in %), within the coin's contract limit.
     (0, 0, 0) when nothing fits."""
+    max_lev = MAX_LEVERAGE if max_lev is None else max_lev   # read at call time (rule C lowered it to 5x)
     margin = share * balance
     if not (margin > 0 and price > 0 and cv > 0):
         return 0, 0, 0.0
@@ -592,6 +612,8 @@ class SpikeLive(L.LiveFade):
         prod = await asyncio.to_thread(self.product, r["symbol"])
         current = float(r["trail_price"] or r["lock_price"] or r["stop_price"])
         new = to_tick(min(lows) * (1 + TRAIL), prod["tick"], up=True)
+        if TRAIL_ONLY_PAST_ENTRY and float(new) > float(r["entry_price"]):
+            return                                       # would still be a loss: the 10% stop stays (rule C, 2026-11-17)
         if float(new) >= current - float(prod["tick"]) * 0.5:
             return                                       # not tighter: the break-even stop (or the last trail) stays
         last = await asyncio.to_thread(self.last_price, r["symbol"])
@@ -685,7 +707,7 @@ class SpikeLive(L.LiveFade):
             json.dumps({"bid": bid, "run": RUN_VERSION, "notional": round(notional, 2), "sent_at": int(now)}))
         order = OrderRequest(product_id=prod["id"], size=n, side=Side.SELL, order_type=OrderType.LIMIT,
                              client_order_id=cid, limit_price=limit, time_in_force=TimeInForce.GTC, post_only=True,
-                             bracket_stop_loss_price=stop,     # no take-profit: break-even, then the 5% trail
+                             bracket_stop_loss_price=stop,     # no take-profit: the 10% stop, then the trail once past the entry
                              stop_trigger_method=StopTriggerMethod.LAST_TRADED, note="spike-live entry")
         try:
             o = await asyncio.to_thread(self.client.place_order, order)

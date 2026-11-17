@@ -1,0 +1,72 @@
+QUICK WITH 50% MARGIN PER PICK, A BREAK-EVEN LOCK AND A 1% TARGET (scripts/quick_margin50.py). Entries 00:00 UTC, top-2 gainers, 2025-01-15..2026-11-14. $ = the trade at a fixed $3,184 balance ($1,592 margin per pick). Before fees unless said.
+Half-years = mean $ per trade in 2025 H1, H2, 2026 H1, H2. Account = $3,184 compounding, both picks each day, 50% margin each.
+
+===== 2x  (notional 1.0x the balance per pick; a 1% target = 1.0% of the balance)
+  no lock      STRICT  971 trades  win  94%  avg win $   +32  avg loss $  -379  per trade $  +6.4  | half-years -7 +9 +12 +10 | TARGET 94% STOP 3% CLOCK 3%
+               LENIENT          win  94%  avg win $   +32  avg loss $  -375  per trade $  +8.8  | half-years -2 +12 +12 +12 | TARGET 94% CLOCK 3% STOP 3%
+               account: STRICT $    10,999 end, lowest $1,302, worst fall 66% | LENIENT $    24,327 end, lowest $1,761, worst fall 54% | STRICT + fees $     5,737 end, lowest $1,134, worst fall 69%
+  lock at 0.3% STRICT  971 trades  win  44%  avg win $   +32  avg loss $   -27  per trade $  -1.3  | half-years -3 -0 -5 +3 | LOCK 54% TARGET 44% STOP 1% CLOCK 1%
+               LENIENT          win  48%  avg win $   +32  avg loss $   -16  per trade $  +6.9  | half-years +5 +9 +3 +11 | LOCK 50% TARGET 48% STOP 1% CLOCK 1%
+               account: STRICT $     1,648 end, lowest $1,262, worst fall 65% | LENIENT $    20,455 end, lowest $2,886, worst fall 44% | STRICT + fees $       876 end, lowest $732, worst fall 79%
+  lock at 0.5% STRICT  971 trades  win  57%  avg win $   +32  avg loss $   -35  per trade $  +3.2  | half-years -3 +6 -0 +10 | TARGET 57% LOCK 40% STOP 1% CLOCK 1%
+               LENIENT          win  62%  avg win $   +32  avg loss $   -24  per trade $ +10.3  | half-years +6 +13 +7 +16 | TARGET 62% LOCK 36% STOP 1% CLOCK 1%
+               account: STRICT $     6,255 end, lowest $1,883, worst fall 45% | LENIENT $    56,299 end, lowest $2,886, worst fall 40% | STRICT + fees $     3,262 end, lowest $1,678, worst fall 49%
+  lock at 0.7% STRICT  971 trades  win  71%  avg win $   +32  avg loss $   -64  per trade $  +4.0  | half-years -4 +5 +4 +12 | TARGET 71% LOCK 25% CLOCK 2% STOP 2%
+               LENIENT          win  74%  avg win $   +32  avg loss $   -53  per trade $  +9.6  | half-years +4 +9 +8 +18 | TARGET 74% LOCK 23% STOP 2% CLOCK 2%
+               account: STRICT $     6,547 end, lowest $1,730, worst fall 57% | LENIENT $    37,457 end, lowest $2,400, worst fall 52% | STRICT + fees $     3,363 end, lowest $1,535, worst fall 58%
+
+===== 3x  (notional 1.5x the balance per pick; a 1% target = 1.5% of the balance)
+  no lock      STRICT  971 trades  win  94%  avg win $   +48  avg loss $  -571  per trade $  +9.5  | half-years -11 +14 +17 +15 | TARGET 94% CLOCK 3% STOP 3% LIQUIDATED 0%
+               LENIENT          win  94%  avg win $   +48  avg loss $  -564  per trade $ +13.1  | half-years -3 +17 +19 +17 | TARGET 94% CLOCK 3% STOP 3% LIQUIDATED 0%
+               account: STRICT $     9,845 end, lowest $673, worst fall 83% | LENIENT $    34,730 end, lowest $1,180, worst fall 71% | STRICT + fees $     3,686 end, lowest $546, worst fall 86%
+  lock at 0.3% STRICT  971 trades  win  44%  avg win $   +48  avg loss $   -40  per trade $  -1.9  | half-years -4 -0 -7 +4 | LOCK 54% TARGET 44% STOP 1% CLOCK 1%
+               LENIENT          win  48%  avg win $   +48  avg loss $   -24  per trade $ +10.4  | half-years +7 +13 +5 +17 | LOCK 50% TARGET 48% STOP 1% CLOCK 1%
+               account: STRICT $       931 end, lowest $626, worst fall 83% | LENIENT $    41,181 end, lowest $2,725, worst fall 61% | STRICT + fees $       359 end, lowest $275, worst fall 92%
+  lock at 0.5% STRICT  971 trades  win  57%  avg win $   +48  avg loss $   -53  per trade $  +4.9  | half-years -5 +9 -0 +15 | TARGET 57% LOCK 40% STOP 1% CLOCK 1%
+               LENIENT          win  62%  avg win $   +48  avg loss $   -36  per trade $ +15.5  | half-years +9 +19 +10 +24 | TARGET 62% LOCK 36% STOP 1% CLOCK 1%
+               account: STRICT $     6,604 end, lowest $1,297, worst fall 62% | LENIENT $   184,724 end, lowest $2,725, worst fall 56% | STRICT + fees $     2,480 end, lowest $994, worst fall 70%
+  lock at 0.7% STRICT  971 trades  win  71%  avg win $   +48  avg loss $   -96  per trade $  +5.9  | half-years -6 +7 +6 +17 | TARGET 71% LOCK 25% CLOCK 2% STOP 2% LIQUIDATED 0%
+               LENIENT          win  74%  avg win $   +48  avg loss $   -80  per trade $ +14.3  | half-years +6 +13 +12 +27 | TARGET 74% LOCK 23% STOP 2% CLOCK 2% LIQUIDATED 0%
+               account: STRICT $     5,463 end, lowest $1,121, worst fall 74% | LENIENT $    78,233 end, lowest $1,974, worst fall 69% | STRICT + fees $     2,001 end, lowest $702, worst fall 79%
+
+===== 5x  (notional 2.5x the balance per pick; a 1% target = 2.5% of the balance)
+  no lock      STRICT  971 trades  win  93%  avg win $   +80  avg loss $  -984  per trade $  +6.1  | half-years -21 +21 +4 +16 | TARGET 93% CLOCK 3% LIQUIDATED 2% STOP 2%
+               LENIENT          win  94%  avg win $   +80  avg loss $  -992  per trade $ +11.1  | half-years -10 +26 +4 +20 | TARGET 94% CLOCK 3% LIQUIDATED 2% STOP 1%
+               account: STRICT $       158 end, lowest $158, worst fall 96%, BUST 2025-05-30 | LENIENT $       148 end, lowest $148, worst fall 97%, BUST 2026-06-11 | STRICT + fees $       138 end, lowest $138, worst fall 97%, BUST 2025-05-09
+  lock at 0.3% STRICT  971 trades  win  43%  avg win $   +80  avg loss $   -85  per trade $ -13.7  | half-years -12 -7 -32 -2 | LOCK 54% TARGET 43% LIQUIDATED 1% STOP 1% CLOCK 1%
+               LENIENT          win  48%  avg win $   +80  avg loss $   -60  per trade $  +6.5  | half-years +6 +15 -13 +20 | LOCK 50% TARGET 48% LIQUIDATED 1% STOP 1% CLOCK 1%
+               account: STRICT $       154 end, lowest $154, worst fall 96%, BUST 2025-12-16 | LENIENT $       522 end, lowest $188, worst fall 99% | STRICT + fees $       131 end, lowest $131, worst fall 96%, BUST 2025-12-12
+  lock at 0.5% STRICT  971 trades  win  57%  avg win $   +80  avg loss $  -110  per trade $  -2.3  | half-years -13 +9 -21 +17 | TARGET 57% LOCK 40% LIQUIDATED 2% CLOCK 1% STOP 1%
+               LENIENT          win  61%  avg win $   +80  avg loss $   -87  per trade $ +15.0  | half-years +9 +25 -4 +31 | TARGET 61% LOCK 36% LIQUIDATED 1% CLOCK 1% STOP 1%
+               account: STRICT $       123 end, lowest $123, worst fall 96%, BUST 2026-01-28 | LENIENT $     5,979 end, lowest $1,058, worst fall 97% | STRICT + fees $        47 end, lowest $47, worst fall 99%, BUST 2026-01-28
+  lock at 0.7% STRICT  971 trades  win  70%  avg win $   +80  avg loss $  -183  per trade $  +1.5  | half-years -15 +10 -9 +21 | TARGET 70% LOCK 25% CLOCK 2% LIQUIDATED 2% STOP 1%
+               LENIENT          win  73%  avg win $   +80  avg loss $  -162  per trade $ +14.7  | half-years +4 +21 -1 +36 | TARGET 73% LOCK 23% LIQUIDATED 2% CLOCK 1% STOP 1%
+               account: STRICT $        77 end, lowest $77, worst fall 98%, BUST 2026-01-28 | LENIENT $     2,029 end, lowest $284, worst fall 98% | STRICT + fees $       149 end, lowest $149, worst fall 96%, BUST 2025-12-16
+
+===== 10x  (notional 5.0x the balance per pick; a 1% target = 5.0% of the balance)
+  no lock      STRICT  971 trades  win  88%  avg win $  +159  avg loss $ -1506  per trade $ -43.3  | half-years -71 -8 -41 -68 | TARGET 88% LIQUIDATED 11% CLOCK 1% STOP 0%
+               LENIENT          win  89%  avg win $  +159  avg loss $ -1510  per trade $ -24.9  | half-years -38 +7 -28 -53 | TARGET 89% LIQUIDATED 10% CLOCK 1%
+               account: STRICT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | LENIENT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | STRICT + fees $       -40 end, lowest $-40, worst fall 100%, BUST 2025-01-17
+  lock at 0.3% STRICT  971 trades  win  42%  avg win $  +159  avg loss $  -196  per trade $ -46.6  | half-years -36 -27 -71 -55 | LOCK 53% TARGET 42% LIQUIDATED 5%
+               LENIENT          win  46%  avg win $  +159  avg loss $  -150  per trade $  -6.6  | half-years +1 +15 -28 -17 | LOCK 49% TARGET 46% LIQUIDATED 5%
+               account: STRICT $       116 end, lowest $116, worst fall 97%, BUST 2025-05-10 | LENIENT $       153 end, lowest $153, worst fall 97%, BUST 2025-09-11 | STRICT + fees $       131 end, lowest $131, worst fall 97%, BUST 2025-05-09
+  lock at 0.5% STRICT  971 trades  win  55%  avg win $  +159  avg loss $  -274  per trade $ -37.4  | half-years -46 -1 -63 -48 | TARGET 55% LOCK 39% LIQUIDATED 6% CLOCK 0%
+               LENIENT          win  59%  avg win $  +159  avg loss $  -233  per trade $  -2.7  | half-years -2 +28 -30 -14 | TARGET 59% LOCK 35% LIQUIDATED 6% CLOCK 0%
+               account: STRICT $       142 end, lowest $142, worst fall 96%, BUST 2025-04-21 | LENIENT $       123 end, lowest $123, worst fall 98%, BUST 2025-05-29 | STRICT + fees $       134 end, lowest $134, worst fall 96%, BUST 2025-04-01
+  lock at 0.7% STRICT  971 trades  win  67%  avg win $  +159  avg loss $  -454  per trade $ -41.0  | half-years -57 -14 -46 -57 | TARGET 67% LOCK 24% LIQUIDATED 8% CLOCK 1%
+               LENIENT          win  70%  avg win $  +159  avg loss $  -409  per trade $ -10.6  | half-years -18 +15 -22 -25 | TARGET 70% LOCK 22% LIQUIDATED 8% CLOCK 1%
+               account: STRICT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | LENIENT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | STRICT + fees $       -40 end, lowest $-40, worst fall 100%, BUST 2025-01-17
+
+===== 20x  (notional 10.0x the balance per pick; a 1% target = 10.0% of the balance)
+  no lock      STRICT  971 trades  win  67%  avg win $  +318  avg loss $ -1585  per trade $-301.2  | half-years -341 -272 -301 -303 | TARGET 67% LIQUIDATED 32% CLOCK 0%
+               LENIENT          win  70%  avg win $  +318  avg loss $ -1584  per trade $-253.9  | half-years -268 -193 -294 -274 | TARGET 70% LIQUIDATED 30% CLOCK 0%
+               account: STRICT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | LENIENT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | STRICT + fees $       -95 end, lowest $-95, worst fall 100%, BUST 2025-01-17
+  lock at 0.3% STRICT  971 trades  win  37%  avg win $  +318  avg loss $  -472  per trade $-177.2  | half-years -159 -142 -210 -206 | LOCK 48% TARGET 37% LIQUIDATED 15%
+               LENIENT          win  42%  avg win $  +318  avg loss $  -389  per trade $ -93.1  | half-years -87 -48 -126 -122 | LOCK 44% TARGET 42% LIQUIDATED 14%
+               account: STRICT $       158 end, lowest $158, worst fall 97%, BUST 2025-03-18 | LENIENT $        88 end, lowest $88, worst fall 99%, BUST 2025-04-04 | STRICT + fees $       101 end, lowest $101, worst fall 98%, BUST 2025-03-18
+  lock at 0.5% STRICT  971 trades  win  46%  avg win $  +318  avg loss $  -659  per trade $-212.0  | half-years -222 -147 -250 -246 | TARGET 46% LOCK 34% LIQUIDATED 20% CLOCK 0%
+               LENIENT          win  50%  avg win $  +318  avg loss $  -589  per trade $-134.1  | half-years -129 -69 -180 -174 | TARGET 50% LOCK 31% LIQUIDATED 18% CLOCK 0%
+               account: STRICT $       126 end, lowest $126, worst fall 98%, BUST 2025-03-05 | LENIENT $       150 end, lowest $150, worst fall 98%, BUST 2025-03-17 | STRICT + fees $       158 end, lowest $158, worst fall 97%, BUST 2025-03-02
+  lock at 0.7% STRICT  971 trades  win  55%  avg win $  +318  avg loss $  -927  per trade $-240.0  | half-years -245 -189 -259 -285 | TARGET 55% LIQUIDATED 25% LOCK 20% CLOCK 0%
+               LENIENT          win  58%  avg win $  +318  avg loss $  -868  per trade $-180.5  | half-years -190 -124 -207 -218 | TARGET 58% LIQUIDATED 23% LOCK 19% CLOCK 0%
+               account: STRICT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | LENIENT $         0 end, lowest $0, worst fall 100%, BUST 2025-01-17 | STRICT + fees $       -95 end, lowest $-95, worst fall 100%, BUST 2025-01-17

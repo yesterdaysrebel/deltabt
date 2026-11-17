@@ -24,7 +24,14 @@ def _exit_mode(request, monkeypatch):
     """The tests in this file were written for exit C (break-even, then the trail) and keep that mode. The owner's
     2026-11-16 setting -- no break-even step, a plain 5% trail from the fill -- is the module default and is what the
     `test_plain_trail_*` tests run."""
+    if request.node.name.startswith("test_rule_c"):
+        return                                           # rule C (owner 2026-11-17) runs exactly as shipped
     monkeypatch.setattr(S, "BREAKEVEN_LOCK", not request.node.name.startswith("test_plain_trail"))
+    # ... and with run 4's first numbers (20x, a 2.25% stop, a 5% trail from the fill), which these tests were built on
+    monkeypatch.setattr(S, "MAX_LEVERAGE", 20)
+    monkeypatch.setattr(S, "STOP_ABOVE", 0.0225)
+    monkeypatch.setattr(S, "TRAIL", 0.05)
+    monkeypatch.setattr(S, "TRAIL_ONLY_PAST_ENTRY", False)
 
 
 # ============================================================ pure rules
@@ -1139,7 +1146,7 @@ def test_plain_trail_is_the_default_and_the_month_has_no_stop_limit():
     spec = importlib.util.spec_from_file_location("spike_live_as_shipped", S.__file__)   # a private copy: the fixture
     fresh = importlib.util.module_from_spec(spec)                                        # above patches the shared one
     spec.loader.exec_module(fresh)
-    assert fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None and fresh.TRAIL == 0.05
+    assert fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None
 
 
 @requires_pg
@@ -1225,3 +1232,75 @@ async def test_plain_trail_a_stop_after_the_trail_moved_is_not_a_full_stop_and_i
     finally:
         await con.close()
 
+
+
+# ------------------------------------------------------------------ owner 2026-11-17: rule C ("approved on C")
+def test_rule_c_is_what_ships():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spike_live_rule_c", S.__file__)
+    fresh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
+    assert (fresh.MAX_LEVERAGE, fresh.STOP_ABOVE, fresh.TRAIL, fresh.TRAIL_ONLY_PAST_ENTRY) == (5, 0.10, 0.10, True)
+    assert fresh.TRADE_MARGIN == 0.20 and fresh.BREAKEVEN_LOCK is False and fresh.MONTH_STOP_LIMIT is None
+
+
+def test_rule_c_sizing_is_five_x_so_the_position_is_about_the_balance():
+    n, lev, notional = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None)
+    assert lev == 5 and 3_150 < notional < 3_180                       # 20% / (20% + 0.12% fee reserve) of $3,184
+    assert notional * S.STOP_ABOVE / 3184 == pytest.approx(0.10, abs=0.002)   # a full stop ~10% of the balance
+    liq = 1 + 1 / 5 - 0.025                                               # isolated, before the extra margin
+    assert liq - 1 > S.STOP_ABOVE + 0.05                                  # liquidation well past the stop
+    n, lev, _ = S.spike_size(3184, 1.0, 1, 5.0, 50_000, 0.001, None, max_lev=20)
+    assert lev == 20                                                      # an explicit cap still wins
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_rule_c_stop_ten_percent_and_the_trail_only_once_past_the_entry():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    lows = {"low": 1.05}
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": lows["low"], "close": lows["low"]}])
+    try:
+        await acct.step(con, D0 + 120)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "RESTING" and x["leverage"] == 5
+        assert abs(x["limit_price"] - 1.05) < 1e-9 and abs(x["stop_price"] - 1.155) < 0.0002   # +10% from the limit
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.0, 1.001, 1.0)
+        lows["low"] = 1.05 * 0.95                     # a 5% fall: 10% above it is 1.097 -- tighter than the stop but a loss
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["trail_price"] is None and not fake.edits
+        lows["low"] = 1.05 * 0.90                     # a 10% fall: 10% above it is 1.0395, under the 1.05 entry
+        fake.book["XUSD"] = (0.95, 0.951, 0.95)
+        await acct.step(con, D0 + 900)
+        x = (await _rows(con))["XUSD"]
+        assert abs(x["trail_price"] - 1.05 * 0.90 * 1.10) < 0.0002 and x["trail_price"] <= x["entry_price"]
+        assert float(fake.edits[-1][2]) == x["trail_price"]
+        lows["low"] = 1.05 * 0.80
+        fake.book["XUSD"] = (0.85, 0.851, 0.85)
+        await acct.step(con, D0 + 1200)
+        assert abs((await _rows(con))["XUSD"]["trail_price"] - 1.05 * 0.80 * 1.10) < 0.0002
+        assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TRAIL")] == ["TRAIL_MOVED", "TRAIL_MOVED"]
+        assert not [e for e in await _events(con) if e["kind"] in LOCK_EVENTS]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_rule_c_a_spike_through_two_percent_does_not_stop_it():
+    """Today's CROSS (2026-11-17): filled, then +2.4% above the fill within the minute. Under rule C still open."""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.075}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1))
+        fake.book["XUSD"] = (1.075, 1.076, 1.075)
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["trail_price"] is None and x["stop_price"] > 1.075 * 1.07
+    finally:
+        await con.close()
