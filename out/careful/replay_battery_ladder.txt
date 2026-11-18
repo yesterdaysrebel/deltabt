@@ -1,0 +1,58 @@
+SANITY: the replay's reference rule vs scripts/spike_ladder.loop on 1234 trades (both fills): 5 differ (exit minute, or P&L by more than 0.3% of the position: fees differ by ~0.1%).
+
+A. CLEAN RUNS -- every trade against the research rule
+   10 runs, 2498 bot trades, identical 2498, different 0; bot passes 1,615,424; halts 0; unprotected passes 0; two positions 0; wallet differences over $1: 0
+   A full history                     STRICT  bot 369 trades / reference 369: identical 369, different  0 | wallet $ 9,947.39 vs $ 9,947.38 | RUNNING | passes 254837 | unprotected 0, two positions 0, left open 0+0 OK
+   A full history                     LENIENT bot 369 trades / reference 369: identical 369, different  0 | wallet $16,155.53 vs $16,155.50 | RUNNING | passes 254837 | unprotected 0, two positions 0, left open 0+0 OK
+
+B. REAL TICK AND CONTRACT SIZES
+   B real ticks, full history         STRICT  bot 369 trades / reference 369: identical 310, different 59 | wallet $10,757.99 vs $ 9,947.38 | RUNNING | passes 255840 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (2, (datetime.date(2025, 1, 19), 'SOLUSD', 292, 667, 'TRAIL', -96.69977557499999, 'CLOSED'), (datetime.date(2025, 1, 19), 'SOLUSD', 292, 667, 'TRAIL', np.float64(-106.25614955366557), np.float64(2916.3637730629225)))
+        DIFF (5, (datetime.date(2025, 1, 27), 'TAOUSD', 871, 2311, '24h', 41.59643790000008, 'CLOSED'), (datetime.date(2025, 1, 27), 'TAOUSD', 871, 2311, '24h', np.float64(50.2255435784121), np.float64(2917.43454092371)))
+        DIFF (10, (datetime.date(2025, 2, 14), 'LTCUSD', 623, 2063, '24h', 34.72173384000017, 'CLOSED'), (datetime.date(2025, 2, 14), 'LTCUSD', 623, 2063, '24h', np.float64(38.92034395008831), np.float64(3076.3107792959636)))
+   B real ticks, full history         LENIENT bot 369 trades / reference 369: identical 328, different 41 | wallet $16,985.79 vs $16,155.50 | RUNNING | passes 255840 | unprotected 0, two positions 0, left open 0+0 <<<
+        DIFF (2, (datetime.date(2025, 1, 19), 'SOLUSD', 292, 667, 'TRAIL', -93.04429875000001, 'CLOSED'), (datetime.date(2025, 1, 19), 'SOLUSD', 292, 667, 'TRAIL', np.float64(-102.25967058156972), np.float64(2920.9252127909986)))
+        DIFF (5, (datetime.date(2025, 1, 27), 'TAOUSD', 871, 2311, '24h', 41.59643790000008, 'CLOSED'), (datetime.date(2025, 1, 27), 'TAOUSD', 871, 2311, '24h', np.float64(50.30410057872836), np.float64(2921.99765542333)))
+        DIFF (10, (datetime.date(2025, 2, 14), 'LTCUSD', 623, 2063, '24h', 34.72173384000017, 'CLOSED'), (datetime.date(2025, 2, 14), 'LTCUSD', 623, 2063, '24h', np.float64(38.98121866152318), np.float64(3081.1223896767397)))
+
+C. A PASS EVERY MINUTE
+   C a pass every minute, 2026-08..11 STRICT  bot  71 trades / reference  71: identical  71, different  0 | wallet $ 3,722.49 vs $ 3,722.49 | RUNNING | passes  69493 | unprotected 0, two positions 0, left open 0+0 OK
+   C a pass every minute, 2026-08..11 LENIENT bot  71 trades / reference  71: identical  71, different  0 | wallet $ 4,355.32 vs $ 4,355.32 | RUNNING | passes  69493 | unprotected 0, two positions 0, left open 0+0 OK
+
+D. FAULTS AND RESTARTS
+   D1 read timeouts                          3 runs | faults injected 39474, restarts     0, bot passes 737,348 | trades  1069 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1069 (double fills 0, bought back at once: 0 events), extra margin landed on 1069; identical to the fault-free trade list: 0 of 3 runs; end wallet vs the fault-free run: -97, -3,619, -2,097
+        bot events: ERROR 31001, TRAIL_FAILED 419
+   D2 lost / failed writes                   3 runs | faults injected  8490, restarts     0, bot passes 749,548 | trades  1090 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1090 (double fills 0, bought back at once: 0 events), extra margin landed on 923; identical to the fault-free trade list: 0 of 3 runs; end wallet vs the fault-free run: +490, -1,544, -1,302
+        bot events: ERROR 161, EXTRA_MARGIN_UNCLEAR 308, TRAIL_FAILED 7209
+   D3 restart every few passes               3 runs | faults injected     0, restarts 129844, bot passes 764,511 | trades  1107 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1107 (double fills 0, bought back at once: 0 events), extra margin landed on 1107; identical to the fault-free trade list: 3 of 3 runs; end wallet vs the fault-free run: +0, +0, +0
+        bot events: 
+   D4 everything at once                     3 runs | faults injected 47644, restarts 73788, bot passes 732,637 | trades  1057 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1057 (double fills 0, bought back at once: 0 events), extra margin landed on 906; identical to the fault-free trade list: 0 of 3 runs; end wallet vs the fault-free run: -1,306, -467, -1,705
+        bot events: ERROR 30873, EXTRA_MARGIN_UNCLEAR 282, TRAIL_FAILED 7418
+   D5 margin top-up refused half the time    2 runs | faults injected   366, restarts     0, bot passes 509,674 | trades   738 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 738 (double fills 0, bought back at once: 0 events), extra margin landed on 372; identical to the fault-free trade list: 2 of 2 runs; end wallet vs the fault-free run: +0, +0
+        bot events: EXTRA_MARGIN_REFUSED 366
+   D6 order lookup misses 1 in 4             3 runs | faults injected     0, restarts     0, bot passes 764,511 | trades  1107 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1107 (double fills 0, bought back at once: 0 events), extra margin landed on 1107; identical to the fault-free trade list: 0 of 3 runs; end wallet vs the fault-free run: +0, +0, +0
+        bot events: 
+   D7 both picks may fill in one minute      2 runs | faults injected     0, restarts     0, bot passes 509,674 | trades   738 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 738 (double fills 0, bought back at once: 0 events), extra margin landed on 738; identical to the fault-free trade list: 2 of 2 runs; end wallet vs the fault-free run: +0, +0
+        bot events: 
+   D8 everything + lookup misses + both picks may fill  3 runs | faults injected 48356, restarts 72660, bot passes 721,997 | trades  1062 | HALTED 0, passes with a position and no stop 0, two positions 0, left open at the end 0, margin added twice 0 -> ALL SAFE
+        fills 1062 (double fills 0, bought back at once: 0 events), extra margin landed on 888; identical to the fault-free trade list: 0 of 3 runs; end wallet vs the fault-free run: -2,812, -3,629, -1,539
+        bot events: ERROR 30653, EXTRA_MARGIN_UNCLEAR 302, TRAIL_FAILED 7273
+
+E. LOST ENTRY REPLY (must halt, by design)
+   E lost entry reply, seed 0         STRICT  bot   7 trades / reference 369: identical   7, different 362 | wallet $ 2,908.85 vs $ 9,947.38 | HALTED  | passes   7044 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: USUALUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open ord
+   E lost entry reply, seed 1         STRICT  bot   2 trades / reference 369: identical   2, different 367 | wallet $ 3,022.62 vs $ 9,947.38 | HALTED  | passes   2043 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: SOLUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+   E lost entry reply, seed 2         STRICT  bot   5 trades / reference 369: identical   5, different 364 | wallet $ 2,867.21 vs $ 9,947.38 | HALTED  | passes   4110 | unprotected 0, two positions 0, left open 0+0 <<< | faults 1
+        HALT reason: ETCUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+   E lost entry reply, seed 3         STRICT  bot  23 trades / reference 369: identical  23, different 346 | wallet $ 3,699.26 vs $ 9,947.38 | HALTED  | passes  26488 | unprotected 0, two positions 0, left open 0+0 <<< | faults 2
+        HALT reason: SUNUSD entry outcome unknown (place_order: no reply (injected)): the bot looks for it at Delta and cancels it while halted -- check Delta's open order
+
+Bot end wallet, full history from $3,184: $9,947.39 (strict) .. $16,155.53 (lenient)  [research account, 5.1% vs 5.102% extra margin and stops counted by pick day: $1,801 .. $3,890]

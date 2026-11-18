@@ -1,0 +1,88 @@
+Owner 2026-11-18: "run the 10% rule on real trades and show numbers, I want to see how does trailing SL work on them".
+Position $1,439; the starting stop (10% above) costs ~$144. Times UTC.
+
+10-29 EVAAUSD      sold 1.51799 at 10-29 01:46; stop starts 1.66978 (-$144 if hit)
+      best point 1.0062 at 10-29 05:34: +$485 in profit (33.7% down) -> the trail had the stop at 1.10682 (+$390 if hit)
+      stop below the entry (profit locked) from: 10-29 01:51
+      EXIT STOP  10-29 06:01 at 1.1984 (stop then 1.10682) -> $+303; gave back $182 of the best
+      stop by the hour: 01:47 1.6698 | 02:47 1.4882 | 03:47 1.4634 | 04:47 1.3015 | 05:47 1.1068
+
+10-30 BEATUSD      sold 0.10878 at 10-30 15:25; stop starts 0.119658 (-$144 if hit)
+      best point 0.0961 at 10-31 06:07: +$168 in profit (11.7% down) -> the trail had the stop at 0.10571 (+$41 if hit)
+      stop below the entry (profit locked) from: 10-31 01:14
+      EXIT CLOCK 10-31 15:25 at 0.0988494 (stop then 0.10571) -> $+131; gave back $36 of the best
+      stop by the hour: 15:26 0.11966 | 16:26 0.1144 | 17:26 0.11253 | 18:26 0.11253 | 19:26 0.11132 | 20:26 0.11132 | 21:26 0.11132 | 22:26 0.11132 | 23:26 0.11132 | 00:26 0.11132 | 01:26 0.10846 | 02:26 0.10615 | 03:26 0.10593 | 04:26 0.10593 | 05:26 0.10593 | 06:26 0.10571 | 07:26 0.10571 | 08:26 0.10571 | 09:26 0.10571 | 10:26 0.10571 | 11:26 0.10571 | 12:26 0.10571 | 13:26 0.10571 | 14:26 0.10571 | 15:25 0.10571
+
+11-01 AINUSD       sold 0.247643 at 11-01 01:34; stop starts 0.272407 (-$144 if hit)
+      best point 0.227 at 11-01 02:16: +$120 in profit (8.3% down) -> the trail had the stop at 0.2497 (-$12 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-01 03:13 at 0.257177 (stop then 0.2497) -> $-55; gave back $175 of the best
+      stop by the hour: 01:35 0.27241 | 02:35 0.2497
+
+11-02 ESPORTSUSD   sold 0.0178605 at 11-02 00:05; stop starts 0.0196466 (-$144 if hit)
+      best point 0.01799 at 11-02 00:06: +$-10 in profit (-0.7% down) -> the trail had the stop at 0.0196466 (-$144 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-02 00:09 at 0.0196662 (stop then 0.0196466) -> $-145; gave back $135 of the best
+      stop by the hour: 00:06 0.019647
+
+11-03 ARIAUSD      sold 0.121349 at 11-03 01:56; stop starts 0.133483 (-$144 if hit)
+      best point 0.10252 at 11-03 03:22: +$223 in profit (15.5% down) -> the trail had the stop at 0.112772 (+$102 if hit)
+      stop below the entry (profit locked) from: 11-03 02:23
+      EXIT STOP  11-03 03:45 at 0.113423 (stop then 0.112772) -> $+94; gave back $129 of the best
+      stop by the hour: 01:57 0.13348 | 02:57 0.12101
+
+11-04 AIOUSD       sold 0.0378735 at 11-04 05:26; stop starts 0.0416608 (-$144 if hit)
+      best point 0.03549 at 11-04 12:14: +$91 in profit (6.3% down) -> the trail had the stop at 0.039039 (-$44 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-04 13:38 at 0.039079 (stop then 0.039039) -> $-46; gave back $136 of the best
+      stop by the hour: 05:27 0.041661 | 06:27 0.040722 | 07:27 0.040172 | 08:27 0.039061 | 09:27 0.039061 | 10:27 0.03905 | 11:27 0.03905 | 12:27 0.039039 | 13:27 0.039039
+
+11-09 AIOTUSD      sold 0.173481 at 11-09 08:18; stop starts 0.190829 (-$144 if hit)
+      best point 0.14222 at 11-09 13:50: +$259 in profit (18.0% down) -> the trail had the stop at 0.156442 (+$141 if hit)
+      stop below the entry (profit locked) from: 11-09 10:02
+      EXIT STOP  11-09 14:07 at 0.156598 (stop then 0.156442) -> $+140; gave back $119 of the best
+      stop by the hour: 08:19 0.19083 | 09:19 0.18646 | 10:19 0.16831 | 11:19 0.16831 | 12:19 0.1617 | 13:19 0.15714
+
+11-10 PIEVERSEUSD  sold 2.13139 at 11-10 00:52; stop starts 2.34453 (-$144 if hit)
+      best point 1.9152 at 11-10 02:48: +$146 in profit (10.1% down) -> the trail had the stop at 2.10672 (+$17 if hit)
+      stop below the entry (profit locked) from: 11-10 02:48
+      EXIT STOP  11-10 03:08 at 2.10883 (stop then 2.10672) -> $+15; gave back $131 of the best
+      stop by the hour: 00:53 2.3445 | 01:53 2.1601 | 02:53 2.1067
+
+11-11 ARIAUSD      sold 0.228344 at 11-11 04:55; stop starts 0.251178 (-$144 if hit)
+      best point 0.22 at 11-11 05:35: +$53 in profit (3.7% down) -> the trail had the stop at 0.242 (-$86 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-11 07:57 at 0.242352 (stop then 0.242) -> $-88; gave back $141 of the best
+      stop by the hour: 04:56 0.25118 | 05:56 0.242 | 06:56 0.242 | 07:56 0.242
+
+11-13 HANAUSD      sold 0.018375 at 11-13 07:06; stop starts 0.0202125 (-$144 if hit)
+      best point 0.01635 at 11-14 06:44: +$159 in profit (11.0% down) -> the trail had the stop at 0.017985 (+$31 if hit)
+      stop below the entry (profit locked) from: 11-14 03:32
+      EXIT CLOCK 11-14 07:06 at 0.0164482 (stop then 0.017985) -> $+151; gave back $8 of the best
+      stop by the hour: 07:07 0.020213 | 08:07 0.019833 | 09:07 0.019701 | 10:07 0.019701 | 11:07 0.019701 | 12:07 0.019701 | 13:07 0.019701 | 14:07 0.019701 | 15:07 0.019701 | 16:07 0.019701 | 17:07 0.019052 | 18:07 0.019052 | 19:07 0.019052 | 20:07 0.019052 | 21:07 0.019052 | 22:07 0.019052 | 23:07 0.018876 | 00:07 0.018876 | 01:07 0.018876 | 02:07 0.018876 | 03:07 0.018513 | 04:07 0.018282 | 05:07 0.018161 | 06:07 0.018161 | 07:06 0.017985
+
+11-15 SOPHUSD      sold 0.00227955 at 11-15 01:12; stop starts 0.00250751 (-$144 if hit)
+      best point 0.002227 at 11-15 01:13: +$33 in profit (2.3% down) -> the trail had the stop at 0.0024497 (-$107 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-15 01:18 at 0.00245215 (stop then 0.0024497) -> $-109; gave back $142 of the best
+      stop by the hour: 01:13 0.0025075
+
+11-16 RAREUSD      sold 0.013104 at 11-16 00:06; stop starts 0.0144144 (-$144 if hit)
+      best point 0.01133 at 11-16 03:10: +$195 in profit (13.5% down) -> the trail had the stop at 0.012463 (+$70 if hit)
+      stop below the entry (profit locked) from: 11-16 03:01
+      EXIT STOP  11-16 04:55 at 0.0125325 (stop then 0.012463) -> $+63; gave back $132 of the best
+      stop by the hour: 00:07 0.014414 | 01:07 0.013145 | 02:07 0.013145 | 03:07 0.012661 | 04:07 0.012463
+
+11-17 CROSSUSD     sold 0.154 at 11-17 05:02; stop starts 0.1694 (-$144 if hit)
+      best point 0.14071 at 11-17 11:03: +$124 in profit (8.6% down) -> the trail had the stop at 0.154781 (-$7 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-17 14:47 at 0.161872 (stop then 0.154781) -> $-74; gave back $198 of the best
+      stop by the hour: 05:03 0.1694 | 06:03 0.16423 | 07:03 0.1628 | 08:03 0.16073 | 09:03 0.15785 | 10:03 0.15785 | 11:03 0.15537 | 12:03 0.15478 | 13:03 0.15478 | 14:03 0.15478
+
+11-18 MMTUSD       sold 0.1511 at 11-18 03:56; stop starts 0.16621 (-$144 if hit)
+      best point 0.1417 at 11-18 04:15: +$90 in profit (6.2% down) -> the trail had the stop at 0.15587 (-$45 if hit)
+      stop below the entry (profit locked) from: never -- the price never fell 9.1%
+      EXIT STOP  11-18 05:12 at 0.159059 (stop then 0.15587) -> $-76; gave back $165 of the best
+      stop by the hour: 03:57 0.16621 | 04:57 0.15587
+
+TOTAL 14 trades: 7 wins avg $+128, 7 losses avg $-85; total $+304, per trade $+21.7 before fees

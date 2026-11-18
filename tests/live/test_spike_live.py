@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from live import spike_live as S
+from live import fade_live as L, spike_live as S
 from tests.live.conftest import requires_pg
 from tests.live.test_fade_live import D0, DAY, FakeDelta, _db, _rows, _state
 
@@ -24,6 +24,9 @@ def _exit_mode(request, monkeypatch):
     """The tests in this file were written for exit C (break-even, then the trail) and keep that mode. The owner's
     2026-11-16 setting -- no break-even step, a plain 5% trail from the fill -- is the module default and is what the
     `test_plain_trail_*` tests run."""
+    if request.node.name.startswith("test_ladder"):
+        return                                           # the ladder (owner 2026-11-18) runs exactly as shipped
+    monkeypatch.setattr(S, "LADDER", ())                 # every other test: the rules it was written for, no ladder
     if request.node.name.startswith("test_rule_c"):
         return                                           # rule C (owner 2026-11-17) runs exactly as shipped
     monkeypatch.setattr(S, "BREAKEVEN_LOCK", not request.node.name.startswith("test_plain_trail"))
@@ -94,6 +97,15 @@ class SpikeDelta(FakeDelta):
 
     def place_order(self, order):
         p = order.to_payload()
+        if p.get("time_in_force") == "gtc" and p["side"] == "buy" and p.get("reduce_only") and p["order_type"] == "limit_order":
+            self.sent.append(p)                          # a take-profit step (owner 2026-11-18): rests until fill_tp
+            self._id += 1
+            row = dict(id=self._id, product_id=p["product_id"], side="buy", size=p["size"], unfilled_size=p["size"],
+                       average_fill_price=None, paid_commission="0", state="open", reduce_only=True,
+                       client_order_id=p["client_order_id"])
+            self.resting[p["client_order_id"]] = {"row": row, "payload": p}
+            self.by_cid[p["client_order_id"]] = row
+            return row
         if p.get("time_in_force") == "gtc" and p["side"] == "sell" and not p.get("reduce_only"):
             self.sent.append(p)
             self._id += 1
@@ -127,6 +139,23 @@ class SpikeDelta(FakeDelta):
             self._id += 1
             self.pending.append(dict(id=self._id, product_id=pid, reduce_only=True, stop_order_type="take_profit_order",
                                      stop_price=p["bracket_take_profit_price"], order_type="market_order"))
+
+    def fill_tp(self, step, n=None, at=None):
+        """The resting take-profit step `step` (1, 2) fills (n contracts, default all) at its limit."""
+        from tests.live.test_fade_live import _iso
+        cid, rest = [(c, r) for c, r in self.resting.items() if r["row"]["side"] == "buy"][step - 1]   # in the order placed
+        row, p = rest["row"], rest["payload"]
+        n = row["unfilled_size"] if n is None else n
+        pid, px = p["product_id"], float(p["limit_price"])
+        self.pos[pid] += n
+        self._close(pid, n, px, self.FEE)
+        done = row["size"] - row["unfilled_size"] + n
+        row.update(unfilled_size=row["size"] - done, average_fill_price=str(px), paid_commission=str(self.FEE),
+                   state="closed" if done == row["size"] else "open")
+        if at is not None:
+            row["updated_at"] = row["created_at"] = _iso(at)
+        self.history.insert(0, dict(row))
+        return cid
 
     def cancel_order(self, oid, pid):
         super().cancel_order(oid, pid)
@@ -1353,3 +1382,230 @@ async def test_rule_c_the_trail_ignores_the_minute_still_forming():
     assert await acct._lows_since_fill(r, start + 119) == []           # minute +1 still forming: not used
     assert await acct._lows_since_fill(r, start + 120) == [0.90]       # minute +1 over; minute +2 forming
     assert await acct._lows_since_fill(r, start + 180) == [0.90, 0.50]
+
+
+# ------------------------------------------------------------------ owner 2026-11-18: the take-profit ladder ("we will adopt it")
+def test_ladder_is_what_ships():
+    assert S.LADDER == ((0.05, 0.50), (0.10, 0.25)) and S.LADDER_TRIES == 3
+
+
+async def _ladder_open(con, fake, acct, at=D0 + 130):
+    await acct.step(con, D0 + 120)
+    fake.fill_resting(_cid(fake, 1), at=at)
+    await acct.step(con, D0 + 600)
+    return (await _rows(con))["XUSD"]
+
+
+def _tps(fake):
+    return [r for c, r in fake.resting.items() if r["row"]["side"] == "buy"]
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_two_steps_rest_after_the_fill():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        x = await _ladder_open(con, fake, acct)
+        n = x["contracts"]
+        assert x["status"] == "OPEN" and n > 100
+        tps = _tps(fake)
+        assert [(t["payload"]["size"], t["payload"]["limit_price"]) for t in tps] == [(n // 2, "0.9975"), (n // 4, "0.945")]
+        assert all(t["payload"]["reduce_only"] and t["payload"]["post_only"] and t["payload"]["time_in_force"] == "gtc" for t in tps)
+        assert acct.stop_covers(1)                           # the stop still covers what is held
+        await acct.step(con, D0 + 900)
+        assert len(_tps(fake)) == 2                          # placed once
+        assert [e["kind"] for e in await _events(con) if e["kind"].startswith("TAKE_PROFIT")] == ["TAKE_PROFIT_PLACED"] * 2
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_step_moves_the_wallet_and_the_capital_check_explains_it(monkeypatch):
+    """A filled step credits the wallet while the position is open; with a tight tolerance the capital check would HALT
+    the account unless `explained` counts it."""
+    monkeypatch.setattr(L, "CAPITAL_TOL_USD", 1.0)
+    monkeypatch.setattr(L, "CAPITAL_TOL_PCT", 0.0)
+    monkeypatch.setattr(L, "BALANCE_EVERY", 0)
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        x = await _ladder_open(con, fake, acct)
+        await acct.step(con, D0 + 700)
+        fake.book["XUSD"] = (0.99, 0.991, 0.99)
+        fake.fill_tp(1, at=D0 + 750)
+        for t in (D0 + 800, D0 + 900, D0 + 1000):
+            await acct.step(con, t)
+        assert (await _state(con))["status"] == "RUNNING", [e for e in await _events(con) if e["kind"] in ("HALT", "STATE")]
+        legs = S.SpikeLive._legs((await _rows(con))["XUSD"])
+        assert legs[0]["state"] == "done" and legs[0]["filled"] == x["contracts"] // 2 and legs[0]["px"] == 0.9975
+        assert [e["kind"] for e in await _events(con) if e["kind"] == "TAKE_PROFIT_FILLED"] == ["TAKE_PROFIT_FILLED"]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_the_stop_after_a_step_books_both_parts_and_cancels_the_other_step():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        bal0 = fake.bal
+        x = await _ladder_open(con, fake, acct)
+        n = x["contracts"]
+        fake.fill_tp(1, at=D0 + 650)
+        await acct.step(con, D0 + 700)
+        fake.fire_stop("XUSD", 1.10, at=D0 + 800)
+        await acct.step(con, D0 + 900)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "CLOSED" and x["exit_reason"] == "STOP_LOSS"
+        want = (1.05 - 0.9975) * (n // 2) + (1.05 - 1.10) * (n - n // 2) - (0.01 + 0.01 + 0.02)   # entry, step, stop fees
+        assert x["pnl"] == pytest.approx(fake.bal - bal0, abs=1e-6) and x["pnl"] == pytest.approx(want, abs=1e-6)
+        assert [t["row"]["state"] for t in _tps(fake)] == ["closed", "cancelled"]
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_the_24h_exit_after_both_steps_buys_back_only_the_rest():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        bal0 = fake.bal
+        x = await _ladder_open(con, fake, acct)
+        n = x["contracts"]
+        fake.fill_tp(1, at=D0 + 650)
+        fake.fill_tp(2, at=D0 + 660)
+        await acct.step(con, D0 + 700)
+        fake.book["XUSD"] = (0.95, 0.951, 0.95)
+        await acct.step(con, D0 + 130 + DAY + 60)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "CLOSED" and x["exit_reason"] == "TIME"
+        assert fake.sent[-1]["size"] == n - n // 2 - n // 4 and fake.pos.get(1, 0) == 0
+        assert x["pnl"] == pytest.approx(fake.bal - bal0, abs=1e-6)
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_step_already_passed_is_bought_at_market():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1), at=D0 + 130)
+        fake.book["XUSD"] = (0.99, 0.991, 0.99)                # already 5.7% under the 1.05 fill at the first look
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        legs = S.SpikeLive._legs(x)
+        assert legs[0]["state"] == "done" and legs[0]["filled"] == x["contracts"] // 2 and legs[0]["px"] == 0.991
+        assert [t["payload"]["limit_price"] for t in _tps(fake)] == ["0.945"]            # step 2 still rests
+        assert fake.pos[1] == -(x["contracts"] - x["contracts"] // 2)
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_one_contract_position_has_no_steps():
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        await acct.step(con, D0 + 120)
+        fake.fill_resting(_cid(fake, 1), n=1, at=D0 + 130)
+        await acct.step(con, D0 + 600)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "OPEN" and x["contracts"] == 1 and not _tps(fake)
+        assert [g["state"] for g in S.SpikeLive._legs(x)] == ["none", "none"]
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_lookup_that_misses_never_sends_a_step_twice():
+    """Delta's by-id lookup can miss an order that exists (the replay battery, D6): the step is found among the open
+    orders, and no second order is sent while the first still rests."""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        await _ladder_open(con, fake, acct)
+        fake.get_order_by_client_id = lambda cid: None
+        for t in (D0 + 900, D0 + 1200, D0 + 1500):
+            await acct.step(con, t)
+        assert len(_tps(fake)) == 2 and all(t["row"]["state"] == "open" for t in _tps(fake))
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_failed_read_at_the_close_is_settled_later_and_the_capital_check_waits(monkeypatch):
+    monkeypatch.setattr(L, "CAPITAL_TOL_USD", 1.0)
+    monkeypatch.setattr(L, "CAPITAL_TOL_PCT", 0.0)
+    monkeypatch.setattr(L, "BALANCE_EVERY", 0)
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        bal0 = fake.bal
+        await _ladder_open(con, fake, acct)
+        fake.fill_tp(1, at=D0 + 650)
+        fake.fire_stop("XUSD", 1.10, at=D0 + 700)        # the step and the stop between two passes
+        real = fake.get_order_by_client_id
+        fake.get_order_by_client_id = lambda cid: (_ for _ in ()).throw(ConnectionError("venue down"))
+        await acct.step(con, D0 + 800)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "CLOSED" and "ladder_settled" not in (x["detail"] or "")
+        fake.get_order_by_client_id = real
+        for t in (D0 + 900, D0 + 1000, D0 + 1100):
+            await acct.step(con, t)
+        x = (await _rows(con))["XUSD"]
+        assert "ladder_settled" in x["detail"] and x["pnl"] == pytest.approx(fake.bal - bal0, abs=1e-6)
+        assert (await _state(con))["status"] == "RUNNING"
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_step_left_resting_after_the_close_is_cancelled_before_it_is_settled():
+    """The close's clean-up (cancel_leftovers) can fail (the replay battery, D2): a step left resting on a flat coin
+    would fill against the next position there. It is cancelled on the next passes; settled only once gone."""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        bal0 = fake.bal
+        await _ladder_open(con, fake, acct)
+        fake.fill_tp(1, at=D0 + 650)
+        fake.fire_stop("XUSD", 1.10, at=D0 + 700)
+        fake.fail["cancel_order"] = 1
+        real_cancel = fake.cancel_order
+
+        def flaky(oid, pid):
+            fake._maybe_fail("cancel_order")
+            return real_cancel(oid, pid)
+        fake.cancel_order = flaky
+        await acct.step(con, D0 + 800)
+        x = (await _rows(con))["XUSD"]
+        assert x["status"] == "CLOSED"
+        for t in (D0 + 900, D0 + 1000, D0 + 1100):
+            await acct.step(con, t)
+        x = (await _rows(con))["XUSD"]
+        assert [t["row"]["state"] for t in _tps(fake)] == ["closed", "cancelled"]
+        assert "ladder_settled" in x["detail"] and x["pnl"] == pytest.approx(fake.bal - bal0, abs=1e-6)
+    finally:
+        await con.close()

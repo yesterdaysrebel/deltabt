@@ -6,8 +6,8 @@ careful simulation (docs/careful_sim_spec.md) the owner chose, 2026-11-15: **"de
 
 THE RULES (per UTC day, on the paper runner's two rule-A picks):
   entry      a resting post-only LIMIT SELL 5% above the last traded price at entry time (00:00-00:30 UTC), GTC,
-             with an exchange-held stop +10% from the limit (last-traded trigger; +2.25% until 2026-11-17). NO
-             take-profit order.
+             with an exchange-held stop +10% from the limit (last-traded trigger; +2.25% until 2026-11-17). No
+             take-profit bracket: the ladder below is placed after the fill.
              Not filled by 24:00 UTC -> cancelled ("no spike").
   size       20% of the balance as isolated margin per resting order (owner 2026-11-16; was 10%), at the most
              leverage up to 5x that Delta allows for that notional on that coin (owner 2026-11-17, rule C; was 20x):
@@ -26,6 +26,11 @@ THE RULES (per UTC day, on the paper runner's two rule-A picks):
              never up; (rule C as first deployed the same day moved it only to a level at or below the ENTRY); if the last price is already at or above the new level: bought back ("LOCK"). Moved on
              the bot's next pass (30 s), as the backtest moved it at the minute's close. (2026-11-16..17 it was a 5%
              trail from the fill with a 2.25% stop.)
+  ladder     TAKE-PROFIT LADDER (owner 2026-11-18, "we will adopt it"): right after the fill, reduce-only post-only limit
+             buys for 50% of the contracts 5% below the entry and 25% 10% below (a reduce-only market buy for a step
+             the price is already through). The rest keeps the stop / trail / 24 h. Whatever has not filled is
+             cancelled when the position closes. The P&L of a closed position counts every step; the capital check
+             counts a step's fill when it lands (`explained`). See LADDER.
   exits      the stop at Delta; 24 h after the FILL the bot buys back ("TIME").
   hard stop  NONE per month (owner 2026-11-16: "remove that setting", after being shown that with it removed the
              tested account ends at the $1,000 floor in 2025). Full stops are still counted and logged
@@ -103,6 +108,16 @@ TRAIL = 0.10
 #: fill", after the trail table): False -- the 10% trail tightens from the fill on: win 49%, average win +8.25% vs
 #: average loss -6.39% of the position, +0.77%/trade strict (+1.26% lenient) (out/careful/trail_from_fill.txt).
 TRAIL_ONLY_PAST_ENTRY = False
+#: Owner 2026-11-18 ("we will adopt it", after scripts/spike_ladder.py): a take-profit LADDER on top of the stop and the
+#: trail -- (fall below the entry, share of the position): 50% is bought back 5% below the entry, 25% 10% below; the
+#: rest keeps the stop / trail / 24 h. Each step is a reduce-only post-only limit buy placed right after the fill (or a
+#: reduce-only market buy if the price is already through the step). Tested (two implementations agreeing on every
+#: trade, before fees, 10% margin): history 2025-01..2026-11 +$12.2 a trade STRICT (+$16.7 lenient) vs +$19.8 (+$25.2)
+#: without; real picks 10-29..11-18 +$28.8 vs +$21.7; win 66% vs 50%; worst run -$973 vs -$1,227
+#: (out/careful/spike_ladder.txt, row "L6"). () = no ladder.
+LADDER: tuple[tuple[float, float], ...] = ((0.05, 0.50), (0.10, 0.25))
+#: How many times one step is sent before it is given up (an event; the stop and the trail still hold the position).
+LADDER_TRIES = 3
 #: Month-off rule: no new entries until the 1st after this many full stops in a calendar month. None = no monthly
 #: limit (owner 2026-11-16). It was 2 until then; the tested results in the docstring above are WITH the limit of 2.
 MONTH_STOP_LIMIT: int | None = None
@@ -161,6 +176,7 @@ ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS order_id BIGINT;
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS lock_price DOUBLE PRECISION;
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS extra_margin DOUBLE PRECISION;
 ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS trail_price DOUBLE PRECISION;
+ALTER TABLE fade_live_positions ADD COLUMN IF NOT EXISTS tp_legs JSONB;
 """
 
 
@@ -464,6 +480,10 @@ class SpikeLive(L.LiveFade):
                 await self._add_extra(con, row, now)
             except Exception:                            # noqa: BLE001 -- retried by the watcher and the next pass
                 log.exception("spike %s: the extra margin could not be added yet", r["symbol"])
+            try:
+                await self._ladder(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"]), now)
+            except Exception:                            # noqa: BLE001 -- placed by the next pass
+                log.exception("spike %s: the take-profit ladder could not be placed yet", r["symbol"])
         for x in others:                                 # what became of the other order (cancelled, or a double fill)
             try:
                 await self._resting(con, await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", x["id"]), now)
@@ -533,6 +553,8 @@ class SpikeLive(L.LiveFade):
 
     async def _exits(self, con, now: float) -> None:
         await self._schema(con)
+        if LADDER:
+            await self._settle_ladders(con, now)
         mine = 0
         for r in await con.fetch("SELECT * FROM fade_live_positions WHERE status = 'OPEN' ORDER BY entry_time, id"):
             if not self._ours(r):                        # a run-3 position still open: its own rule (24 h after its day)
@@ -552,6 +574,14 @@ class SpikeLive(L.LiveFade):
                 r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
                 if r["status"] != "OPEN":
                     continue                             # the margin check bought it back
+            if LADDER and r["entry_price"]:
+                try:
+                    await self._ladder(con, r, now)
+                except Exception:                        # noqa: BLE001 -- a step not placed is not a danger: the stop holds
+                    log.exception("spike %s: the take-profit ladder pass failed", r["symbol"])
+                r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
+                if r["status"] != "OPEN":
+                    continue
             if BREAKEVEN_LOCK and r["lock_price"] is None and r["entry_price"]:
                 await self._lock(con, r, now)
             elif r["entry_price"]:
@@ -636,8 +666,226 @@ class SpikeLive(L.LiveFade):
         await con.execute("UPDATE fade_live_positions SET trail_price = $2 WHERE id = $1", r["id"], float(new))
         await event(con, "TRAIL_MOVED", r["symbol"], {"stop_from": current, "stop_to": float(new), "last": last})
 
+    # -- the take-profit ladder (owner 2026-11-18) ----------------------------------------------------------------
+    @staticmethod
+    def _legs(r) -> list[dict] | None:
+        v = r["tp_legs"]
+        if v is None:
+            return None
+        return json.loads(v) if isinstance(v, str) else list(v)
+
+    async def _save_legs(self, con, row_id: int, legs: list[dict]) -> None:
+        await con.execute("UPDATE fade_live_positions SET tp_legs = $2::jsonb WHERE id = $1", row_id, json.dumps(legs))
+
+    @staticmethod
+    def _leg_from_order(leg: dict, o: dict | None, now: float) -> None:
+        """What Delta says one step's order did: contracts filled, their price and fee, when; finished or not."""
+        from live.ledger import parse_venue_time
+        if not o:
+            return
+        n = filled(o)
+        if n > int(leg.get("filled") or 0):
+            leg["filled"], leg["px"], leg["fee"] = n, fill_price(o), float(L.fee(o))
+            at = parse_venue_time(o.get("updated_at") or o.get("created_at"))
+            leg["at"] = float(at) if at is not None and at <= now else float(now)
+        state = str(o.get("state") or "").lower()
+        leg["ostate"] = state
+        if o.get("id") is not None:
+            leg["oid"] = o.get("id")
+        if int(leg.get("filled") or 0) >= int(leg["size"]):
+            leg["state"] = "done"
+        elif state in ("cancelled", "closed", "rejected"):
+            if int(leg.get("filled") or 0) > 0:
+                leg["state"] = "done"                    # part filled, the rest gone: that part is the step
+            else:
+                leg["cid"] = None                        # gone without a fill (a post-only that would have crossed): resend
+
+    def _find_leg(self, cid: str, product_id: int) -> dict | None:
+        """One step's order as Delta has it, asked three ways (its id; the open orders; the order history), because the
+        by-id lookup can miss an order that exists -- concluding "never landed" from one miss would send it twice."""
+        o = self.client.get_order_by_client_id(cid)
+        if o is not None:
+            return o
+        for x in self.client.get_open_orders(product_id):
+            if x.get("client_order_id") == cid:
+                return x
+        for x in self.client.order_history(product_id, 50):
+            if x.get("client_order_id") == cid:
+                return x
+        return None
+
+    async def _ladder(self, con, r, now: float, place: bool = True) -> bool:
+        """Place (once) and read the take-profit steps of an OPEN position. Each step: a reduce-only post-only GTC limit
+        buy at entry x (1 - level) for its share of the contracts filled; if the last price is already at or below it, a
+        reduce-only market buy instead. A step whose order is gone without a fill is sent again, at most LADDER_TRIES
+        times; never more than the ladder's own share of the position rests at once. `place=False` only reads (at the
+        close). Returns True when every sent step was read (its fills are known)."""
+        from live.client import VenueRejected
+        from live.orders import OrderRequest, OrderType, Side, TimeInForce, client_order_id
+        if not LADDER or not r["entry_price"] or not self._ours(r):
+            return True
+        legs = self._legs(r)
+        prod = await asyncio.to_thread(self.product, r["symbol"])
+        e = float(r["entry_price"])
+        if legs is None:
+            if not place:
+                return True
+            legs = [dict(step=i + 1, level=lv, frac=fr, size=int(math.floor(int(r["contracts"]) * fr + 1e-9)),
+                         price=str(to_tick(round(e * (1 - lv), 12), prod["tick"], up=False)), cid=None, tries=0, filled=0,
+                         px=None, fee=0.0, at=None) for i, (lv, fr) in enumerate(LADDER)]
+            for leg in legs:
+                leg["state"] = "open" if leg["size"] >= 1 else "none"
+            await self._save_legs(con, r["id"], legs)
+        before, complete = json.dumps(legs), True
+        for leg in legs:                                 # 1. read what every sent step did
+            if leg["state"] != "open" or leg["cid"] is None:
+                continue
+            try:
+                o = await asyncio.to_thread(self._find_leg, leg["cid"], prod["id"])
+            except Exception:                            # noqa: BLE001 -- not read this pass: nothing is concluded
+                complete = False
+                continue
+            if o is None:
+                if now - float(leg.get("sent_at") or now) >= 120:
+                    leg["cid"] = None                    # not at Delta, asked three ways, 2 minutes after the send
+                else:
+                    complete = False
+                continue
+            self._leg_from_order(leg, o, now)
+        if place and r["status"] == "OPEN":              # 2. send the steps that have no live order
+            todo = [g for g in legs if g["state"] == "open" and g["cid"] is None]
+            for leg in todo:
+                if leg["tries"] >= LADDER_TRIES:
+                    leg["state"] = "gave_up"
+                    await event(con, "TAKE_PROFIT_GAVE_UP", r["symbol"], {"step": leg["step"], "price": leg["price"]})
+                    continue
+                try:
+                    held = abs(await asyncio.to_thread(self.venue_size, prod["id"]))
+                    resting = sum(int(float(x.get("unfilled_size") or 0)) for x in
+                                  await asyncio.to_thread(self.client.get_open_orders, prod["id"])
+                                  if x.get("reduce_only") and str(x.get("side")).lower() == "buy")
+                    last = await asyncio.to_thread(self.last_price, r["symbol"])
+                except Exception:                        # noqa: BLE001 -- sent on a later pass
+                    break
+                keep = int(r["contracts"]) - sum(int(g["size"]) for g in legs)    # the part that only the stop closes
+                size = min(int(leg["size"]) - int(leg.get("filled") or 0), held - resting - keep)
+                if size < 1:
+                    continue                             # nothing (more) to send now: not a try
+                leg["tries"] += 1
+                leg["cid"] = client_order_id("fade-live", str(r["id"]), f"tp{leg['step']}", str(leg["tries"]))
+                leg["sent_at"] = int(now)
+                at_market = last > 0 and last <= float(leg["price"])
+                if at_market:
+                    order = OrderRequest(product_id=prod["id"], size=size, side=Side.BUY, order_type=OrderType.MARKET,
+                                         client_order_id=leg["cid"], time_in_force=TimeInForce.IOC, reduce_only=True,
+                                         note=f"spike-live take-profit step {leg['step']} (at market)")
+                else:
+                    order = OrderRequest(product_id=prod["id"], size=size, side=Side.BUY, order_type=OrderType.LIMIT,
+                                         client_order_id=leg["cid"], limit_price=leg["price"], time_in_force=TimeInForce.GTC,
+                                         post_only=True, reduce_only=True, note=f"spike-live take-profit step {leg['step']}")
+                await self._save_legs(con, r["id"], legs)    # the id is stored BEFORE the send: a lost reply is looked up
+                try:
+                    o = await asyncio.to_thread(self.client.place_order, order)
+                except VenueRejected as exc:
+                    leg["cid"] = None
+                    await event(con, "TAKE_PROFIT_REJECTED", r["symbol"], {"step": leg["step"], "error": str(exc)[:300]})
+                    continue
+                except Exception:                        # noqa: BLE001 -- outcome unknown: looked up by its id next pass
+                    continue
+                await event(con, "TAKE_PROFIT_PLACED", r["symbol"], {"step": leg["step"], "price": leg["price"], "size": size,
+                                                                    "at_market": at_market, "last": last})
+                self._leg_from_order(leg, o, now)
+        if json.dumps(legs) != before:
+            for leg in legs:
+                if leg["state"] == "done" and not leg.get("logged"):
+                    leg["logged"] = True
+                    await event(con, "TAKE_PROFIT_FILLED", r["symbol"], {k: leg[k] for k in ("step", "price", "filled", "px", "fee")})
+            await self._save_legs(con, r["id"], legs)
+        return complete
+
+    @staticmethod
+    def ladder_pnl(r, legs: list[dict] | None) -> tuple[int, float]:
+        """(contracts bought back by the ladder, their net P&L: price move x size less their fees)."""
+        n, pnl = 0, 0.0
+        e, cv = float(r["entry_price"] or 0), float(r["contract_value"] or 0)
+        for leg in legs or ():
+            f = int(leg.get("filled") or 0)
+            if f and leg.get("px"):
+                n += f
+                pnl += (e - float(leg["px"])) * f * cv - float(leg.get("fee") or 0)
+        return n, pnl
+
+    async def _ladder_close(self, con, row_id: int, now: float) -> None:
+        """A position with a ladder has CLOSED: read the steps one last time and put the P&L right -- the base computed
+        it as if all the contracts had closed at the final exit price. Until every step was read the row stays
+        UNSETTLED (retried every pass from `_exits`; `explained` waits for it), so a failed read never leaves a wrong P&L."""
+        r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
+        if r is None or r["status"] != "CLOSED" or r["tp_legs"] is None or '"ladder_settled"' in (r["detail"] or ""):
+            return
+        if not await self._ladder(con, r, now, place=False):
+            return
+        r = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", row_id)
+        live = [g for g in self._legs(r) or () if g.get("cid") and g.get("ostate") in ("open", "pending") and g.get("oid") is not None]
+        if live:
+            # a step still resting after the close (the close's own clean-up failed): it would fill against the NEXT
+            # position on this coin. Cancelled here; settled only once Delta shows every step filled or gone.
+            for g in live:
+                try:
+                    await self._cancel(g["oid"], r["product_id"])
+                except Exception:                        # noqa: BLE001 -- the next pass tries again
+                    log.exception("spike %s: a left-over take-profit step could not be cancelled yet", r["symbol"])
+            await event(con, "TAKE_PROFIT_LEFTOVER", r["symbol"], {"steps": [g["step"] for g in live]})
+            return
+        n, part = self.ladder_pnl(r, self._legs(r))
+        if n and r["exit_price"] is not None and r["entry_price"] is not None:
+            rest = int(r["contracts"]) - n
+            cv, e = float(r["contract_value"]), float(r["entry_price"])
+            pnl = (e - float(r["exit_price"])) * rest * cv + part - float(r["entry_fee"] or 0) - float(r["exit_fee"] or 0)
+            risk = (float(r["stop_price"]) - e) * int(r["contracts"]) * cv
+            await con.execute("UPDATE fade_live_positions SET pnl = $2, r = $3 WHERE id = $1", row_id, pnl,
+                              pnl / risk if risk > 0 else None)
+            await event(con, "LADDER_PNL", r["symbol"], {"ladder_contracts": n, "ladder_pnl": round(part, 4),
+                                                         "rest": rest, "pnl": round(pnl, 4)})
+        await con.execute("UPDATE fade_live_positions SET detail = COALESCE(detail, '{}'::jsonb) || $2::jsonb WHERE id = $1",
+                          row_id, json.dumps({"ladder_settled": int(now)}))
+
+    async def _settle_ladders(self, con, now: float) -> None:
+        for x in await con.fetch("SELECT id FROM fade_live_positions WHERE status = 'CLOSED' AND tp_legs IS NOT NULL "
+                                 "AND NOT (COALESCE(detail, '{}'::jsonb) ? 'ladder_settled')"):
+            try:
+                await self._ladder_close(con, x["id"], now)
+            except Exception:                            # noqa: BLE001 -- the next pass tries again
+                log.exception("spike: the ladder of position %s could not be settled yet", x["id"])
+
+    async def explained(self, con, since):
+        """The base's figure plus the ladder: a step's fill moves the wallet while the position is still open (its P&L
+        counts at its own time); the close's P&L includes the steps, so those that counted before are taken out. None
+        (wait: the base is kept) while a closed position's ladder is not settled yet."""
+        base = await super().explained(con, since)
+        if base is None or (isinstance(base, float) and math.isnan(base)):
+            return base
+        t0 = since.timestamp()
+        for r in await con.fetch("SELECT * FROM fade_live_positions WHERE tp_legs IS NOT NULL AND "
+                                 "(status = 'OPEN' OR exit_time > $1)", since):
+            if r["status"] == "CLOSED" and '"ladder_settled"' not in (r["detail"] or ""):
+                return None
+            for leg in self._legs(r) or ():
+                _, p = self.ladder_pnl(r, [leg])
+                if not leg.get("filled"):
+                    continue
+                if leg.get("at") is not None and float(leg["at"]) > t0:
+                    base += p
+                if r["status"] == "CLOSED" and r["exit_time"] is not None and r["exit_time"] > since:
+                    base -= p
+        return base
+
+    async def _close(self, con, r, now: float, reason: str, why: str) -> None:
+        await super()._close(con, r, now, reason, why)
+        await self._ladder_close(con, r["id"], now)
+
     async def _closed_at_venue(self, con, r, now: float) -> None:
         await super()._closed_at_venue(con, r, now)
+        await self._ladder_close(con, r["id"], now)
         x = await con.fetchrow("SELECT * FROM fade_live_positions WHERE id = $1", r["id"])
         if x["status"] == "CLOSED" and x["exit_reason"] == "STOP_LOSS" and x["exit_price"]:
             trig = float(x["trail_price"] or x["lock_price"] or x["stop_price"])
@@ -671,6 +919,10 @@ class SpikeLive(L.LiveFade):
             return
         if await con.fetchval("SELECT count(*) FROM fade_live_positions WHERE status = 'OPEN'"):
             await self._skip(con, day, p, "a position is open: one at a time")
+            return
+        if LADDER and await con.fetchval("SELECT count(*) FROM fade_live_positions WHERE status = 'CLOSED' AND tp_legs IS NOT NULL "
+                                         "AND NOT (COALESCE(detail, '{}'::jsonb) ? 'ladder_settled')"):
+            await self._skip(con, day, p, "a closed trade's take-profit steps are not settled yet (a step may still rest)")
             return
         if float(p["atrp"]) * K_STOP > MAX_DIST:
             await self._skip(con, day, p, f"stop {K_STOP * float(p['atrp']):.0%} away is past the {MAX_DIST:.1%} limit")

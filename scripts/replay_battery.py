@@ -42,7 +42,9 @@ def fault_spec(kind):
     if kind == "writes":
         return {"add_position_margin": (0.15, "ambiguous"), "add_position_margin:after": (0.15, "ambiguous"),
                 "edit_stop_price": (0.15, "venue"), "edit_stop_price:after": (0.15, "ambiguous"),
-                "cancel_order": (0.05, "timeout"), "buy_back:after": (0.15, "ambiguous"), "set_order_leverage": (0.02, "rejected")}
+                "cancel_order": (0.05, "timeout"), "buy_back:after": (0.15, "ambiguous"), "set_order_leverage": (0.02, "rejected"),
+                # the take-profit ladder (owner 2026-11-18): a step refused, a step whose reply is lost after it rests
+                "place_tp": (0.15, "rejected"), "place_tp:after": (0.15, "ambiguous")}
     if kind == "refused":
         return {"add_position_margin": (0.5, "rejected")}
     if kind == "all":
@@ -83,8 +85,10 @@ def job(arg):
     return res
 
 
-N_DB = 8
-SEEDS = 10
+N_DB = int(os.environ.get("REPLAY_DBS", "8"))
+SEEDS = int(os.environ.get("REPLAY_SEEDS", "10"))
+#: REPLAY_QUICK=1: A runs only the full history and every 6th monthly start (the rest of the battery unchanged).
+QUICK = os.environ.get("REPLAY_QUICK") == "1"
 
 
 async def make_dbs():
@@ -105,16 +109,28 @@ def show(r):
 
 def main():
     asyncio.run(make_dbs())
-    # sanity: the reference rule equals the research function (careful_be_trail.t1) when given its extra margin
-    n = 0
+    # sanity: the replay's reference rule against an independent implementation of the SAME rule (scripts/spike_ladder.py:
+    # the minute loop the owner's ladder was chosen with -- rule "C from the fill" plus R.S.LADDER). The research function
+    # this used to call (careful_be_trail.t1) is exit C, which no longer ships (owner 2026-11-17 / 11-18).
+    import spike_ladder as LD
+    LD.STOP, LD.TRAIL = R.S.STOP_ABOVE, R.S.TRAIL
+    n = bad = 0
     for day, picks in D.load():
         for rank, sym, H, L, Cl in picks:
             for le in (False, True):
-                a = R.ref_trade(sym, H, L, Cl, 3184.0, le, extra_frac=0.25 * 0.10 / 0.49)
-                b = BT.t1(sym, H, L, Cl, 3184.0 * 0.10 / 0.49, le)
-                assert (a is None) == (b is None) and (a is None or (a[0] == b[0] and a[2:] == b[2:] and abs(a[1] - b[1]) < 0.01)), (day, sym, a, b)
-                n += a is not None
-    print(f"SANITY PASSED: the replay's reference rule equals the research function on all {n} trades (both fills).\n")
+                a = R.ref_trade(sym, H, L, Cl, 3184.0, le)
+                en = LD.entry1(H, Cl, "live", not le)
+                if a is None or en is None:
+                    bad += (a is None) != (en is None)
+                    continue
+                k, e, _, inside = en
+                j, ret, _ = LD.loop(H, L, Cl, k, e, inside, list(R.S.LADDER), False, not le)
+                notional = R.ref_sizing(sym, R.S.TRADE_MARGIN * 3184.0, e, R.S.EXTRA_MARGIN * 3184.0)[0]
+                n += 1
+                if a[0] != "LIQ" and (a[2] != k or a[3] != j or abs(a[1] / notional - ret) > 0.003):
+                    bad += 1
+    print(f"SANITY: the replay's reference rule vs scripts/spike_ladder.loop on {n} trades (both fills): {bad} differ "
+          f"(exit minute, or P&L by more than 0.3% of the position: fees differ by ~0.1%).\n")
     jobs, i = [], 0
 
     def add(name, lo, hi, le, **opts):
@@ -123,7 +139,7 @@ def main():
         i += 1
     for le in (False, True):
         add("A full history", "2025-01", "2026-12", le)
-        for mo in pd.period_range("2025-02", "2026-10", freq="M"):
+        for mo in pd.period_range("2025-02", "2026-10", freq="M")[::6 if QUICK else 1]:
             add(f"A start {mo}", str(mo), "2026-12", le)
         add("B real ticks, full history", "2025-01", "2026-12", le, fine=False)
         add("C a pass every minute, 2026-08..11", "2026-08", "2026-12", le, heartbeat=1)

@@ -1,0 +1,68 @@
+Owner 2026-11-18: "if it does not reach the target in 1 hour we cut the trade" (after "we will cut the trade at
+30-40$"). The live spike rule ("C from the fill": 10% stop, 10% trail from the fill) plus a resting take-profit at
+$30 / $35 / $40, and OUT AT MARKET 60 minutes after the fill if the target has not filled (STRICT: the 60th minute's
+close 0.05% worse). Also 30 / 120 minutes for context, chosen before the run, and the 1-hour cut alone (no target).
+10% and 20% margin x 5x. Machinery and checks of scripts/spike_split_be.py with its time limit set to the cut (two
+implementations agree; equal to spike_verify.trade1 with the same tp and minutes). History 2025-01..2026-11-14 with the
+bot's day rules, 2025 / 2026 shown; real picks 10-29..11-18 (today's MMT at its actual fill). Before fees, then after.
+
+===== MARGIN 10%: position $1,439, the 10% stop ~ -$144
+  STRICT  as now             history  369 trades  win  50%  avg win $ +128  avg loss $  -89  per trade $ +19.8 (after fees $ +18.7)  total $  +7,311  worst run $-1,227  [2025 $+12.5 | 2026 $+27.0]
+                             real      14 trades  win  50%  avg win $ +128  avg loss $  -85  per trade $ +21.7 (after fees $ +20.6)  total $    +304  worst run $-203  | today MMT $-76
+  STRICT  1h cut, no target  history  460 trades  win  53%  avg win $  +55  avg loss $  -58  per trade $  +2.2 (after fees $  +1.1)  total $    +999  worst run $-1,201  [2025 $+2.5 | 2026 $+1.8]
+                             real      16 trades  win  69%  avg win $  +52  avg loss $ -103  per trade $  +3.3 (after fees $  +2.2)  total $     +53  worst run $-271  | today MMT $+5
+  STRICT  $30 + 1h cut       history  460 trades  win  65%  avg win $  +27  avg loss $  -60  per trade $  -3.3 (after fees $  -4.1)  total $  -1,520  worst run $-2,031  [2025 $-3.1 | 2026 $-3.6]
+                             real      16 trades  win  75%  avg win $  +30  avg loss $ -101  per trade $  -2.9 (after fees $  -3.6)  total $     -46  worst run $-241  | today MMT $+30
+  STRICT  $35 + 1h cut       history  460 trades  win  62%  avg win $  +30  avg loss $  -58  per trade $  -3.5 (after fees $  -4.3)  total $  -1,605  worst run $-2,196  [2025 $-3.5 | 2026 $-3.5]
+                             real      16 trades  win  69%  avg win $  +30  avg loss $ -103  per trade $ -11.3 (after fees $ -12.1)  total $    -180  worst run $-365  | today MMT $+35
+  STRICT  $40 + 1h cut       history  460 trades  win  61%  avg win $  +33  avg loss $  -59  per trade $  -3.0 (after fees $  -3.9)  total $  -1,373  worst run $-1,983  [2025 $-2.7 | 2026 $-3.2]
+                             real      16 trades  win  69%  avg win $  +34  avg loss $ -103  per trade $  -8.5 (after fees $  -9.3)  total $    -135  worst run $-345  | today MMT $+40
+  STRICT  $40 + 30m cut      history  460 trades  win  58%  avg win $  +29  avg loss $  -44  per trade $  -1.4 (after fees $  -2.3)  total $    -629  worst run $-1,438  [2025 $-0.8 | 2026 $-2.0]
+                             real      16 trades  win  75%  avg win $  +32  avg loss $ -117  per trade $  -5.4 (after fees $  -6.2)  total $     -86  worst run $-296  | today MMT $+40
+  STRICT  $40 + 2h cut       history  458 trades  win  68%  avg win $  +36  avg loss $  -78  per trade $  -0.7 (after fees $  -1.5)  total $    -302  worst run $-1,123  [2025 $-0.3 | 2026 $-1.0]
+                             real      16 trades  win  75%  avg win $  +38  avg loss $ -126  per trade $  -2.8 (after fees $  -3.5)  total $     -44  worst run $-253  | today MMT $+40
+  LENIENT as now             history  369 trades  win  51%  avg win $ +129  avg loss $  -82  per trade $ +25.2 (after fees $ +24.2)  total $  +9,306  worst run $-1,000  [2025 $+16.2 | 2026 $+34.1]
+                             real      14 trades  win  50%  avg win $ +143  avg loss $  -64  per trade $ +39.8 (after fees $ +38.7)  total $    +557  worst run $-158  | today MMT $-45
+  LENIENT 1h cut, no target  history  460 trades  win  53%  avg win $  +56  avg loss $  -53  per trade $  +5.1 (after fees $  +4.0)  total $  +2,351  worst run $-1,017  [2025 $+5.0 | 2026 $+5.3]
+                             real      16 trades  win  69%  avg win $  +52  avg loss $ -101  per trade $  +4.4 (after fees $  +3.4)  total $     +71  worst run $-257  | today MMT $+6
+  LENIENT $30 + 1h cut       history  460 trades  win  67%  avg win $  +27  avg loss $  -57  per trade $  -0.9 (after fees $  -1.7)  total $    -424  worst run $-1,016  [2025 $+0.1 | 2026 $-2.0]
+                             real      16 trades  win  75%  avg win $  +30  avg loss $  -99  per trade $  -2.3 (after fees $  -3.0)  total $     -37  worst run $-234  | today MMT $+30
+  LENIENT $35 + 1h cut       history  460 trades  win  63%  avg win $  +31  avg loss $  -55  per trade $  -1.0 (after fees $  -1.9)  total $    -478  worst run $-1,128  [2025 $-0.7 | 2026 $-1.4]
+                             real      16 trades  win  69%  avg win $  +31  avg loss $ -101  per trade $ -10.5 (after fees $ -11.3)  total $    -168  worst run $-353  | today MMT $+35
+  LENIENT $40 + 1h cut       history  460 trades  win  61%  avg win $  +34  avg loss $  -55  per trade $  -1.0 (after fees $  -1.9)  total $    -475  worst run $-1,151  [2025 $-0.3 | 2026 $-1.8]
+                             real      16 trades  win  69%  avg win $  +35  avg loss $ -101  per trade $  -7.7 (after fees $  -8.5)  total $    -123  worst run $-333  | today MMT $+40
+  LENIENT $40 + 30m cut      history  460 trades  win  60%  avg win $  +29  avg loss $  -42  per trade $  +0.4 (after fees $  -0.5)  total $    +202  worst run $-791  [2025 $+1.5 | 2026 $-0.7]
+                             real      16 trades  win  75%  avg win $  +32  avg loss $ -116  per trade $  -4.8 (after fees $  -5.7)  total $     -77  worst run $-288  | today MMT $+40
+  LENIENT $40 + 2h cut       history  458 trades  win  68%  avg win $  +37  avg loss $  -73  per trade $  +1.4 (after fees $  +0.6)  total $    +655  worst run $-875  [2025 $+2.3 | 2026 $+0.5]
+                             real      16 trades  win  75%  avg win $  +38  avg loss $ -124  per trade $  -2.1 (after fees $  -2.9)  total $     -34  worst run $-243  | today MMT $+40
+
+===== MARGIN 20%: position $2,878, the 10% stop ~ -$288
+  STRICT  as now             history  369 trades  win  50%  avg win $ +255  avg loss $ -177  per trade $ +39.6 (after fees $ +37.5)  total $ +14,621  worst run $-2,454  [2025 $+25.1 | 2026 $+53.9]
+                             real      14 trades  win  50%  avg win $ +256  avg loss $ -170  per trade $ +43.4 (after fees $ +41.3)  total $    +608  worst run $-406  | today MMT $-152
+  STRICT  1h cut, no target  history  460 trades  win  53%  avg win $ +111  avg loss $ -116  per trade $  +4.3 (after fees $  +2.2)  total $  +1,998  worst run $-2,402  [2025 $+5.0 | 2026 $+3.6]
+                             real      16 trades  win  69%  avg win $ +103  avg loss $ -206  per trade $  +6.6 (after fees $  +4.5)  total $    +105  worst run $-542  | today MMT $+10
+  STRICT  $30 + 1h cut       history  460 trades  win  76%  avg win $  +29  avg loss $ -130  per trade $  -8.8 (after fees $ -10.3)  total $  -4,059  worst run $-5,192  [2025 $-8.2 | 2026 $-9.5]
+                             real      16 trades  win  94%  avg win $  +30  avg loss $ -291  per trade $  +9.9 (after fees $  +8.7)  total $    +159  worst run $-293  | today MMT $+30
+  STRICT  $35 + 1h cut       history  460 trades  win  73%  avg win $  +34  avg loss $ -129  per trade $  -9.3 (after fees $ -10.8)  total $  -4,298  worst run $-5,178  [2025 $-8.9 | 2026 $-9.8]
+                             real      16 trades  win  88%  avg win $  +35  avg loss $ -273  per trade $  -3.5 (after fees $  -4.8)  total $     -56  worst run $-347  | today MMT $+35
+  STRICT  $40 + 1h cut       history  460 trades  win  72%  avg win $  +38  avg loss $ -125  per trade $  -8.0 (after fees $  -9.6)  total $  -3,698  worst run $-4,535  [2025 $-7.8 | 2026 $-8.3]
+                             real      16 trades  win  88%  avg win $  +40  avg loss $ -273  per trade $  +0.9 (after fees $  -0.4)  total $     +14  worst run $-317  | today MMT $+40
+  STRICT  $40 + 30m cut      history  460 trades  win  68%  avg win $  +37  avg loss $  -96  per trade $  -6.3 (after fees $  -7.9)  total $  -2,882  worst run $-3,767  [2025 $-3.8 | 2026 $-8.9]
+                             real      16 trades  win  88%  avg win $  +38  avg loss $ -273  per trade $  -1.3 (after fees $  -2.6)  total $     -20  worst run $-353  | today MMT $+40
+  STRICT  $40 + 2h cut       history  459 trades  win  78%  avg win $  +39  avg loss $ -174  per trade $  -8.1 (after fees $  -9.6)  total $  -3,734  worst run $-4,508  [2025 $-6.6 | 2026 $-9.8]
+                             real      16 trades  win  88%  avg win $  +40  avg loss $ -273  per trade $  +0.9 (after fees $  -0.4)  total $     +14  worst run $-317  | today MMT $+40
+  LENIENT as now             history  369 trades  win  51%  avg win $ +259  avg loss $ -164  per trade $ +50.4 (after fees $ +48.3)  total $ +18,612  worst run $-1,999  [2025 $+32.5 | 2026 $+68.1]
+                             real      14 trades  win  50%  avg win $ +287  avg loss $ -128  per trade $ +79.6 (after fees $ +77.4)  total $  +1,114  worst run $-316  | today MMT $-91
+  LENIENT 1h cut, no target  history  460 trades  win  53%  avg win $ +112  avg loss $ -107  per trade $ +10.2 (after fees $  +8.1)  total $  +4,703  worst run $-2,034  [2025 $+9.9 | 2026 $+10.6]
+                             real      16 trades  win  69%  avg win $ +105  avg loss $ -202  per trade $  +8.8 (after fees $  +6.7)  total $    +142  worst run $-513  | today MMT $+11
+  LENIENT $30 + 1h cut       history  460 trades  win  79%  avg win $  +29  avg loss $ -122  per trade $  -2.5 (after fees $  -3.9)  total $  -1,139  worst run $-2,644  [2025 $-0.5 | 2026 $-4.6]
+                             real      16 trades  win  94%  avg win $  +30  avg loss $ -288  per trade $ +10.1 (after fees $  +8.9)  total $    +162  worst run $-290  | today MMT $+30
+  LENIENT $35 + 1h cut       history  460 trades  win  74%  avg win $  +34  avg loss $ -117  per trade $  -4.8 (after fees $  -6.3)  total $  -2,199  worst run $-3,212  [2025 $-2.5 | 2026 $-7.2]
+                             real      16 trades  win  88%  avg win $  +35  avg loss $ -270  per trade $  -3.1 (after fees $  -4.4)  total $     -49  worst run $-341  | today MMT $+35
+  LENIENT $40 + 1h cut       history  460 trades  win  73%  avg win $  +38  avg loss $ -118  per trade $  -3.8 (after fees $  -5.4)  total $  -1,769  worst run $-2,780  [2025 $-3.2 | 2026 $-4.5]
+                             real      16 trades  win  88%  avg win $  +40  avg loss $ -270  per trade $  +1.3 (after fees $  -0.0)  total $     +21  worst run $-311  | today MMT $+40
+  LENIENT $40 + 30m cut      history  460 trades  win  69%  avg win $  +37  avg loss $  -91  per trade $  -2.3 (after fees $  -3.9)  total $  -1,059  worst run $-2,066  [2025 $+0.5 | 2026 $-5.3]
+                             real      16 trades  win  88%  avg win $  +38  avg loss $ -270  per trade $  -0.8 (after fees $  -2.2)  total $     -12  worst run $-345  | today MMT $+40
+  LENIENT $40 + 2h cut       history  459 trades  win  79%  avg win $  +39  avg loss $ -165  per trade $  -3.8 (after fees $  -5.3)  total $  -1,759  worst run $-2,633  [2025 $-1.9 | 2026 $-5.9]
+                             real      16 trades  win  88%  avg win $  +40  avg loss $ -270  per trade $  +1.3 (after fees $  -0.0)  total $     +21  worst run $-311  | today MMT $+40
+
