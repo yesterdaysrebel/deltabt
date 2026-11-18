@@ -1,0 +1,42 @@
+Owner 2026-11-18: "we will cut the trade at 30-40$". The live spike rule ("C from the fill") plus a resting take-
+profit at $30 / $35 / $40, at 10% and 20% margin x 5x, vs the rule as it runs. Same machinery and checks as
+scripts/spike_split_be.py (two implementations agree; equal to spike_verify.trade1 with tp). History 2025-01..2026-11-14
+with the bot's day rules, split 2025 / 2026; real picks 10-29..11-18 (today's MMT at its actual fill). Before fees,
+then after.
+
+===== MARGIN 10%: position $1,439, the 10% stop ~ -$144
+  STRICT  as now   history  369 trades  win  50%  avg win $ +128  avg loss $  -89  per trade $ +19.8 (after fees $ +18.7)  total $  +7,311  worst run $-1,227  [2025 $+12.5 | 2026 $+27.0]
+                   real      14 trades  win  50%  avg win $ +128  avg loss $  -85  per trade $ +21.7 (after fees $ +20.6)  total $    +304  worst run $-203
+  STRICT  cut $30  history  446 trades  win  82%  avg win $  +30  avg loss $ -133  per trade $  +0.8 (after fees $  +0.1)  total $    +363  worst run $-1,168  [2025 $+0.0 | 2026 $+1.6]
+                   real      16 trades  win  81%  avg win $  +30  avg loss $ -132  per trade $  -0.3 (after fees $  -1.0)  total $      -5  worst run $-241
+  STRICT  cut $35  history  443 trades  win  80%  avg win $  +35  avg loss $ -131  per trade $  +1.3 (after fees $  +0.6)  total $    +582  worst run $-1,641  [2025 $-1.5 | 2026 $+4.2]
+                   real      16 trades  win  75%  avg win $  +35  avg loss $ -126  per trade $  -5.3 (after fees $  -6.0)  total $     -84  worst run $-268
+  STRICT  cut $40  history  442 trades  win  78%  avg win $  +40  avg loss $ -128  per trade $  +2.7 (after fees $  +1.9)  total $  +1,173  worst run $-1,412  [2025 $+1.0 | 2026 $+4.4]
+                   real      16 trades  win  75%  avg win $  +40  avg loss $ -126  per trade $  -1.5 (after fees $  -2.2)  total $     -24  worst run $-238
+  LENIENT as now   history  369 trades  win  51%  avg win $ +129  avg loss $  -82  per trade $ +25.2 (after fees $ +24.2)  total $  +9,306  worst run $-1,000  [2025 $+16.2 | 2026 $+34.1]
+                   real      14 trades  win  50%  avg win $ +143  avg loss $  -64  per trade $ +39.8 (after fees $ +38.7)  total $    +557  worst run $-158
+  LENIENT cut $30  history  447 trades  win  83%  avg win $  +30  avg loss $ -124  per trade $  +3.1 (after fees $  +2.4)  total $  +1,391  worst run $-860  [2025 $+3.3 | 2026 $+2.9]
+                   real      16 trades  win  81%  avg win $  +30  avg loss $ -129  per trade $  +0.2 (after fees $  -0.5)  total $      +3  worst run $-234
+  LENIENT cut $35  history  444 trades  win  80%  avg win $  +35  avg loss $ -122  per trade $  +4.1 (after fees $  +3.4)  total $  +1,827  worst run $-834  [2025 $+2.7 | 2026 $+5.6]
+                   real      16 trades  win  75%  avg win $  +35  avg loss $ -124  per trade $  -4.7 (after fees $  -5.4)  total $     -75  worst run $-258
+  LENIENT cut $40  history  442 trades  win  78%  avg win $  +40  avg loss $ -120  per trade $  +5.3 (after fees $  +4.6)  total $  +2,334  worst run $-799  [2025 $+4.6 | 2026 $+5.9]
+                   real      16 trades  win  75%  avg win $  +40  avg loss $ -124  per trade $  -0.9 (after fees $  -1.6)  total $     -15  worst run $-235
+
+===== MARGIN 20%: position $2,878, the 10% stop ~ -$288
+  STRICT  as now   history  369 trades  win  50%  avg win $ +255  avg loss $ -177  per trade $ +39.6 (after fees $ +37.5)  total $ +14,621  worst run $-2,454  [2025 $+25.1 | 2026 $+53.9]
+                   real      14 trades  win  50%  avg win $ +256  avg loss $ -170  per trade $ +43.4 (after fees $ +41.3)  total $    +608  worst run $-406
+  STRICT  cut $30  history  453 trades  win  89%  avg win $  +30  avg loss $ -288  per trade $  -5.8 (after fees $  -7.1)  total $  -2,629  worst run $-3,990  [2025 $-3.7 | 2026 $-8.0]
+                   real      16 trades  win  94%  avg win $  +30  avg loss $ -291  per trade $  +9.9 (after fees $  +8.7)  total $    +159  worst run $-293
+  STRICT  cut $35  history  450 trades  win  87%  avg win $  +35  avg loss $ -279  per trade $  -6.2 (after fees $  -7.5)  total $  -2,778  worst run $-3,845  [2025 $-4.8 | 2026 $-7.7]
+                   real      16 trades  win  88%  avg win $  +35  avg loss $ -273  per trade $  -3.5 (after fees $  -4.8)  total $     -56  worst run $-347
+  STRICT  cut $40  history  450 trades  win  86%  avg win $  +40  avg loss $ -273  per trade $  -5.2 (after fees $  -6.5)  total $  -2,327  worst run $-3,537  [2025 $-4.4 | 2026 $-6.0]
+                   real      16 trades  win  88%  avg win $  +40  avg loss $ -273  per trade $  +0.9 (after fees $  -0.4)  total $     +14  worst run $-317
+  LENIENT as now   history  369 trades  win  51%  avg win $ +259  avg loss $ -164  per trade $ +50.4 (after fees $ +48.3)  total $ +18,612  worst run $-1,999  [2025 $+32.5 | 2026 $+68.1]
+                   real      14 trades  win  50%  avg win $ +287  avg loss $ -128  per trade $ +79.6 (after fees $ +77.4)  total $  +1,114  worst run $-316
+  LENIENT cut $30  history  454 trades  win  90%  avg win $  +30  avg loss $ -269  per trade $  +0.4 (after fees $  -0.9)  total $    +168  worst run $-1,785  [2025 $+3.8 | 2026 $-3.3]
+                   real      16 trades  win  94%  avg win $  +30  avg loss $ -288  per trade $ +10.1 (after fees $  +8.9)  total $    +162  worst run $-290
+  LENIENT cut $35  history  452 trades  win  88%  avg win $  +35  avg loss $ -263  per trade $  -1.2 (after fees $  -2.6)  total $    -558  worst run $-2,352  [2025 $+1.4 | 2026 $-4.0]
+                   real      16 trades  win  88%  avg win $  +35  avg loss $ -270  per trade $  -3.1 (after fees $  -4.4)  total $     -49  worst run $-341
+  LENIENT cut $40  history  450 trades  win  86%  avg win $  +40  avg loss $ -256  per trade $  -0.2 (after fees $  -1.5)  total $     -84  worst run $-2,492  [2025 $+0.6 | 2026 $-1.0]
+                   real      16 trades  win  88%  avg win $  +40  avg loss $ -270  per trade $  +1.3 (after fees $  -0.0)  total $     +21  worst run $-311
+

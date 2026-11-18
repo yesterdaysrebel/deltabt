@@ -147,7 +147,7 @@ class ReplayDelta:
     def get_open_orders(self, pid=None):
         """Orders resting on the book (states=open): the entry sells -- never the stop legs."""
         self._hit("get_open_orders")
-        return [dict(o) for o in self.orders.values() if o["side"] == "sell" and o["state"] == "open" and pid in (None, o["product_id"])]
+        return [dict(o) for o in self.orders.values() if o["state"] == "open" and pid in (None, o["product_id"])]
 
     def order_history(self, pid=None, page_size=20):
         self._hit("order_history")
@@ -196,7 +196,19 @@ class ReplayDelta:
             self.orders[p["client_order_id"]] = row
             self.log.append((self.now, "RESTING", sym, (p["size"], p["limit_price"], p["bracket_stop_loss_price"], self.lev.get(pid))))
             return dict(row)
-        assert p.get("reduce_only"), p                     # the bot's only other order: a reduce-only buy-back
+        assert p.get("reduce_only"), p                     # the bot's only other orders: reduce-only buys
+        if p["order_type"] == "limit_order" and p.get("time_in_force") == "gtc":   # a take-profit step (owner 2026-11-18)
+            assert p.get("post_only") is True, p
+            self._hit("place_tp")
+            row = dict(id=self._id, product_id=pid, side="buy", size=p["size"], unfilled_size=p["size"], average_fill_price=None,
+                       paid_commission="0", state="open", reduce_only=True, client_order_id=p["client_order_id"],
+                       limit_price=p["limit_price"], created_at=iso(self.now))
+            if float(p["limit_price"]) >= self.px[sym][1]:
+                row["state"] = "cancelled"                 # post-only that would cross: Delta cancels it
+            self.orders[p["client_order_id"]] = row
+            self.log.append((self.now, "TP_RESTING" if row["state"] == "open" else "TP_CROSSED", sym, (p["size"], p["limit_price"])))
+            self._hit("place_tp:after")                    # rests, but the reply never arrives
+            return dict(row)
         pos = self.pos.get(pid)
         n = min(int(p["size"]), pos["qty"]) if pos else 0
         row = dict(id=self._id, product_id=pid, side="buy", size=p["size"], unfilled_size=int(p["size"]) - n, state="closed",
@@ -252,6 +264,33 @@ class ReplayDelta:
                 self.log.append((self.now, "FILLED", self.spec[pid]["sym"], e))
                 return cid
         return None
+
+    def try_tp(self, sym: str, low: float) -> int:
+        """Resting take-profit buys of `sym` whose limit the minute's low traded through (STRICT by 0.1%) fill at their
+        limit, maker commission 0.02%. Returns how many filled."""
+        pid = self.products[sym]["id"]
+        got = 0
+        for o in self.orders.values():
+            pos = self.pos.get(pid)
+            if not pos or o["product_id"] != pid or o["side"] != "buy" or o["state"] != "open" or "limit_price" not in o:
+                continue
+            lp = float(o["limit_price"])
+            if low > lp * (1.0 if self.lenient else 0.999):
+                continue
+            n = min(int(o["unfilled_size"]), pos["qty"])
+            cv = self.spec[pid]["cv"]
+            com = n * cv * lp * 0.0002
+            self.bal += (pos["entry"] - lp) * n * cv - com
+            pos["qty"] -= n
+            o.update(unfilled_size=int(o["unfilled_size"]) - n, average_fill_price=repr(lp), paid_commission=repr(com),
+                     state="closed", updated_at=iso(self.now))
+            self.history.insert(0, dict(o))
+            self.log.append((self.now, "TP_FILLED", sym, (n, lp)))
+            got += 1
+            if pos["qty"] == 0:
+                del self.pos[pid]
+                self.pending = [x for x in self.pending if x["product_id"] != pid]
+        return got
 
     def try_stop(self, sym: str, high: float, close: float) -> str | None:
         pid = self.products[sym]["id"]
@@ -312,15 +351,30 @@ def ref_trade(sym, H, L, Cl, bal, le, extra_frac=None):
     raw = lambda x: max(n * (-(x / e - 1) - 0.0007 - 0.0005 * x / e), -cap)  # noqa: E731
     first = e * (1 + S.STOP_ABOVE)
     stop, low, active = first, e, False
+    steps = [[lv, fr, False] for lv, fr in S.LADDER]               # the take-profit ladder (owner 2026-11-18)
+    booked, rem = 0.0, 1.0
+    raw_all = raw
+    raw = lambda x: booked + max(n * rem * (-(x / e - 1) - 0.0005 * x / e), -cap) - n * 0.0007 if S.LADDER else raw_all(x)  # noqa: E731
     act_px = e * (1 - (S.BREAKEVEN_AFTER_USD * bal / S.RUN_START_USD / n + S.COST))
     be = e * (1 - S.COST)
     last = min(2880, k + 1440)
     for j in range(k + 1, last + 1):
+        hit = [st for st in steps if not st[2] and L[j] <= e * (1 - st[0]) * (1.0 if le else 0.999)]
+        if le:                                                       # LENIENT: the steps fill before a stop in the minute
+            for st in hit:
+                st[2] = True
+                booked += n * st[1] * (st[0] - 0.0002 * (1 - st[0]))
+                rem -= st[1]
         if H[j] >= stop:
             x = stop * 1.001 if le else max(stop, Cl[j]) * 1.001
             if x >= Q:
                 return "LIQ", -cap, k, j
             return ("STOP" if stop == first else "TRAIL"), raw(x), k, j
+        if not le:
+            for st in hit:
+                st[2] = True
+                booked += n * st[1] * (st[0] - 0.0002 * (1 - st[0]))
+                rem -= st[1]
         low = min(low, L[j])
         if not S.BREAKEVEN_LOCK:                                    # owner 2026-11-16: a plain trail from the fill
             if not S.TRAIL_ONLY_PAST_ENTRY or low * (1 + S.TRAIL) <= e:   # rule C (2026-11-17): only once past the entry
@@ -429,7 +483,12 @@ class Replay:
         t0, sym, H, L_, Cl = self.ctx
         self.ex.set_price(sym, float(Cl[m]))
         self.ex.now = t0 + m * 60 + 30
-        self.ex.try_stop(sym, float(H[m]), float(Cl[m]))
+        if self.lenient:                                  # LENIENT: the steps first; STRICT: the stop wins the minute
+            self.ex.try_tp(sym, float(L_[m]))
+            self.ex.try_stop(sym, float(H[m]), float(Cl[m]))
+        else:
+            if self.ex.try_stop(sym, float(H[m]), float(Cl[m])) is None:
+                self.ex.try_tp(sym, float(L_[m]))
         self.bars_for[sym] = (t0, L_, Cl, m)
         await self.step(t0 + (m + 1) * 60)
         return await self.open_row() is not None

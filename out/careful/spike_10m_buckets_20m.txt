@@ -1,0 +1,44 @@
+Owner 2026-11-18: "with new rule 10% margin and 5x leverage how many trades make 30-40$".
+Position $2,878: $30 = a 1.04% fall, $40 = 1.39%; the 10% stop ~ -$288.
+
+===== STRICT
+  HISTORY 2025-01..2026-11-14: 369 trades, per trade $+39.6, total $+14,621
+    lost more than $100     136  ( 37%)
+    lost $0-100              48  ( 13%)
+    made $0-30               20  (  5%)
+    made $30-40               2  (  1%)
+    made $40-100             26  (  7%)
+    made over $100          137  ( 37%)
+    was $30 in profit at some point: 329 (89%) -> of those, ended >= $30 165, ended $0-30 20, ended a LOSS 144
+    was $40 in profit at some point: 317 (86%) -> of those, ended >= $40 163, ended $0-40 22, ended a LOSS 132
+  REAL PICKS 10-29..11-18: 14 trades, per trade $+43.4, total $+608
+    lost more than $100       6  ( 43%)
+    lost $0-100               1  (  7%)
+    made $0-30                0  (  0%)
+    made $30-40               1  (  7%)
+    made $40-100              0  (  0%)
+    made over $100            6  ( 43%)
+    was $30 in profit at some point: 13 (93%) -> of those, ended >= $30 7, ended $0-30 0, ended a LOSS 6
+    was $40 in profit at some point: 13 (93%) -> of those, ended >= $40 6, ended $0-40 1, ended a LOSS 6
+    10-29 EVAAUSD $+606; 10-30 BEATUSD $+263; 11-01 AINUSD $-111; 11-02 ESPORTSUSD $-291; 11-03 ARIAUSD $+188; 11-04 AIOUSD $-92; 11-09 AIOTUSD $+280; 11-10 PIEVERSEUSD $+30; 11-11 ARIAUSD $-177; 11-13 HANAUSD $+302; 11-15 SOPHUSD $-218; 11-16 RAREUSD $+126; 11-17 CROSSUSD $-147; 11-18 MMTUSD $-152
+
+===== LENIENT
+  HISTORY 2025-01..2026-11-14: 369 trades, per trade $+50.4, total $+18,612
+    lost more than $100     130  ( 35%)
+    lost $0-100              52  ( 14%)
+    made $0-30               18  (  5%)
+    made $30-40               4  (  1%)
+    made $40-100             27  (  7%)
+    made over $100          138  ( 37%)
+    was $30 in profit at some point: 333 (90%) -> of those, ended >= $30 169, ended $0-30 18, ended a LOSS 146
+    was $40 in profit at some point: 321 (87%) -> of those, ended >= $40 165, ended $0-40 22, ended a LOSS 134
+  REAL PICKS 10-29..11-18: 14 trades, per trade $+79.6, total $+1,114
+    lost more than $100       3  ( 21%)
+    lost $0-100               4  ( 29%)
+    made $0-30                0  (  0%)
+    made $30-40               1  (  7%)
+    made $40-100              0  (  0%)
+    made over $100            6  ( 43%)
+    was $30 in profit at some point: 13 (93%) -> of those, ended >= $30 7, ended $0-30 0, ended a LOSS 6
+    was $40 in profit at some point: 13 (93%) -> of those, ended >= $40 6, ended $0-40 1, ended a LOSS 6
+

@@ -829,6 +829,34 @@ Same day, tested and NOT adopted: $40/$45 take-profits, 30-60% margin, tight sto
 $40 / max leverage / stops before liquidation, QUICK at 10-20% margin (scripts/quick_*.py, out/careful/quick_*.txt);
 QUICK at 10% x 5x is ~+$5/trade after fees over history (t 1.7) and ~-$2/trade on the paper trades 10-29..11-17 once
 the picks the $250 paper account skipped are included.
+deploy-prod run 44167611114 (image 952e1ec) approved by the owner, completed 11:02 UTC 2026-11-18 (all jobs green);
+the read-only prod check is still owed (the AWS session had expired). First 10% trade: the 2026-11-19 entry.
+**THEN THE TAKE-PROFIT LADDER (owner 2026-11-18, "we will adopt it"; branch feat/live-ladder-take-profit):** after
+MMT 2026-11-18 (+~$178 at best, closed by the trail at -$99.6) the owner asked for quick profit booking. Tested and NOT
+adopted that day (all below the rule as it runs, history and 2026 alike): $20-40 take-profits at 10-50% margin
+(`scripts/spike_small_usd.py`, `spike_cut_30_40.py`), a 1 h / 30 m / 2 h time cut (`spike_cut_1h.py`), split / break-even
+(`spike_split_be.py`, `spike_split_breakdown.py`), a stop / time-cut search for a $40-50 target chosen on 2025 and
+tested on 2026 (`cut_search.py`: no cut works; tighter is worse). ADOPTED: `LADDER = ((0.05, 0.50), (0.10, 0.25))` --
+reduce-only post-only limit buys for 50% of the contracts 5% under the entry and 25% 10% under, placed right after the
+fill (market if the price is already through), the rest keeps stop / trail / 24 h; left-overs cancelled at the close.
+Evidence (`scripts/spike_ladder.py`, row L6, two implementations, before fees, 10% margin): history +$12.2/trade strict
+(+$16.7 lenient) vs +$19.8 (+$25.2) without; win 66% vs 50%; worst run -$973 vs -$1,227; real picks 10-29..11-18
++$28.8 vs +$21.7. The owner was told it makes LESS over the history. Code: `_ladder` (place / read the steps,
+`tp_legs` JSONB), `_ladder_close` (the closed P&L counts every step), `explained` (a step's fill moves the wallet while
+the position is open -- without it the capital check HALTs; a test proves it). Replay of the real bot vs the reference
+with the ladder, 2026-08..11: 71/71 identical, STRICT $3,722.49 / LENIENT $4,355.32 (without the ladder $4,063.87 /
+$4,890.32). The battery's sanity now checks the replay's reference against `spike_ladder.loop` (the old exit-C
+research function no longer ships): 1,229 of 1,234 identical (5: a close above a just-moved trail, which the bot buys
+back at that close). Replay battery (`REPLAY_QUICK=1 REPLAY_SEEDS=3`, `out/careful/replay_battery_ladder.txt`): clean runs
+2,498/2,498 identical; every fault group (read timeouts, lost / refused writes incl. the new `place_tp` faults,
+restarts, lookup misses, double fills) ALL SAFE, no halts. Its first run found three ladder bugs, fixed with tests:
+a step sent twice when the by-id lookup missed (now `_find_leg` asks three ways, and resting steps never exceed the
+ladder's share); a P&L left wrong when a read failed at the close (now a closed ladder is UNSETTLED until read --
+retried each pass, `explained` waits, no new entry meanwhile); a step left resting on a flat coin when the close's
+cancel failed, which then filled against the next position (now cancelled before the ladder is settled). Without the
+ladder the same fault run (D2 seed 1) never halted. Real tick / contract sizes (B): whole contracts make "50%" of a few
+SOL / LTC / TAO contracts differ from the backtest's exact halves (2 such differences exist without the ladder too).
+New order shape on real money: a probe of the step order is advisable before the first live trade.
 Also tested 2026-11-17 and NOT adopted: QUICK with other exits (`scripts/quick_exits.py`: as-is +0.024R, t 1.95, the
 best; tighter stops worse) and QUICK at 50% margin + break-even lock + 1% target (`scripts/quick_margin50.py`: 5-20x
 bust by liquidation, 2-3x survive with 66-83% falls).
