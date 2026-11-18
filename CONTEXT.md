@@ -844,7 +844,7 @@ reduce-only post-only limit buys for 50% of the contracts 5% under the entry and
 fill (market if the price is already through), the rest keeps stop / trail / 24 h; left-overs cancelled at the close.
 Evidence (`scripts/spike_ladder.py`, row L6, two implementations, before fees, 10% margin): history +$12.2/trade strict
 (+$16.7 lenient) vs +$19.8 (+$25.2) without; win 66% vs 50%; worst run -$973 vs -$1,227; real picks 10-29..11-18
-+$28.8 vs +$21.7. The owner was told it makes LESS over the history. Code: `_ladder` (place / read the steps,
++$28.8 vs +$21.7. The owner was told it makes LESS over the history. Earlier steps (`scripts/spike_ladder_3_5.py`, owner "why not 3% 5%", 2026-11-18): 3% 50 / 5% 25 history +$8.7 strict (+$12.5 lenient), real +$22.9; 3% 25 / 5% 25 +$12.7 / real +$23.6; 3% 33 / 5% 33 +$10.5 / real +$24.2 -- none beats 5/10, kept. Code: `_ladder` (place / read the steps,
 `tp_legs` JSONB), `_ladder_close` (the closed P&L counts every step), `explained` (a step's fill moves the wallet while
 the position is open -- without it the capital check HALTs; a test proves it). Replay of the real bot vs the reference
 with the ladder, 2026-08..11: 71/71 identical, STRICT $3,722.49 / LENIENT $4,355.32 (without the ladder $4,063.87 /
