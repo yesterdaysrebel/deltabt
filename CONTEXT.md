@@ -830,8 +830,11 @@ $40 / max leverage / stops before liquidation, QUICK at 10-20% margin (scripts/q
 QUICK at 10% x 5x is ~+$5/trade after fees over history (t 1.7) and ~-$2/trade on the paper trades 10-29..11-17 once
 the picks the $250 paper account skipped are included.
 deploy-prod run 44167611114 (image 952e1ec) approved by the owner, completed 11:02 UTC 2026-11-18 (all jobs green);
-the read-only prod check is still owed (the AWS session had expired). First 10% trade: the 2026-11-19 entry.
-**THEN THE TAKE-PROFIT LADDER (owner 2026-11-18, "we will adopt it"; branch feat/live-ladder-take-profit):** after
+prod verified read-only 11:58 UTC: image 952e1ec, TRADE_MARGIN 0.1, RUNNING, $2,792.50, nothing open.
+**THEN THE TAKE-PROFIT LADDER -- LIVE 2026-11-18 (#190, merge 2bac016; owner "we will adopt it"):** deploy-prod run
+44330469980 approved by the owner, completed 15:16 UTC; prod verified read-only: image 2bac016 running, MARGIN 0.1 /
+STOP 0.1 / TRAIL 0.1 / 5x / LADDER ((0.05, 0.5), (0.1, 0.25)), `tp_legs` column present, RUNNING, $2,792.50, nothing
+open. First ladder trade: the 2026-11-19 entry (no probe of the step order was run). after
 MMT 2026-11-18 (+~$178 at best, closed by the trail at -$99.6) the owner asked for quick profit booking. Tested and NOT
 adopted that day (all below the rule as it runs, history and 2026 alike): $20-40 take-profits at 10-50% margin
 (`scripts/spike_small_usd.py`, `spike_cut_30_40.py`), a 1 h / 30 m / 2 h time cut (`spike_cut_1h.py`), split / break-even
