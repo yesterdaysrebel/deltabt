@@ -1,0 +1,29 @@
+Owner 2026-11-18: "Why not ladder at 3% 5% then trail rest". The ladder of scripts/spike_ladder.py with steps at 3% and
+5% (50% / 25%, and two other splits for context), against the live ladder (5% / 10%: 50 / 25) and no ladder. Same
+machinery and checks (two implementations agree on every trade), 10% margin, before fees; history 2025 / 2026 and the
+real picks 10-29..11-18.
+
+===== STRICT
+  no ladder (before today)             history 369 tr  win  50%  avg win $+128  avg loss $ -89  per trade $+19.8 (after fees $+18.7)  total $ +7,311  worst run $-1,227  [2025 $+12.5 2026 $+27.0]
+                                       real     14 tr  win  50%  avg win $+128  avg loss $ -85  per trade $+21.7 (after fees $+20.6)  total $   +304  worst run $-203  [2025 $ +nan 2026 $+21.7]
+  LIVE: 5% 50 / 10% 25 / rest trails   history 369 tr  win  66%  avg win $ +77  avg loss $-112  per trade $+12.2 (after fees $+11.3)  total $ +4,512  worst run $-973  [2025 $ +7.1 2026 $+17.2]
+                                       real     14 tr  win  64%  avg win $ +83  avg loss $ -69  per trade $+28.8 (after fees $+28.0)  total $   +404  worst run $-147  [2025 $ +nan 2026 $+28.8]
+  3% 50 / 5% 25 / rest trails          history 369 tr  win  67%  avg win $ +61  avg loss $ -95  per trade $ +8.7 (after fees $ +7.9)  total $ +3,220  worst run $-896  [2025 $ +3.7 2026 $+13.7]
+                                       real     14 tr  win  79%  avg win $ +54  avg loss $ -92  per trade $+22.9 (after fees $+22.1)  total $   +320  worst run $-147  [2025 $ +nan 2026 $+22.9]
+  3% 25 / 5% 25 / rest trails          history 369 tr  win  63%  avg win $ +76  avg loss $ -94  per trade $+12.7 (after fees $+11.8)  total $ +4,701  worst run $-962  [2025 $ +6.9 2026 $+18.5]
+                                       real     14 tr  win  64%  avg win $ +73  avg loss $ -65  per trade $+23.6 (after fees $+22.7)  total $   +330  worst run $-147  [2025 $ +nan 2026 $+23.6]
+  3% 33 / 5% 33 / rest trails          history 369 tr  win  67%  avg win $ +67  avg loss $-102  per trade $+10.5 (after fees $ +9.6)  total $ +3,866  worst run $-878  [2025 $ +5.1 2026 $+15.7]
+                                       real     14 tr  win  79%  avg win $ +58  avg loss $-100  per trade $+24.2 (after fees $+23.4)  total $   +338  worst run $-147  [2025 $ +nan 2026 $+24.2]
+
+===== LENIENT
+  no ladder (before today)             history 369 tr  win  51%  avg win $+129  avg loss $ -82  per trade $+25.2 (after fees $+24.2)  total $ +9,306  worst run $-1,000  [2025 $+16.2 2026 $+34.1]
+                                       real     14 tr  win  50%  avg win $+143  avg loss $ -64  per trade $+39.8 (after fees $+38.7)  total $   +557  worst run $-158  [2025 $ +nan 2026 $+39.8]
+  LIVE: 5% 50 / 10% 25 / rest trails   history 369 tr  win  66%  avg win $ +78  avg loss $-104  per trade $+16.7 (after fees $+15.8)  total $ +6,150  worst run $-822  [2025 $+10.4 2026 $+22.8]
+                                       real     14 tr  win  79%  avg win $ +77  avg loss $-112  per trade $+36.2 (after fees $+35.4)  total $   +507  worst run $-145  [2025 $ +nan 2026 $+36.2]
+  3% 50 / 5% 25 / rest trails          history 369 tr  win  67%  avg win $ +61  avg loss $ -87  per trade $+12.5 (after fees $+11.7)  total $ +4,606  worst run $-757  [2025 $ +6.8 2026 $+18.1]
+                                       real     14 tr  win  79%  avg win $ +60  avg loss $ -91  per trade $+27.6 (after fees $+26.8)  total $   +386  worst run $-145  [2025 $ +nan 2026 $+27.6]
+  3% 25 / 5% 25 / rest trails          history 369 tr  win  65%  avg win $ +76  avg loss $ -91  per trade $+17.1 (after fees $+16.2)  total $ +6,309  worst run $-771  [2025 $+10.2 2026 $+23.9]
+                                       real     14 tr  win  79%  avg win $ +69  avg loss $-102  per trade $+32.8 (after fees $+31.9)  total $   +459  worst run $-145  [2025 $ +nan 2026 $+32.8]
+  3% 33 / 5% 33 / rest trails          history 369 tr  win  67%  avg win $ +67  avg loss $ -94  per trade $+14.5 (after fees $+13.6)  total $ +5,350  worst run $-753  [2025 $ +8.3 2026 $+20.6]
+                                       real     14 tr  win  79%  avg win $ +66  avg loss $ -98  per trade $+30.5 (after fees $+29.7)  total $   +427  worst run $-145  [2025 $ +nan 2026 $+30.5]
+
