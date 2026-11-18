@@ -1,0 +1,75 @@
+Owner 2026-11-18 (after MMT went ~$178 in profit and the trail closed it at -$99.6): "I would try to increase margin,
+book 20-30$".
+
+===== MARGIN 10%: position $1,439; $20 = 1.39% fall, $30 = 2.08%; the 10% stop ~ -$144 + slippage
+  STRICT  as now  history  369 trades  win  50%  avg win $ +128  avg loss $  -89  per trade $ +19.8 (after fees $ +18.7)  total after fees $ +6,916  worst $ -226  worst run $-1,227
+                  real      13 trades  win  54%  avg win $ +128  avg loss $  -86  per trade $ +29.2 (after fees $ +28.1)  total after fees $   +366  worst $ -145  worst run $-203
+  STRICT  TP $20  history  450 trades  win  86%  avg win $  +20  avg loss $ -136  per trade $  -2.6 (after fees $  -3.3)  total after fees $ -1,468  worst $ -435  worst run $-1,768
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -145  per trade $  +7.3 (after fees $  +6.6)  total after fees $    +86  worst $ -145  worst run $-147
+  STRICT  TP $25  history  448 trades  win  84%  avg win $  +25  avg loss $ -134  per trade $  -1.0 (after fees $  -1.7)  total after fees $   -746  worst $ -435  worst run $-1,396
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -145  per trade $ +11.9 (after fees $ +11.2)  total after fees $   +146  worst $ -145  worst run $-147
+  STRICT  TP $30  history  446 trades  win  82%  avg win $  +30  avg loss $ -133  per trade $  +0.8 (after fees $  +0.1)  total after fees $    +54  worst $ -435  worst run $-1,168
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -145  per trade $ +16.5 (after fees $ +15.9)  total after fees $   +206  worst $ -145  worst run $-147
+  LENIENT as now  history  369 trades  win  51%  avg win $ +129  avg loss $  -82  per trade $ +25.2 (after fees $ +24.2)  total after fees $ +8,911  worst $ -144  worst run $-1,000
+                  real      13 trades  win  54%  avg win $ +143  avg loss $  -67  per trade $ +46.3 (after fees $ +45.3)  total after fees $   +589  worst $ -144  worst run $-158
+  LENIENT TP $20  history  450 trades  win  86%  avg win $  +20  avg loss $ -128  per trade $  -0.1 (after fees $  -0.8)  total after fees $   -345  worst $ -144  worst run $-1,246
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -144  per trade $  +7.4 (after fees $  +6.7)  total after fees $    +88  worst $ -144  worst run $-145
+  LENIENT TP $25  history  450 trades  win  84%  avg win $  +25  avg loss $ -125  per trade $  +1.3 (after fees $  +0.6)  total after fees $   +270  worst $ -144  worst run $-971
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -144  per trade $ +12.0 (after fees $ +11.4)  total after fees $   +148  worst $ -144  worst run $-145
+  LENIENT TP $30  history  447 trades  win  83%  avg win $  +30  avg loss $ -124  per trade $  +3.1 (after fees $  +2.4)  total after fees $ +1,082  worst $ -144  worst run $-860
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -144  per trade $ +16.6 (after fees $ +16.0)  total after fees $   +208  worst $ -144  worst run $-145
+
+===== MARGIN 20%: position $2,878; $20 = 0.69% fall, $30 = 1.04%; the 10% stop ~ -$288 + slippage
+  STRICT  as now  history  369 trades  win  50%  avg win $ +255  avg loss $ -177  per trade $ +39.6 (after fees $ +37.5)  total after fees $+13,832  worst $ -453  worst run $-2,454
+                  real      13 trades  win  54%  avg win $ +256  avg loss $ -172  per trade $ +58.4 (after fees $ +56.3)  total after fees $   +732  worst $ -291  worst run $-406
+  STRICT  TP $20  history  454 trades  win  91%  avg win $  +20  avg loss $ -298  per trade $  -8.7 (after fees $ -10.0)  total after fees $ -4,536  worst $ -869  worst run $-4,881
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -291  per trade $  -3.9 (after fees $  -5.2)  total after fees $    -68  worst $ -291  worst run $-293
+  STRICT  TP $25  history  454 trades  win  90%  avg win $  +25  avg loss $ -296  per trade $  -6.1 (after fees $  -7.4)  total after fees $ -3,348  worst $ -869  worst run $-3,973
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -291  per trade $  +0.7 (after fees $  -0.6)  total after fees $     -8  worst $ -291  worst run $-293
+  STRICT  TP $30  history  453 trades  win  89%  avg win $  +30  avg loss $ -288  per trade $  -5.8 (after fees $  -7.1)  total after fees $ -3,229  worst $ -869  worst run $-3,990
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -291  per trade $  +5.3 (after fees $  +4.0)  total after fees $    +52  worst $ -291  worst run $-293
+  LENIENT as now  history  369 trades  win  51%  avg win $ +259  avg loss $ -164  per trade $ +50.4 (after fees $ +48.3)  total after fees $+17,823  worst $ -288  worst run $-1,999
+                  real      13 trades  win  54%  avg win $ +287  avg loss $ -134  per trade $ +92.7 (after fees $ +90.6)  total after fees $ +1,177  worst $ -288  worst run $-316
+  LENIENT TP $20  history  454 trades  win  92%  avg win $  +20  avg loss $ -275  per trade $  -4.7 (after fees $  -6.0)  total after fees $ -2,708  worst $ -288  worst run $-3,198
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -288  per trade $  -3.7 (after fees $  -5.0)  total after fees $    -65  worst $ -288  worst run $-290
+  LENIENT TP $25  history  454 trades  win  91%  avg win $  +25  avg loss $ -270  per trade $  -2.3 (after fees $  -3.6)  total after fees $ -1,619  worst $ -288  worst run $-2,269
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -288  per trade $  +0.9 (after fees $  -0.4)  total after fees $     -5  worst $ -288  worst run $-290
+  LENIENT TP $30  history  454 trades  win  90%  avg win $  +30  avg loss $ -269  per trade $  +0.4 (after fees $  -0.9)  total after fees $   -427  worst $ -288  worst run $-1,785
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -288  per trade $  +5.6 (after fees $  +4.3)  total after fees $    +55  worst $ -288  worst run $-290
+
+===== MARGIN 30%: position $4,317; $20 = 0.46% fall, $30 = 0.69%; the 10% stop ~ -$432 + slippage
+  STRICT  as now  history  369 trades  win  50%  avg win $ +383  avg loss $ -266  per trade $ +59.4 (after fees $ +56.2)  total after fees $+20,748  worst $ -679  worst run $-3,681
+                  real      13 trades  win  54%  avg win $ +385  avg loss $ -259  per trade $ +87.6 (after fees $ +84.4)  total after fees $ +1,098  worst $ -436  worst run $-609
+  STRICT  TP $20  history  454 trades  win  92%  avg win $  +20  avg loss $ -457  per trade $ -18.9 (after fees $ -20.8)  total after fees $ -9,447  worst $-1304  worst run $-9,696
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -436  per trade $ -15.1 (after fees $ -17.0)  total after fees $   -222  worst $ -436  worst run $-440
+  STRICT  TP $25  history  454 trades  win  92%  avg win $  +25  avg loss $ -456  per trade $ -15.2 (after fees $ -17.2)  total after fees $ -7,803  worst $-1304  worst run $-8,242
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -436  per trade $ -10.5 (after fees $ -12.4)  total after fees $   -162  worst $ -436  worst run $-440
+  STRICT  TP $30  history  454 trades  win  91%  avg win $  +30  avg loss $ -447  per trade $ -13.0 (after fees $ -15.0)  total after fees $ -6,804  worst $-1304  worst run $-7,322
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -436  per trade $  -5.9 (after fees $  -7.8)  total after fees $   -102  worst $ -436  worst run $-440
+  LENIENT as now  history  369 trades  win  51%  avg win $ +388  avg loss $ -245  per trade $ +75.7 (after fees $ +72.5)  total after fees $+26,734  worst $ -432  worst run $-2,999
+                  real      13 trades  win  54%  avg win $ +430  avg loss $ -200  per trade $+139.0 (after fees $+135.8)  total after fees $ +1,766  worst $ -432  worst run $-474
+  LENIENT TP $20  history  455 trades  win  92%  avg win $  +20  avg loss $ -413  per trade $ -14.2 (after fees $ -16.2)  total after fees $ -7,353  worst $ -432  worst run $-7,609
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -432  per trade $ -14.7 (after fees $ -16.7)  total after fees $   -217  worst $ -432  worst run $-435
+  LENIENT TP $25  history  454 trades  win  92%  avg win $  +25  avg loss $ -412  per trade $ -10.6 (after fees $ -12.6)  total after fees $ -5,714  worst $ -432  worst run $-6,165
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -432  per trade $ -10.1 (after fees $ -12.1)  total after fees $   -157  worst $ -432  worst run $-435
+  LENIENT TP $30  history  454 trades  win  92%  avg win $  +30  avg loss $ -412  per trade $  -7.0 (after fees $  -8.9)  total after fees $ -4,061  worst $ -432  worst run $-4,797
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -432  per trade $  -5.5 (after fees $  -7.5)  total after fees $    -97  worst $ -432  worst run $-435
+
+===== MARGIN 50%: position $7,195; $20 = 0.28% fall, $30 = 0.42%; the 10% stop ~ -$720 + slippage
+  STRICT  as now  history  369 trades  win  50%  avg win $ +638  avg loss $ -443  per trade $ +99.1 (after fees $ +93.7)  total after fees $+34,581  worst $-1132  worst run $-6,135
+                  real      13 trades  win  54%  avg win $ +641  avg loss $ -431  per trade $+146.1 (after fees $+140.7)  total after fees $ +1,829  worst $ -727  worst run $-1,015
+  STRICT  TP $20  history  455 trades  win  93%  avg win $  +20  avg loss $ -767  per trade $ -38.8 (after fees $ -42.0)  total after fees $-19,111  worst $-2173  worst run $-19,229
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -727  per trade $ -37.5 (after fees $ -40.7)  total after fees $   -529  worst $ -727  worst run $-733
+  STRICT  TP $25  history  455 trades  win  92%  avg win $  +25  avg loss $ -765  per trade $ -35.7 (after fees $ -39.0)  total after fees $-17,730  worst $-2173  worst run $-17,884
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -727  per trade $ -32.9 (after fees $ -36.1)  total after fees $   -469  worst $ -727  worst run $-733
+  STRICT  TP $30  history  454 trades  win  92%  avg win $  +30  avg loss $ -763  per trade $ -32.9 (after fees $ -36.1)  total after fees $-16,399  worst $-2173  worst run $-16,688
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -727  per trade $ -28.3 (after fees $ -31.5)  total after fees $   -409  worst $ -727  worst run $-733
+  LENIENT as now  history  369 trades  win  51%  avg win $ +647  avg loss $ -409  per trade $+126.1 (after fees $+120.8)  total after fees $+44,557  worst $ -720  worst run $-4,998
+                  real      13 trades  win  54%  avg win $ +717  avg loss $ -334  per trade $+231.7 (after fees $+226.4)  total after fees $ +2,943  worst $ -720  worst run $-790
+  LENIENT TP $20  history  457 trades  win  95%  avg win $  +20  avg loss $ -705  per trade $ -19.7 (after fees $ -22.8)  total after fees $-10,438  worst $ -720  worst run $-10,557
+                  real      13 trades  win  92%  avg win $  +20  avg loss $ -720  per trade $ -36.9 (after fees $ -40.1)  total after fees $   -521  worst $ -720  worst run $-725
+  LENIENT TP $25  history  456 trades  win  93%  avg win $  +25  avg loss $ -688  per trade $ -26.6 (after fees $ -29.8)  total after fees $-13,581  worst $ -720  worst run $-13,734
+                  real      13 trades  win  92%  avg win $  +25  avg loss $ -720  per trade $ -32.3 (after fees $ -35.5)  total after fees $   -461  worst $ -720  worst run $-725
+  LENIENT TP $30  history  455 trades  win  92%  avg win $  +30  avg loss $ -688  per trade $ -25.2 (after fees $ -28.4)  total after fees $-12,936  worst $ -720  worst run $-13,236
+                  real      13 trades  win  92%  avg win $  +30  avg loss $ -720  per trade $ -27.7 (after fees $ -30.9)  total after fees $   -401  worst $ -720  worst run $-725
+

@@ -1,0 +1,125 @@
+Owner 2026-11-18: "split is going to make 50$ then lose it when SL hits". How often SPLIT $X books its half and then
+the other half stops out, what those trades end at, and the same days under SPLIT+BE (stop to the entry once booked).
+STRICT and LENIENT, history, bot day rules (scripts/spike_split_be.py). Before fees.
+
+===== margin 10% STRICT SPLIT $30 ($1,439 position): 369 trades
+   CLOCK            16 (  4%)  avg $    -4  total $     -71
+   STOP            104 ( 28%)  avg $  -123  total $ -12,784
+   TARGET+CLOCK     95 ( 26%)  avg $  +107  total $ +10,124
+   TARGET+STOP     154 ( 42%)  avg $   +48  total $  +7,429
+   booked then stopped: 154 trades; 23 ended a LOSS (the $ 30 lost and more), avg loss of those $-10
+   SPLIT     per trade $ +12.7  total $  +4,698  win 63%  avg win $+77  avg loss $-97
+   SPLIT+BE  per trade $ +10.5  total $  +3,997  win 69%  avg win $+66  avg loss $-114
+   as now    per trade $ +19.8  total $  +7,311  win 50%  avg win $+128  avg loss $-89
+     SPLIT+BE CLOCK            17 (  4%)  avg $    -3
+     SPLIT+BE STOP            107 ( 28%)  avg $  -123
+     SPLIT+BE TARGET+BE       104 ( 27%)  avg $   +28
+     SPLIT+BE TARGET+CLOCK     74 ( 19%)  avg $  +108
+     SPLIT+BE TARGET+STOP      80 ( 21%)  avg $   +80
+
+===== margin 10% STRICT SPLIT $50 ($1,439 position): 369 trades
+   CLOCK            34 (  9%)  avg $   +23  total $    +781
+   STOP            142 ( 38%)  avg $  -108  total $ -15,278
+   TARGET+CLOCK     77 ( 21%)  avg $  +139  total $ +10,698
+   TARGET+STOP     116 ( 31%)  avg $   +85  total $  +9,856
+   booked then stopped: 116 trades; 0 ended a LOSS (the $ 50 lost and more), avg loss of those $+nan
+   SPLIT     per trade $ +16.4  total $  +6,057  win 59%  avg win $+100  avg loss $-102
+   SPLIT+BE  per trade $ +15.3  total $  +5,702  win 58%  avg win $+99  avg loss $-101
+   as now    per trade $ +19.8  total $  +7,311  win 50%  avg win $+128  avg loss $-89
+     SPLIT+BE CLOCK            34 (  9%)  avg $   +22
+     SPLIT+BE STOP            144 ( 39%)  avg $  -108
+     SPLIT+BE TARGET+BE        33 (  9%)  avg $   +46
+     SPLIT+BE TARGET+CLOCK     75 ( 20%)  avg $  +138
+     SPLIT+BE TARGET+STOP      87 ( 23%)  avg $   +99
+
+===== margin 10% LENIENT SPLIT $30 ($1,439 position): 369 trades
+   CLOCK            14 (  4%)  avg $    -2  total $     -30
+   STOP            104 ( 28%)  avg $  -116  total $ -12,046
+   TARGET+CLOCK     97 ( 26%)  avg $  +105  total $ +10,200
+   TARGET+STOP     154 ( 42%)  avg $   +52  total $  +8,022
+   booked then stopped: 154 trades; 13 ended a LOSS (the $ 30 lost and more), avg loss of those $-4
+   SPLIT     per trade $ +16.7  total $  +6,145  win 66%  avg win $+76  avg loss $-99
+   SPLIT+BE  per trade $ +13.9  total $  +5,317  win 70%  avg win $+67  avg loss $-110
+   as now    per trade $ +25.2  total $  +9,306  win 51%  avg win $+129  avg loss $-82
+     SPLIT+BE CLOCK            16 (  4%)  avg $    +2
+     SPLIT+BE STOP            107 ( 28%)  avg $  -116
+     SPLIT+BE TARGET+BE       108 ( 28%)  avg $   +30
+     SPLIT+BE TARGET+CLOCK     73 ( 19%)  avg $  +108
+     SPLIT+BE TARGET+STOP      79 ( 21%)  avg $   +84
+
+===== margin 10% LENIENT SPLIT $50 ($1,439 position): 369 trades
+   CLOCK            33 (  9%)  avg $   +22  total $    +726
+   STOP            141 ( 38%)  avg $  -100  total $ -14,100
+   TARGET+CLOCK     78 ( 21%)  avg $  +139  total $ +10,812
+   TARGET+STOP     117 ( 32%)  avg $   +88  total $ +10,279
+   booked then stopped: 117 trades; 0 ended a LOSS (the $ 50 lost and more), avg loss of those $+nan
+   SPLIT     per trade $ +20.9  total $  +7,716  win 59%  avg win $+102  avg loss $-94
+   SPLIT+BE  per trade $ +19.9  total $  +7,415  win 58%  avg win $+101  avg loss $-94
+   as now    per trade $ +25.2  total $  +9,306  win 51%  avg win $+129  avg loss $-82
+     SPLIT+BE CLOCK            33 (  9%)  avg $   +21
+     SPLIT+BE STOP            143 ( 38%)  avg $  -100
+     SPLIT+BE TARGET+BE        35 (  9%)  avg $   +50
+     SPLIT+BE TARGET+CLOCK     76 ( 20%)  avg $  +137
+     SPLIT+BE TARGET+STOP      86 ( 23%)  avg $  +103
+
+===== margin 20% STRICT SPLIT $30 ($2,878 position): 369 trades
+   CLOCK             5 (  1%)  avg $   -76  total $    -378
+   STOP             60 ( 16%)  avg $  -274  total $ -16,457
+   TARGET+CLOCK    106 ( 29%)  avg $  +168  total $ +17,846
+   TARGET+STOP     198 ( 54%)  avg $   +35  total $  +7,003
+   booked then stopped: 198 trades; 91 ended a LOSS (the $ 30 lost and more), avg loss of those $-52
+   SPLIT     per trade $ +21.7  total $  +8,013  win 58%  avg win $+139  avg loss $-138
+   SPLIT+BE  per trade $  +5.9  total $  +2,440  win 81%  avg win $+68  avg loss $-250
+   as now    per trade $ +39.6  total $ +14,621  win 50%  avg win $+255  avg loss $-177
+     SPLIT+BE CLOCK             6 (  1%)  avg $   -77
+     SPLIT+BE LIQUIDATED        1 (  0%)  avg $  -869
+     SPLIT+BE STOP             68 ( 17%)  avg $  -273
+     SPLIT+BE TARGET+BE       232 ( 56%)  avg $   +26
+     SPLIT+BE TARGET+CLOCK     50 ( 12%)  avg $  +184
+     SPLIT+BE TARGET+STOP      54 ( 13%)  avg $  +134
+
+===== margin 20% STRICT SPLIT $50 ($2,878 position): 369 trades
+   CLOCK            11 (  3%)  avg $   -29  total $    -323
+   STOP             97 ( 26%)  avg $  -250  total $ -24,258
+   TARGET+CLOCK    100 ( 27%)  avg $  +196  total $ +19,638
+   TARGET+STOP     161 ( 44%)  avg $   +81  total $ +13,013
+   booked then stopped: 161 trades; 37 ended a LOSS (the $ 50 lost and more), avg loss of those $-28
+   SPLIT     per trade $ +21.9  total $  +8,070  win 62%  avg win $+149  avg loss $-181
+   SPLIT+BE  per trade $ +13.7  total $  +5,287  win 71%  avg win $+112  avg loss $-231
+   as now    per trade $ +39.6  total $ +14,621  win 50%  avg win $+255  avg loss $-177
+     SPLIT+BE CLOCK            13 (  3%)  avg $   -29
+     SPLIT+BE STOP            100 ( 26%)  avg $  -251
+     SPLIT+BE TARGET+BE       128 ( 33%)  avg $   +45
+     SPLIT+BE TARGET+CLOCK     71 ( 18%)  avg $  +199
+     SPLIT+BE TARGET+STOP      74 ( 19%)  avg $  +146
+
+===== margin 20% LENIENT SPLIT $30 ($2,878 position): 369 trades
+   CLOCK             5 (  1%)  avg $   -74  total $    -371
+   STOP             58 ( 16%)  avg $  -263  total $ -15,254
+   TARGET+CLOCK    106 ( 29%)  avg $  +169  total $ +17,915
+   TARGET+STOP     200 ( 54%)  avg $   +42  total $  +8,384
+   booked then stopped: 200 trades; 87 ended a LOSS (the $ 30 lost and more), avg loss of those $-46
+   SPLIT     per trade $ +28.9  total $ +10,673  win 59%  avg win $+138  avg loss $-131
+   SPLIT+BE  per trade $ +12.9  total $  +5,323  win 82%  avg win $+69  avg loss $-248
+   as now    per trade $ +50.4  total $ +18,612  win 51%  avg win $+259  avg loss $-164
+     SPLIT+BE CLOCK             6 (  1%)  avg $   -76
+     SPLIT+BE STOP             67 ( 16%)  avg $  -263
+     SPLIT+BE TARGET+BE       238 ( 58%)  avg $   +30
+     SPLIT+BE TARGET+CLOCK     49 ( 12%)  avg $  +185
+     SPLIT+BE TARGET+STOP      52 ( 13%)  avg $  +139
+
+===== margin 20% LENIENT SPLIT $50 ($2,878 position): 369 trades
+   CLOCK            11 (  3%)  avg $   -28  total $    -307
+   STOP             95 ( 26%)  avg $  -237  total $ -22,560
+   TARGET+CLOCK    100 ( 27%)  avg $  +197  total $ +19,703
+   TARGET+STOP     163 ( 44%)  avg $   +87  total $ +14,187
+   booked then stopped: 163 trades; 34 ended a LOSS (the $ 50 lost and more), avg loss of those $-18
+   SPLIT     per trade $ +29.9  total $ +11,022  win 63%  avg win $+149  avg loss $-172
+   SPLIT+BE  per trade $ +21.5  total $  +8,298  win 72%  avg win $+115  avg loss $-223
+   as now    per trade $ +50.4  total $ +18,612  win 51%  avg win $+259  avg loss $-164
+     SPLIT+BE CLOCK            13 (  3%)  avg $   -27
+     SPLIT+BE STOP             98 ( 25%)  avg $  -238
+     SPLIT+BE TARGET+BE       130 ( 34%)  avg $   +50
+     SPLIT+BE TARGET+CLOCK     71 ( 18%)  avg $  +199
+     SPLIT+BE TARGET+STOP      74 ( 19%)  avg $  +153
+

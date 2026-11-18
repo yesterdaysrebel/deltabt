@@ -1,0 +1,125 @@
+Owner 2026-11-18: "best bet I see here is high margin quick exit with SL target for 40-50$ per trade, we cut the
+trade if it goes against us, when to cut is your search".
+Data 2025-01-15..2026-11-14; choose on 2025, test on 2026.
+
+===== SPIKE  margin 20% ($2,878 position)  target $40 (a 1.39% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-8.4, 2026 $-9.0
+  CHOSEN on 2025: stop 10.0% above, time cut 240 min
+    STRICT  2025 (chosen on)  236 trades  win  81%  avg win $ +39  avg loss $ -186  per trade $  -3.7 (t -0.5; after fees $  -5.1)  total $    -877  worst run $-2,959 | TARGET 79% CUT 13% STOP 8% LIQUIDATED 0%
+            2026 TEST         222 trades  win  82%  avg win $ +40  avg loss $ -232  per trade $  -7.8 (t -1.0; after fees $  -9.2)  total $  -1,730  worst run $-2,433 | TARGET 82% STOP 12% CUT 6%
+    LENIENT 2025 (chosen on)  236 trades  win  81%  avg win $ +39  avg loss $ -166  per trade $  +1.0 (t +0.2; after fees $  -0.4)  total $    +236  worst run $-2,235 | TARGET 79% CUT 13% STOP 8%
+            2026 TEST         222 trades  win  83%  avg win $ +40  avg loss $ -220  per trade $  -3.4 (t -0.5; after fees $  -4.8)  total $    -758  worst run $-1,659 | TARGET 83% STOP 11% CUT 5%
+    next best on 2025 -> their 2026: 10.0%/30m $-4.0 -> $-9.5; 7.0%/-m $-4.4 -> $-0.4; 10.0%/-m $-4.6 -> $-6.3; 7.0%/240m $-4.9 -> $-2.3
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $-0.4; it made $-4.4 on 2025)
+
+===== SPIKE  margin 20% ($2,878 position)  target $50 (a 1.74% fall)
+  of 54 cuts: 0 positive on 2025, 1 positive on 2026, 0 on both; median cut 2025 $-5.9, 2026 $-9.6
+  CHOSEN on 2025: stop 7.0% above, time cut none min
+    STRICT  2025 (chosen on)  233 trades  win  82%  avg win $ +50  avg loss $ -221  per trade $  -0.1 (t -0.0; after fees $  -1.4)  total $     -14  worst run $-2,089 | TARGET 82% STOP 17% CLOCK 1% LIQUIDATED 0%
+            2026 TEST         221 trades  win  82%  avg win $ +50  avg loss $ -220  per trade $  +1.1 (t +0.2; after fees $  -0.3)  total $    +248  worst run $-1,101 | TARGET 82% STOP 18%
+    LENIENT 2025 (chosen on)  235 trades  win  82%  avg win $ +50  avg loss $ -193  per trade $  +6.6 (t +1.1; after fees $  +5.2)  total $  +1,551  worst run $-1,241 | TARGET 82% STOP 17% CLOCK 1%
+            2026 TEST         221 trades  win  82%  avg win $ +50  avg loss $ -201  per trade $  +5.6 (t +0.9; after fees $  +4.2)  total $  +1,243  worst run $-969 | TARGET 82% STOP 18%
+    next best on 2025 -> their 2026: 10.0%/240m $-0.1 -> $-5.1; 7.0%/240m $-0.9 -> $-2.6; 5.0%/240m $-1.4 -> $-9.5; 10.0%/30m $-1.4 -> $-9.5
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $+1.1; it made $-0.1 on 2025)
+
+===== SPIKE  margin 30% ($4,317 position)  target $40 (a 0.93% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-11.0, 2026 $-15.4
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  234 trades  win  91%  avg win $ +40  avg loss $ -455  per trade $  -4.4 (t -0.4; after fees $  -6.4)  total $  -1,029  worst run $-4,435 | TARGET 91% STOP 8% CLOCK 1% LIQUIDATED 0%
+            2026 TEST         220 trades  win  90%  avg win $ +40  avg loss $ -448  per trade $ -11.1 (t -1.1; after fees $ -13.0)  total $  -2,434  worst run $-3,625 | TARGET 90% STOP 10% CLOCK 0%
+    LENIENT 2025 (chosen on)  234 trades  win  91%  avg win $ +40  avg loss $ -402  per trade $  +2.2 (t +0.3; after fees $  +0.3)  total $    +521  worst run $-2,920 | TARGET 91% STOP 8% CLOCK 1%
+            2026 TEST         220 trades  win  90%  avg win $ +40  avg loss $ -423  per trade $  -8.4 (t -0.9; after fees $ -10.4)  total $  -1,844  worst run $-3,188 | TARGET 90% STOP 10% CLOCK 0%
+    next best on 2025 -> their 2026: 10.0%/240m $-5.2 -> $-13.8; 7.0%/-m $-5.3 -> $-4.2; 10.0%/30m $-5.5 -> $-14.2; 5.0%/15m $-6.9 -> $-10.1
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $-4.2; it made $-5.3 on 2025)
+
+===== SPIKE  margin 30% ($4,317 position)  target $50 (a 1.16% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-13.8, 2026 $-16.4
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  232 trades  win  88%  avg win $ +50  avg loss $ -417  per trade $  -4.4 (t -0.4; after fees $  -6.3)  total $  -1,010  worst run $-4,673 | TARGET 88% STOP 9% CLOCK 2% LIQUIDATED 0%
+            2026 TEST         220 trades  win  88%  avg win $ +50  avg loss $ -448  per trade $ -11.2 (t -1.0; after fees $ -13.2)  total $  -2,455  worst run $-3,082 | TARGET 88% STOP 12% CLOCK 0%
+    LENIENT 2025 (chosen on)  233 trades  win  90%  avg win $ +50  avg loss $ -394  per trade $  +4.3 (t +0.5; after fees $  +2.3)  total $    +990  worst run $-3,183 | TARGET 90% STOP 9% CLOCK 1%
+            2026 TEST         220 trades  win  88%  avg win $ +50  avg loss $ -424  per trade $  -6.0 (t -0.6; after fees $  -8.0)  total $  -1,319  worst run $-2,612 | TARGET 88% STOP 11% CLOCK 0%
+    next best on 2025 -> their 2026: 5.0%/15m $-5.8 -> $-9.0; 10.0%/240m $-6.1 -> $-14.2; 10.0%/15m $-6.6 -> $-13.0; 10.0%/30m $-6.7 -> $-18.1
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $-4.0; it made $-8.0 on 2025)
+
+===== SPIKE  margin 50% ($7,195 position)  target $40 (a 0.56% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-27.2, 2026 $-31.9
+  CHOSEN on 2025: stop 5.0% above, time cut 15 min
+    STRICT  2025 (chosen on)  238 trades  win  71%  avg win $ +39  avg loss $ -164  per trade $ -19.1 (t -1.7; after fees $ -22.8)  total $  -4,536  worst run $-6,070 | TARGET 68% CUT 27% STOP 4% LIQUIDATED 0%
+            2026 TEST         222 trades  win  76%  avg win $ +40  avg loss $ -231  per trade $ -24.6 (t -2.5; after fees $ -28.2)  total $  -5,472  worst run $-6,603 | TARGET 76% CUT 15% STOP 9%
+    LENIENT 2025 (chosen on)  238 trades  win  75%  avg win $ +39  avg loss $ -140  per trade $  -5.3 (t -0.8; after fees $  -9.0)  total $  -1,270  worst run $-3,168 | TARGET 72% CUT 23% STOP 5%
+            2026 TEST         222 trades  win  77%  avg win $ +40  avg loss $ -205  per trade $ -15.3 (t -1.9; after fees $ -18.8)  total $  -3,391  worst run $-4,748 | TARGET 77% CUT 14% STOP 9%
+    next best on 2025 -> their 2026: 10.0%/30m $-20.1 -> $-32.6; 3.0%/120m $-20.1 -> $-29.1; 3.0%/15m $-20.5 -> $-27.6; 10.0%/15m $-20.6 -> $-30.9
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $-20.3; it made $-25.2 on 2025)
+
+===== SPIKE  margin 50% ($7,195 position)  target $50 (a 0.69% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-23.0, 2026 $-28.0
+  CHOSEN on 2025: stop 3.0% above, time cut 120 min
+    STRICT  2025 (chosen on)  238 trades  win  79%  avg win $ +49  avg loss $ -263  per trade $ -14.8 (t -1.3; after fees $ -18.4)  total $  -3,524  worst run $-5,693 | TARGET 78% STOP 19% CUT 3% LIQUIDATED 0%
+            2026 TEST         222 trades  win  74%  avg win $ +50  avg loss $ -251  per trade $ -27.2 (t -2.9; after fees $ -30.9)  total $  -6,049  worst run $-7,280 | TARGET 74% STOP 25% CUT 1%
+    LENIENT 2025 (chosen on)  238 trades  win  80%  avg win $ +50  avg loss $ -206  per trade $  -1.6 (t -0.2; after fees $  -5.1)  total $    -376  worst run $-2,791 | TARGET 80% STOP 19% CUT 1%
+            2026 TEST         222 trades  win  77%  avg win $ +50  avg loss $ -215  per trade $ -12.0 (t -1.6; after fees $ -15.6)  total $  -2,673  worst run $-4,034 | TARGET 77% STOP 23% CUT 0%
+    next best on 2025 -> their 2026: 5.0%/15m $-15.1 -> $-20.1; 10.0%/-m $-15.9 -> $-26.3; 3.0%/240m $-16.2 -> $-27.2; 10.0%/30m $-16.4 -> $-28.1
+    (hindsight: the best cut ON 2026 itself was 7.0%/-m $-16.5; it made $-18.6 on 2025)
+
+===== QUICK  margin 20% ($2,878 position)  target $40 (a 1.39% fall)
+  of 54 cuts: 5 positive on 2025, 4 positive on 2026, 3 on both; median cut 2025 $-5.9, 2026 $-5.6
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  506 trades  win  87%  avg win $ +40  avg loss $ -229  per trade $  +4.2 (t +1.0; after fees $  +1.9)  total $  +2,116  worst run $-2,726 | TARGET 86% STOP 9% CLOCK 5%
+            2026 TEST         465 trades  win  89%  avg win $ +40  avg loss $ -288  per trade $  +2.6 (t +0.5; after fees $  +0.3)  total $  +1,192  worst run $-3,458 | TARGET 89% STOP 11% CLOCK 1%
+    LENIENT 2025 (chosen on)  506 trades  win  88%  avg win $ +40  avg loss $ -225  per trade $  +7.9 (t +1.9; after fees $  +5.7)  total $  +4,018  worst run $-1,916 | TARGET 88% STOP 8% CLOCK 4%
+            2026 TEST         465 trades  win  90%  avg win $ +40  avg loss $ -278  per trade $  +8.6 (t +1.9; after fees $  +6.4)  total $  +3,992  worst run $-1,571 | TARGET 90% STOP 9% CLOCK 1%
+    next best on 2025 -> their 2026: 10.0%/240m $+1.6 -> $+0.4; 10.0%/120m $+0.6 -> $+0.9; 7.0%/-m $+0.3 -> $-1.2; 10.0%/60m $+0.1 -> $-0.9
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $+2.6; it made $+4.2 on 2025)
+
+===== QUICK  margin 20% ($2,878 position)  target $50 (a 1.74% fall)
+  of 54 cuts: 8 positive on 2025, 4 positive on 2026, 4 on both; median cut 2025 $-5.6, 2026 $-6.4
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  506 trades  win  84%  avg win $ +50  avg loss $ -227  per trade $  +4.4 (t +0.9; after fees $  +2.1)  total $  +2,210  worst run $-2,866 | TARGET 83% STOP 11% CLOCK 6%
+            2026 TEST         465 trades  win  86%  avg win $ +50  avg loss $ -285  per trade $  +2.5 (t +0.4; after fees $  +0.2)  total $  +1,148  worst run $-3,647 | TARGET 86% STOP 13% CLOCK 1%
+    LENIENT 2025 (chosen on)  506 trades  win  85%  avg win $ +50  avg loss $ -221  per trade $  +8.0 (t +1.7; after fees $  +5.7)  total $  +4,045  worst run $-2,422 | TARGET 84% STOP 10% CLOCK 6%
+            2026 TEST         465 trades  win  87%  avg win $ +50  avg loss $ -280  per trade $  +7.4 (t +1.4; after fees $  +5.2)  total $  +3,452  worst run $-2,661 | TARGET 87% STOP 12% CLOCK 1%
+    next best on 2025 -> their 2026: 10.0%/240m $+1.7 -> $+0.4; 10.0%/120m $+1.3 -> $+1.0; 7.0%/-m $+1.2 -> $-1.2; 10.0%/60m $+1.2 -> $-1.8
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $+2.5; it made $+4.4 on 2025)
+
+===== QUICK  margin 30% ($4,317 position)  target $40 (a 0.93% fall)
+  of 54 cuts: 2 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-8.1, 2026 $-10.3
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  506 trades  win  91%  avg win $ +40  avg loss $ -364  per trade $  +2.4 (t +0.4; after fees $  -0.9)  total $  +1,215  worst run $-3,403 | TARGET 91% STOP 7% CLOCK 3%
+            2026 TEST         465 trades  win  91%  avg win $ +40  avg loss $ -439  per trade $  -2.2 (t -0.3; after fees $  -5.6)  total $  -1,036  worst run $-5,600 | TARGET 91% STOP 8% CLOCK 0%
+    LENIENT 2025 (chosen on)  506 trades  win  92%  avg win $ +40  avg loss $ -362  per trade $  +7.3 (t +1.4; after fees $  +4.0)  total $  +3,717  worst run $-2,434 | TARGET 92% STOP 6% CLOCK 2%
+            2026 TEST         465 trades  win  92%  avg win $ +40  avg loss $ -426  per trade $  +2.9 (t +0.5; after fees $  -0.4)  total $  +1,345  worst run $-4,124 | TARGET 92% STOP 8% CLOCK 0%
+    next best on 2025 -> their 2026: 10.0%/60m $+0.4 -> $-6.2; 5.0%/60m $-0.5 -> $-9.1; 7.0%/60m $-0.9 -> $-6.2; 10.0%/120m $-1.5 -> $-4.5
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $-2.2; it made $+2.4 on 2025)
+
+===== QUICK  margin 30% ($4,317 position)  target $50 (a 1.16% fall)
+  of 54 cuts: 1 positive on 2025, 2 positive on 2026, 1 on both; median cut 2025 $-9.2, 2026 $-8.0
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  506 trades  win  89%  avg win $ +50  avg loss $ -346  per trade $  +5.3 (t +0.9; after fees $  +2.0)  total $  +2,693  worst run $-2,962 | TARGET 89% STOP 8% CLOCK 4%
+            2026 TEST         465 trades  win  90%  avg win $ +50  avg loss $ -432  per trade $  +2.3 (t +0.3; after fees $  -1.0)  total $  +1,078  worst run $-4,453 | TARGET 90% STOP 9% CLOCK 1%
+    LENIENT 2025 (chosen on)  506 trades  win  90%  avg win $ +50  avg loss $ -353  per trade $ +10.9 (t +1.9; after fees $  +7.6)  total $  +5,534  worst run $-1,910 | TARGET 90% STOP 7% CLOCK 3%
+            2026 TEST         465 trades  win  91%  avg win $ +50  avg loss $ -423  per trade $  +7.3 (t +1.1; after fees $  +4.0)  total $  +3,401  worst run $-3,300 | TARGET 91% STOP 9% CLOCK 0%
+    next best on 2025 -> their 2026: 10.0%/240m $-0.7 -> $+0.1; 10.0%/120m $-0.8 -> $-0.3; 10.0%/60m $-0.9 -> $-2.9; 10.0%/15m $-1.1 -> $-5.7
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $+2.3; it made $+5.3 on 2025)
+
+===== QUICK  margin 50% ($7,195 position)  target $40 (a 0.56% fall)
+  of 54 cuts: 0 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-12.6, 2026 $-21.1
+  CHOSEN on 2025: stop 10.0% above, time cut none min
+    STRICT  2025 (chosen on)  506 trades  win  94%  avg win $ +40  avg loss $ -604  per trade $  -0.8 (t -0.1; after fees $  -6.3)  total $    -387  worst run $-5,176 | TARGET 93% STOP 5% CLOCK 2%
+            2026 TEST         465 trades  win  94%  avg win $ +40  avg loss $ -731  per trade $  -6.4 (t -0.7; after fees $ -11.9)  total $  -2,994  worst run $-8,566 | TARGET 94% STOP 6% CLOCK 0%
+    LENIENT 2025 (chosen on)  506 trades  win  96%  avg win $ +40  avg loss $ -602  per trade $ +13.4 (t +2.3; after fees $  +7.9)  total $  +6,765  worst run $-2,566 | TARGET 96% STOP 3% CLOCK 1%
+            2026 TEST         465 trades  win  95%  avg win $ +40  avg loss $ -706  per trade $  -0.1 (t -0.0; after fees $  -5.6)  total $     -58  worst run $-7,215 | TARGET 95% STOP 5% CLOCK 0%
+    next best on 2025 -> their 2026: 10.0%/60m $-0.9 -> $-10.5; 5.0%/60m $-2.4 -> $-17.5; 10.0%/120m $-2.8 -> $-9.9; 7.0%/60m $-3.0 -> $-11.9
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $-6.4; it made $-0.8 on 2025)
+
+===== QUICK  margin 50% ($7,195 position)  target $50 (a 0.69% fall)
+  of 54 cuts: 2 positive on 2025, 0 positive on 2026, 0 on both; median cut 2025 $-11.7, 2026 $-20.3
+  CHOSEN on 2025: stop 10.0% above, time cut 60 min
+    STRICT  2025 (chosen on)  506 trades  win  77%  avg win $ +49  avg loss $ -158  per trade $  +1.0 (t +0.2; after fees $  -4.9)  total $    +523  worst run $-5,699 | TARGET 74% CUT 25% STOP 1%
+            2026 TEST         465 trades  win  79%  avg win $ +49  avg loss $ -249  per trade $ -12.3 (t -1.6; after fees $ -18.2)  total $  -5,729  worst run $-10,915 | TARGET 78% CUT 20% STOP 2%
+    LENIENT 2025 (chosen on)  506 trades  win  81%  avg win $ +49  avg loss $ -165  per trade $  +9.1 (t +1.8; after fees $  +3.3)  total $  +4,606  worst run $-2,676 | TARGET 79% CUT 20% STOP 1%
+            2026 TEST         465 trades  win  84%  avg win $ +49  avg loss $ -251  per trade $  +0.3 (t +0.0; after fees $  -5.5)  total $    +134  worst run $-6,412 | TARGET 82% CUT 16% STOP 2%
+    next best on 2025 -> their 2026: 10.0%/-m $+0.6 -> $-7.2; 10.0%/120m $-1.0 -> $-9.5; 5.0%/60m $-1.2 -> $-18.5; 7.0%/60m $-2.1 -> $-13.4
+    (hindsight: the best cut ON 2026 itself was 10.0%/-m $-7.2; it made $+0.6 on 2025)
+
+loop and array implementations agreed on every trade checked.
