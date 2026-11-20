@@ -834,7 +834,14 @@ prod verified read-only 11:58 UTC: image 952e1ec, TRADE_MARGIN 0.1, RUNNING, $2,
 **THEN THE TAKE-PROFIT LADDER -- LIVE 2026-11-18 (#190, merge 2bac016; owner "we will adopt it"):** deploy-prod run
 44330469980 approved by the owner, completed 15:16 UTC; prod verified read-only: image 2bac016 running, MARGIN 0.1 /
 STOP 0.1 / TRAIL 0.1 / 5x / LADDER ((0.05, 0.5), (0.1, 0.25)), `tp_legs` column present, RUNNING, $2,792.50, nothing
-open. First ladder trade: the 2026-11-19 entry (no probe of the step order was run). after
+open. First ladder trade: the 2026-11-19 entry (no probe of the step order was run). **FIRST LADDER TRADE WRONGLY HALTED THE ACCOUNT, FIXED (#193, merge 9a83604, deploy-prod run 44712937818 approved by
+the owner, image 9a83604 healthy 10:0x UTC 2026-11-20):** IRYSUSD (row 34, 575 short @ 0.02413): both steps filled, then
+the trailed stop closed the last 145 at 0.02388 (01:15:03 UTC). `last_close` took the first filled reduce-only buy in Delta's
+history, and Delta lists newest-CREATED first with the stop created at entry, so the last STEP (0.02171) was "the close":
+filed MANUAL_CLOSE, HALTED, and booked +$103.86 (true +$72.27, r 0.52, STOP_LOSS 0.02388). `SpikeLive.partial_exit_cids`
+now excludes the position's own step ids (all tries are rebuilt from the cid recipe). Row 34 corrected by hand (a
+`CORRECTED` event keeps the old values) and the account resumed 10:10 UTC. `FakeDelta.fire_stop` lists the stop FIRST, which
+hid this; a ladder test must put it last, as Delta does. Any ladder trade that ends on the stop/trail hit this. after
 MMT 2026-11-18 (+~$178 at best, closed by the trail at -$99.6) the owner asked for quick profit booking. Tested and NOT
 adopted that day (all below the rule as it runs, history and 2026 alike): $20-40 take-profits at 10-50% margin
 (`scripts/spike_small_usd.py`, `spike_cut_30_40.py`), a 1 h / 30 m / 2 h time cut (`spike_cut_1h.py`), split / break-even
