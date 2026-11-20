@@ -677,12 +677,17 @@ class LiveFade:
             await con.execute("UPDATE fade_live_positions SET status = 'FAILED', skip_reason = $2 "
                               "WHERE id = $1", r["id"], "the entry never filled at Delta")
 
+    def partial_exit_cids(self, r) -> set[str]:
+        """Client order ids of this position's own PARTIAL buy-backs (take-profit steps). They are never the order
+        that closed it: `last_close` must skip them. None here; the run with a ladder overrides it."""
+        return set()
+
     async def _closed_at_venue(self, con, r, now: float) -> None:
         """Flat at Delta while we hold it OPEN: its stop, its take-profit (or a liquidation) closed it."""
         from live.ledger import close_facts
         others = {e.partition(":")[2] for x in await con.fetch(
             "SELECT exit_cids FROM fade_live_positions WHERE product_id = $1 AND id <> $2", r["product_id"], r["id"])
-            for e in (x["exit_cids"] or ())}
+            for e in (x["exit_cids"] or ())} | self.partial_exit_cids(r)
         o = await asyncio.to_thread(self.last_close, r["product_id"], r["entry_time"], others)
         if o is None:
             if r["flat_since"] is None:

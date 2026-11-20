@@ -1473,6 +1473,61 @@ async def test_ladder_the_stop_after_a_step_books_both_parts_and_cancels_the_oth
 
 @requires_pg
 @pytest.mark.asyncio
+async def test_ladder_a_stop_after_both_steps_is_the_close_even_when_delta_lists_the_steps_above_it():
+    """IRYSUSD 2026-11-20: two steps filled, then the trailed stop closed the rest. Delta lists orders newest-CREATED
+    first and the stop is created at entry, so the filled steps sit ABOVE it. `last_close` took the last step as the
+    close: filed MANUAL_CLOSE (not a bracket exit) and HALTED the account, and booked the rest at the step's price.
+    (FakeDelta.fire_stop lists the stop first, which hid this: here it is moved to where Delta puts it.)"""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        bal0 = fake.bal
+        x = await _ladder_open(con, fake, acct)
+        n = x["contracts"]
+        fake.fill_tp(1, at=D0 + 650)
+        fake.fill_tp(2, at=D0 + 660)
+        for t in (D0 + 700, D0 + 750):
+            await acct.step(con, t)
+        fake.fire_stop("XUSD", 1.10, at=D0 + 800)
+        fake.history.append(fake.history.pop(0))             # Delta's order: the stop (created at entry) is listed last
+        assert fake.history[0]["client_order_id"] and "stop_order_type" not in fake.history[0]
+        for t in (D0 + 900, D0 + 1000, D0 + 1100):
+            await acct.step(con, t)
+        x = (await _rows(con))["XUSD"]
+        rest = n - n // 2 - n // 4
+        assert (x["status"], x["exit_reason"], x["exit_price"]) == ("CLOSED", "STOP_LOSS", 1.10)
+        want = (1.05 - 0.9975) * (n // 2) + (1.05 - 0.945) * (n // 4) + (1.05 - 1.10) * rest - (0.01 + 0.01 + 0.01 + 0.02)
+        assert x["pnl"] == pytest.approx(fake.bal - bal0, abs=1e-6) and x["pnl"] == pytest.approx(want, abs=1e-6)
+        assert (await _state(con))["status"] == "RUNNING", await _state(con)
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
+async def test_ladder_a_step_retried_under_a_new_id_is_still_not_the_close():
+    """A step's `cid` is overwritten on every try, so the ids of earlier tries are rebuilt from the same recipe."""
+    con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
+    fake = SpikeDelta(balance=3184.0)
+    acct = _acct(fake, candles=lambda sym, a, b: [{"time": a + 60, "low": 1.05, "close": 1.05}])
+    try:
+        await _ladder_open(con, fake, acct)
+        r = (await _rows(con))["XUSD"]
+        legs = S.SpikeLive._legs(r)
+        from live.orders import client_order_id
+        first = client_order_id("fade-live", str(r["id"]), "tp1", "1")
+        legs[0]["tries"], legs[0]["cid"] = 3, client_order_id("fade-live", str(r["id"]), "tp1", "3")
+        cids = S.SpikeLive.partial_exit_cids(acct, {"id": r["id"], "tp_legs": legs})
+        assert first in cids and legs[0]["cid"] in cids and client_order_id("fade-live", str(r["id"]), "tp1", "2") in cids
+        assert client_order_id("fade-live", str(r["id"]), "tp1", "4") not in cids
+        assert L.LiveFade.partial_exit_cids(acct, r) == set()
+    finally:
+        await con.close()
+
+
+@requires_pg
+@pytest.mark.asyncio
 async def test_ladder_the_24h_exit_after_both_steps_buys_back_only_the_rest():
     con = await _db(picks=(("XUSD", 1, 0.10, 1.0),))
     fake = SpikeDelta(balance=3184.0)
