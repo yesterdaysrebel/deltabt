@@ -803,6 +803,21 @@ class SpikeLive(L.LiveFade):
             await self._save_legs(con, r["id"], legs)
         return complete
 
+    def partial_exit_cids(self, r) -> set[str]:
+        """Every client order id a take-profit step of this position ever used (a step's `cid` is overwritten on each
+        try, so the earlier ones are rebuilt from the same recipe). Delta lists orders newest-CREATED first, and the
+        stop is created at entry, so a filled step sits above it: without this `last_close` returned the last step as
+        "the close", filed it MANUAL_CLOSE and HALTED the account (IRYSUSD, 2026-11-20 01:15 UTC: the trailed stop
+        closed the last 145 contracts at 0.02388; the bot booked them at the step's 0.02171)."""
+        from live.orders import client_order_id
+        out: set[str] = set()
+        for leg in self._legs(r) or ():
+            if leg.get("cid"):
+                out.add(leg["cid"])
+            out.update(client_order_id("fade-live", str(r["id"]), f"tp{leg['step']}", str(t))
+                       for t in range(1, int(leg.get("tries") or 0) + 1))
+        return out
+
     @staticmethod
     def ladder_pnl(r, legs: list[dict] | None) -> tuple[int, float]:
         """(contracts bought back by the ladder, their net P&L: price move x size less their fees)."""
